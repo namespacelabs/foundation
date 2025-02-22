@@ -56,6 +56,7 @@ func NewRunCmd() *cobra.Command {
 	experimental := run.Flags().String("experimental", "", "A set of experimental settings to pass during creation.")
 	instanceExperimental := run.Flags().String("instance_experimental", "", "A set of experimental instance settings to pass during creation.")
 	userSshey := run.Flags().String("ssh_key", "", "Injects the specified ssh public key in the created instance.")
+	computeAPI := run.Flags().Bool("compute_api", false, "Whether to use the Compute API.")
 
 	run.Flags().MarkHidden("label")
 	run.Flags().MarkHidden("internal_extra")
@@ -104,6 +105,7 @@ func NewRunCmd() *cobra.Command {
 			ForwardNscState: *forwardNscState,
 			ExposeNscBins:   *exposeNscBins,
 			Network:         *network,
+			UseComputeAPI:   *computeAPI,
 		}
 
 		if keys, err := parseAuthorizedKeys(*userSshey); err != nil {
@@ -147,9 +149,10 @@ func NewRunCmd() *cobra.Command {
 		if *wait {
 			clusterId := *on
 			if clusterId == "" {
-				clusterId = resp.ClusterId
+				clusterId = resp.InstanceId
 			}
-			if err := ctl.WaitContainers(ctx, clusterId, resp.Container); err != nil {
+
+			if err := ctl.WaitContainers(ctx, clusterId, resp.LegacyContainer); err != nil {
 				return err
 			}
 		}
@@ -204,37 +207,6 @@ func fillInIngressRules(ports []int32, ingressRules map[string]string) ([]export
 	return exported, nil
 }
 
-func NewRunComposeCmd() *cobra.Command {
-	run := &cobra.Command{
-		Use:    "run-compose",
-		Short:  "Starts a set of containers in an ephemeral environment.",
-		Args:   cobra.NoArgs,
-		Hidden: true,
-	}
-
-	output := run.Flags().StringP("output", "o", "plain", "one of plain or json")
-	dir := run.Flags().String("dir", "", "If not specified, loads the compose project from the current working directory.")
-	devmode := run.Flags().Bool("development", false, "If true, enables a few development facilities, including making containers optional.")
-	wait := run.Flags().Bool("wait", false, "Wait for all containers to start running.")
-
-	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		resp, err := createCompose(ctx, *dir, *devmode)
-		if err != nil {
-			return err
-		}
-
-		if *wait {
-			if err := ctl.WaitContainers(ctx, resp.ClusterId, resp.Container); err != nil {
-				return err
-			}
-		}
-
-		return PrintCreateContainersResult(ctx, *output, resp)
-	})
-
-	return run
-}
-
 type CreateContainerOpts struct {
 	Name                 string
 	Image                string
@@ -252,6 +224,7 @@ type CreateContainerOpts struct {
 	Experimental         any
 	InstanceExperimental any
 	AuthorizedSshKeys    []string
+	UseComputeAPI        bool
 }
 
 type exportContainerPort struct {
@@ -259,7 +232,15 @@ type exportContainerPort struct {
 	HttpIngressRules []*api.ContainerPort_HttpMatchRule
 }
 
-func CreateContainerInstance(ctx context.Context, machineType string, duration time.Duration, target string, devmode bool, opts CreateContainerOpts) (*api.CreateContainersResponse, error) {
+type CreateContainerResult struct {
+	InstanceId  string
+	InstanceUrl string
+	ApiEndpoint string
+
+	LegacyContainer []*api.Container
+}
+
+func CreateContainerInstance(ctx context.Context, machineType string, duration time.Duration, target string, devmode bool, opts CreateContainerOpts) (*CreateContainerResult, error) {
 	container := &api.ContainerRequest{
 		Name:         opts.Name,
 		Image:        opts.Image,
@@ -298,7 +279,36 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration t
 	if target == "" {
 		const label = "Creating container environment"
 
-		resp, err := tasks.Return(ctx, tasks.Action("nscloud.create-containers").HumanReadablef(label), func(ctx context.Context) (*api.CreateContainersResponse, error) {
+		resp, err := tasks.Return(ctx, tasks.Action("nscloud.create-containers").HumanReadable(label), func(ctx context.Context) (*CreateContainerResult, error) {
+			if opts.UseComputeAPI {
+				req := api.CreateInstanceRequest{
+					MachineType:  machineType,
+					Container:    []*api.ContainerRequest{container},
+					Label:        labels,
+					Feature:      opts.Features,
+					Experimental: opts.InstanceExperimental,
+				}
+
+				if duration > 0 {
+					req.Deadline = timestamppb.New(time.Now().Add(duration))
+				}
+
+				if devmode || len(opts.AuthorizedSshKeys) > 0 {
+					return nil, fnerrors.New("not supported yet with compute_api")
+				}
+
+				var response api.CreateInstanceResponse
+				if err := api.Methods.CreateInstance.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+					return nil, err
+				}
+
+				return &CreateContainerResult{
+					InstanceId:  response.InstanceId,
+					InstanceUrl: response.InstanceUrl,
+					ApiEndpoint: response.ApiEndpoint,
+				}, nil
+			}
+
 			req := api.CreateContainersRequest{
 				MachineType:       machineType,
 				Container:         []*api.ContainerRequest{container},
@@ -318,13 +328,18 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration t
 			if err := api.Methods.CreateContainers.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 				return nil, err
 			}
-			return &response, nil
+
+			return &CreateContainerResult{
+				InstanceId:  response.ClusterId,
+				InstanceUrl: response.ClusterUrl,
+				ApiEndpoint: response.ApiEndpoint,
+			}, nil
 		})
 		if err != nil {
 			return nil, err
 		}
 
-		if _, err := api.WaitClusterReady(ctx, api.Methods, resp.ClusterId, api.WaitClusterOpts{
+		if _, err := api.WaitClusterReady(ctx, api.Methods, resp.InstanceId, api.WaitClusterOpts{
 			ApiEndpoint: resp.ApiEndpoint,
 			CreateLabel: label,
 		}); err != nil {
@@ -340,7 +355,7 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration t
 	}
 
 	return tasks.Return(ctx, tasks.Action("nscloud.start-containers").HumanReadablef("Starting containers"),
-		func(ctx context.Context) (*api.CreateContainersResponse, error) {
+		func(ctx context.Context) (*CreateContainerResult, error) {
 			var response api.StartContainersResponse
 			if err := api.Methods.StartContainers.Do(ctx, api.StartContainersRequest{
 				Id:        target,
@@ -349,8 +364,8 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration t
 				return nil, err
 			}
 
-			return &api.CreateContainersResponse{
-				Container: response.Container,
+			return &CreateContainerResult{
+				LegacyContainer: response.Container,
 			}, nil
 		})
 }
@@ -405,15 +420,15 @@ func parseEffect(spec string) (*api.ContainerPort_HttpMatchRule, error) {
 	return x, nil
 }
 
-func PrintCreateContainersResult(ctx context.Context, output string, resp *api.CreateContainersResponse) error {
+func PrintCreateContainersResult(ctx context.Context, output string, resp *CreateContainerResult) error {
 	switch output {
 	case "json":
 		d := json.NewEncoder(console.Stdout(ctx))
 		d.SetIndent("", "  ")
 		if err := d.Encode(createOutput{
-			ClusterId:  resp.ClusterId,
-			ClusterUrl: resp.ClusterUrl,
-			Container:  resp.Container,
+			ClusterId:  resp.InstanceId,
+			ClusterUrl: resp.InstanceUrl,
+			Container:  resp.LegacyContainer,
 		}); err != nil {
 			return fnerrors.InternalError("failed to encode countainer creation output as JSON output: %w", err)
 		}
@@ -424,11 +439,11 @@ func PrintCreateContainersResult(ctx context.Context, output string, resp *api.C
 		}
 
 		// ClusterId is not set when `--on` is used.
-		if resp.ClusterId != "" {
-			printNewEnv(ctx, resp.ClusterId, resp.ClusterUrl)
+		if resp.InstanceId != "" {
+			printNewEnv(ctx, resp.InstanceId, resp.InstanceUrl)
 		}
 
-		for _, ctr := range resp.Container {
+		for _, ctr := range resp.LegacyContainer {
 			fmt.Fprintf(console.Stdout(ctx), "\n  Started %q\n", ctr.Name)
 			if len(ctr.ExportedPort) > 0 {
 				fmt.Fprintln(console.Stdout(ctx))

@@ -67,7 +67,6 @@ func NewClusterCmd(hidden bool) *cobra.Command {
 	cmd.AddCommand(NewLogsCmd())
 	cmd.AddCommand(NewProxyCmd())
 	cmd.AddCommand(NewRunCmd())
-	cmd.AddCommand(NewRunComposeCmd())
 	cmd.AddCommand(NewExposeCmd())
 	cmd.AddCommand(NewBuildkitCmd())
 

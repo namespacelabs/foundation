@@ -41,7 +41,6 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(cluster.NewLogsCmd())                       // nsc logs
 	root.AddCommand(cluster.NewExposeCmd())                     // nsc expose
 	root.AddCommand(cluster.NewRunCmd())                        // nsc run
-	root.AddCommand(cluster.NewRunComposeCmd())                 // nsc run-compose
 	root.AddCommand(cluster.NewSshCmd())                        // nsc ssh
 	root.AddCommand(cluster.NewVncCmd())                        // nsc vnc
 	root.AddCommand(cluster.NewTopCmd())                        // nsc top
