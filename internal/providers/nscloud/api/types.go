@@ -37,6 +37,8 @@ type CreateInstanceRequest struct {
 	Deadline          *timestamppb.Timestamp                 `json:"deadline,omitempty"`
 	AvailableSecrets  []*SecretRef                           `json:"available_secrets,omitempty"`
 	Experimental      any                                    `json:"experimental,omitempty"`
+
+	Container []*ContainerRequest `json:"container,omitempty"`
 }
 
 type CreateInstanceRequest_RegionSelection struct {
@@ -117,10 +119,15 @@ type StartCreateKubernetesClusterResponse struct {
 }
 
 type CreateInstanceResponse struct {
-	InstanceId  string `json:"instanceId,omitempty"`
-	InstanceUrl string `json:"instanceUrl,omitempty"`
-	Region      string `json:"region,omitempty"`
-	ApiEndpoint string `json:"apiEndpoint,omitempty"`
+	InstanceId  string                                      `json:"instanceId,omitempty"`
+	InstanceUrl string                                      `json:"instanceUrl,omitempty"`
+	Region      string                                      `json:"region,omitempty"`
+	ApiEndpoint string                                      `json:"apiEndpoint,omitempty"`
+	Containers  []CreateInstanceResponse_ContainerReference `json:"containers,omitempty"`
+}
+
+type CreateInstanceResponse_ContainerReference struct {
+	ContainerId string `json:"containerId"`
 }
 
 type CreateContainersRequest struct {
