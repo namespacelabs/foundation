@@ -56,6 +56,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(cluster.NewBazelCmd())
 	root.AddCommand(cluster.NewPantsCmd())
 	root.AddCommand(cluster.NewArtifactCmd()) // nsc artifact
+	root.AddCommand(cluster.NewCacheURLCmd()) // nsc cache-url
 
 	root.AddCommand(sdk.NewSdkCmd(true))
 
