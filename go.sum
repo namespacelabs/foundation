@@ -1,7 +1,7 @@
-buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250204161447-a582c42d9b87.2 h1:xZaUuoPBVmP9ddl+8lXgyHzlTvzt/1XNloJnVQVNT4g=
-buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250204161447-a582c42d9b87.2/go.mod h1:pzKw+Wc2QandmD7Psy1MT7r0A7Un3zhDIMh6fQYfHRI=
-buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.4-20250204141930-c4c13c4d9b38.1 h1:lm/V8iZi88FcR+rXMrHhDmZuspdoVxzORRBAwStFQiM=
-buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.4-20250204141930-c4c13c4d9b38.1/go.mod h1:BmQXCuQwK4ILUpXnT0ib8261AdDd/OBhxcelMpJb5Bo=
+buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250225143914-47187ce6e609.2 h1:MZEsKvK7R/ICPYQROQHa4wnahiM6osg670oQjgn8UR0=
+buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250225143914-47187ce6e609.2/go.mod h1:6/vzuodrAKApYZl9v3jPIYHOIaIWgAvXbzIGGD3tZgw=
+buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.5-20250225143914-47187ce6e609.1 h1:1EDFGmu0qPEPN3CGXqOzHdMeoXxyMU5G/tMxHoKk3OI=
+buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.5-20250225143914-47187ce6e609.1/go.mod h1:zt28YIKaEMO+bCYJ4CLfUVrAFIMtE4P3zN/VZhFrR9Y=
 c2sp.org/CCTV/age v0.0.0-20240306222714-3ec4d716e805 h1:u2qwJeEvnypw+OCPUHmoZE3IqwfuN5kgDfo5MLzpNM0=
 c2sp.org/CCTV/age v0.0.0-20240306222714-3ec4d716e805/go.mod h1:FomMrUJ2Lxt5jCLmZkG3FHa72zUprnhd3v/Z18Snm4w=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
@@ -1537,8 +1537,8 @@ google.golang.org/protobuf v1.25.0/go.mod h1:9JNX74DMeImyA3h4bdi1ymwjUzf21/xIlba
 google.golang.org/protobuf v1.26.0-rc.1/go.mod h1:jlhhOSvTdKEhbULTjvd4ARK9grFBp09yW+WbY/TyQbw=
 google.golang.org/protobuf v1.26.0/go.mod h1:9q0QmTI4eRPtz6boOQmLYwt+qCgq0jsYwAQnmE0givc=
 google.golang.org/protobuf v1.27.1/go.mod h1:9q0QmTI4eRPtz6boOQmLYwt+qCgq0jsYwAQnmE0givc=
-google.golang.org/protobuf v1.36.4 h1:6A3ZDJHn/eNqc1i+IdefRzy/9PokBTPvcqMySR7NNIM=
-google.golang.org/protobuf v1.36.4/go.mod h1:9fA7Ob0pmnwhb644+1+CVWFRbNajQ6iRojtC/QF5bRE=
+google.golang.org/protobuf v1.36.5 h1:tPhr+woSbjfYvY6/GPufUoYizxw1cF/yFoxJ2fmpwlM=
+google.golang.org/protobuf v1.36.5/go.mod h1:9fA7Ob0pmnwhb644+1+CVWFRbNajQ6iRojtC/QF5bRE=
 gopkg.in/airbrake/gobrake.v2 v2.0.9/go.mod h1:/h5ZAUhDkGaJfjzjKLSjv6zCL6O0LLBxU4K+aSYdM/U=
 gopkg.in/alecthomas/kingpin.v2 v2.2.6/go.mod h1:FMv+mEhP44yOT+4EoQTLFTRgOQ1FBLkstjWtayDeSgw=
 gopkg.in/cenkalti/backoff.v2 v2.2.1 h1:eJ9UAg01/HIHG987TwxvnzK2MgxXq97YY6rYDpY9aII=
@@ -1626,8 +1626,8 @@ namespacelabs.dev/go-filenotify v0.0.0-20220511192020-53ea11be7eaa h1:jj2kjs0Hvu
 namespacelabs.dev/go-filenotify v0.0.0-20220511192020-53ea11be7eaa/go.mod h1:e8NJRaInXRRm1+KPA6EkGEzdLJAgEvVSIKiLzpP97nI=
 namespacelabs.dev/go-ids v0.0.0-20221124082625-9fc72ee06af7 h1:8NlnfPlzDSJr8TYV/qarIWwhjLd1gOXf3Jme0M/oGBM=
 namespacelabs.dev/go-ids v0.0.0-20221124082625-9fc72ee06af7/go.mod h1:J+Sd+ngeffnCsaO/M7zgs2bR8Klq/ZBhS0+bbnDEH2M=
-namespacelabs.dev/integrations v0.0.0-20250219183751-9785aeae50f5 h1:1Xmafyk3P9MbROzx1uvjsXNySE4uYz3EQBn6ommnPG8=
-namespacelabs.dev/integrations v0.0.0-20250219183751-9785aeae50f5/go.mod h1:EKagMwZRHyVu1pfGGzR/2C9j9exM7/aTnsx6wJ5Chs0=
+namespacelabs.dev/integrations v0.0.1-dev.0.20250304201626-36177e269547 h1:ZkNfWOKpFM/CfVI0qo7pgb9n0w/xSG2isBeCnv/51TQ=
+namespacelabs.dev/integrations v0.0.1-dev.0.20250304201626-36177e269547/go.mod h1:JR4wiuM/x+c1lrw1H0DTaz5udEWS9aVCgZJhb0VqTVE=
 oras.land/oras-go v1.2.5 h1:XpYuAwAb0DfQsunIyMfeET92emK8km3W4yEzZvUbsTo=
 oras.land/oras-go v1.2.5/go.mod h1:PuAwRShRZCsZb7g8Ar3jKKQR/2A/qN+pkYxIOd/FAoo=
 rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=
