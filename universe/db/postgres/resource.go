@@ -6,6 +6,7 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/exaring/otelpgx"
@@ -27,8 +28,9 @@ func ConnectToResource(ctx context.Context, res *resources.Parsed, resourceRef s
 }
 
 type ConfigOverrides struct {
-	MaxConns        int32
-	MaxConnIdleTime time.Duration
+	MaxConns                        int32
+	MaxConnIdleTime                 time.Duration
+	IdleInTransactionSessionTimeout time.Duration
 }
 
 func NewDatabaseFromConnectionUri(ctx context.Context, db *postgrespb.DatabaseInstance, connuri string, tp trace.TracerProvider, client string) (*DB, error) {
@@ -55,6 +57,10 @@ func NewDatabaseFromConnectionUriWithOverrides(ctx context.Context, db *postgres
 
 		if overrides.MaxConnIdleTime > 0 {
 			config.MaxConnIdleTime = overrides.MaxConnIdleTime
+		}
+
+		if overrides.IdleInTransactionSessionTimeout > 0 {
+			config.ConnConfig.RuntimeParams["idle_in_transaction_session_timeout"] = fmt.Sprintf("%d", overrides.IdleInTransactionSessionTimeout.Milliseconds())
 		}
 	}
 

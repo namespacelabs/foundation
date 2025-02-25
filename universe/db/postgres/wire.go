@@ -8,6 +8,7 @@ import (
 	"context"
 	"os"
 	"strconv"
+	"time"
 
 	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -49,6 +50,10 @@ func ProvideDatabase(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps) 
 
 	if db.GetMaxConnsIdleTime() != nil {
 		overrides.MaxConnIdleTime = db.GetMaxConnsIdleTime().AsDuration()
+	}
+
+	if db.GetIdleInTransactionSessionTimeoutMs() > 0 {
+		overrides.IdleInTransactionSessionTimeout = time.Millisecond * time.Duration(db.GetIdleInTransactionSessionTimeoutMs())
 	}
 
 	return ConnectToResource(ctx, res, db.ResourceRef, tp, db.GetClient(), overrides)
