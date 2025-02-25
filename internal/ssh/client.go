@@ -192,8 +192,14 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 			config.Auth = append(config.Auth, key)
 		}
 
-		if endpoint.AgentSockPath != "" {
-			path, err := dirs.ExpandHome(os.ExpandEnv(endpoint.AgentSockPath))
+		agentSock := endpoint.AgentSockPath
+		if agentSockEnv := os.Getenv("SSH_AUTH_SOCK"); agentSock == "" && agentSockEnv != "" {
+			agentSock = agentSockEnv
+		}
+
+		if agentSock != "" {
+			fmt.Fprintf(console.Debug(ctx), "ssh: using ssh-agent socket: %s\n", agentSock)
+			path, err := dirs.ExpandHome(os.ExpandEnv(agentSock))
 			if err != nil {
 				return nil, fnerrors.New("failed to resolve ssh agent path: %w", err)
 			}
