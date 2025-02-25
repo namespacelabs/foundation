@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -15,6 +16,13 @@ import (
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
 )
+
+var preferDevhostConfiguration = false
+
+func SetupFlags(flags *pflag.FlagSet) {
+	flags.BoolVar(&preferDevhostConfiguration, "prefer_devhost_configuration", false, "If set, configuration set in the devhost takes precedence over workspace configurations.")
+	_ = flags.MarkHidden("prefer_devhost_configuration")
+}
 
 type Configuration interface {
 	Derive(string, func(ConfigurationSlice) ConfigurationSlice) Configuration
@@ -65,6 +73,13 @@ func makeConfigurationCompat(errorloc fnerrors.Location, ws Workspace, base Conf
 	merged := ConfigurationSlice{
 		Configuration:         append(slices.Clone(base.Configuration), rest.Configuration...),
 		PlatformConfiguration: append(slices.Clone(base.PlatformConfiguration), rest.PlatformConfiguration...),
+	}
+
+	if preferDevhostConfiguration {
+		merged = ConfigurationSlice{
+			Configuration:         append(rest.Configuration, slices.Clone(base.Configuration)...),
+			PlatformConfiguration: append(rest.PlatformConfiguration, slices.Clone(base.PlatformConfiguration)...),
+		}
 	}
 
 	if p, err := applyProvider(errorloc, merged.Configuration); err == nil {
