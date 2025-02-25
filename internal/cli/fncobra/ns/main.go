@@ -140,6 +140,7 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 			nscloud.SetupFlags(rootCmd.PersistentFlags(), true)
 			onepassword.SetupFlags(rootCmd.PersistentFlags())
 			module.SetupFlags(rootCmd.PersistentFlags())
+			cfg.SetupFlags(rootCmd.PersistentFlags())
 
 			rootCmd.PersistentFlags().BoolVar(&binary.UsePrebuilts, "use_prebuilts", binary.UsePrebuilts,
 				"If set to false, binaries are built from source rather than a corresponding prebuilt being used.")
