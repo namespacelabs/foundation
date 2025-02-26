@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/morikuni/aec"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -25,9 +24,7 @@ import (
 	"namespacelabs.dev/foundation/internal/devsession"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/logs/logtail"
-	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning/deploy/view"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -72,8 +69,6 @@ func NewDevCmd() *cobra.Command {
 				}
 
 				localHost := lis.Addr().(*net.TCPAddr).IP.String()
-
-				updateWebUISticky(ctx, "preparing")
 
 				sesh, err := devsession.NewSession(console.Errors(ctx), sink, localHost,
 					schema.SpecToEnv(cfg.EnvsOrDefault(locs.Root.DevHost(), locs.Root.Workspace().Proto())...))
@@ -128,7 +123,6 @@ func NewDevCmd() *cobra.Command {
 							})
 
 							eg.Go(func(ctx context.Context) error {
-								updateWebUISticky(ctx, "running at: http://%s", lis.Addr())
 								return srv.Serve(lis)
 							})
 						})
@@ -137,10 +131,6 @@ func NewDevCmd() *cobra.Command {
 			})
 		},
 		)
-}
-
-func updateWebUISticky(ctx context.Context, format string, args ...any) {
-	console.SetStickyContent(ctx, "webui", fmt.Sprintf(" %s: web ui %s", aec.Bold.Apply("Namespace"), fmt.Sprintf(format, args...)))
 }
 
 func startListener(specified string) (net.Listener, error) {
@@ -165,29 +155,4 @@ func startListener(specified string) (net.Listener, error) {
 
 		return l, nil
 	}
-}
-
-func startDevServer(ctx context.Context, env cfg.Context, pkg schema.PackageName, mainPort, webPort int) (string, error) {
-	host := "127.0.0.1"
-	hostPort := fmt.Sprintf("%s:%d", host, webPort)
-
-	loc, err := parsing.NewPackageLoader(env).Resolve(ctx, pkg)
-	if err != nil {
-		return "", err
-	}
-
-	go func() {
-		var cmd localexec.Command
-		cmd.Label = "vite"
-		cmd.Command = "node_modules/vite/bin/vite.js"
-		cmd.Args = []string{"--clearScreen=false", "--host=" + host, fmt.Sprintf("--port=%d", webPort)}
-		cmd.Dir = loc.Abs()
-		cmd.AdditionalEnv = []string{fmt.Sprintf("CMD_DEV_PORT=%d", mainPort)}
-		cmd.Persistent = true
-		if err := cmd.Run(ctx); err != nil {
-			fmt.Fprintf(console.Warnings(ctx), "vite failed: %v\n", err)
-		}
-	}()
-
-	return hostPort, nil
 }

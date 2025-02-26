@@ -6,17 +6,12 @@ package cmd
 
 import (
 	"context"
-	"net"
-	"net/http"
-	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/cli/keyboard"
 	"namespacelabs.dev/foundation/internal/devsession"
-	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/logs/logtail"
 	"namespacelabs.dev/foundation/internal/observers"
@@ -31,7 +26,6 @@ import (
 func NewAttachCmd() *cobra.Command {
 	var res hydrateResult
 	var servingAddr string
-	var useWebUI bool
 
 	return fncobra.
 		Cmd(&cobra.Command{
@@ -40,7 +34,6 @@ func NewAttachCmd() *cobra.Command {
 			Args:  cobra.ArbitraryArgs}).
 		WithFlags(func(flags *pflag.FlagSet) {
 			flags.StringVarP(&servingAddr, "listen", "H", "", "webui: listen on the specified address.")
-			flags.BoolVar(&useWebUI, "webui", useWebUI, "If true, exposes a web UI as well.")
 		}).
 		With(parseHydrationWithDeps(&res, &fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true}, &hydrateOpts{rehydrate: true})...).
 		Do(func(ctx context.Context) error {
@@ -64,7 +57,7 @@ func NewAttachCmd() *cobra.Command {
 				Keybindings: []keyboard.Handler{
 					view.NetworkPlanKeybinding{Name: "ingress"},
 					logtail.Keybinding{
-						DefaultPaused: useWebUI,
+						DefaultPaused: false,
 						LoadEnvironment: func(name string) (cfg.Context, error) {
 							if name == res.Env.Environment().Name {
 								return res.Env, nil
@@ -84,47 +77,7 @@ func NewAttachCmd() *cobra.Command {
 
 					pfwd.Update(res.Stack, res.Focus, res.Ingress)
 
-					if !useWebUI {
-						return nil
-					}
-
-					lis, err := startListener(servingAddr)
-					if err != nil {
-						return fnerrors.InternalError("Failed to start listener at %q: %w", servingAddr, err)
-					}
-
-					defer lis.Close()
-
-					r := mux.NewRouter()
-					fncobra.RegisterPprof(r)
-					devsession.RegisterSomeEndpoints(attachSessionLike{cluster, res.Stack, event}, r)
-
-					srv := &http.Server{
-						Handler:      r,
-						Addr:         servingAddr,
-						WriteTimeout: 15 * time.Second,
-						ReadTimeout:  15 * time.Second,
-						BaseContext:  func(l net.Listener) context.Context { return ctx },
-					}
-
-					eg := executor.New(ctx, "attach")
-
-					eg.Go(func(ctx context.Context) error {
-						// On cancelation, i.e. Ctrl-C, ask the server to shutdown. This will lead to the next go-routine below, actually returns.
-						<-ctx.Done()
-
-						ctxT, cancelT := context.WithTimeout(ctx, 1*time.Second)
-						defer cancelT()
-
-						return srv.Shutdown(ctxT)
-					})
-
-					eg.Go(func(ctx context.Context) error {
-						updateWebUISticky(ctx, "running at: http://%s", lis.Addr())
-						return srv.Serve(lis)
-					})
-
-					return eg.Wait()
+					return nil
 				},
 			})
 		})
