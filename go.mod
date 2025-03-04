@@ -146,7 +146,7 @@ require (
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
 	namespacelabs.dev/go-filenotify v0.0.0-20220511192020-53ea11be7eaa
 	namespacelabs.dev/go-ids v0.0.0-20221124082625-9fc72ee06af7
-	namespacelabs.dev/integrations v0.0.1-dev.0.20250225163711-2e9736ea633d
+	namespacelabs.dev/integrations v0.0.1-dev.0.20250304201626-36177e269547
 	sigs.k8s.io/controller-runtime v0.16.3
 	sigs.k8s.io/yaml v1.3.0
 )

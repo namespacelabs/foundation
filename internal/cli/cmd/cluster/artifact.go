@@ -10,17 +10,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
-	"regexp"
-	"strings"
 	"time"
 
-	storagev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/storage/v1beta"
-	"buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/stdlib"
 	"github.com/cenkalti/backoff"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -29,16 +26,8 @@ import (
 )
 
 const (
-	mainArtifactNamespace  = "main"
-	cacheArtifactNamespace = "cache"
-	cacheSourceURLLabel    = "cache.source-url"
-	cacheURLRetries        = 3
-)
-
-var (
-	// Matches server-side validation regexp.
-	validPath = regexp.MustCompile("[a-zA-Z0-9][a-zA-Z0-9-_./]*[a-zA-Z0-9]")
-	slashRuns = regexp.MustCompile("/+")
+	mainArtifactNamespace = "main"
+	cacheURLRetries       = 3
 )
 
 func NewArtifactCmd() *cobra.Command {
@@ -152,17 +141,12 @@ The content at the URL is assumed to be immutable.`,
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		//flags.BoolVar(&renew, "renew", false, "Force-download from the source and update the cached content.")
 		flags.DurationVar(&maxAge, "max_age", 0, "Redownload from source if the cached content is older than this duration.")
-		flags.StringVar(&dest, "destination", "", "Filename to save the downloaded content at.")
-		cobra.MarkFlagRequired(flags, "destination")
+		flags.StringVar(&dest, "out", "", "Filename to save the downloaded content at.")
+		cobra.MarkFlagRequired(flags, "out")
 		maxAgeFlag = flags.Lookup("max_age")
 	}).DoWithArgs(func(ctx context.Context, args []string) error {
 		now := time.Now()
 		sourceURL := args[0]
-
-		parsedURL, err := url.Parse(sourceURL)
-		if err != nil {
-			return fnerrors.BadInputError("invalid URL format: %w", err)
-		}
 
 		token, err := auth.LoadDefaults()
 		if err != nil {
@@ -175,57 +159,32 @@ The content at the URL is assumed to be immutable.`,
 		}
 		defer cli.Close()
 
-		listResp, err := cli.Artifacts.ListArtifacts(ctx, &storagev1beta.ListArtifactsRequest{
-			Namespaces:  []string{cacheArtifactNamespace},
-			LabelFilter: []*stdlib.LabelFilterEntry{{Name: cacheSourceURLLabel, Value: sourceURL, Op: stdlib.LabelFilterEntry_EQUAL}},
-		})
-		if err != nil {
-			return fnerrors.InvocationError("namespace api", "failed to list artifacts: %w", err)
+		var newerThan time.Time
+		if maxAgeFlag.Changed {
+			newerThan = now.Add(-maxAge)
 		}
 
-		var newest *storagev1beta.Artifact
-		for _, art := range listResp.Artifacts {
-			if newest == nil || art.GetCreatedAt().AsTime().After(newest.GetCreatedAt().AsTime()) {
-				newest = art
-			}
-		}
+		return backoff.RetryNotify(func() error {
+			r, _, err := storage.CacheURL(ctx, cli, sourceURL, storage.CacheURLOpts{
+				NewerThan: newerThan,
+				Logf: func(f string, xs ...interface{}) {
+					fmt.Fprintf(console.Stderr(ctx), f, xs...)
+				},
+			})
 
-		if newest != nil {
-			if !maxAgeFlag.Changed || now.Sub(newest.GetCreatedAt().AsTime()) <= maxAge {
-				fmt.Fprintf(console.Stderr(ctx), "Downloading from cache (cached at %v)...\n", newest.GetCreatedAt().AsTime())
-				if err := writeArtifact(ctx, cli, newest.GetNamespace(), newest.GetPath(), dest); err != nil {
-					return err
+			if err != nil {
+				if status.Code(err) == codes.InvalidArgument {
+					return backoff.Permanent(fnerrors.BadInputError("%w", err))
 				}
-				fmt.Fprintf(console.Stderr(ctx), "Downloaded to %s.\n", dest)
-				return nil
-			} else {
-				fmt.Fprintf(console.Stderr(ctx), "Content cached at %v is too old, downloading from source...\n", newest.GetCreatedAt().AsTime())
-				// Fallthrough
-			}
-		} else {
-			fmt.Fprintf(console.Stderr(ctx), "Artifact not found in cache; downloading from source...\n")
-			// Fallthough
-		}
 
-		cachePath := cacheArtifactPath(now, parsedURL)
-		labels := map[string]string{cacheSourceURLLabel: sourceURL}
+				if cse := new(storage.CacheSourceError); errors.As(err, cse) {
+					if cse.HTTPStatusCode == 0 || cse.HTTPStatusCode >= http.StatusInternalServerError {
+						// Only retry network errors or 5xx HTTP errors.
+						return err
+					}
+				}
 
-		err = backoff.RetryNotify(func() error {
-			req, err := http.NewRequestWithContext(ctx, "GET", sourceURL, nil)
-			if err != nil {
-				return backoff.Permanent(fnerrors.InvocationError("remote url", "failed to prepare request: %w", err))
-			}
-
-			resp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				return fnerrors.InvocationError("remote url", "failed to send request: %w", err)
-			}
-			defer resp.Body.Close()
-
-			if resp.StatusCode >= http.StatusInternalServerError {
-				return fnerrors.InvocationError("remote url", "remote server returned status code %d", resp.StatusCode)
-			} else if resp.StatusCode != http.StatusOK { // treat non-server error as permanent
-				return backoff.Permanent(fnerrors.InvocationError("remote url", "remote server returned status code %d", resp.StatusCode))
+				return backoff.Permanent(fnerrors.InvocationError("remote", "%w", err))
 			}
 
 			w, err := os.Create(dest)
@@ -234,38 +193,17 @@ The content at the URL is assumed to be immutable.`,
 			}
 			defer w.Close()
 
-			// Uploading the response will write it to the file as a side-effect.
-			// Read errors will be tagged to make them retriable below.
-			teeR := io.TeeReader(wrapErrorsReader{resp.Body}, w)
-
-			var length int64
-			if resp.ContentLength >= 0 {
-				length = resp.ContentLength
+			if _, err := w.ReadFrom(r); err != nil {
+				return backoff.Permanent(fnerrors.New("failed to download artifact: %w", err))
 			}
 
-			if err := storage.UploadArtifactWithOpts(ctx, cli, cacheArtifactNamespace, cachePath, teeR, storage.UploadOpts{
-				Labels: labels,
-				Length: length,
-			}); err != nil {
-				if rre := new(remoteReadError); errors.As(err, rre) {
-					return rre.Unwrap()
-				} else {
-					return backoff.Permanent(fnerrors.InvocationError("remote url", "failed to cache artifact: %w", err))
-				}
-			}
-
+			fmt.Fprintf(console.Stderr(ctx), "Downloaded to %s.\n", dest)
 			return nil
 		},
 			backoff.WithMaxRetries(backoff.WithContext(backoff.NewConstantBackOff(5*time.Second), ctx), cacheURLRetries),
 			func(err error, delay time.Duration) {
 				fmt.Fprintf(console.Stderr(ctx), "Error: Failed to cache artifact: %v; retrying in %v...\n", err, delay)
 			})
-		if err != nil {
-			return err
-		}
-
-		fmt.Fprintf(console.Stderr(ctx), "Downloaded to %s.\n", dest)
-		return nil
 	})
 }
 
@@ -286,40 +224,4 @@ func writeArtifact(ctx context.Context, cli storage.Client, namespace, path stri
 		return fnerrors.New("failed to write %q: %w", dest, err)
 	}
 	return nil
-}
-
-func cacheArtifactPath(now time.Time, sourceURL *url.URL) string {
-	safePath := slashRuns.ReplaceAllString(strings.Join(validPath.FindAllString(sourceURL.Path, -1), "-"), "/")
-
-	p := now.Format("2006-01-02_15.04.05")
-	p += "/" + sourceURL.Hostname()
-	if safePath != "" {
-		p += "/" + safePath
-	}
-
-	return p
-}
-
-type wrapErrorsReader struct {
-	io.Reader
-}
-
-func (r wrapErrorsReader) Read(p []byte) (n int, err error) {
-	n, err = r.Reader.Read(p)
-	if err != nil {
-		return n, remoteReadError{err}
-	}
-	return
-}
-
-type remoteReadError struct {
-	err error
-}
-
-func (err remoteReadError) Error() string {
-	return err.err.Error()
-}
-
-func (err remoteReadError) Unwrap() error {
-	return err.err
 }
