@@ -103,7 +103,7 @@ jobs:
           cache: go
 
       - name: Download ns
-        uses: namespace-actions/download-artifact@v0
+        uses: namespace-actions/download-artifact@v1
         with:
           name: ns-${{ runner.os }}
 
@@ -169,7 +169,7 @@ jobs:
           cache: go
 
       - name: Download ns
-        uses: namespace-actions/download-artifact@v0
+        uses: namespace-actions/download-artifact@v1
         with:
           name: ns-${{ runner.os }}
 
@@ -197,7 +197,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download ns
-        uses: namespace-actions/download-artifact@v0
+        uses: namespace-actions/download-artifact@v1
         with:
           name: ns-${{ runner.os }}
 
@@ -240,7 +240,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download nsc
-        uses: namespace-actions/download-artifact@v0
+        uses: namespace-actions/download-artifact@v1
         with:
           name: nsc-${{ runner.os }}
 
@@ -280,7 +280,7 @@ jobs:
           cache: go
 
       - name: Download ns
-        uses: namespace-actions/download-artifact@v0
+        uses: namespace-actions/download-artifact@v1
         with:
           name: ns-${{ runner.os }}
 
@@ -350,7 +350,7 @@ jobs:
           path: external-repo
 
       - name: Download ns
-        uses: namespace-actions/download-artifact@v0
+        uses: namespace-actions/download-artifact@v1
         with:
           name: ns-${{ runner.os }}
 
@@ -408,7 +408,7 @@ jobs:
           cache: go
 
       - name: Download ns
-        uses: namespace-actions/download-artifact@v0
+        uses: namespace-actions/download-artifact@v1
         with:
           name: ns-${{ runner.os }}
 
