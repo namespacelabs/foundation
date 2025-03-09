@@ -37,13 +37,13 @@ type cueServer struct {
 	Env         *args.EnvMap                        `json:"env"`
 	Binary      interface{}                         `json:"binary"` // Polymorphic: either package name, or cueServerBinary.
 	Extensions  []string                            `json:"extensions,omitempty"`
-	Listeners   map[string]cueListenerConfiguration `json:"listeners,omitempty"`
+	Listeners   map[string]CueListenerConfiguration `json:"listeners,omitempty"`
 
 	// XXX this should be somewhere else.
 	URLMap []cueURLMapEntry `json:"urlmap"`
 }
 
-type cueListenerConfiguration struct {
+type CueListenerConfiguration struct {
 	Protocol string  `json:"protocol,omitempty"`
 	Port     CuePort `json:"port"`
 }

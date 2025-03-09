@@ -65,8 +65,10 @@ func MakeTCPListener(address string, port int) func(context.Context) (net.Listen
 }
 
 func NewHTTPMux(middleware ...mux.MiddlewareFunc) *mux.Router {
-	httpMux := mux.NewRouter()
+	return WithHTTPMux(mux.NewRouter(), middleware...)
+}
 
+func WithHTTPMux(httpMux *mux.Router, middleware ...mux.MiddlewareFunc) *mux.Router {
 	httpMux.Use(proxyHeaders)
 	httpMux.Use(middleware...)
 

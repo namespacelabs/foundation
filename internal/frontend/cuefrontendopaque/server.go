@@ -27,7 +27,7 @@ var (
 		"sidecars", "mounts", "resources", "requires", "tolerations", "annotations",
 		"resourceLimits", "resourceRequests", "terminationGracePeriodSeconds",
 		"extensions", "nodeSelector", "replicas", "pod_anti_affinity", "update_strategy",
-		"spread_constraints",
+		"spread_constraints", "listeners",
 		// This is needed for the "spec" in server templates. This can't be a private field, otherwise it can't be overridden.
 		"spec"}
 
@@ -68,6 +68,8 @@ type cueServerExtension struct {
 	PodAntiAffinity   *schema.PodAntiAffinity   `json:"pod_anti_affinity,omitempty"`
 	UpdateStrategy    *schema.UpdateStrategy    `json:"update_strategy,omitempty"`
 	SpreadConstraints *schema.SpreadConstraints `json:"spread_constraints,omitempty"`
+
+	Listeners map[string]cuefrontend.CueListenerConfiguration `json:"listeners,omitempty"`
 
 	Extensions []string `json:"extensions,omitempty"`
 }
@@ -398,6 +400,21 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 	out.PodAntiAffinity = bits.PodAntiAffinity
 	out.UpdateStrategy = bits.UpdateStrategy
 	out.SpreadConstraints = bits.SpreadConstraints
+
+	for name, lst := range bits.Listeners {
+		pm, err := cuefrontend.ParsePort("server-port-"+name, lst.Port)
+		if err != nil {
+			return nil, err
+		}
+
+		l := &schema.Listener{
+			Name:     name,
+			Protocol: lst.Protocol,
+			Port:     pm,
+		}
+
+		out.Listener = append(out.Listener, l)
+	}
 
 	for _, ext := range bits.Extensions {
 		pkg := schema.PackageName(ext)
