@@ -144,15 +144,13 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 		return err
 	}
 
-	listeners := map[string]net.Listener{}
 	for _, cfg := range rt.ListenerConfiguration {
 		c := listenerConfiguration(cfg.Name)
 		if c == nil {
 			return fnerrors.New("missing listener configuration for %q", cfg.Name)
 		}
 
-		switch cfg.Protocol {
-		case "grpc":
+		if cfg.Protocol == "grpc" {
 			if cgrp, ok := c.(GrpcListenerConfiguration); ok {
 				x := append(slices.Clone(grpcopts), cgrp.ServerOpts(cfg.Name)...)
 				if creds := cgrp.TransportCredentials(cfg.Name); creds != nil {
@@ -170,16 +168,7 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 			} else {
 				return fnerrors.New("listener configuration for %q does not support grpc", cfg.Name)
 			}
-
-		case "":
-			lst, err := c.CreateListener(ctx, cfg.Name, opts)
-			if err != nil {
-				return err
-			}
-
-			listeners[cfg.Name] = lst
-
-		default:
+		} else if cfg.Protocol != "" {
 			return fnerrors.New("unsupported service protocol %q", cfg.Protocol)
 		}
 	}
@@ -266,9 +255,20 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 	eg.Go(func() error { return ignoreClosure("grpc", m.Serve()) })
 
 	for _, reg := range s.listeners {
-		lst := listeners[reg.ConfigurationName]
-		if lst == nil {
-			return fnerrors.New("%q registered for a listener with %q, but there's none", reg.PackageName, reg.ConfigurationName)
+		var c ListenerConfiguration
+		for _, cfg := range rt.ListenerConfiguration {
+			if cfg.Name == reg.ConfigurationName {
+				if cfg.Protocol != "" {
+					return fnerrors.New("listener can't have a bound protocol (saw %q)", cfg.Protocol)
+				}
+
+				c = listenerConfiguration(cfg.Name)
+			}
+		}
+
+		lst, err := c.CreateListener(ctx, reg.ConfigurationName, opts)
+		if err != nil {
+			return err
 		}
 
 		reg := reg // Close reg.
