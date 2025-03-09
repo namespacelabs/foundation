@@ -159,7 +159,7 @@ func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, list
 	if len(n.ExportService) == 0 {
 		if n.ListenerName != "" {
 			// XXX should we perhaps export an endpoint per service.
-			name := n.GetIngressServiceName()
+			name := n.GetIngressServiceName() + "-" + server.Id
 			short, fqdn := planner.MakeServiceName(name)
 
 			endpoints = append(endpoints, &schema.Endpoint{
