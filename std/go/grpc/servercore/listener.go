@@ -30,6 +30,7 @@ import (
 	"namespacelabs.dev/foundation/framework/runtime"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
+	srt "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/go/core"
 	gogrpc "namespacelabs.dev/foundation/std/go/grpc"
 	"namespacelabs.dev/foundation/std/go/http/middleware"
@@ -145,12 +146,12 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 	}
 
 	for _, cfg := range rt.ListenerConfiguration {
-		c := listenerConfiguration(cfg.Name)
-		if c == nil {
-			return fnerrors.New("missing listener configuration for %q", cfg.Name)
-		}
-
 		if cfg.Protocol == "grpc" {
+			c := listenerConfiguration(cfg.Name)
+			if c == nil {
+				return fnerrors.New("missing listener configuration for %q", cfg.Name)
+			}
+
 			if cgrp, ok := c.(GrpcListenerConfiguration); ok {
 				x := append(slices.Clone(grpcopts), cgrp.ServerOpts(cfg.Name)...)
 				if creds := cgrp.TransportCredentials(cfg.Name); creds != nil {
@@ -255,18 +256,24 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 	eg.Go(func() error { return ignoreClosure("grpc", m.Serve()) })
 
 	for _, reg := range s.listeners {
-		var c ListenerConfiguration
-		for _, cfg := range rt.ListenerConfiguration {
-			if cfg.Name == reg.ConfigurationName {
-				if cfg.Protocol != "" {
-					return fnerrors.New("listener can't have a bound protocol (saw %q)", cfg.Protocol)
-				}
-
-				c = listenerConfiguration(cfg.Name)
-			}
+		ndx := slices.IndexFunc(rt.ListenerConfiguration, func(r *srt.RuntimeConfig_ListenerConfiguration) bool {
+			return r.Name == reg.ConfigurationName
+		})
+		if ndx < 0 {
+			return fnerrors.New("missing listener configuration for %q", reg.ConfigurationName)
 		}
 
-		lst, err := c.CreateListener(ctx, reg.ConfigurationName, opts)
+		c := rt.ListenerConfiguration[ndx]
+		if c.Protocol != "" {
+			return fnerrors.New("listener can't have a bound protocol (saw %q)", c.Protocol)
+		}
+
+		x := listenerConfiguration(c.Name)
+		if x == nil {
+			return fnerrors.New("missing listener registration for %q", reg.ConfigurationName)
+		}
+
+		lst, err := x.CreateListener(ctx, reg.ConfigurationName, opts)
 		if err != nil {
 			return err
 		}
