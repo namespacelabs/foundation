@@ -16,7 +16,7 @@ import "schema/resource.proto";
 import "schema/server.proto";
 import "schema/volume.proto";
 
-// Next ID: 30
+// Next ID: 31
 message Node {
     // The package name (computed).
     string package_name = 1;
@@ -64,6 +64,8 @@ message Node {
     // internet (only valid for services).
     Endpoint.Type ingress = 10;
 
+    repeated ServiceMetadata service_metadata = 30;
+
     // Can't contain multiple initializers with the same "framework".
     // Not a map since "framework" will likely be broken down and converted to a message.
     repeated NodeInitializer initializers = 11;
@@ -104,10 +106,10 @@ message Node {
 }
 
 message NodeInitializer {
-    Framework       framework         = 1;
-    repeated string initialize_before = 2;  // Package name.
-    repeated string initialize_after  = 3;  // Package name.
-    bool has_post_initializer = 4;
+    Framework       framework            = 1;
+    repeated string initialize_before    = 2;  // Package name.
+    repeated string initialize_after     = 3;  // Package name.
+    bool            has_post_initializer = 4;
 }
 
 message HttpPath {
