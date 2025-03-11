@@ -93,6 +93,8 @@ _#Node: {
 	}
 
 	exportHttp?: [...#HttpPath]
+
+	annotations?: [string]: string
 }
 
 #HttpPath: {

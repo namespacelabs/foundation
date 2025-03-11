@@ -277,7 +277,40 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 		if err != nil {
 			return err
 		}
+
 		node.Ingress = schema.Endpoint_Type(schema.Endpoint_Type_value[v])
+	}
+
+	if serviceMetadata := v.LookupPath("annotations"); serviceMetadata.Exists() {
+		var m map[string]string
+		if err := serviceMetadata.Val.Decode(&m); err != nil {
+			return err
+		}
+
+		annotations := &schema.ServiceAnnotations{}
+		for key, value := range m {
+			annotations.KeyValue = append(annotations.KeyValue, &schema.ServiceAnnotations_KeyValue{
+				Key:   key,
+				Value: value,
+			})
+		}
+
+		slices.SortFunc(annotations.KeyValue, func(a, b *schema.ServiceAnnotations_KeyValue) int {
+			if a.Key == b.Key {
+				return strings.Compare(a.Value, b.Value)
+			}
+
+			return strings.Compare(a.Key, b.Key)
+		})
+
+		pb, err := anypb.New(annotations)
+		if err != nil {
+			return err
+		}
+
+		node.ServiceMetadata = append(node.ServiceMetadata, &schema.ServiceMetadata{
+			Details: pb,
+		})
 	}
 
 	if e := v.LookupPath("exportServicesAsHttp"); e.Exists() {

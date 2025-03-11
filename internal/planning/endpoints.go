@@ -66,7 +66,7 @@ func ComputeEndpoints(planner runtime.Planner, srv Server, merged *schema.Server
 			}
 		}
 
-		nd, err := computeServiceEndpoint(planner, sch.Server, lst, pkg, service, service.GetIngress())
+		nd, err := computeServiceEndpoint(planner, sch.Server, lst, service)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -148,7 +148,7 @@ func findPort(serverPorts []*schema.Endpoint_Port, name string) *schema.Endpoint
 }
 
 // XXX this should be somewhere else.
-func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, listener *schema.Listener, pkg *pkggraph.Package, n *schema.Node, t schema.Endpoint_Type) ([]*schema.Endpoint, error) {
+func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, listener *schema.Listener, n *schema.Node) ([]*schema.Endpoint, error) {
 	var endpoints []*schema.Endpoint
 
 	exportedPort := n.ExportedPort
@@ -162,15 +162,18 @@ func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, list
 			name := n.GetIngressServiceName() + "-" + server.Id
 			short, fqdn := planner.MakeServiceName(name)
 
-			endpoints = append(endpoints, &schema.Endpoint{
+			endpoint := &schema.Endpoint{
 				ServiceName:        name,
 				AllocatedName:      short,
 				FullyQualifiedName: fqdn,
 				EndpointOwner:      n.GetPackageName(),
 				ServerOwner:        server.GetPackageName(),
-				Type:               t,
+				Type:               n.GetIngress(),
+				ServiceMetadata:    n.GetServiceMetadata(),
 				Ports:              []*schema.Endpoint_PortMap{{ExportedPort: exportedPort, Port: listener.Port}},
-			})
+			}
+
+			endpoints = append(endpoints, endpoint)
 		}
 	} else {
 		for k, exported := range n.ExportService {
@@ -188,7 +191,8 @@ func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, list
 				FullyQualifiedName: fqdn,
 				EndpointOwner:      n.GetPackageName(),
 				ServerOwner:        server.GetPackageName(),
-				Type:               t,
+				Type:               n.GetIngress(),
+				ServiceMetadata:    n.GetServiceMetadata(),
 				Ports:              []*schema.Endpoint_PortMap{{ExportedPort: exportedPort, Port: listener.Port}},
 			}
 

@@ -1198,7 +1198,9 @@ func deployEndpoint(ctx context.Context, r BoundNamespace, deployable runtime.De
 	serviceSpec = serviceSpec.WithPorts(applied...)
 
 	if endpoint.Type == schema.Endpoint_LOAD_BALANCER {
-		serviceSpec = serviceSpec.WithType(corev1.ServiceTypeLoadBalancer)
+		// Default to LOCAL.
+		serviceSpec = serviceSpec.WithType(corev1.ServiceTypeLoadBalancer).
+			WithExternalTrafficPolicy(corev1.ServiceExternalTrafficPolicyLocal)
 	}
 
 	if endpoint.Headless {
