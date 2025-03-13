@@ -100,7 +100,7 @@ func ResolveSpec() (string, error) {
 	if specFile := os.Getenv("NSC_TOKEN_SPEC_FILE"); specFile != "" {
 		contents, err := os.ReadFile(specFile)
 		if err != nil {
-			return "", fnerrors.New("failed to load spec: %w", err)
+			return "", fnerrors.Newf("failed to load spec: %w", err)
 		}
 
 		return string(contents), nil

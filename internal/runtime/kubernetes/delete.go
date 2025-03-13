@@ -27,7 +27,7 @@ func (r *Cluster) DeleteAllRecursively(ctx context.Context, wait bool, progress 
 		LabelSelector: kubeobj.SerializeSelector(kubedef.ManagedByUs()),
 	})
 	if err != nil {
-		return false, fnerrors.New("unable to list namespaces: %w", err)
+		return false, fnerrors.Newf("unable to list namespaces: %w", err)
 	}
 
 	var filtered []string

@@ -175,7 +175,7 @@ type IssueCertFunc func(context.Context, string, string) (string, error)
 
 func (t *Token) ExchangeForSessionClientCert(ctx context.Context, publicKeyPem string, issueFromSession IssueCertFunc) (string, error) {
 	if t.SessionToken == "" {
-		return "", fnerrors.New("ExchangeForSessionClientCert called on a token which is not a session token")
+		return "", fnerrors.Newf("ExchangeForSessionClientCert called on a token which is not a session token")
 	}
 
 	return issueFromSession(ctx, t.SessionToken, publicKeyPem)
@@ -197,7 +197,7 @@ func StoreToken(token Token) error {
 	}
 
 	if err := os.WriteFile(filepath.Join(configDir, tokenLoc()), data, 0600); err != nil {
-		return fnerrors.New("failed to write token data: %w", err)
+		return fnerrors.Newf("failed to write token data: %w", err)
 	}
 
 	return nil

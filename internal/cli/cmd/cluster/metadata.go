@@ -45,7 +45,7 @@ func newReadCmd() *cobra.Command {
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		metadataKey := args[0]
 		if !slices.Contains(supportedMetadataKeys, metadataKey) {
-			return fnerrors.New("reading instance metadata value for the key %q is not supported", metadataKey)
+			return fnerrors.Newf("reading instance metadata value for the key %q is not supported", metadataKey)
 		}
 
 		spec, err := fnapi.ResolveSpec()
@@ -56,7 +56,7 @@ func newReadCmd() *cobra.Command {
 		if spec == "" {
 			s, err := os.ReadFile(defaultMetadataSpecFile)
 			if err != nil {
-				return fnerrors.New("failed to read metadata spec file: %w", err)
+				return fnerrors.Newf("failed to read metadata spec file: %w", err)
 			}
 
 			spec = string(s)
@@ -67,7 +67,7 @@ func newReadCmd() *cobra.Command {
 			return err
 		}
 
-		fmt.Fprintf(console.Stdout(ctx), value+"\n")
+		fmt.Fprintln(console.Stdout(ctx), value)
 		return nil
 	})
 

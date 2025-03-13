@@ -95,7 +95,7 @@ func (s attachSessionLike) ResolveServer(ctx context.Context, serverID string) (
 		return s.cluster, entry.Server, nil
 	}
 
-	return nil, nil, fnerrors.New("%s: no such server in the current session", serverID)
+	return nil, nil, fnerrors.Newf("%s: no such server in the current session", serverID)
 }
 
 func (s attachSessionLike) NewClient(needsHistory bool) (devsession.ObserverLike, error) {

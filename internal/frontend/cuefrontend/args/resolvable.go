@@ -194,7 +194,7 @@ type fromFieldSyntax struct {
 
 func (ff *fromFieldSyntax) ToProto(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location) (*schema.FieldSelector, error) {
 	if ff.Instance == nil {
-		return nil, fnerrors.New("instance is required")
+		return nil, fnerrors.Newf("instance is required")
 	}
 
 	instance, err := toInstanceProto(ctx, pl, loc, ff.Instance)
@@ -259,7 +259,7 @@ func toInstanceProto(ctx context.Context, pl pkggraph.PackageLoader, loc pkggrap
 		}, nil
 	}
 
-	return nil, fnerrors.New("unknown selector instance")
+	return nil, fnerrors.Newf("unknown selector instance")
 }
 
 type instanceRefSyntax struct {

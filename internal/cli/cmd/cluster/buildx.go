@@ -77,11 +77,11 @@ func newSetupBuildxCmd() *cobra.Command {
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *debugDir != "" && !*background {
-			return fnerrors.New("--background_debug_dir requires --background")
+			return fnerrors.Newf("--background_debug_dir requires --background")
 		}
 
 		if !*useGrpcProxy && *staticWorkerDefFile != "" {
-			return fnerrors.New("--inject_worker_info_file requires --use_grpc_proxy")
+			return fnerrors.Newf("--inject_worker_info_file requires --use_grpc_proxy")
 		}
 
 		// NSL-2249 for brew service, block here until user logs in.
@@ -171,7 +171,7 @@ func newSetupBuildxCmd() *cobra.Command {
 				} else {
 					logDir, err := ensureLogDir(proxyDir)
 					if err != nil {
-						return fnerrors.New("failed to create the log folder: %v", err)
+						return fnerrors.Newf("failed to create the log folder: %v", err)
 					}
 
 					instanceMD.DebugLogPath = path.Join(logDir, logFilename)
@@ -187,7 +187,7 @@ func newSetupBuildxCmd() *cobra.Command {
 			// Always create one, in case it's needed below. This instance has a zero-ish cost if we never call NewConn.
 			instance, err := NewBuildCluster(ctx, string(p.Platform), *buildkitSockPath)
 			if err != nil {
-				return fnerrors.New("failed to create builder: %w", err)
+				return fnerrors.Newf("failed to create builder: %w", err)
 			}
 			instances = append(instances, instance)
 
@@ -200,7 +200,7 @@ func newSetupBuildxCmd() *cobra.Command {
 			} else {
 				workerInfoResp, err := parseInjectWorkerInfo(*staticWorkerDefFile, p.Platform)
 				if err != nil {
-					return fnerrors.New("failed to parse worker info JSON payload: %v", err)
+					return fnerrors.Newf("failed to parse worker info JSON payload: %v", err)
 				}
 
 				bp, err := instance.RunBuildProxy(ctx, p.SocketPath, p.ControlSocketPath, *useGrpcProxy, *annotateBuild, workerInfoResp)
@@ -544,7 +544,7 @@ func newWireBuildxCommand(hidden bool) *cobra.Command {
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *stateDir == "" {
-			return fnerrors.New("--state is required")
+			return fnerrors.Newf("--state is required")
 		}
 
 		dockerCli, err := command.NewDockerCli()

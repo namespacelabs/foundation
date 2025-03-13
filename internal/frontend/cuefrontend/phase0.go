@@ -22,11 +22,11 @@ func parsePackage(ctx context.Context, evalctx *fncue.EvalCtx, pl parsing.EarlyP
 		if st, err := fs.Stat(fnfs.Local(loc.Module.Abs()), loc.Rel()); err != nil {
 			if os.IsNotExist(err) {
 				if loc.Module.IsExternal() {
-					return nil, fnerrors.New("%s: package does not exist (module %q is version %q, is the module up to date?)",
+					return nil, fnerrors.Newf("%s: package does not exist (module %q is version %q, is the module up to date?)",
 						loc.PackageName, loc.Module.ModuleName(), loc.Module.Version())
 				}
 
-				return nil, fnerrors.New("%s: package does not exist", loc.PackageName)
+				return nil, fnerrors.Newf("%s: package does not exist", loc.PackageName)
 			}
 
 			return nil, err

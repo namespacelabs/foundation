@@ -44,27 +44,27 @@ func MakeInstanceClient(ctx context.Context) (*InstanceServiceClient, error) {
 func makeTLSConfigFromInstance(md metadata.InstanceMetadata) (*tls.Config, error) {
 	caCert, err := os.ReadFile(md.Certs.HostPublicPemPath)
 	if err != nil {
-		return nil, fnerrors.New("could not ca open certificate file: %v", err)
+		return nil, fnerrors.Newf("could not ca open certificate file: %v", err)
 	}
 
 	caCertPool := x509.NewCertPool()
 	if !caCertPool.AppendCertsFromPEM(caCert) {
-		return nil, fnerrors.New("failed to append ca certificate to pool: %v", err)
+		return nil, fnerrors.Newf("failed to append ca certificate to pool: %v", err)
 	}
 
 	publicCert, err := os.ReadFile(md.Certs.PublicPemPath)
 	if err != nil {
-		return nil, fnerrors.New("could not public cert file: %v", err)
+		return nil, fnerrors.Newf("could not public cert file: %v", err)
 	}
 
 	privateKey, err := os.ReadFile(md.Certs.PrivateKeyPath)
 	if err != nil {
-		return nil, fnerrors.New("could not private key file: %v", err)
+		return nil, fnerrors.Newf("could not private key file: %v", err)
 	}
 
 	keyPair, err := tls.X509KeyPair(publicCert, privateKey)
 	if err != nil {
-		return nil, fnerrors.New("could not load instance keys: %v", err)
+		return nil, fnerrors.Newf("could not load instance keys: %v", err)
 	}
 
 	return &tls.Config{

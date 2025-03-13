@@ -105,31 +105,31 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 	for _, entry := range opts.Env {
 		kv := entry.Value
 		if kv.FromKubernetesSecret != "" {
-			return fnerrors.New("docker: doesn't support env.FromKubernetesSecret")
+			return fnerrors.Newf("docker: doesn't support env.FromKubernetesSecret")
 		}
 
 		if kv.ExperimentalFromDownwardsFieldPath != "" {
-			return fnerrors.New("docker: doesn't support env.ExperimentalFromDownwardsFieldPath")
+			return fnerrors.Newf("docker: doesn't support env.ExperimentalFromDownwardsFieldPath")
 		}
 
 		if kv.FromSecretRef != nil {
-			return fnerrors.New("docker: doesn't support env.FromSecretRef")
+			return fnerrors.Newf("docker: doesn't support env.FromSecretRef")
 		}
 
 		if kv.FromServiceEndpoint != nil {
-			return fnerrors.New("docker: doesn't support env.FromServiceEndpoint")
+			return fnerrors.Newf("docker: doesn't support env.FromServiceEndpoint")
 		}
 
 		if kv.FromServiceIngress != nil {
-			return fnerrors.New("docker: doesn't support env.FromServiceIngress")
+			return fnerrors.Newf("docker: doesn't support env.FromServiceIngress")
 		}
 
 		if kv.FromResourceField != nil {
-			return fnerrors.New("docker: doesn't support env.FromResourceField")
+			return fnerrors.Newf("docker: doesn't support env.FromResourceField")
 		}
 
 		if kv.FromFieldSelector != nil {
-			return fnerrors.New("docker: doesn't support env.FromFieldSelector")
+			return fnerrors.Newf("docker: doesn't support env.FromFieldSelector")
 		}
 
 		containerConfig.Env = append(containerConfig.Env, fmt.Sprintf("%s=%s", entry.Name, kv.Value))
@@ -153,7 +153,7 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 
 		if m.HostPath != "" {
 			if !filepath.IsAbs(m.HostPath) {
-				return fnerrors.New("host_path must be absolute, got %q", m.HostPath)
+				return fnerrors.Newf("host_path must be absolute, got %q", m.HostPath)
 			}
 			absPath = m.HostPath
 		} else {
@@ -206,7 +206,7 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 
 	created, err := cli.ContainerCreate(ctx, containerConfig, hostConfig, networkConfig, nil, name)
 	if err != nil {
-		return fnerrors.New("failed to create container: %w", err)
+		return fnerrors.Newf("failed to create container: %w", err)
 	}
 
 	fmt.Fprintf(console.Debug(ctx), "docker: created container %q (image=%s args=%v)\n",
@@ -219,7 +219,7 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 			// conflict with `removal of container XYZ is already in progress`.
 			// We ignore that error here.
 			if !client.IsErrNotFound(err) && !errdefs.IsConflict(err) {
-				return fnerrors.New("failed to remove container: %w", err)
+				return fnerrors.Newf("failed to remove container: %w", err)
 			}
 		}
 		return nil
@@ -232,11 +232,11 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 		Stderr: containerConfig.AttachStderr,
 	})
 	if err != nil {
-		return fnerrors.New("failed to attach to container: %w", err)
+		return fnerrors.Newf("failed to attach to container: %w", err)
 	}
 
 	if err := cli.ContainerStart(ctx, created.ID, container.StartOptions{}); err != nil {
-		return fnerrors.New("failed to start container: %w", err)
+		return fnerrors.Newf("failed to start container: %w", err)
 	}
 
 	var errChs []chan error
@@ -339,7 +339,7 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 			}
 		}
 
-		return fnerrors.New("failed to wait for container: %w", waitErr)
+		return fnerrors.Newf("failed to wait for container: %w", waitErr)
 	}
 
 	return multierr.New(goroutineErrs...)

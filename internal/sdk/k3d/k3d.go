@@ -100,7 +100,7 @@ func SDK(ctx context.Context, p specs.Platform) (compute.Computable[K3D], error)
 	key := fmt.Sprintf("%s/%s", p.OS, p.Architecture)
 	ref, ok := Pins[key]
 	if !ok {
-		return nil, fnerrors.New("platform not supported: %s", key)
+		return nil, fnerrors.Newf("platform not supported: %s", key)
 	}
 
 	if !IgnoreZfsCheck {
@@ -142,7 +142,7 @@ func ValidateDocker(ctx context.Context, cli docker.Client) error {
 		fmt.Fprintln(stderr, "Docker does not meet our minimum requirements:")
 		fmt.Fprintf(stderr, "  Docker meets: %v, minimum: %s, running: %s\n", dockerOK, minimumDockerVer, ver.Version)
 		fmt.Fprintf(stderr, "  Runc meets: %v, minimum: %s, running: %s\n", runcOK, minimumRuncVer, runcVersion)
-		return fnerrors.New("docker does not meet requirements")
+		return fnerrors.Newf("docker does not meet requirements")
 	}
 
 	return nil
@@ -228,7 +228,7 @@ func (k3d K3D) DeleteRegistry(ctx context.Context, name string) error {
 // If port is 0, an open port is allocated dynamically.
 func (k3d K3D) CreateRegistry(ctx context.Context, name string, port int) error {
 	if !strings.HasPrefix(name, "k3d-") {
-		return fnerrors.New("a k3d- prefix is required in registry names")
+		return fnerrors.Newf("a k3d- prefix is required in registry names")
 	}
 
 	return tasks.Action("k3d.create-image-registry").Run(ctx, func(ctx context.Context) error {

@@ -44,9 +44,9 @@ func newDockerAttachCmd() *cobra.Command {
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if !*new && *toCluster == "" {
-			return fnerrors.New("one of --new or --to is required")
+			return fnerrors.Newf("one of --new or --to is required")
 		} else if *new && *toCluster != "" {
-			return fnerrors.New("only one of --new or --to may be specified")
+			return fnerrors.Newf("only one of --new or --to may be specified")
 		}
 
 		dockerCli, err := command.NewDockerCli()

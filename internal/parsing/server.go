@@ -25,7 +25,7 @@ func ValidateServerID(n *schema.Server) error {
 	}
 
 	if !matched {
-		return fnerrors.New("invalid id: %v", n.GetId())
+		return fnerrors.Newf("invalid id: %v", n.GetId())
 	}
 
 	return nil

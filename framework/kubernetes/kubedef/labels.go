@@ -138,7 +138,7 @@ func MakeServiceAnnotations(endpoint *schema.Endpoint) (map[string]string, error
 
 			grpc := &schema.GrpcExportService{}
 			if err := p.Details.UnmarshalTo(grpc); err != nil {
-				return nil, fnerrors.New("failed to unserialize grpc configuration: %w", err)
+				return nil, fnerrors.Newf("failed to unserialize grpc configuration: %w", err)
 			}
 
 			grpcServices = append(grpcServices, grpc.ProtoTypename)

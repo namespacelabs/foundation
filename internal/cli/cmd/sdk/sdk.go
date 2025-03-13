@@ -129,7 +129,7 @@ func newSdkShellCmd(selectedSdkList func() []sdk) *cobra.Command {
 
 			shell := os.Getenv("SHELL")
 			if shell == "" {
-				return fnerrors.New("No $SHELL defined.")
+				return fnerrors.Newf("No $SHELL defined.")
 			}
 
 			updatedPath := os.Getenv("PATH")
@@ -208,7 +208,7 @@ func newSdkDownloadCmd(selectedSdkList func() []sdk) *cobra.Command {
 			}
 
 			if err := os.WriteFile(*outputPath, out.Bytes(), 0644); err != nil {
-				return fnerrors.New("failed to write %q: %w", *outputPath, err)
+				return fnerrors.Newf("failed to write %q: %w", *outputPath, err)
 			}
 		}
 

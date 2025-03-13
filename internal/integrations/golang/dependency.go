@@ -168,7 +168,7 @@ func isGoNode(n *schema.Node) bool {
 func makeDep(ctx context.Context, loader pkggraph.PackageLoader, dep *schema.Instantiate, produceSerialized bool, prov *typeProvider) error {
 	pkg, err := loader.LoadByName(ctx, schema.PackageName(dep.PackageName))
 	if err != nil {
-		return fnerrors.New("failed to load %s/%s: %w", dep.PackageName, dep.Type, err)
+		return fnerrors.Newf("failed to load %s/%s: %w", dep.PackageName, dep.Type, err)
 	}
 
 	// XXX Well, yes, this shouldn't live here. But being practical. We need to either have
@@ -203,7 +203,7 @@ func makeDep(ctx context.Context, loader pkggraph.PackageLoader, dep *schema.Ins
 
 	_, p := parsing.FindProvider(pkg, schema.PackageName(dep.PackageName), dep.Type)
 	if p == nil {
-		return fnerrors.New("didn't find a provider for %s/%s", dep.PackageName, dep.Type)
+		return fnerrors.Newf("didn't find a provider for %s/%s", dep.PackageName, dep.Type)
 	}
 
 	var goprovider *schema.Provides_AvailableIn_Go
@@ -215,7 +215,7 @@ func makeDep(ctx context.Context, loader pkggraph.PackageLoader, dep *schema.Ins
 	}
 
 	if goprovider == nil {
-		return fnerrors.New("%s: not available for Go", dep.Name)
+		return fnerrors.Newf("%s: not available for Go", dep.Name)
 	}
 
 	prov.Provides = p

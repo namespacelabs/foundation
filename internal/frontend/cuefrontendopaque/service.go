@@ -101,16 +101,16 @@ func (i *cueIngress) UnmarshalJSON(contents []byte) error {
 			return nil
 
 		default:
-			return fnerrors.New("ingress: expected 'true', 'LoadBalancer', or a full ingress definition got %q", str)
+			return fnerrors.Newf("ingress: expected 'true', 'LoadBalancer', or a full ingress definition got %q", str)
 		}
 	} else if b, ok := tok.(bool); ok {
 		if b {
 			i.Enabled = true
 			return nil
 		}
-		return fnerrors.New("ingress: expected 'true', 'LoadBalancer', or a full ingress definition got \"%v\"", b)
+		return fnerrors.Newf("ingress: expected 'true', 'LoadBalancer', or a full ingress definition got \"%v\"", b)
 	} else {
-		return fnerrors.New("ingress: bad value %v, expected 'true', 'LoadBalancer', or a full ingress definition", tok)
+		return fnerrors.Newf("ingress: bad value %v, expected 'true', 'LoadBalancer', or a full ingress definition", tok)
 	}
 }
 
@@ -136,7 +136,7 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 	urlMap := &schema.HttpUrlMap{}
 	for domain, routes := range svc.Ingress.Details.HttpRoutes {
 		if domain != "*" {
-			return nil, nil, fnerrors.New("unsupported domain, only support * for now")
+			return nil, nil, fnerrors.Newf("unsupported domain, only support * for now")
 		}
 
 		for _, route := range routes {
@@ -157,18 +157,18 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 	// For the time being, having a grpc service implies exporting all GRPC services.
 	if svc.Kind == schema.GrpcProtocol || svc.Kind == schema.ClearTextGrpcProtocol {
 		if details != nil {
-			return nil, nil, fnerrors.New("service metadata was already set")
+			return nil, nil, fnerrors.Newf("service metadata was already set")
 		}
 
 		details = &anypb.Any{}
 		if err := details.MarshalFrom(&schema.GrpcExportAllServices{}); err != nil {
-			return nil, nil, fnerrors.New("failed to serialize grpc configuration: %w", err)
+			return nil, nil, fnerrors.Newf("failed to serialize grpc configuration: %w", err)
 		}
 	}
 
 	if len(svc.Ports) > 0 {
 		if svc.Port != 0 || svc.HostPort != 0 || svc.ExportedPort != 0 || svc.Protocol != "" {
-			return nil, nil, fnerrors.New("use of `ports` and `port` is exclusive")
+			return nil, nil, fnerrors.Newf("use of `ports` and `port` is exclusive")
 		}
 	} else {
 		svc.Ports = append(svc.Ports, cueServicePort{
@@ -192,7 +192,7 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 		case "cluster":
 			parsed.ExternalTrafficPolicy = schema.Endpoint_CLUSTER
 		default:
-			return nil, nil, fnerrors.New("unsupported external traffic policy %q", svc.ExternalTrafficPolicy)
+			return nil, nil, fnerrors.Newf("unsupported external traffic policy %q", svc.ExternalTrafficPolicy)
 		}
 	}
 
@@ -214,7 +214,7 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 			case "tcp":
 				pm.Port.Protocol = schema.Endpoint_Port_TCP
 			default:
-				return nil, nil, fnerrors.New("unsupported port protocol %q", p.Protocol)
+				return nil, nil, fnerrors.Newf("unsupported port protocol %q", p.Protocol)
 			}
 		}
 
@@ -228,18 +228,18 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 	if svc.Kind != "" {
 		parsed.Metadata = append(parsed.Metadata, &schema.ServiceMetadata{Protocol: svc.Kind, Details: details})
 	} else if details != nil {
-		return nil, nil, fnerrors.New("service metadata is specified without kind")
+		return nil, nil, fnerrors.Newf("service metadata is specified without kind")
 	}
 
 	if len(svc.Ingress.Details.AllowedOrigins) > 0 {
 		if svc.Kind != schema.HttpProtocol {
-			return nil, nil, fnerrors.New("can only specify CORS when protocol is http")
+			return nil, nil, fnerrors.Newf("can only specify CORS when protocol is http")
 		}
 
 		cors := &schema.HttpCors{Enabled: true, AllowedOrigin: svc.Ingress.Details.AllowedOrigins}
 		packedCors, err := anypb.New(cors)
 		if err != nil {
-			return nil, nil, fnerrors.New("failed to pack CORS' configuration: %v", err)
+			return nil, nil, fnerrors.Newf("failed to pack CORS' configuration: %v", err)
 		}
 
 		parsed.Metadata = append(parsed.Metadata, &schema.ServiceMetadata{

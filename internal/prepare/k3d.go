@@ -53,7 +53,7 @@ func K3D(clusterName, ingressClass string) Stage {
 }
 
 func PrepareK3d(ctx context.Context, clusterName, ingressClass string, env cfg.Context, ch chan *orchestration.Event) (*schema.DevHost_ConfigureEnvironment, error) {
-	return tasks.Return(ctx, tasks.Action("prepare.k3s").HumanReadablef("Preparing a local Kubernetes cluster (k3s running in Docker)"),
+	return tasks.Return(ctx, tasks.Action("prepare.k3s").HumanReadable("Preparing a local Kubernetes cluster (k3s running in Docker)"),
 		func(ctx context.Context) (*schema.DevHost_ConfigureEnvironment, error) {
 			dockerclient, err := docker.NewClient()
 			if err != nil {

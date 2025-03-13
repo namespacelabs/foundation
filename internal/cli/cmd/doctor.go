@@ -113,7 +113,7 @@ func NewDoctorCmd() *cobra.Command {
 					return nil, err
 				}
 				if v == nil {
-					return nil, fnerrors.New("not running nsboot")
+					return nil, fnerrors.Newf("not running nsboot")
 				}
 				return v, nil
 			})
@@ -205,7 +205,7 @@ func NewDoctorCmd() *cobra.Command {
 			})
 
 			if filterIncludes(testFilter, "buildkit-build") {
-				buildkitI := errorOr[DoctorResults_BuildkitResults]{err: fnerrors.New("no workspace")}
+				buildkitI := errorOr[DoctorResults_BuildkitResults]{err: fnerrors.Newf("no workspace")}
 				if workspaceI.err == nil {
 					buildkitI = runDiagnostic(ctx, "doctor.build", func(ctx context.Context) (DoctorResults_BuildkitResults, error) {
 						env, err := cfg.LoadContext(workspaceI.v, *envRef)
@@ -239,7 +239,7 @@ func NewDoctorCmd() *cobra.Command {
 			}
 
 			if filterIncludes(testFilter, "kubernetes-run") {
-				kubernetesI := errorOr[DoctorResults_KubeResults]{err: fnerrors.New("no workspace")}
+				kubernetesI := errorOr[DoctorResults_KubeResults]{err: fnerrors.Newf("no workspace")}
 				if workspaceI.err == nil {
 					kubernetesI = runDiagnostic(ctx, "doctor.kube", func(ctx context.Context) (DoctorResults_KubeResults, error) {
 						var r DoctorResults_KubeResults

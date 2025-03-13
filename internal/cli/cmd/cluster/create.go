@@ -93,7 +93,7 @@ func NewCreateCmd() *cobra.Command {
 		}
 
 		if *experimental != "" && *experimentalFrom != "" {
-			return fnerrors.New("must only set one of --experimental or --experimental_from")
+			return fnerrors.Newf("must only set one of --experimental or --experimental_from")
 		}
 
 		if *experimental != "" {
@@ -116,7 +116,7 @@ func NewCreateCmd() *cobra.Command {
 		for _, def := range *volumes {
 			parts := strings.Split(def, ":")
 			if len(parts) != 3 && len(parts) != 4 {
-				return fnerrors.New("failed to parse volume definition")
+				return fnerrors.Newf("failed to parse volume definition")
 			}
 
 			kind := parts[0]
@@ -127,7 +127,7 @@ func NewCreateCmd() *cobra.Command {
 			if len(parts) == 4 {
 				sz, err := units.RAMInBytes(parts[3])
 				if err != nil {
-					return fnerrors.New("failed to parse size: %w", err)
+					return fnerrors.Newf("failed to parse size: %w", err)
 				}
 
 				sizeMb = sz / (1024 * 1024)
@@ -141,7 +141,7 @@ func NewCreateCmd() *cobra.Command {
 				{"kind", kind},
 			} {
 				if t.val == "" {
-					return fnerrors.New("a volume %q is required", t.key)
+					return fnerrors.Newf("a volume %q is required", t.key)
 				}
 			}
 
@@ -157,7 +157,7 @@ func NewCreateCmd() *cobra.Command {
 			case "persistent":
 				spec.PersistencyKind = api.VolumeSpec_PERSISTENT
 			default:
-				return fnerrors.New("a volume %q of %q or %q is required", "kind", "cache", "persistent")
+				return fnerrors.Newf("a volume %q of %q or %q is required", "kind", "cache", "persistent")
 			}
 
 			opts.Volumes = append(opts.Volumes, spec)
@@ -175,7 +175,7 @@ func NewCreateCmd() *cobra.Command {
 			opts.Features = append(opts.Features, "EXP_REGISTER_INSTANCE_WILDCARD_CERT")
 
 		default:
-			return fnerrors.New("unknown ingress option %q", *ingress)
+			return fnerrors.Newf("unknown ingress option %q", *ingress)
 		}
 
 		opts.WaitKind = "kubernetes"
@@ -193,19 +193,19 @@ func NewCreateCmd() *cobra.Command {
 
 		if *legacyOutputPath != "" {
 			if err := os.WriteFile(*legacyOutputPath, []byte(cluster.ClusterId), 0644); err != nil {
-				return fnerrors.New("failed to write %q: %w", *legacyOutputPath, err)
+				return fnerrors.Newf("failed to write %q: %w", *legacyOutputPath, err)
 			}
 		}
 
 		if *cidfile != "" {
 			if err := os.WriteFile(*cidfile, []byte(cluster.ClusterId), 0644); err != nil {
-				return fnerrors.New("failed to write %q: %w", *cidfile, err)
+				return fnerrors.Newf("failed to write %q: %w", *cidfile, err)
 			}
 		}
 
 		if *outputRegistryPath != "" {
 			if err := os.WriteFile(*outputRegistryPath, []byte(cluster.Registry.EndpointAddress), 0644); err != nil {
-				return fnerrors.New("failed to write %q: %w", *outputRegistryPath, err)
+				return fnerrors.Newf("failed to write %q: %w", *outputRegistryPath, err)
 			}
 		}
 
@@ -219,11 +219,11 @@ func NewCreateCmd() *cobra.Command {
 
 			serialized, err := json.MarshalIndent(copy, "", "  ")
 			if err != nil {
-				return fnerrors.New("failed to serialize: %v", err)
+				return fnerrors.Newf("failed to serialize: %v", err)
 			}
 
 			if err := os.WriteFile(*outputJsonPath, serialized, 0644); err != nil {
-				return fnerrors.New("failed to write %q: %w", *outputJsonPath, err)
+				return fnerrors.Newf("failed to write %q: %w", *outputJsonPath, err)
 			}
 		}
 
@@ -285,7 +285,7 @@ func parseAuthorizedKeys(file string) ([]string, error) {
 
 	keyData, err := os.ReadFile(file)
 	if err != nil {
-		return nil, fnerrors.New("failed to load keys: %w", err)
+		return nil, fnerrors.Newf("failed to load keys: %w", err)
 	}
 
 	var keys []string

@@ -17,11 +17,11 @@ import (
 func TransformNode(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, node *schema.Node, kind schema.Node_Kind) error {
 	if kind == schema.Node_EXTENSION {
 		if node.Ingress != schema.Endpoint_INGRESS_UNSPECIFIED {
-			return fnerrors.New("ingress can only be specified for services")
+			return fnerrors.Newf("ingress can only be specified for services")
 		}
 
 		if len(node.ExportService) > 0 {
-			return fnerrors.New("extensions can't export services")
+			return fnerrors.Newf("extensions can't export services")
 		}
 	}
 
@@ -140,11 +140,11 @@ func loadDep(ctx context.Context, pl pkggraph.PackageLoader, pkg schema.PackageN
 	}
 
 	if p.Server != nil {
-		return nil, fnerrors.New("dependencies can't include servers")
+		return nil, fnerrors.Newf("dependencies can't include servers")
 	}
 
 	if len(p.Binaries) > 0 {
-		return nil, fnerrors.New("dependencies can't be binaries")
+		return nil, fnerrors.Newf("dependencies can't be binaries")
 	}
 
 	return p, nil

@@ -42,12 +42,12 @@ func NewProxyCmd() *cobra.Command {
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *cluster == "" || *kind == "" {
-			return fnerrors.New("--cluster and --kind are required")
+			return fnerrors.Newf("--cluster and --kind are required")
 		}
 
 		if *background != "" {
 			if *sockPath == "" {
-				return fnerrors.New("--background requires --sock_path")
+				return fnerrors.Newf("--background requires --sock_path")
 			}
 
 			// Make sure the cluster exists before going to the background.
@@ -87,7 +87,7 @@ func setupBackgroundProxy(ctx context.Context, clusterId, kind, sockPath, pidFil
 
 	// Wait until the socket is up.
 	if err := waitForFile(ctx, sockPath); err != nil {
-		return fnerrors.New("socket didn't come up in time: %v", err)
+		return fnerrors.Newf("socket didn't come up in time: %v", err)
 	}
 
 	if pidFile != "" {
@@ -99,7 +99,7 @@ func setupBackgroundProxy(ctx context.Context, clusterId, kind, sockPath, pidFil
 
 func deprecateRunProxy(ctx context.Context, clusterReq, kind, socketPath string) error {
 	if clusterReq == "" || kind == "" {
-		return fnerrors.New("--cluster and --kind are required")
+		return fnerrors.Newf("--cluster and --kind are required")
 	}
 
 	cluster, err := ensureCluster(ctx, clusterReq)
@@ -112,11 +112,11 @@ func deprecateRunProxy(ctx context.Context, clusterReq, kind, socketPath string)
 	if kind == "buildkit" {
 		buildkitSvc := api.ClusterService(cluster.Cluster, "buildkit")
 		if buildkitSvc == nil || buildkitSvc.Endpoint == "" {
-			return fnerrors.New("instance is missing buildkit")
+			return fnerrors.Newf("instance is missing buildkit")
 		}
 
 		if buildkitSvc.Status != "READY" {
-			return fnerrors.New("expected buildkit to be READY, saw %q", buildkitSvc.Status)
+			return fnerrors.Newf("expected buildkit to be READY, saw %q", buildkitSvc.Status)
 		}
 
 		connect = func(ctx context.Context) (net.Conn, error) {

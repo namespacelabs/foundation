@@ -63,7 +63,7 @@ func GetRegistryFromConfig(ctx context.Context, env string, cfg cfg.Configuratio
 				// We pass a dummy scheme just to facilitate parsing.
 				parsed, err := url.Parse("//" + r.Url)
 				if err != nil {
-					return nil, fnerrors.New("transport.ssh: failed to compute remote address while parsing url: %w", err)
+					return nil, fnerrors.Newf("transport.ssh: failed to compute remote address while parsing url: %w", err)
 				}
 				r.Transport.Ssh.RemoteAddr = parsed.Host
 			}
@@ -86,7 +86,7 @@ func getRegistryByName(ctx context.Context, conf cfg.Configuration, name string)
 		return m(ctx, conf)
 	}
 
-	return nil, fnerrors.New("%q is not a known registry provider", name)
+	return nil, fnerrors.Newf("%q is not a known registry provider", name)
 }
 
 func StaticRepository(parent Manager, repository string, access oci.RegistryAccess) compute.Computable[oci.RepositoryWithParent] {

@@ -35,16 +35,16 @@ func newExistingCmd() *cobra.Command {
 
 	cmd.RunE = runPrepare(func(ctx context.Context, env cfg.Context) ([]prepare.Stage, error) {
 		if *contextName == "" {
-			return nil, fnerrors.New("--context is required; it's the name of an existing kubernetes context")
+			return nil, fnerrors.Newf("--context is required; it's the name of an existing kubernetes context")
 		}
 
 		if *registryAddr == "" {
-			return nil, fnerrors.New("--registry is required; it's the url of an existing image registry")
+			return nil, fnerrors.Newf("--registry is required; it's the url of an existing image registry")
 		}
 
 		repo, err := name.NewRepository(*registryAddr)
 		if err != nil {
-			return nil, fnerrors.New("invalid registry definition: %w", err)
+			return nil, fnerrors.Newf("invalid registry definition: %w", err)
 		}
 
 		// Docker Hub validation.
@@ -63,26 +63,26 @@ func newExistingCmd() *cobra.Command {
 `)
 
 			if !*singleRepository {
-				return nil, fnerrors.New("--use_single_repository is required when the target registry is Docker Hub")
+				return nil, fnerrors.Newf("--use_single_repository is required when the target registry is Docker Hub")
 			}
 
 			if !*useDockerCredentials {
-				return nil, fnerrors.New("--use_docker_creds is required when the target registry is Docker Hub")
+				return nil, fnerrors.Newf("--use_docker_creds is required when the target registry is Docker Hub")
 			}
 
 			parts := strings.Split(repo.RepositoryStr(), "/")
 			if len(parts) != 2 || parts[0] == "library" {
-				return nil, fnerrors.New("when using Docker Hub, you must specify the target registry explicitly. E.g. --registry docker.io/username/namespace-images")
+				return nil, fnerrors.Newf("when using Docker Hub, you must specify the target registry explicitly. E.g. --registry docker.io/username/namespace-images")
 			}
 		}
 
 		cfg, err := client.LoadExistingConfiguration(*kubeConfig, *contextName)
 		if err != nil {
-			return nil, fnerrors.New("failed to load existing configuration: %w", err)
+			return nil, fnerrors.Newf("failed to load existing configuration: %w", err)
 		}
 
 		if _, err := cfg.ClientConfig(); err != nil {
-			return nil, fnerrors.New("failed to load existing configuration from %q: %w (you can change which kubeconfig is used via --kube_config)", *kubeConfig, err)
+			return nil, fnerrors.Newf("failed to load existing configuration from %q: %w (you can change which kubeconfig is used via --kube_config)", *kubeConfig, err)
 		}
 
 		insecureLabel := ""

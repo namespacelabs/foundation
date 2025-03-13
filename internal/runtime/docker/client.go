@@ -212,7 +212,7 @@ func maybeReplaceErr(err error) error {
 			usage = append(usage, "Please refer to Docker's documentation on how to solve this issue.")
 		}
 
-		return fnerrors.UsageError(strings.Join(usage, "\n"), strings.Join(lines, "\n"))
+		return fnerrors.UsageError(strings.Join(usage, "\n"), "%s", strings.Join(lines, "\n"))
 
 	case client.IsErrConnectionFailed(err):
 		return fnerrors.UsageError("If you don't have Docker installed, please visit https://namespace.so/docs/getting-started", "unable to connect to Docker: %w", err)

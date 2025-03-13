@@ -56,13 +56,13 @@ func newArtifactUploadCmd() *cobra.Command {
 		flags.StringVar(&namespace, "namespace", mainArtifactNamespace, "Target namespace of the artifact.")
 	}).DoWithArgs(func(ctx context.Context, args []string) error {
 		if len(args) != 2 {
-			return fnerrors.New("expected exactly two arguments: a local source and a remote destination")
+			return fnerrors.Newf("expected exactly two arguments: a local source and a remote destination")
 		}
 		src, dest := args[0], args[1]
 
 		uploadFile, err := os.Open(src)
 		if err != nil {
-			return fnerrors.New("failed to open file %s: %w", src, err)
+			return fnerrors.Newf("failed to open file %s: %w", src, err)
 		}
 		defer uploadFile.Close()
 
@@ -99,7 +99,7 @@ func newArtifactDownloadCmd() *cobra.Command {
 		flags.StringVar(&namespace, "namespace", mainArtifactNamespace, "Namespace of the artifact.")
 	}).DoWithArgs(func(ctx context.Context, args []string) error {
 		if len(args) != 2 {
-			return fnerrors.New("expected exactly two arguments: a remote source and a local destination")
+			return fnerrors.Newf("expected exactly two arguments: a remote source and a local destination")
 		}
 		src, dest := args[0], args[1]
 
@@ -189,12 +189,12 @@ The content at the URL is assumed to be immutable.`,
 
 			w, err := os.Create(dest)
 			if err != nil {
-				return backoff.Permanent(fnerrors.New("failed to open %q: %w", dest, err))
+				return backoff.Permanent(fnerrors.Newf("failed to open %q: %w", dest, err))
 			}
 			defer w.Close()
 
 			if _, err := w.ReadFrom(r); err != nil {
-				return backoff.Permanent(fnerrors.New("failed to download artifact: %w", err))
+				return backoff.Permanent(fnerrors.Newf("failed to download artifact: %w", err))
 			}
 
 			fmt.Fprintf(console.Stderr(ctx), "Downloaded to %s.\n", dest)
@@ -216,12 +216,12 @@ func writeArtifact(ctx context.Context, cli storage.Client, namespace, path stri
 
 	w, err := os.Create(dest)
 	if err != nil {
-		return fnerrors.New("failed to open %q: %w", dest, err)
+		return fnerrors.Newf("failed to open %q: %w", dest, err)
 	}
 	defer w.Close()
 
 	if _, err := io.Copy(w, reader); err != nil {
-		return fnerrors.New("failed to write %q: %w", dest, err)
+		return fnerrors.Newf("failed to write %q: %w", dest, err)
 	}
 	return nil
 }

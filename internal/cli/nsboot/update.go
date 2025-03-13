@@ -93,7 +93,7 @@ func CheckCachedUpdate(ctx context.Context, command string, currentVersion strin
 func checkAndDoUpdate(ctx context.Context, command string, currentVersion string, doUpdate bool) (*toolVersion, NSPackage, error) {
 	cached, needUpdate, err := loadCheckCachedMetadata(ctx, command, true)
 	if err != nil {
-		return nil, NSPackage{}, fnerrors.New("failed to load versions.json: %w", err)
+		return nil, NSPackage{}, fnerrors.Newf("failed to load versions.json: %w", err)
 	}
 
 	if cached != nil {
@@ -176,7 +176,7 @@ func performUpdate(ctx context.Context, command string, previous *versionCache, 
 	// XXX store the last time timestamp checked, else after 24h we're always checking.
 	newVersion, err := fetchRemoteVersion(ctx, command)
 	if err != nil {
-		return nil, NSPackage{}, fnerrors.New("failed to load an update from the update service: %w", err)
+		return nil, NSPackage{}, fnerrors.Newf("failed to load an update from the update service: %w", err)
 	}
 
 	// If the latest version is not newer than the current, just use the current binary.
@@ -201,12 +201,12 @@ func performUpdate(ctx context.Context, command string, previous *versionCache, 
 
 	path, err := fetchBinary(ctx, command, newVersion, values)
 	if err != nil {
-		return nil, NSPackage{}, fnerrors.New("failed to fetch a new tarball: %w", err)
+		return nil, NSPackage{}, fnerrors.Newf("failed to fetch a new tarball: %w", err)
 	}
 
 	// Only commit to the new version once we know that we got the new binary.
 	if err := persistVersion(command, newVersion, path); err != nil {
-		return nil, NSPackage{}, fnerrors.New("failed to persist the version cache: %w", err)
+		return nil, NSPackage{}, fnerrors.Newf("failed to persist the version cache: %w", err)
 	}
 
 	return newVersion, NSPackage{Command: command, Path: path}, nil
@@ -221,7 +221,7 @@ func fetchRemoteVersion(ctx context.Context, command string) (*toolVersion, erro
 
 		tarball := findHostTarball(resp.Tarballs)
 		if tarball == nil {
-			return nil, fnerrors.New("no tarball for host OS/architecture offered by the update service")
+			return nil, fnerrors.Newf("no tarball for host OS/architecture offered by the update service")
 		}
 
 		return &toolVersion{

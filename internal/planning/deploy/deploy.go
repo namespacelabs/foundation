@@ -514,7 +514,7 @@ func validateServiceRef(ref *schema.ServiceRef, stack *planning.Stack) error {
 	// No corresponding endpoint found - check if the server is present in the stack.
 	for _, srv := range stack.Servers {
 		if srv.Package.PackageName() == ref.ServerRef.AsPackageName() {
-			return fnerrors.New("invalid service reference: service %q is not defined for server %q", ref.ServiceName, ref.ServerRef.AsPackageName())
+			return fnerrors.Newf("invalid service reference: service %q is not defined for server %q", ref.ServiceName, ref.ServerRef.AsPackageName())
 		}
 	}
 

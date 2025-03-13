@@ -124,9 +124,9 @@ func verifyDir(path string) error {
 		if os.IsNotExist(err) {
 			return err
 		}
-		return fnerrors.New("%s: accessing the path failed: %v", path, err)
+		return fnerrors.Newf("%s: accessing the path failed: %v", path, err)
 	} else if !st.IsDir() {
-		return fnerrors.New("%s: expected it to be a directory", path)
+		return fnerrors.Newf("%s: expected it to be a directory", path)
 	}
 
 	return nil

@@ -135,7 +135,7 @@ func parseContainers(loc pkggraph.Location, kind string, v cue.Value) ([]*schema
 			}
 
 			if data.Name == "" {
-				return nil, fnerrors.New("%s #%d: name is required", kind, k)
+				return nil, fnerrors.Newf("%s #%d: name is required", kind, k)
 			}
 
 			parsed = append(parsed, &schema.Container{
@@ -157,7 +157,7 @@ func parseContainers(loc pkggraph.Location, kind string, v cue.Value) ([]*schema
 	var parsed []*schema.Container
 	for name, data := range containers {
 		if data.Name != "" && data.Name != name {
-			return nil, fnerrors.New("%s: inconsistent container name %q", name, data.Name)
+			return nil, fnerrors.Newf("%s: inconsistent container name %q", name, data.Name)
 		}
 
 		binRef, err := schema.ParsePackageRef(loc, data.Binary)

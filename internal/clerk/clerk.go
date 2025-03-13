@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	ErrUnauthorized = fnerrors.New("Unauthorized")
+	ErrUnauthorized = fnerrors.Newf("Unauthorized")
 
 	devClerk = false
 )

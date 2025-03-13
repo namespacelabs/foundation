@@ -82,7 +82,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 
 	action := tasks.Action("kubernetes.apply").
 		Scope(scope...).
-		HumanReadablef(desc).
+		HumanReadable(desc).
 		Arg("name", obj.GetName())
 
 	ns := obj.GetNamespace()

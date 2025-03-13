@@ -38,15 +38,15 @@ func newExchangeAwsCognitoCmd() *cobra.Command {
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if *awsRegion == "" {
-			return fnerrors.New("--aws_region is required")
+			return fnerrors.Newf("--aws_region is required")
 		}
 
 		if *identityPool == "" {
-			return fnerrors.New("--identity_pool is required")
+			return fnerrors.Newf("--identity_pool is required")
 		}
 
 		if *tenantId == "" {
-			return fnerrors.New("--tenant_id is required")
+			return fnerrors.Newf("--tenant_id is required")
 		}
 
 		actual := strings.TrimPrefix(*identityPool, *awsRegion+":")
@@ -123,15 +123,15 @@ func newTrustAwsCognitoCmd() *cobra.Command {
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if *awsRegion == "" {
-			return fnerrors.New("--aws_region is required")
+			return fnerrors.Newf("--aws_region is required")
 		}
 
 		if *identityPool == "" {
-			return fnerrors.New("--identity_pool is required")
+			return fnerrors.Newf("--identity_pool is required")
 		}
 
 		if *tenantId == "" {
-			return fnerrors.New("--tenant_id is required")
+			return fnerrors.Newf("--tenant_id is required")
 		}
 
 		actual := strings.TrimPrefix(*identityPool, *awsRegion+":")

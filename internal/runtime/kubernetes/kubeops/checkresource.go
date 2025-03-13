@@ -31,7 +31,7 @@ type Object interface {
 
 func fetchResource(ctx context.Context, cluster kubedef.KubeCluster, description string, resource schema.GroupVersionResource, name, namespace string, scope []fnschema.PackageName) (*unstructured.Unstructured, error) {
 	return tasks.Return(ctx, tasks.Action("kubernetes.get").Scope(scope...).
-		HumanReadablef("Check: "+description).
+		HumanReadable("Check: "+description).
 		Arg("resource", resource.Resource).
 		Arg("name", name).
 		Arg("namespace", namespace), func(ctx context.Context) (*unstructured.Unstructured, error) {

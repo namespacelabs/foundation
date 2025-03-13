@@ -88,7 +88,7 @@ func newDockerPassthroughCmd() *cobra.Command {
 
 func runPassthrough(ctx context.Context, clusterId string, args []string) error {
 	if len(args) == 0 {
-		return fnerrors.New("at least one argument to pass to `docker` is required")
+		return fnerrors.Newf("at least one argument to pass to `docker` is required")
 	}
 
 	return withDocker(ctx, clusterId, func(ctx context.Context, socketPath string) error {
@@ -199,11 +199,11 @@ func newDockerLoginCmd(hidden bool) *cobra.Command {
 
 			registryEp := fmt.Sprintf("%s/%s", response.NSCR.EndpointAddress, response.NSCR.Repository)
 			if err := os.WriteFile(*outputRegistryPath, []byte(registryEp), 0644); err != nil {
-				return fnerrors.New("failed to write %q: %w", *outputRegistryPath, err)
+				return fnerrors.Newf("failed to write %q: %w", *outputRegistryPath, err)
 			}
 		}
 		if err := cfg.Save(); err != nil {
-			return fnerrors.New("failed to save config: %w", err)
+			return fnerrors.Newf("failed to save config: %w", err)
 		}
 		fmt.Fprintf(stdout, "Added Namespace credentials to %s.\n", cfg.Filename)
 
@@ -222,7 +222,7 @@ func newDockerLoginCmd(hidden bool) *cobra.Command {
 				fmt.Fprintf(stdout, "\nIt's usually installed along-side nsc; so if you have added nsc to the $PATH, %s will also be available.\n", credHelperBinary)
 				fmt.Fprintf(stdout, "\nWhile your $PATH is not updated, accessing nscr.io images from docker-based tools won't work.\nBut you can always use nsc build (as per above) or nsc run.\n")
 			} else {
-				return fnerrors.New("failed to look up nsc in $PATH: %w", err)
+				return fnerrors.Newf("failed to look up nsc in $PATH: %w", err)
 			}
 		}
 
@@ -241,7 +241,7 @@ func NewDockerCredHelperStoreCmd(hidden bool) *cobra.Command {
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		return fnerrors.New("not supported")
+		return fnerrors.Newf("not supported")
 	})
 
 	return cmd
@@ -261,13 +261,13 @@ func NewDockerCredHelperGetCmd(hidden bool) *cobra.Command {
 
 		input, err := readStdin()
 		if err != nil {
-			return fnerrors.New("failed to read from stdin: %w", err)
+			return fnerrors.Newf("failed to read from stdin: %w", err)
 		}
 		regURL := string(input)
 
 		resp, err := api.GetImageRegistry(ctx, api.Methods)
 		if err != nil {
-			return fnerrors.New("failed to get nscloud registries: %w", err)
+			return fnerrors.Newf("failed to get nscloud registries: %w", err)
 		}
 
 		registries := append(resp.ExtraRegistry, []*api.ImageRegistry{resp.NSCR}...)
@@ -310,7 +310,7 @@ func NewDockerCredHelperListCmd(hidden bool) *cobra.Command {
 
 		resp, err := api.GetImageRegistry(ctx, api.Methods)
 		if err != nil {
-			return fnerrors.New("failed to get nscloud registries: %w", err)
+			return fnerrors.Newf("failed to get nscloud registries: %w", err)
 		}
 
 		registries := append(resp.ExtraRegistry, []*api.ImageRegistry{resp.NSCR}...)
@@ -337,7 +337,7 @@ func NewDockerCredHelperEraseCmd(hidden bool) *cobra.Command {
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		return fnerrors.New("not supported")
+		return fnerrors.Newf("not supported")
 	})
 
 	return cmd

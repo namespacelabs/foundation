@@ -58,7 +58,7 @@ func newRunScriptCmd() *cobra.Command {
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *scriptFile == "" {
-			return fnerrors.New("--file/-f is required")
+			return fnerrors.Newf("--file/-f is required")
 		}
 
 		contents, err := os.ReadFile(*scriptFile)

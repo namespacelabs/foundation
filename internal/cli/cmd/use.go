@@ -201,12 +201,12 @@ func determineConfiguration(res *hydrateResult) (*postgres.InstantiatedDatabases
 		}
 	}
 
-	return nil, fnerrors.New("%s: server has no databases", res.Focus)
+	return nil, fnerrors.Newf("%s: server has no databases", res.Focus)
 }
 
 func selectDatabase(ctx context.Context, index map[string]databaseBind, names []string) (string, error) {
 	if len(names) == 0 {
-		return "", fnerrors.New("no database to connect to")
+		return "", fnerrors.Newf("no database to connect to")
 	}
 
 	var items []databaseItem

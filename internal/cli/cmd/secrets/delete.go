@@ -34,7 +34,7 @@ func newDeleteCmd() *cobra.Command {
 		}
 
 		if !bundle.Delete(key.PackageName, key.Key) {
-			return fnerrors.New("no such key")
+			return fnerrors.Newf("no such key")
 		}
 
 		return writeBundle(ctx, loc, bundle, !*rawtext)

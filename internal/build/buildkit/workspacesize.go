@@ -76,7 +76,7 @@ func makeSizeError(w workspaceSizeReport) error {
 		description = "Wasn't able to compute the largest files in the workspace."
 	}
 
-	return fnerrors.New(`the workspace snapshot is unexpectedly large (%s vs max expected %s);
+	return fnerrors.Newf(`the workspace snapshot is unexpectedly large (%s vs max expected %s);
 this is likely a problem with the way that foundation is filtering workspace contents.
 
 %s

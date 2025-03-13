@@ -22,7 +22,7 @@ import (
 func registerCleanup() {
 	execution.RegisterFuncs(execution.Funcs[*kubedef.OpCleanupRuntimeConfig]{
 		Handle: func(ctx context.Context, d *fnschema.SerializedInvocation, cleanup *kubedef.OpCleanupRuntimeConfig) (*execution.HandleResult, error) {
-			return tasks.Return(ctx, tasks.Action("kubernetes.cleanup").HumanReadablef(d.Description), func(ctx context.Context) (*execution.HandleResult, error) {
+			return tasks.Return(ctx, tasks.Action("kubernetes.cleanup").HumanReadable(d.Description), func(ctx context.Context) (*execution.HandleResult, error) {
 				// TODO turn into noop when orchestrator with corresponding controller is published.
 
 				// Remove configmap runtime configs no longer being used.

@@ -85,7 +85,7 @@ func loadBundleFromArgs(ctx context.Context, env cfg.Context, locs fncobra.Locat
 		loc := locs.Locations[0]
 
 		if user {
-			return nil, nil, fnerrors.New("can use --user and %q at the same time", loc.AsPackageName())
+			return nil, nil, fnerrors.Newf("can use --user and %q at the same time", loc.AsPackageName())
 		}
 
 		pkg, err := parsing.NewPackageLoader(env).LoadByName(ctx, loc.AsPackageName())
@@ -100,7 +100,7 @@ func loadBundleFromArgs(ctx context.Context, env cfg.Context, locs fncobra.Locat
 		result.sourceFile = loc.Rel(localsecrets.ServerBundleName)
 
 	default:
-		return nil, nil, fnerrors.New("expected up to a single package to be selected, saw %d", len(locs.Locations))
+		return nil, nil, fnerrors.Newf("expected up to a single package to be selected, saw %d", len(locs.Locations))
 	}
 
 	contents, err := fs.ReadFile(workspaceFS, result.sourceFile)
@@ -125,7 +125,7 @@ func loadBundleFromArgs(ctx context.Context, env cfg.Context, locs fncobra.Locat
 func parseKey(v string) (*localsecrets.ValueKey, error) {
 	parts := strings.SplitN(v, ":", 2)
 	if len(parts) < 2 {
-		return nil, fnerrors.New("expected secret format to be {package_name}:{name}")
+		return nil, fnerrors.Newf("expected secret format to be {package_name}:{name}")
 	}
 
 	return &localsecrets.ValueKey{PackageName: parts[0], Key: parts[1]}, nil

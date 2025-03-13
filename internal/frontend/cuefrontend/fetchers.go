@@ -221,7 +221,7 @@ func FetchPackage(pl pkggraph.PackageLoader) FetcherFunc {
 	return func(ctx context.Context, v cue.Value) (interface{}, error) {
 		packageName, err := v.String()
 		if err != nil {
-			return nil, fnerrors.New("expected a string when loading a package: %w", err)
+			return nil, fnerrors.Newf("expected a string when loading a package: %w", err)
 		}
 
 		return ConsumeNoValue, pl.Ensure(ctx, schema.PackageName(packageName))

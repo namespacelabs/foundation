@@ -53,7 +53,7 @@ func (tk ecrTeleportKeychain) ecrAuth(ctx context.Context) (*dockertypes.AuthCon
 			func(ctx context.Context) ([]types.AuthorizationData, error) {
 				cert, err := tls.LoadX509KeyPair(appCreds.certFile, appCreds.keyFile)
 				if err != nil {
-					return nil, fnerrors.New("teleport: failed to load client TLS certificate")
+					return nil, fnerrors.Newf("teleport: failed to load client TLS certificate")
 				}
 
 				httpClient := &http.Client{
@@ -67,26 +67,26 @@ func (tk ecrTeleportKeychain) ecrAuth(ctx context.Context) (*dockertypes.AuthCon
 				req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("https://%s", appCreds.endpoint), nil)
 				if err != nil {
 					fmt.Fprintf(console.Debug(ctx), "teleport: failed to create ECR credentials request: %v\n", err)
-					return nil, fnerrors.New("teleport: failed to create ECR credentials request")
+					return nil, fnerrors.Newf("teleport: failed to create ECR credentials request")
 				}
 
 				resp, err := httpClient.Do(req)
 				if err != nil {
 					fmt.Fprintf(console.Debug(ctx), "HTTP request to Teleport app failed: %v\n", err)
-					return nil, fnerrors.New("teleport: failed to request ECR credentials")
+					return nil, fnerrors.Newf("teleport: failed to request ECR credentials")
 				}
 				defer resp.Body.Close()
 
 				data, err := io.ReadAll(resp.Body)
 				if err != nil {
 					fmt.Fprintf(console.Debug(ctx), "failed to read HTTP request body: %v\n", err)
-					return nil, fnerrors.New("teleport: failed to read ECR credentials")
+					return nil, fnerrors.Newf("teleport: failed to read ECR credentials")
 				}
 
 				var authzData []types.AuthorizationData
 				if err := json.Unmarshal(data, &authzData); err != nil {
 					fmt.Fprintf(console.Debug(ctx), "failed to parse HTTP request body: %v\n", err)
-					return nil, fnerrors.New("teleport: failed to parse ECR credentials")
+					return nil, fnerrors.Newf("teleport: failed to parse ECR credentials")
 				}
 
 				return authzData, nil

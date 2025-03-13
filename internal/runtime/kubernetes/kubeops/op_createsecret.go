@@ -76,7 +76,7 @@ func RegisterCreateSecret() {
 			} else {
 				resource, err := execution.ComputedValue[*types.Resource](d, "value")
 				if err != nil {
-					return nil, fnerrors.New("%s: failed to retrieve value: %w", d.Description, err)
+					return nil, fnerrors.Newf("%s: failed to retrieve value: %w", d.Description, err)
 				}
 
 				if resource.GetContents() == nil {

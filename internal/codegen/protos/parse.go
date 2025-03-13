@@ -44,12 +44,12 @@ func (opts ParseOpts) Parse(fsys fs.FS, files []string) (*FileDescriptorSetAndDe
 	bufWorkData, err := fs.ReadFile(fsys, "buf.work.yaml")
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return nil, fnerrors.New("failed to load buf.work.yaml: %w", err)
+			return nil, fnerrors.Newf("failed to load buf.work.yaml: %w", err)
 		}
 	} else {
 		var bw bufWork
 		if err := yaml.Unmarshal(bufWorkData, &bw); err != nil {
-			return nil, fnerrors.New("failed to parse buf.work.yaml: %w", err)
+			return nil, fnerrors.Newf("failed to parse buf.work.yaml: %w", err)
 		}
 
 		importPaths = append(importPaths, bw.Directories...)
@@ -100,7 +100,7 @@ func (opts ParseOpts) Parse(fsys fs.FS, files []string) (*FileDescriptorSetAndDe
 			}
 
 			// It's important to return an error, so the nil value is not used.
-			return nil, fnerrors.New("no such file %s", path)
+			return nil, fnerrors.Newf("no such file %s", path)
 		},
 	}
 
@@ -140,7 +140,7 @@ func toFileDescriptor(file *descriptorpb.FileDescriptorProto, deps []*descriptor
 			}
 		}
 		if found == nil {
-			return nil, fnerrors.New("%s: missing dependency %q", file.GetName(), dep)
+			return nil, fnerrors.Newf("%s: missing dependency %q", file.GetName(), dep)
 		}
 		parsed, err := toFileDescriptor(found, deps)
 		if err != nil {
@@ -151,7 +151,7 @@ func toFileDescriptor(file *descriptorpb.FileDescriptorProto, deps []*descriptor
 
 	res, err := desc.CreateFileDescriptor(file, parsedDeps...)
 	if err != nil {
-		return nil, fnerrors.New("failed to parse descriptor: %w", err)
+		return nil, fnerrors.Newf("failed to parse descriptor: %w", err)
 	}
 
 	return res, nil

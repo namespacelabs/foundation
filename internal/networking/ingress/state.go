@@ -44,7 +44,7 @@ func RegisterRuntimeState() {
 			Scope:            "namespacelabs.dev/foundation/internal/networking/ingress",
 		}
 
-		if err := tasks.Action("ingress.wait").HumanReadablef("Waiting until Ingress controller is ready").Run(ctx, func(ctx context.Context) error {
+		if err := tasks.Action("ingress.wait").HumanReadable("Waiting until Ingress controller is ready").Run(ctx, func(ctx context.Context) error {
 			return w.WaitUntilReady(ctx, nil)
 		}); err != nil {
 			return nil, err

@@ -51,11 +51,11 @@ func NewVncCmd() *cobra.Command {
 func runVnc(ctx context.Context, instance *api.KubernetesCluster) error {
 	vncSvc := api.ClusterService(instance, "vnc")
 	if vncSvc == nil || vncSvc.Endpoint == "" {
-		return fnerrors.New("instance does not have vnc")
+		return fnerrors.Newf("instance does not have vnc")
 	}
 
 	if vncSvc.Status != "READY" {
-		return fnerrors.New("expected vnc to be READY, saw %q", vncSvc.Status)
+		return fnerrors.Newf("expected vnc to be READY, saw %q", vncSvc.Status)
 	}
 
 	peerConn, err := api.DialEndpoint(ctx, vncSvc.Endpoint)

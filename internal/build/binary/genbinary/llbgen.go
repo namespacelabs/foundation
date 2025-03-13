@@ -77,7 +77,7 @@ func (l llbBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, c
 			// XXX use buildkit to invoke.
 
 			if err := docker.Runtime().Run(ctx, run); err != nil {
-				return nil, fnerrors.New("failed to call llbgen :%w", err)
+				return nil, fnerrors.Newf("failed to call llbgen :%w", err)
 			}
 
 			def, err := llb.ReadFrom(bytes.NewReader(serializedLLB.Bytes()))

@@ -40,7 +40,7 @@ func newDescribeCmd() *cobra.Command {
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *jsonKey != "" && *output != "json" {
-			return fnerrors.New("--key requires --output=json")
+			return fnerrors.Newf("--key requires --output=json")
 		}
 
 		res, err := fnapi.GetTenant(ctx)
@@ -85,7 +85,7 @@ func newDescribeCmd() *cobra.Command {
 
 			selected, ok := parsed[*jsonKey]
 			if !ok {
-				return fnerrors.New("selected json key %q not found in response", *jsonKey)
+				return fnerrors.Newf("selected json key %q not found in response", *jsonKey)
 			}
 
 			// As all selectable values are strings, we do not JSON marshal here, to keep

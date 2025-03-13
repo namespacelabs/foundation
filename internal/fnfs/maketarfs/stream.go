@@ -56,7 +56,7 @@ func TarFS(ctx context.Context, parentW io.Writer, vfs fs.FS, includeFiles []str
 		}
 
 		if contents.ContentLength() > math.MaxInt64 {
-			return fnerrors.New("file too big")
+			return fnerrors.Newf("file too big")
 		}
 
 		if err := w.WriteHeader(&tar.Header{

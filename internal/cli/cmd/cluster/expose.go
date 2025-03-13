@@ -72,9 +72,9 @@ func newExposeContainerCmd(use string, hidden bool) *cobra.Command {
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *containerName == "" && !*all {
-			return fnerrors.New("one of --all or --container is required")
+			return fnerrors.Newf("one of --all or --container is required")
 		} else if *containerName != "" && *all {
-			return fnerrors.New("only one of --all or --container may be specified")
+			return fnerrors.Newf("only one of --all or --container may be specified")
 		}
 
 		if hidden && *output == "plain" {
@@ -108,7 +108,7 @@ func newExposeContainerCmd(use string, hidden bool) *cobra.Command {
 		}
 
 		if *name != "" && len(ports) > 1 {
-			return fnerrors.New("--name can only be used when exposing a single port")
+			return fnerrors.Newf("--name can only be used when exposing a single port")
 		}
 
 		if len(ports) == 0 && *output == "plain" {
@@ -138,7 +138,7 @@ func newExposeContainerCmd(use string, hidden bool) *cobra.Command {
 		}
 
 		if len(ports) > 1 && *wildcard {
-			return fnerrors.New("--wildcard is only supported when exposing a single port. Found %d", len(ports))
+			return fnerrors.Newf("--wildcard is only supported when exposing a single port. Found %d", len(ports))
 		}
 
 		var exps []exported
@@ -203,10 +203,10 @@ func filterPorts(ports []containerPort, acceptable []int) ([]containerPort, erro
 		return filtered, nil
 
 	case 1:
-		return nil, fnerrors.New("specified port %d is not exported", unmatched[0])
+		return nil, fnerrors.Newf("specified port %d is not exported", unmatched[0])
 
 	default:
-		return nil, fnerrors.New("specified ports %s are not exported", strings.Join(stringify(unmatched), ", "))
+		return nil, fnerrors.Newf("specified ports %s are not exported", strings.Join(stringify(unmatched), ", "))
 	}
 }
 
@@ -240,9 +240,9 @@ type containerFilter struct {
 }
 
 func selectPorts(ctx context.Context, cluster *api.KubernetesCluster, source string, filter containerFilter) ([]containerPort, error) {
-	return tasks.Return(ctx, tasks.Action("nsc.expose").HumanReadablef("Querying exported ports"), func(ctx context.Context) ([]containerPort, error) {
+	return tasks.Return(ctx, tasks.Action("nsc.expose").HumanReadable("Querying exported ports"), func(ctx context.Context) ([]containerPort, error) {
 		if source != "" && source != "docker" && source != "containerd" {
-			return nil, fnerrors.New("--source can be either empty, or one of %q or %q", "docker", "containerd")
+			return nil, fnerrors.Newf("--source can be either empty, or one of %q or %q", "docker", "containerd")
 		}
 
 		eg := executor.New(ctx, "port selector")
@@ -522,11 +522,11 @@ func newExposeKubernetesCmd() *cobra.Command {
 		}
 
 		if *namespace == "" {
-			return fnerrors.New("--namespace is required")
+			return fnerrors.Newf("--namespace is required")
 		}
 
 		if *service == "" {
-			return fnerrors.New("--service is required")
+			return fnerrors.Newf("--service is required")
 		}
 
 		backend, err := selectBackend(ctx, cluster, *namespace, *service, *port, *wait)
@@ -586,16 +586,16 @@ func newExposeKubernetesCmd() *cobra.Command {
 }
 
 func selectBackend(ctx context.Context, cluster *api.KubernetesCluster, ns, service string, port int32, wait bool) (*api.IngressBackendEndpoint, error) {
-	return tasks.Return(ctx, tasks.Action("nsc.expose-lb").HumanReadablef("Querying exported service load balancers"), func(ctx context.Context) (*api.IngressBackendEndpoint, error) {
+	return tasks.Return(ctx, tasks.Action("nsc.expose-lb").HumanReadable("Querying exported service load balancers"), func(ctx context.Context) (*api.IngressBackendEndpoint, error) {
 		cfg := clientcmd.NewDefaultClientConfig(ctl.MakeConfig(cluster), nil)
 		restcfg, err := cfg.ClientConfig()
 		if err != nil {
-			return nil, fnerrors.New("failed to load kubernetes configuration: %w", err)
+			return nil, fnerrors.Newf("failed to load kubernetes configuration: %w", err)
 		}
 
 		cli, err := k8s.NewForConfig(restcfg)
 		if err != nil {
-			return nil, fnerrors.New("failed to create kubernetes client: %w", err)
+			return nil, fnerrors.Newf("failed to create kubernetes client: %w", err)
 		}
 
 		svc, err := cli.CoreV1().Services(ns).Get(ctx, service, metav1.GetOptions{})
@@ -604,7 +604,7 @@ func selectBackend(ctx context.Context, cluster *api.KubernetesCluster, ns, serv
 		}
 
 		if svc.Spec.Type != corev1.ServiceTypeLoadBalancer {
-			return nil, fnerrors.New("service %q is not of type %s (found type %s)", service, corev1.ServiceTypeLoadBalancer, svc.Spec.Type)
+			return nil, fnerrors.Newf("service %q is not of type %s (found type %s)", service, corev1.ServiceTypeLoadBalancer, svc.Spec.Type)
 		}
 
 		port, err := selectPort(svc, port)
@@ -668,7 +668,7 @@ func selectPort(svc *corev1.Service, requestedPort int32) (int32, error) {
 
 	if requestedPort != 0 {
 		if !slices.Contains(ports, requestedPort) {
-			return 0, fnerrors.New("service %q does not export port %d. Found ports: %v.", svc.Name, requestedPort, ports)
+			return 0, fnerrors.Newf("service %q does not export port %d. Found ports: %v.", svc.Name, requestedPort, ports)
 		}
 
 		return requestedPort, nil
@@ -676,11 +676,11 @@ func selectPort(svc *corev1.Service, requestedPort int32) (int32, error) {
 
 	switch len(ports) {
 	case 0:
-		return 0, fnerrors.New("service %q exposes no ports", svc.Name)
+		return 0, fnerrors.Newf("service %q exposes no ports", svc.Name)
 	case 1:
 		return ports[0], nil
 	default:
-		return 0, fnerrors.New("Service %q exports multiple ports %v. Please select one with --port.", svc.Name, ports)
+		return 0, fnerrors.Newf("Service %q exports multiple ports %v. Please select one with --port.", svc.Name, ports)
 	}
 }
 
@@ -708,6 +708,6 @@ func selectIpAddr(svc *corev1.Service) (string, error) {
 	case 1:
 		return ipAddrs[0], nil
 	default:
-		return "", fnerrors.New("Service %q has multiple exported ip addresses %v. This is unexpected. Please contact support@namespace.so.", svc.Name, ipAddrs)
+		return "", fnerrors.Newf("Service %q has multiple exported ip addresses %v. This is unexpected. Please contact support@namespace.so.", svc.Name, ipAddrs)
 	}
 }

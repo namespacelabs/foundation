@@ -17,11 +17,11 @@ import (
 func AllocateFrom(ctx context.Context, pctx ParseContext, value map[string]any) (proto.Message, error) {
 	typeUrl, ok := value["@type"].(string)
 	if !ok {
-		return nil, fnerrors.New("@type is missing")
+		return nil, fnerrors.Newf("@type is missing")
 	}
 
 	if !strings.HasPrefix(typeUrl, TypeUrlPrefix) {
-		return nil, fnerrors.New("@type is missing %q prefix", TypeUrlPrefix)
+		return nil, fnerrors.Newf("@type is missing %q prefix", TypeUrlPrefix)
 	}
 
 	fullName := strings.TrimPrefix(typeUrl, TypeUrlPrefix)
@@ -30,16 +30,16 @@ func AllocateFrom(ctx context.Context, pctx ParseContext, value map[string]any) 
 
 	desc, err := protoregistry.GlobalFiles.FindDescriptorByName(protoreflect.FullName(fullName))
 	if err != nil {
-		return nil, fnerrors.New("%s: failed to load descriptor: %w", fullName, err)
+		return nil, fnerrors.Newf("%s: failed to load descriptor: %w", fullName, err)
 	}
 
 	if msgDesc, ok := desc.(protoreflect.MessageDescriptor); ok {
 		msg, err := AllocateWellKnownMessage(ctx, pctx, msgDesc, value)
 		if err != nil {
-			return nil, fnerrors.New("%s: failed to allocate message: %w", fullName, err)
+			return nil, fnerrors.Newf("%s: failed to allocate message: %w", fullName, err)
 		}
 		return msg, nil
 	} else {
-		return nil, fnerrors.New("%s: can't use descriptor, not a message", fullName)
+		return nil, fnerrors.Newf("%s: can't use descriptor, not a message", fullName)
 	}
 }

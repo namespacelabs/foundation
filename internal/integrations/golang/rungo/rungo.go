@@ -16,7 +16,7 @@ import (
 )
 
 func RunGo(ctx context.Context, loc pkggraph.Location, sdk golang.LocalSDK, args ...string) error {
-	return tasks.Action("go.run").Arg("dir", loc.Rel()).HumanReadablef("go "+strings.Join(args, " ")).Run(ctx, func(ctx context.Context) error {
+	return tasks.Action("go.run").Arg("dir", loc.Rel()).HumanReadable("go "+strings.Join(args, " ")).Run(ctx, func(ctx context.Context) error {
 		var cmd localexec.Command
 		cmd.Command = golang.GoBin(sdk)
 		cmd.Args = args

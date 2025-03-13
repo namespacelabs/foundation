@@ -51,7 +51,7 @@ func newMakeDiskCmd() *cobra.Command {
 			}
 
 			if size == 0 {
-				return fnerrors.New("size is required")
+				return fnerrors.Newf("size is required")
 			}
 
 			var platforms []specs.Platform

@@ -41,7 +41,7 @@ func (opts SerializeOpts) Serialize(msgs ...proto.Message) ([]TextAndBinary, err
 	for _, m := range msgs {
 		binary, err := proto.MarshalOptions{Deterministic: true}.Marshal(m)
 		if err != nil {
-			return nil, fnerrors.New("proto serialized failed: %w", err)
+			return nil, fnerrors.Newf("proto serialized failed: %w", err)
 		}
 
 		tb := TextAndBinary{Binary: binary, PerFormat: map[string][]byte{"binarypb": binary}}
@@ -49,7 +49,7 @@ func (opts SerializeOpts) Serialize(msgs ...proto.Message) ([]TextAndBinary, err
 		if opts.TextProto {
 			text, err := prototext.MarshalOptions{Multiline: true, Resolver: opts.Resolver}.Marshal(m)
 			if err != nil {
-				return nil, fnerrors.New("textproto serialized failed: %w", err)
+				return nil, fnerrors.Newf("textproto serialized failed: %w", err)
 			}
 			tb.Text = text
 			tb.PerFormat["textpb"] = text
@@ -58,7 +58,7 @@ func (opts SerializeOpts) Serialize(msgs ...proto.Message) ([]TextAndBinary, err
 		if opts.JSON {
 			json, err := protojson.MarshalOptions{Multiline: true, Resolver: opts.Resolver}.Marshal(m)
 			if err != nil {
-				return nil, fnerrors.New("json serialized failed: %w", err)
+				return nil, fnerrors.Newf("json serialized failed: %w", err)
 			}
 			tb.JSON = json
 			tb.PerFormat["json"] = json

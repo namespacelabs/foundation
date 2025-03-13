@@ -288,7 +288,7 @@ func parseService(loc pkggraph.Location, kind, name string, svc cueServiceSpec) 
 		case "cluster":
 			parsed.ExternalTrafficPolicy = schema.Endpoint_CLUSTER
 		default:
-			return nil, fnerrors.New("unsupported external traffic policy %q", svc.ExternalTrafficPolicy)
+			return nil, fnerrors.Newf("unsupported external traffic policy %q", svc.ExternalTrafficPolicy)
 		}
 	}
 
@@ -332,7 +332,7 @@ func ParsePort(name string, port CuePort) (*schema.Endpoint_Port, error) {
 		case "tcp":
 			pm.Protocol = schema.Endpoint_Port_TCP
 		default:
-			return nil, fnerrors.New("unsupported port protocol %q", port.Protocol)
+			return nil, fnerrors.Newf("unsupported port protocol %q", port.Protocol)
 		}
 	}
 

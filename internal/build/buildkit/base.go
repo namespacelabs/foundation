@@ -100,7 +100,7 @@ func (l *baseRequest[V]) Explain(ctx context.Context, w io.Writer) error {
 		for _, dt := range def.Def {
 			op := &pb.Op{}
 			if err := op.Unmarshal(dt); err != nil {
-				return nil, fnerrors.New("failed to parse op: %w", err)
+				return nil, fnerrors.Newf("failed to parse op: %w", err)
 			}
 
 			digest := digest.FromBytes(dt)

@@ -89,7 +89,7 @@ func validateConfigKey(key string) error {
 			return nil
 		}
 	}
-	return fnerrors.New("%s: no such configuration key", key)
+	return fnerrors.Newf("%s: no such configuration key", key)
 }
 
 func updateConfiguration(ctx context.Context, update func(map[string]any) error) error {

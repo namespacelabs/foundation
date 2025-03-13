@@ -63,7 +63,7 @@ func (df dockerfileBuild) BuildImage(ctx context.Context, env pkggraph.SealedCon
 
 	excludes, err := dockerignore.ReadAll(bytes.NewReader(dfignore))
 	if err != nil {
-		return nil, fnerrors.New("failed to parse dockerignore: %w", err)
+		return nil, fnerrors.Newf("failed to parse dockerignore: %w", err)
 	}
 
 	dfcontents, err := fs.ReadFile(conf.Workspace().ReadOnlyFS(df.contextRel), df.plan.Dockerfile)

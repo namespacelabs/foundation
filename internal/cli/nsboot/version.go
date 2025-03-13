@@ -28,7 +28,7 @@ func GetBootVersion() (*storage.NamespaceBinaryVersion, error) {
 	}
 	_ = json.Unmarshal([]byte(versionJSON), &errorStruct)
 	if errorStruct.Err != "" {
-		return nil, fnerrors.InternalError(errorStruct.Err)
+		return nil, fnerrors.InternalError("%s", errorStruct.Err)
 	}
 	r := &storage.NamespaceBinaryVersion{}
 	if err := protojson.Unmarshal([]byte(versionJSON), r); err != nil {

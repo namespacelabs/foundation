@@ -27,11 +27,11 @@ func NewExchangeOIDCTokenCmd() *cobra.Command {
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if *token == "" {
-			return fnerrors.New("--token is required")
+			return fnerrors.Newf("--token is required")
 		}
 
 		if *tenantId == "" {
-			return fnerrors.New("--tenant_id is required")
+			return fnerrors.Newf("--tenant_id is required")
 		}
 
 		res, err := fnapi.ExchangeOIDCToken(ctx, *tenantId, *token)

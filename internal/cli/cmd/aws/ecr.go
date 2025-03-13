@@ -46,12 +46,12 @@ func newEcrDockerLoginCmd() *cobra.Command {
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if *roleArn == "" {
-			return fnerrors.New("--role_arn is required")
+			return fnerrors.Newf("--role_arn is required")
 		}
 
 		arn, err := arn.Parse(*roleArn)
 		if err != nil {
-			return fnerrors.New("--role_arn is invalid: %w", err)
+			return fnerrors.Newf("--role_arn is invalid: %w", err)
 		}
 
 		token, err := fnapi.FetchToken(ctx)
@@ -103,7 +103,7 @@ func newEcrDockerLoginCmd() *cobra.Command {
 		}
 
 		if len(ecrToken.AuthorizationData) == 0 {
-			return fnerrors.New("invalid response from ECR: missing authorization data")
+			return fnerrors.Newf("invalid response from ECR: missing authorization data")
 		}
 
 		authData := ecrToken.AuthorizationData[0].AuthorizationToken
@@ -116,7 +116,7 @@ func newEcrDockerLoginCmd() *cobra.Command {
 
 		parts := strings.SplitN(string(data), ":", 2)
 		if len(parts) != 2 {
-			return fnerrors.New("invalid response from ECR: authorization token has %d parts", len(parts))
+			return fnerrors.Newf("invalid response from ECR: authorization token has %d parts", len(parts))
 		}
 
 		dockerCfg := dockercfg.LoadDefaultConfigFile(console.Stderr(ctx))
@@ -134,26 +134,26 @@ func newEcrDockerLoginCmd() *cobra.Command {
 		if *temp {
 			tmpDir, err := dirs.CreateUserTempDir("dockerconfig", "*")
 			if err != nil {
-				return fnerrors.New("failed to create temp dir: %w", err)
+				return fnerrors.Newf("failed to create temp dir: %w", err)
 			}
 
 			tmpFile, err := os.OpenFile(filepath.Join(tmpDir, dockerCfgName), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
 			if err != nil {
-				return fnerrors.New("failed to create temp file: %w", err)
+				return fnerrors.Newf("failed to create temp file: %w", err)
 			}
 
 			if err := dockerCfg.SaveToWriter(tmpFile); err != nil {
-				return fnerrors.New("failed to save config: %w", err)
+				return fnerrors.Newf("failed to save config: %w", err)
 			}
 
 			if err := tmpFile.Close(); err != nil {
-				return fnerrors.New("failed to close docker config: %w", err)
+				return fnerrors.Newf("failed to close docker config: %w", err)
 			}
 
 			filename = tmpFile.Name()
 		} else {
 			if err := dockerCfg.Save(); err != nil {
-				return fnerrors.New("failed to save config: %w", err)
+				return fnerrors.Newf("failed to save config: %w", err)
 			}
 		}
 
@@ -161,7 +161,7 @@ func newEcrDockerLoginCmd() *cobra.Command {
 
 		if *outputPath != "" {
 			if err := os.WriteFile(*outputPath, []byte(filename), 0644); err != nil {
-				return fnerrors.New("failed to write %q: %w", *outputPath, err)
+				return fnerrors.Newf("failed to write %q: %w", *outputPath, err)
 			}
 		}
 

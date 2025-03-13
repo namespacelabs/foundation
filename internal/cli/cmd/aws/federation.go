@@ -38,7 +38,7 @@ func newAssumeRoleCmd() *cobra.Command {
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if *roleArn == "" {
-			return fnerrors.New("--role_arn is required")
+			return fnerrors.Newf("--role_arn is required")
 		}
 
 		token, err := fnapi.FetchToken(ctx)

@@ -24,7 +24,7 @@ func newLocalCmd() *cobra.Command {
 
 		RunE: runPrepare(func(ctx context.Context, env cfg.Context) ([]prepare.Stage, error) {
 			if contextName != "" {
-				return nil, fnerrors.New("to configure an existing cluster use `prepare existing`")
+				return nil, fnerrors.Newf("to configure an existing cluster use `prepare existing`")
 			}
 
 			if env.Environment().Purpose != schema.Environment_DEVELOPMENT {

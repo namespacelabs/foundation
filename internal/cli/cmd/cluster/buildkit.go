@@ -60,12 +60,12 @@ func newBuildctlCmd() *cobra.Command {
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *buildCluster != "" && *platform != "" {
-			return fnerrors.New("--cluster and --platform are exclusive")
+			return fnerrors.Newf("--cluster and --platform are exclusive")
 		}
 
 		buildctlBin, err := buildctl.EnsureSDK(ctx, host.HostPlatform())
 		if err != nil {
-			return fnerrors.New("failed to download buildctl: %w", err)
+			return fnerrors.Newf("failed to download buildctl: %w", err)
 		}
 
 		plat, err := api.ParseBuildPlatform(*platform)
@@ -115,12 +115,12 @@ func newBuildkitProxy() *cobra.Command {
 		}
 
 		if !*useGrpcProxy && *staticWorkerDefFile != "" {
-			return fnerrors.New("--inject_worker_info requires --use_grpc_proxy")
+			return fnerrors.Newf("--inject_worker_info requires --use_grpc_proxy")
 		}
 
 		if *background != "" {
 			if *sockPath == "" {
-				return fnerrors.New("--background requires --sock_path")
+				return fnerrors.Newf("--background requires --sock_path")
 			}
 
 			pid, err := startBackgroundProxy(ctx, buildxInstanceMetadata{SocketPath: *sockPath, Platform: plat, ControlSocketPath: *controlSockPath}, *createAtStartup, *useGrpcProxy, *annotateBuild, *staticWorkerDefFile, *buildkitSockPath)
@@ -133,7 +133,7 @@ func newBuildkitProxy() *cobra.Command {
 
 		workerInfoResp, err := parseInjectWorkerInfo(*staticWorkerDefFile, plat)
 		if err != nil {
-			return fnerrors.New("failed to parse worker info JSON payload: %v", err)
+			return fnerrors.Newf("failed to parse worker info JSON payload: %v", err)
 		}
 
 		bp, err := runBuildProxy(ctx, plat, *sockPath, *controlSockPath, *buildkitSockPath, *createAtStartup, *useGrpcProxy, *annotateBuild, workerInfoResp)
@@ -264,7 +264,7 @@ func runBuildctl(ctx context.Context, buildctlBin buildctl.Buildctl, p *buildPro
 
 	buildctl := exec.CommandContext(ctx, string(buildctlBin), cmdLine...)
 	buildctl.Env = os.Environ()
-	buildctl.Env = append(buildctl.Env, fmt.Sprintf("DOCKER_CONFIG="+p.DockerConfigDir))
+	buildctl.Env = append(buildctl.Env, "DOCKER_CONFIG="+p.DockerConfigDir)
 
 	return localexec.RunInteractive(ctx, buildctl)
 }
@@ -288,11 +288,11 @@ func resolveBuildkitService(response *builderv1beta.EnsureBuildInstanceResponse)
 	}
 
 	if response.Encapsulation != builderv1beta.Encapsulation_WEBSOCKET_TCPPROXY {
-		return "", fnerrors.New("unsupported encapsulation: %v", response.Encapsulation)
+		return "", fnerrors.Newf("unsupported encapsulation: %v", response.Encapsulation)
 	}
 
 	if response.Authentication != builderv1beta.Authentication_BEARER_TOKEN {
-		return "", fnerrors.New("unsupported authentication: %v", response.Authentication)
+		return "", fnerrors.Newf("unsupported authentication: %v", response.Authentication)
 	}
 
 	return response.Endpoint, nil

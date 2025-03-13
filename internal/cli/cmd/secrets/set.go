@@ -63,7 +63,7 @@ func newSetCmd() *cobra.Command {
 				return err
 			}
 			if valueStr == "" {
-				return fnerrors.New("no value provided, skipping")
+				return fnerrors.Newf("no value provided, skipping")
 			}
 			value = []byte(valueStr)
 		}

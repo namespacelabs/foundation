@@ -17,13 +17,13 @@ func ReadFileAndBytes[V proto.Message](path string) (V, []byte, error) {
 
 	bytes, err := os.ReadFile(path)
 	if err != nil {
-		return empty, nil, fnerrors.New("%s: failed to load: %w", path, err)
+		return empty, nil, fnerrors.Newf("%s: failed to load: %w", path, err)
 	}
 
 	s := reflect.New(reflect.TypeOf(empty).Elem()).Interface().(V)
 
 	if err := proto.Unmarshal(bytes, s); err != nil {
-		return empty, nil, fnerrors.New("%s: unmarshal failed: %w", path, err)
+		return empty, nil, fnerrors.Newf("%s: unmarshal failed: %w", path, err)
 	}
 
 	return s, bytes, nil

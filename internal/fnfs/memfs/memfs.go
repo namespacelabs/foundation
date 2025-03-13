@@ -40,7 +40,7 @@ var _ fnfs.TotalSizeFS = &FS{}
 
 func (m *FS) Open(name string) (fs.File, error) {
 	if !fs.ValidPath(name) {
-		return nil, &fs.PathError{Op: "open", Path: name, Err: fnerrors.New("invalid name")}
+		return nil, &fs.PathError{Op: "open", Path: name, Err: fnerrors.Newf("invalid name")}
 	}
 
 	nodeName, node := walk(&m.root, name, false)
@@ -58,7 +58,7 @@ func (m *FS) Open(name string) (fs.File, error) {
 
 func (m *FS) ReadDir(relPath string) ([]fs.DirEntry, error) {
 	if !fs.ValidPath(relPath) {
-		return nil, &fs.PathError{Op: "readdir", Path: relPath, Err: fnerrors.New("invalid name")}
+		return nil, &fs.PathError{Op: "readdir", Path: relPath, Err: fnerrors.Newf("invalid name")}
 	}
 
 	_, node := walk(&m.root, relPath, false)
@@ -67,7 +67,7 @@ func (m *FS) ReadDir(relPath string) ([]fs.DirEntry, error) {
 	}
 
 	if node.file != nil {
-		return nil, &fs.PathError{Op: "readdir", Path: relPath, Err: fnerrors.New("is a regular file")}
+		return nil, &fs.PathError{Op: "readdir", Path: relPath, Err: fnerrors.Newf("is a regular file")}
 	}
 
 	return readDir(node), nil
@@ -115,7 +115,7 @@ func (m *FS) VisitFilesWithoutContext(visitor func(string, bytestream.Static, Fi
 func (m *FS) OpenWrite(name string, _ fs.FileMode) (fnfs.WriteFileHandle, error) {
 	// XXX support filemode
 	if !fs.ValidPath(name) {
-		return nil, &fs.PathError{Op: "write", Path: name, Err: fnerrors.New("invalid name")}
+		return nil, &fs.PathError{Op: "write", Path: name, Err: fnerrors.Newf("invalid name")}
 	}
 
 	return &writeHandle{parent: m, path: name}, nil
@@ -123,7 +123,7 @@ func (m *FS) OpenWrite(name string, _ fs.FileMode) (fnfs.WriteFileHandle, error)
 
 func (m *FS) Remove(relPath string) error {
 	if !fs.ValidPath(relPath) {
-		return &fs.PathError{Op: "remove", Path: relPath, Err: fnerrors.New("invalid name")}
+		return &fs.PathError{Op: "remove", Path: relPath, Err: fnerrors.Newf("invalid name")}
 	}
 
 	dirname := filepath.Dir(relPath)
@@ -140,7 +140,7 @@ func (m *FS) Remove(relPath string) error {
 	}
 
 	if dirent.file == nil && len(dirent.children) > 0 {
-		return &fs.PathError{Op: "remove", Path: relPath, Err: fnerrors.New("directory is not empty")}
+		return &fs.PathError{Op: "remove", Path: relPath, Err: fnerrors.Newf("directory is not empty")}
 	}
 
 	delete(dir.children, filename)

@@ -60,7 +60,7 @@ func ParsePackageRef(owner PackageNameLike, ref string) (*PackageRef, error) {
 func StrictParsePackageRef(ref string) (*PackageRef, error) {
 	parts := strings.Split(ref, ":")
 	if len(parts) != 2 {
-		return nil, fnerrors.New("invalid package ref %q", ref)
+		return nil, fnerrors.Newf("invalid package ref %q", ref)
 	}
 
 	return &PackageRef{PackageName: parts[0], Name: parts[1]}, nil

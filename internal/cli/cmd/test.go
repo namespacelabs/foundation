@@ -362,7 +362,7 @@ func noTestsError(ctx context.Context, allTests bool, locs fncobra.Locations) er
 	}
 
 	if !allTests {
-		return fnerrors.New("No user-defined tests found %s. Try adding `--all` to include generated tests.", where)
+		return fnerrors.Newf("No user-defined tests found %s. Try adding `--all` to include generated tests.", where)
 	}
 
 	msg := fmt.Sprintf("No servers to test found %s.", where)

@@ -32,7 +32,12 @@ const (
 // New returns a new error for a format specifier and optionals args with the
 // stack trace at the point of invocation. These errors are expected to user
 // errors, i.e. they are expected errors, due to wrong configuration, etc.
-func New(format string, args ...interface{}) error {
+func New(msg string) error {
+	// Enforce the use of a constant format string.
+	return Newf("%s", msg)
+}
+
+func Newf(format string, args ...interface{}) error {
 	return &BaseError{Kind: Kind_USER, OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.New()}
 }
 
@@ -113,10 +118,10 @@ func InvocationError(what, format string, args ...interface{}) error {
 // This error means that Namespace does not meet the minimum version requirements.
 func NamespaceTooOld(what string, expected, got int32) error {
 	if expected == 0 && got == 0 {
-		return New("`%s` needs to be updated to use %q", name.CmdName, what)
+		return Newf("`%s` needs to be updated to use %q", name.CmdName, what)
 	}
 
-	return New("`%s` needs to be updated to use %q, (need api version %d, got %d)", name.CmdName, what, expected, got)
+	return Newf("`%s` needs to be updated to use %q, (need api version %d, got %d)", name.CmdName, what, expected, got)
 }
 
 func NamespaceTooRecent(what string, expected, got int32) error {

@@ -139,7 +139,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 	}
 
 	if count > 1 {
-		return nil, fnerrors.New("package must only define one of: server, service, extension, binary or test")
+		return nil, fnerrors.Newf("package must only define one of: server, service, extension, binary or test")
 	}
 
 	p := phase1plan{owner: loc, partial: partial, Value: v, Left: partial.Left}
@@ -159,7 +159,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 		}
 	} else if node := parsed.Node(); node != nil {
 		if plan.Naming != nil {
-			return nil, fnerrors.New("naming can only be set on servers")
+			return nil, fnerrors.Newf("naming can only be set on servers")
 		}
 		parsed.ComputePlanWith = plan.ComputePlanWith
 		parsed.LegacyComputeStartup = plan.Startup

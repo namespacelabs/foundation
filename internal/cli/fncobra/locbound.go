@@ -134,7 +134,7 @@ func ParseLocs(ctx context.Context, args []string, env *cfg.Context, opts ParseL
 	}
 
 	if opts.RequireSingle && len(locs)+len(refs) != 1 {
-		return nil, fnerrors.New("expected exactly one package")
+		return nil, fnerrors.Newf("expected exactly one package")
 	}
 
 	return &Locations{
@@ -150,7 +150,7 @@ func locationsAndPackageRefsFromArgs(ctx context.Context, mainModuleName string,
 	var refs []*schema.PackageRef
 	for _, arg := range args {
 		if filepath.IsAbs(arg) {
-			return nil, nil, fnerrors.New("absolute paths are not supported: %s", arg)
+			return nil, nil, fnerrors.Newf("absolute paths are not supported: %s", arg)
 		}
 
 		origArg := arg
@@ -174,7 +174,7 @@ func locationsAndPackageRefsFromArgs(ctx context.Context, mainModuleName string,
 			origArg, moduleName, rel, expando, isRef, moduleNames)
 
 		if strings.HasPrefix(rel, "..") {
-			return nil, nil, fnerrors.New("can't refer to packages outside of the module root: %s", rel)
+			return nil, nil, fnerrors.Newf("can't refer to packages outside of the module root: %s", rel)
 		}
 
 		if expando {

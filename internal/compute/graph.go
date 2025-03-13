@@ -459,7 +459,7 @@ func (g *Orch) Call(callback func(context.Context) error) error {
 	})
 	err, ok := <-errCh
 	if !ok {
-		return fnerrors.New("call was canceled?")
+		return fnerrors.Newf("call was canceled?")
 	}
 	return err
 }
@@ -468,7 +468,7 @@ func WithGraphLifecycle[V any](ctx context.Context, f func(context.Context) (V, 
 	g := On(ctx)
 	if g == nil {
 		var empty V
-		return empty, fnerrors.New("no graph in context")
+		return empty, fnerrors.Newf("no graph in context")
 	}
 
 	return f(g.origctx)

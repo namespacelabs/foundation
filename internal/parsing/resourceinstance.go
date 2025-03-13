@@ -124,7 +124,7 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 				if expected.DefaultResource != nil {
 					resourceRef = expected.DefaultResource
 				} else {
-					errs = append(errs, fnerrors.New("resource input for %q is missing", expected.Name.Canonical()))
+					errs = append(errs, fnerrors.Newf("resource input for %q is missing", expected.Name.Canonical()))
 					continue
 				}
 			} else {
@@ -176,7 +176,7 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 	}
 
 	if len(index) > 0 {
-		errs = append(errs, fnerrors.New("the following specified resource values are not required: %s", strings.Join(maps.Keys(index), ", ")))
+		errs = append(errs, fnerrors.Newf("the following specified resource values are not required: %s", strings.Join(maps.Keys(index), ", ")))
 	}
 
 	if err := multierr.New(errs...); err != nil {
@@ -227,7 +227,7 @@ func LookupResourceProvider(ctx context.Context, pl pkggraph.PackageLoader, pkg 
 
 	p := providerPkg.LookupResourceProvider(classRef)
 	if p == nil {
-		return nil, fnerrors.New("package %q is not a provider for resource class %q", providerPkg.PackageName(), classRef.Canonical())
+		return nil, fnerrors.Newf("package %q is not a provider for resource class %q", providerPkg.PackageName(), classRef.Canonical())
 	}
 
 	return p, nil

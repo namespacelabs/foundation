@@ -41,7 +41,7 @@ func Rehydrate(ctx context.Context, srv planning.Server, imageID oci.ImageID) (*
 
 		ref, remoteOpts, err := oci.ParseRefAndKeychain(ctx, imageID.RepoAndDigest(), reg.Access())
 		if err != nil {
-			return nil, fnerrors.New("failed to parse: %w", err)
+			return nil, fnerrors.Newf("failed to parse: %w", err)
 		}
 
 		img, err := remote.Image(ref, remoteOpts...)

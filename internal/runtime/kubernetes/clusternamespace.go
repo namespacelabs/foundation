@@ -100,7 +100,7 @@ func (r *ClusterNamespace) FetchEnvironmentDiagnostics(ctx context.Context) (*st
 
 	serializedKube, err := anypb.New(kube)
 	if err != nil {
-		return nil, fnerrors.New("kubernetes: failed to serialize KubernetesEnvDiagnostics")
+		return nil, fnerrors.Newf("kubernetes: failed to serialize KubernetesEnvDiagnostics")
 	}
 
 	diag.RuntimeSpecific = append(diag.RuntimeSpecific, serializedKube)
@@ -256,7 +256,7 @@ func (r *ClusterNamespace) isPodReady(ctx context.Context, srv runtime.Deployabl
 			return false, err
 		}
 
-		return false, fnerrors.New("pod %q failed", pod.Name)
+		return false, fnerrors.Newf("pod %q failed", pod.Name)
 	}
 
 	for _, reason := range pod.Status.Conditions {
@@ -321,7 +321,7 @@ func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.Deployable, 
 	}
 
 	if len(pods.Items) == 0 {
-		return fnerrors.New("%s: no pods to observe", srv.GetName())
+		return fnerrors.Newf("%s: no pods to observe", srv.GetName())
 	}
 
 	_, err = kubeobserver.WatchPods(ctx, r.underlying.cli, r.target.namespace, kubedef.SelectById(srv), func(pod corev1.Pod) (any, bool, error) {

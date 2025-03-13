@@ -149,7 +149,7 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 		if cfg.Protocol == "grpc" {
 			c := listenerConfiguration(cfg.Name)
 			if c == nil {
-				return fnerrors.New("missing listener configuration for %q", cfg.Name)
+				return fnerrors.Newf("missing listener configuration for %q", cfg.Name)
 			}
 
 			if cgrp, ok := c.(GrpcListenerConfiguration); ok {
@@ -167,10 +167,10 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 
 				serversByConfiguration[cfg.Name] = append(serversByConfiguration[cfg.Name], grpc.NewServer(x...))
 			} else {
-				return fnerrors.New("listener configuration for %q does not support grpc", cfg.Name)
+				return fnerrors.Newf("listener configuration for %q does not support grpc", cfg.Name)
 			}
 		} else if cfg.Protocol != "" {
-			return fnerrors.New("unsupported service protocol %q", cfg.Protocol)
+			return fnerrors.Newf("unsupported service protocol %q", cfg.Protocol)
 		}
 	}
 
@@ -260,17 +260,17 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 			return r.Name == reg.ConfigurationName
 		})
 		if ndx < 0 {
-			return fnerrors.New("missing listener configuration for %q", reg.ConfigurationName)
+			return fnerrors.Newf("missing listener configuration for %q", reg.ConfigurationName)
 		}
 
 		c := rt.ListenerConfiguration[ndx]
 		if c.Protocol != "" {
-			return fnerrors.New("listener can't have a bound protocol (saw %q)", c.Protocol)
+			return fnerrors.Newf("listener can't have a bound protocol (saw %q)", c.Protocol)
 		}
 
 		x := listenerConfiguration(c.Name)
 		if x == nil {
-			return fnerrors.New("missing listener registration for %q", reg.ConfigurationName)
+			return fnerrors.Newf("missing listener registration for %q", reg.ConfigurationName)
 		}
 
 		lst, err := x.CreateListener(ctx, reg.ConfigurationName, opts)

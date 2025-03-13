@@ -161,7 +161,7 @@ func main() {
 					}
 
 				default:
-					return fnerrors.New("%s: unsupported ingress protocol", *protocol)
+					return fnerrors.Newf("%s: unsupported ingress protocol", *protocol)
 				}
 
 				if len(spec.Rules) == 0 {

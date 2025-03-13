@@ -140,12 +140,12 @@ func prepareDeps(ctx context.Context, loader pkggraph.PackageLoader, fmwk schema
 func prepareDep(ctx context.Context, loader pkggraph.PackageLoader, fmwk schema.Framework, dep *schema.Instantiate) (*DependencyData, error) {
 	pkg, err := loader.LoadByName(ctx, schema.PackageName(dep.PackageName))
 	if err != nil {
-		return nil, fnerrors.New("failed to load %s/%s: %w", dep.PackageName, dep.Type, err)
+		return nil, fnerrors.Newf("failed to load %s/%s: %w", dep.PackageName, dep.Type, err)
 	}
 
 	_, p := parsing.FindProvider(pkg, schema.PackageName(dep.PackageName), dep.Type)
 	if p == nil {
-		return nil, fnerrors.New("didn't find a provider for %s/%s", dep.PackageName, dep.Type)
+		return nil, fnerrors.Newf("didn't find a provider for %s/%s", dep.PackageName, dep.Type)
 	}
 
 	var provider *ProviderTypeData
@@ -163,7 +163,7 @@ func prepareDep(ctx context.Context, loader pkggraph.PackageLoader, fmwk schema.
 		for _, prov := range p.AvailableIn {
 			if prov.ProvidedInFrameworks()[fmwk] {
 				if provider != nil {
-					return nil, fnerrors.New("multiple providers available for %s/%s", dep.PackageName, dep.Type)
+					return nil, fnerrors.Newf("multiple providers available for %s/%s", dep.PackageName, dep.Type)
 				}
 				provider = &ProviderTypeData{
 					ParsedType: prov,
@@ -205,7 +205,7 @@ func PrepareGrpcBackendDep(ctx context.Context, loader pkggraph.PackageLoader, d
 	}
 
 	if pkg.Node().GetKind() != schema.Node_SERVICE {
-		return nil, fnerrors.New("%s: must be a service", backend.PackageName)
+		return nil, fnerrors.Newf("%s: must be a service", backend.PackageName)
 	}
 
 	// Finding the exported service. If no service name is provided, pick the first and only service.
@@ -213,7 +213,7 @@ func PrepareGrpcBackendDep(ctx context.Context, loader pkggraph.PackageLoader, d
 	for _, svc := range pkg.Node().ExportService {
 		if backend.ServiceName == "" || matchesService(svc.ProtoTypename, backend.ServiceName) {
 			if exportedService != nil {
-				return nil, fnerrors.New("%s: matching too many services, already had %s, got %s as well",
+				return nil, fnerrors.Newf("%s: matching too many services, already had %s, got %s as well",
 					backend.PackageName, exportedService.ProtoTypename, svc.ProtoTypename)
 			}
 			exportedService = svc
@@ -221,7 +221,7 @@ func PrepareGrpcBackendDep(ctx context.Context, loader pkggraph.PackageLoader, d
 	}
 
 	if exportedService == nil {
-		return nil, fnerrors.New("%s: no such service %q", backend.PackageName, backend.ServiceName)
+		return nil, fnerrors.Newf("%s: no such service %q", backend.PackageName, backend.ServiceName)
 	}
 
 	return &ProtoTypeData{

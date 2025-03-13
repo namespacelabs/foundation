@@ -51,7 +51,7 @@ func newSetupPantsCacheCmd() *cobra.Command {
 		}
 
 		if response.CacheEndpoint == "" {
-			return fnerrors.New("did not receive a valid cache endpoint")
+			return fnerrors.Newf("did not receive a valid cache endpoint")
 		}
 
 		globalCfg := map[string]any{
@@ -63,7 +63,7 @@ func newSetupPantsCacheCmd() *cobra.Command {
 		if len(response.ServerCaPem) > 0 {
 			loc, err := writeTempFile(pantsCachePathBase, "*.cert", []byte(response.ServerCaPem))
 			if err != nil {
-				return fnerrors.New("failed to create temp file: %w", err)
+				return fnerrors.Newf("failed to create temp file: %w", err)
 			}
 
 			globalCfg["remote_ca_certs_path"] = loc
@@ -72,7 +72,7 @@ func newSetupPantsCacheCmd() *cobra.Command {
 		if len(response.ClientCertPem) > 0 {
 			loc, err := writeTempFile(pantsCachePathBase, "*.cert", []byte(response.ClientCertPem))
 			if err != nil {
-				return fnerrors.New("failed to create temp file: %w", err)
+				return fnerrors.Newf("failed to create temp file: %w", err)
 			}
 
 			globalCfg["remote_client_certs_path"] = loc
@@ -81,7 +81,7 @@ func newSetupPantsCacheCmd() *cobra.Command {
 		if len(response.ClientKeyPem) > 0 {
 			loc, err := writeTempFile(pantsCachePathBase, "*.key", []byte(response.ClientKeyPem))
 			if err != nil {
-				return fnerrors.New("failed to create temp file: %w", err)
+				return fnerrors.Newf("failed to create temp file: %w", err)
 			}
 
 			globalCfg["remote_client_key_path"] = loc
@@ -93,19 +93,19 @@ func newSetupPantsCacheCmd() *cobra.Command {
 
 		serialized, err := toml.Marshal(config)
 		if err != nil {
-			return fnerrors.New("failed to marshal toml: %w", err)
+			return fnerrors.Newf("failed to marshal toml: %w", err)
 		}
 
 		if pantsTomlPath == "" {
 			loc, err := writeTempFile(pantsCachePathBase, "*.toml", serialized)
 			if err != nil {
-				return fnerrors.New("failed to create temp file: %w", err)
+				return fnerrors.Newf("failed to create temp file: %w", err)
 			}
 
 			pantsTomlPath = loc
 		} else {
 			if err := os.WriteFile(pantsTomlPath, serialized, 0644); err != nil {
-				return fnerrors.New("failed to write %q: %w", pantsTomlPath, err)
+				return fnerrors.Newf("failed to write %q: %w", pantsTomlPath, err)
 			}
 		}
 

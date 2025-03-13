@@ -33,7 +33,7 @@ func StoreMarshalledUser(ctx context.Context, userAuthData []byte) error {
 	}
 
 	if err := os.WriteFile(filepath.Join(configDir, userAuthJson), userAuthData, 0600); err != nil {
-		return fnerrors.New("failed to write user auth data: %w", err)
+		return fnerrors.Newf("failed to write user auth data: %w", err)
 	}
 
 	return nil

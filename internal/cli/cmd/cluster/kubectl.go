@@ -50,7 +50,7 @@ func NewKubectlCmd() *cobra.Command {
 
 		kubectlBin, err := kubectl.EnsureSDK(ctx, host.HostPlatform())
 		if err != nil {
-			return fnerrors.New("failed to download Kubernetes SDK: %w", err)
+			return fnerrors.Newf("failed to download Kubernetes SDK: %w", err)
 		}
 
 		kubectl := exec.CommandContext(ctx, string(kubectlBin), cmdLine...)
@@ -106,7 +106,7 @@ func newWriteKubeconfigCmd(use string, hidden bool) *cobra.Command {
 
 		if *outputPath != "" {
 			if err := os.WriteFile(*outputPath, []byte(cfg.Kubeconfig), 0644); err != nil {
-				return fnerrors.New("failed to write %q: %w", *outputPath, err)
+				return fnerrors.Newf("failed to write %q: %w", *outputPath, err)
 			}
 		}
 

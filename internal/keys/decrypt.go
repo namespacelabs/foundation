@@ -54,7 +54,7 @@ func Decrypt(ctx context.Context, keyDir fs.FS, src io.Reader) ([]byte, error) {
 				}
 			}
 
-			return nil, fnerrors.New("failed to decrypt: no identity matched (had %s)", strings.Join(recipients, ", "))
+			return nil, fnerrors.Newf("failed to decrypt: no identity matched (had %s)", strings.Join(recipients, ", "))
 		}
 
 		return nil, err

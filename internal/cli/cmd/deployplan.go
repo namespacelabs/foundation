@@ -58,7 +58,7 @@ func NewDeployPlanCmd() *cobra.Command {
 		}
 
 		if deploy.RequireReason(config) && deployReason(opts) == "" {
-			return fnerrors.New("--reason is required when deploying to environment %q", plan.Environment.Name)
+			return fnerrors.Newf("--reason is required when deploying to environment %q", plan.Environment.Name)
 		}
 
 		env := serializedContext{root, config, plan.Environment}
@@ -88,17 +88,17 @@ func (se serializedContext) Configuration() cfg.Configuration { return se.config
 func loadPlan(ctx context.Context, image, insecure bool, path string) (*schema.DeployPlan, error) {
 	raw, err := loadPlanContents(ctx, image, insecure, path)
 	if err != nil {
-		return nil, fnerrors.New("failed to load %q: %w", path, err)
+		return nil, fnerrors.Newf("failed to load %q: %w", path, err)
 	}
 
 	any := &anypb.Any{}
 	if err := proto.Unmarshal(raw, any); err != nil {
-		return nil, fnerrors.New("failed to unmarshal %q: %w", path, err)
+		return nil, fnerrors.Newf("failed to unmarshal %q: %w", path, err)
 	}
 
 	plan := &schema.DeployPlan{}
 	if err := any.UnmarshalTo(plan); err != nil {
-		return nil, fnerrors.New("failed to unmarshal %q: %w", path, err)
+		return nil, fnerrors.Newf("failed to unmarshal %q: %w", path, err)
 	}
 
 	return plan, nil

@@ -37,11 +37,11 @@ func newImpersonateCmd() *cobra.Command {
 	credsFile := cmd.Flags().String("write_creds", "", "Instead of outputting, write the credentials to the specified file.")
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if *serviceAccount == "" {
-			return fnerrors.New("--service_account is required")
+			return fnerrors.Newf("--service_account is required")
 		}
 
 		if *workloadIdentityProvider == "" {
-			return fnerrors.New("--workload_identity_provider is required")
+			return fnerrors.Newf("--workload_identity_provider is required")
 		}
 
 		ip := *workloadIdentityProvider

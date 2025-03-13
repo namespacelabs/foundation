@@ -15,6 +15,6 @@ func RequireFeature(module *pkggraph.Module, feature string) error {
 		return nil
 	}
 
-	return fnerrors.New("feature %q is not enabled by default, as it is still experimental. It can be enabled by adding %q to %q in %q",
+	return fnerrors.Newf("feature %q is not enabled by default, as it is still experimental. It can be enabled by adding %q to %q in %q",
 		feature, feature, "enabledFeatures", module.Abs())
 }

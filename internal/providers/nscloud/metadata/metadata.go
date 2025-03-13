@@ -31,13 +31,13 @@ type MetadataSpec struct {
 func FetchValueFromSpec(ctx context.Context, specData string, key string) (string, error) {
 	decodedSpec, err := base64.RawStdEncoding.DecodeString(specData)
 	if err != nil {
-		return "", fnerrors.New("metadata spec is invalid")
+		return "", fnerrors.Newf("metadata spec is invalid")
 	}
 
 	var spec MetadataSpec
 	if err := json.Unmarshal(decodedSpec, &spec); err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to unmarshal metadata spec: %v\n", err)
-		return "", fnerrors.New("metadata spec is invalid")
+		return "", fnerrors.Newf("metadata spec is invalid")
 	}
 
 	if spec.InlineToken != "" {
@@ -52,24 +52,24 @@ func FetchValueFromSpec(ctx context.Context, specData string, key string) (strin
 
 		req, err := http.NewRequestWithContext(tCtx, http.MethodGet, mdURL, nil)
 		if err != nil {
-			return "", fnerrors.New("failed to create metadata request: %w", err)
+			return "", fnerrors.Newf("failed to create metadata request: %w", err)
 		}
 
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
-			return "", fnerrors.New("failed to fetch metadata value: %w", err)
+			return "", fnerrors.Newf("failed to fetch metadata value: %w", err)
 		}
 
 		defer resp.Body.Close()
 
 		valueBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return "", fnerrors.New("failed to read metadata value: %w", err)
+			return "", fnerrors.Newf("failed to read metadata value: %w", err)
 		}
 
 		return string(valueBytes), nil
 	default:
-		return "", fnerrors.New("metadata spec is not supported; only support version=v1")
+		return "", fnerrors.Newf("metadata spec is not supported; only support version=v1")
 	}
 }
 

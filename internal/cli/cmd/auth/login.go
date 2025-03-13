@@ -37,7 +37,7 @@ func NewLoginCmd() *cobra.Command {
 			if session {
 				sessionDuration = duration
 			} else if duration != defaultSessionDuration {
-				return fnerrors.New("--session is required when setting --duration")
+				return fnerrors.Newf("--session is required when setting --duration")
 			}
 
 			res, err := fnapi.StartLogin(ctx, auth.Workspace, sessionDuration)

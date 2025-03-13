@@ -6,6 +6,7 @@ package ctl
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -37,7 +38,7 @@ func WaitKubeSystem(ctx context.Context, cluster *api.KubernetesCluster) error {
 		cfg := clientcmd.NewDefaultClientConfig(MakeConfig(cluster), nil)
 		restcfg, err := cfg.ClientConfig()
 		if err != nil {
-			return fnerrors.New("failed to load kubernetes configuration: %w", err)
+			return fnerrors.Newf("failed to load kubernetes configuration: %w", err)
 		}
 
 		eg := executor.New(ctx, "wait")
@@ -66,7 +67,7 @@ func WaitKubeSystem(ctx context.Context, cluster *api.KubernetesCluster) error {
 }
 
 func WaitContainers(ctx context.Context, clusterId string, ctrs []*api.Container) error {
-	return tasks.Action("cluster.wait-containers").HumanReadablef("Waiting for containers to start").
+	return tasks.Action("cluster.wait-containers").HumanReadable("Waiting for containers to start").
 		Arg("id", clusterId).Run(ctx, func(ctx context.Context) error {
 		fmt.Fprintf(console.Debug(ctx), "polling cluster %q\n", clusterId)
 		ctx, cancel := context.WithTimeout(ctx, waitTimeout)
@@ -98,7 +99,7 @@ func WaitContainers(ctx context.Context, clusterId string, ctrs []*api.Container
 							msg = fmt.Sprintf("%s: %s", msg, c.NotRunningReason)
 						}
 
-						return fmt.Errorf(msg)
+						return errors.New(msg)
 					}
 				}
 			}

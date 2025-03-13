@@ -70,7 +70,7 @@ func (bc byteStreamCacheable) LoadCached(ctx context.Context, c cache.Cache, t C
 		}
 	}
 
-	return Result[bytestream.ByteStream]{}, fnerrors.New("unexpected cache implementation, couldn't get content length of cache entry")
+	return Result[bytestream.ByteStream]{}, fnerrors.Newf("unexpected cache implementation, couldn't get content length of cache entry")
 }
 
 func (bc byteStreamCacheable) Cache(ctx context.Context, c cache.Cache, v bytestream.ByteStream) (schema.Digest, error) {

@@ -111,7 +111,7 @@ func newGenerateAccessTokenCmd() *cobra.Command {
 
 		if *outputPath != "" {
 			if err := os.WriteFile(*outputPath, []byte(res.IngressAccessToken), 0644); err != nil {
-				return fnerrors.New("failed to write %q: %w", *outputPath, err)
+				return fnerrors.Newf("failed to write %q: %w", *outputPath, err)
 			}
 
 			return nil

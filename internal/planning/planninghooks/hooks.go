@@ -6,7 +6,6 @@ package planninghooks
 
 import (
 	"context"
-	"fmt"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
@@ -60,5 +59,5 @@ func InvokeInternalPrepareHook(ctx context.Context, name string, env cfg.Context
 		})
 	}
 
-	return nil, fnerrors.New(fmt.Sprintf("%s: does not exist", name))
+	return nil, fnerrors.Newf("%s: does not exist", name)
 }
