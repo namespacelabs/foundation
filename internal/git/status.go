@@ -65,7 +65,7 @@ func parseRevTime(out []byte) (string, time.Time, error) {
 
 	i := strings.IndexByte(buf, ':')
 	if i < 1 {
-		return "", time.Time{}, fnerrors.New("unrecognized VCS tool output")
+		return "", time.Time{}, fnerrors.Newf("unrecognized VCS tool output")
 	}
 	rev := buf[:i]
 

@@ -40,15 +40,15 @@ func (x *ResolvableSinkMap) SetValue(key, value string) error {
 }
 
 func (x *ResolvableSinkMap) SetSecret(key string, secret *SecretRef) error {
-	return fnerrors.New("%s: secrets not supported in this context", key)
+	return fnerrors.Newf("%s: secrets not supported in this context", key)
 }
 
 func (x *ResolvableSinkMap) SetExperimentalFromDownwardsFieldPath(key, value string) error {
-	return fnerrors.New("%s: ExperimentalFromDownwardsFieldPath not supported in this context", key)
+	return fnerrors.Newf("%s: ExperimentalFromDownwardsFieldPath not supported in this context", key)
 }
 
 func (x *ResolvableSinkMap) SetLateBoundResourceFieldSelector(key string, _ runtimepb.SetContainerField_ValueSource, src *schema.ResourceConfigFieldSelector) error {
-	return fnerrors.New("%s: late bound values not supported in this context", key)
+	return fnerrors.Newf("%s: late bound values not supported in this context", key)
 }
 
 type LikeResolvable interface {
@@ -104,7 +104,7 @@ func resolve(rt *runtimepb.RuntimeConfig, alloc *SecretRef, fieldName string, re
 	case resv.FromKubernetesSecret != "":
 		parts := strings.SplitN(resv.FromKubernetesSecret, ":", 2)
 		if len(parts) < 2 {
-			return fnerrors.New("invalid from_kubernetes_secret format")
+			return fnerrors.Newf("invalid from_kubernetes_secret format")
 		}
 
 		return out.SetSecret(fieldName, &SecretRef{parts[0], parts[1]})

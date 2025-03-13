@@ -26,7 +26,7 @@ func main() {
 		}
 
 		if intent.Chart == nil {
-			return fnerrors.New("chart is required")
+			return fnerrors.Newf("chart is required")
 		}
 
 		install := &helmc.OpHelmInstall{

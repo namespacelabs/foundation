@@ -29,7 +29,7 @@ func newGkeCmd() *cobra.Command {
 		RunE: runPrepare(func(ctx context.Context, env cfg.Context) ([]prepare.Stage, error) {
 			if experimentalGCLB {
 				if ingressClass != "" {
-					return nil, fnerrors.New("--experimental_use_gclb can't be used with --ingress_class")
+					return nil, fnerrors.Newf("--experimental_use_gclb can't be used with --ingress_class")
 				}
 
 				ingressClass = "gclb"

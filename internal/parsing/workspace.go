@@ -6,7 +6,6 @@ package parsing
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"namespacelabs.dev/foundation/framework/findroot"
@@ -73,14 +72,14 @@ func validateAPIRequirements(moduleName string, w *schema.Workspace_FoundationRe
 
 	// Check that the foundation repo dep uses an API compatible with the current CLI.
 	if moduleName == foundationModule && w.GetMinimumApi() > 0 && w.GetMinimumApi() < int32(versions.Builtin().MinimumAPIVersion) {
-		return fnerrors.New(fmt.Sprintf(`Unfortunately, this version of Foundation is too recent to be used with the
+		return fnerrors.Newf(`Unfortunately, this version of Foundation is too recent to be used with the
 current repository. If you're testing out an existing repository that uses
 Foundation, try fetching a newer version of the repository. If this is your
 own codebase, then you'll need to either revert to a previous version of
 "ns", or update your dependency versions with "ns mod get %s".
 
 This version check will be removed in future non-alpha versions of
-Foundation, which establish a stable longer term supported API surface.`, foundationModule))
+Foundation, which establish a stable longer term supported API surface.`, foundationModule)
 	}
 
 	return nil

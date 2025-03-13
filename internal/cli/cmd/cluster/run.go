@@ -72,7 +72,7 @@ func NewRunCmd() *cobra.Command {
 		name := *requestedName
 
 		if *image == "" {
-			return fnerrors.New("--image is required")
+			return fnerrors.Newf("--image is required")
 		}
 
 		if name == "" {
@@ -81,15 +81,15 @@ func NewRunCmd() *cobra.Command {
 
 		if *on != "" {
 			if *devmode {
-				return fnerrors.New("--development can only be set when creating an environment (i.e. it can't be set when --on is specified)")
+				return fnerrors.Newf("--development can only be set when creating an environment (i.e. it can't be set when --on is specified)")
 			}
 
 			if *machineType != "" {
-				return fnerrors.New("--machine_type can only be set when creating an environment (i.e. it can't be set when --on is specified)")
+				return fnerrors.Newf("--machine_type can only be set when creating an environment (i.e. it can't be set when --on is specified)")
 			}
 
 			if *duration > 0 {
-				return fnerrors.New("--duration can only be set when creating an environment (i.e. it can't be set when --on is specified)")
+				return fnerrors.Newf("--duration can only be set when creating an environment (i.e. it can't be set when --on is specified)")
 			}
 		}
 
@@ -116,20 +116,20 @@ func NewRunCmd() *cobra.Command {
 
 		if *experimental != "" {
 			if err := json.Unmarshal([]byte(*experimental), &opts.Experimental); err != nil {
-				return fnerrors.New("failed to parse: %w", err)
+				return fnerrors.Newf("failed to parse: %w", err)
 			}
 		}
 
 		if *instanceExperimental != "" {
 			if err := json.Unmarshal([]byte(*instanceExperimental), &opts.InstanceExperimental); err != nil {
-				return fnerrors.New("failed to parse: %w", err)
+				return fnerrors.Newf("failed to parse: %w", err)
 			}
 		}
 
 		if *instanceExperimental != "" {
 			var m any
 			if err := json.Unmarshal([]byte(*instanceExperimental), &m); err != nil {
-				return fnerrors.New("failed to parse: %w", err)
+				return fnerrors.Newf("failed to parse: %w", err)
 			}
 			opts.InstanceExperimental = m
 		}
@@ -201,7 +201,7 @@ func fillInIngressRules(ports []int32, ingressRules map[string]string) ([]export
 			continue
 		}
 
-		return nil, fnerrors.New("specified ingress rule for port %q which is not exported", k)
+		return nil, fnerrors.Newf("specified ingress rule for port %q which is not exported", k)
 	}
 
 	return exported, nil
@@ -294,7 +294,7 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration t
 				}
 
 				if devmode || len(opts.AuthorizedSshKeys) > 0 {
-					return nil, fnerrors.New("not supported yet with compute_api")
+					return nil, fnerrors.Newf("not supported yet with compute_api")
 				}
 
 				var response api.CreateInstanceResponse
@@ -354,7 +354,7 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration t
 		return nil, err
 	}
 
-	return tasks.Return(ctx, tasks.Action("nscloud.start-containers").HumanReadablef("Starting containers"),
+	return tasks.Return(ctx, tasks.Action("nscloud.start-containers").HumanReadable("Starting containers"),
 		func(ctx context.Context) (*CreateContainerResult, error) {
 			var response api.StartContainersResponse
 			if err := api.Methods.StartContainers.Do(ctx, api.StartContainersRequest{
@@ -413,7 +413,7 @@ func parseEffect(spec string) (*api.ContainerPort_HttpMatchRule, error) {
 			x.DoesNotRequireAuth = true
 
 		default:
-			return nil, fnerrors.New("unrecognized rule %q", p)
+			return nil, fnerrors.Newf("unrecognized rule %q", p)
 		}
 	}
 

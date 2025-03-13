@@ -278,7 +278,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Insta
 				}
 
 				if len(opts.AuthorizedSshKeys) > 0 || opts.InternalExtra != "" || len(opts.Volumes) > 0 {
-					return nil, fnerrors.New("not supported")
+					return nil, fnerrors.Newf("not supported")
 				}
 
 				if opts.Duration > 0 {
@@ -300,7 +300,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Insta
 
 				var response CreateInstanceResponse
 				if err := api.CreateInstance.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
-					return nil, fnerrors.New("failed to create cluster: %w", err)
+					return nil, fnerrors.Newf("failed to create cluster: %w", err)
 				}
 
 				resp.InstanceId = response.InstanceId
@@ -337,7 +337,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Insta
 
 				var response StartCreateKubernetesClusterResponse
 				if err := api.StartCreateKubernetesCluster.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
-					return nil, fnerrors.New("failed to create cluster: %w", err)
+					return nil, fnerrors.Newf("failed to create cluster: %w", err)
 				}
 
 				resp.InstanceId = response.ClusterId
@@ -443,7 +443,7 @@ func GetBuilderConfiguration(ctx context.Context, platform BuildPlatform, create
 				SkipBuilderPreSpawn: !createAtStartup,
 			})
 			if err != nil {
-				return nil, fnerrors.New("failed while creating %v build cluster: %w", platform, err)
+				return nil, fnerrors.Newf("failed while creating %v build cluster: %w", platform, err)
 			}
 
 			fmt.Fprintf(console.Debug(ctx), "[%s] RPC: got buildkit_endpoint=%s server_ca_pem=%s shape=%s (took %v)\n",
@@ -475,7 +475,7 @@ func EnsureBuildCluster(ctx context.Context, platform BuildPlatform) (*builderv1
 				Platform: string(platform),
 			})
 			if err != nil {
-				return nil, fnerrors.New("failed while creating %v build cluster: %w", platform, err)
+				return nil, fnerrors.Newf("failed while creating %v build cluster: %w", platform, err)
 			}
 
 			fmt.Fprintf(console.Debug(ctx), "[%s] RPC: got instance_id=%s endpoint=%s authentication=%s encapsulation=%s (took %v)\n",
@@ -693,7 +693,7 @@ func EnsureCluster(ctx context.Context, api API, resolver fnapi.ResolveFunc, clu
 		resolver = endpoint.ResolveRegionalEndpoint
 	}
 
-	return tasks.Return(ctx, tasks.Action("nscloud.ensure").HumanReadablef("Waiting for environment").Arg("id", clusterId), func(ctx context.Context) (*GetKubernetesClusterResponse, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.ensure").HumanReadable("Waiting for environment").Arg("id", clusterId), func(ctx context.Context) (*GetKubernetesClusterResponse, error) {
 		var response GetKubernetesClusterResponse
 		if err := api.EnsureKubernetesCluster.Do(ctx, EnsureKubernetesClusterRequest{ClusterId: clusterId}, resolver, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
@@ -809,10 +809,10 @@ func TailClusterLogs(ctx context.Context, api API, opts *LogsOpts, handle func(L
 		if err := scanner.Err(); err != nil {
 			// XXX Replace with pagination
 			if streamResetError.MatchString(err.Error()) {
-				return fnerrors.New("Logs stream reset. We saw: %w\n\nThis can happen if no new logs arrived for a long time.\nIf you are still expecting new logs, please retry.", err)
+				return fnerrors.Newf("Logs stream reset. We saw: %w\n\nThis can happen if no new logs arrived for a long time.\nIf you are still expecting new logs, please retry.", err)
 			}
 
-			return fnerrors.New("cluster log stream closed with error: %w", err)
+			return fnerrors.Newf("cluster log stream closed with error: %w", err)
 		}
 		return nil
 	})

@@ -210,7 +210,7 @@ func (b *Bundle) EnsureReader(pubkey string) error {
 
 func (b *Bundle) SetReaders(pubkeys []string) error {
 	if len(pubkeys) == 0 {
-		return fnerrors.New("can't reset the readers to an empty list")
+		return fnerrors.Newf("can't reset the readers to an empty list")
 	}
 
 	var keys []*age.X25519Recipient
@@ -509,14 +509,14 @@ func detect(raw []byte) ([]byte, error) {
 	guard := []byte(fmt.Sprintf("-----%s-----\n", guardBegin))
 	idx := bytes.Index(raw, guard)
 	if idx < 0 {
-		return nil, fnerrors.New("invalid bundle: missing begin guard")
+		return nil, fnerrors.Newf("invalid bundle: missing begin guard")
 	}
 
 	rawLeft := raw[(idx + len(guard)):]
 
 	endIdx := bytes.Index(rawLeft, []byte(fmt.Sprintf("-----%s-----", guardEnd)))
 	if endIdx < 0 {
-		return nil, fnerrors.New("invalid bundle: missing end guard")
+		return nil, fnerrors.Newf("invalid bundle: missing end guard")
 	}
 
 	return io.ReadAll(base64.NewDecoder(base64.StdEncoding, bytes.NewReader(rawLeft[:endIdx])))

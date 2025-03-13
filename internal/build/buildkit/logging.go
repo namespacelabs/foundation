@@ -206,7 +206,7 @@ func setupOutput(ctx context.Context, logid, sid string, eg executor.ExecutorLik
 		}
 
 		for _, ra := range running {
-			ra.customDone(time.Now(), fnerrors.New("never finished"))
+			ra.customDone(time.Now(), fnerrors.Newf("never finished"))
 		}
 
 		return nil

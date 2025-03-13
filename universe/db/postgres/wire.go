@@ -18,11 +18,11 @@ import (
 
 func ProvideDatabase(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps) (*DB, error) {
 	if db.ResourceRef == "" {
-		return nil, fnerrors.New("resourceRef is required")
+		return nil, fnerrors.Newf("resourceRef is required")
 	}
 
 	if db.GetMaxConns() > 0 && db.GetMaxConnsFromEnv() != "" {
-		return nil, fnerrors.New("maxConns and maxConnsFromEnv cannot both be set")
+		return nil, fnerrors.Newf("maxConns and maxConnsFromEnv cannot both be set")
 	}
 
 	res, err := resources.LoadResources()
@@ -42,7 +42,7 @@ func ProvideDatabase(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps) 
 	if db.GetMaxConnsFromEnv() != "" {
 		parsed, err := strconv.ParseInt(os.Getenv(db.GetMaxConnsFromEnv()), 10, 32)
 		if err != nil {
-			return nil, fnerrors.New("%s is not a valid number: %w", db.GetMaxConnsFromEnv(), err)
+			return nil, fnerrors.Newf("%s is not a valid number: %w", db.GetMaxConnsFromEnv(), err)
 		}
 
 		overrides.MaxConns = int32(parsed)
@@ -64,11 +64,11 @@ type ConnUri string
 
 func ProvideDatabaseReference(ctx context.Context, args *DatabaseReferenceArgs, deps ExtensionDeps) (ConnUri, error) {
 	if args.ClusterRef == "" {
-		return "", fnerrors.New("clusterRef is required")
+		return "", fnerrors.Newf("clusterRef is required")
 	}
 
 	if args.Database == "" {
-		return "", fnerrors.New("database is required")
+		return "", fnerrors.Newf("database is required")
 	}
 
 	res, err := resources.LoadResources()

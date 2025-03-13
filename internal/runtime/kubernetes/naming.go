@@ -34,11 +34,11 @@ func ModuleNamespace(ws *schema.Workspace, env *schema.Environment) string {
 
 func validateServiceName(allocatedName string) error {
 	if len(allocatedName) > 63 {
-		return fnerrors.New("invalid service name %q: may contain at most 63 characters", allocatedName)
+		return fnerrors.Newf("invalid service name %q: may contain at most 63 characters", allocatedName)
 	}
 
 	if !validServiceName.MatchString(allocatedName) {
-		return fnerrors.New("invalid service name %q: does not match %s", allocatedName, validServiceName)
+		return fnerrors.Newf("invalid service name %q: does not match %s", allocatedName, validServiceName)
 	}
 
 	return nil

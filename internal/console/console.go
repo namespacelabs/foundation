@@ -41,7 +41,7 @@ var (
 
 func Prepare() error {
 	if DebugToFile != "" && DebugToConsole {
-		return fnerrors.New("--debug_to_console and --debug_to_file are exclusive")
+		return fnerrors.Newf("--debug_to_console and --debug_to_file are exclusive")
 	}
 
 	if DebugToFile != "" {

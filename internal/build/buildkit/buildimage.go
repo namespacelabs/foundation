@@ -55,7 +55,7 @@ func (l *reqToImage) Action() *tasks.ActionEvent {
 	}
 
 	if l.sourceLabel != "" {
-		ev = ev.HumanReadablef(fmt.Sprintf("Build: %s", l.sourceLabel))
+		ev = ev.HumanReadablef("Build: %s", l.sourceLabel)
 	}
 
 	if l.sourcePackage != "" {

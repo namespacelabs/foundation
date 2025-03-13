@@ -61,7 +61,7 @@ func NewLogsCmd() *cobra.Command {
 		}
 
 		if *follow && *since != time.Duration(0) {
-			return fnerrors.New("--follow flag can't be used with --since flag")
+			return fnerrors.Newf("--follow flag can't be used with --since flag")
 		}
 
 		var includeSelector []*api.LogsSelector
@@ -78,11 +78,11 @@ func NewLogsCmd() *cobra.Command {
 				sel.PodName = *pod
 			case "containerd":
 				if *pod != "" {
-					return fnerrors.New("--pod flag can't be used with source 'containerd'")
+					return fnerrors.Newf("--pod flag can't be used with source 'containerd'")
 				}
 				sel.ContainerID = *container
 			default:
-				return fnerrors.New("unsupported logs source %q, only 'containerd' and 'kubernetes' are supported", *source)
+				return fnerrors.Newf("unsupported logs source %q, only 'containerd' and 'kubernetes' are supported", *source)
 			}
 
 			includeSelector = append(includeSelector, sel)
@@ -105,7 +105,7 @@ func NewLogsCmd() *cobra.Command {
 
 		cluster, err := api.GetCluster(ctx, api.Methods, clusterID)
 		if err != nil {
-			return fnerrors.New("failed to get instance information: %w", err)
+			return fnerrors.Newf("failed to get instance information: %w", err)
 		}
 
 		if cluster.Cluster != nil {
@@ -128,7 +128,7 @@ func NewLogsCmd() *cobra.Command {
 
 		logs, err := api.GetClusterLogs(ctx, api.Methods, logOpts)
 		if err != nil {
-			return fnerrors.New("failed to get instance logs: %w", err)
+			return fnerrors.Newf("failed to get instance logs: %w", err)
 		}
 
 		// Skip hint when running in raw mode.

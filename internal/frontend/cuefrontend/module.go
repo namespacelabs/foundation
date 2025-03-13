@@ -60,7 +60,7 @@ func (moduleLoader) ModuleAt(ctx context.Context, dir string, files ...string) (
 		}
 
 		if len(files) == 0 {
-			return nil, fnerrors.New("a workspace definition (ns-workspace.cue) is missing. You can use 'ns mod init' to create a default one.")
+			return nil, fnerrors.Newf("a workspace definition (ns-workspace.cue) is missing. You can use 'ns mod init' to create a default one.")
 		}
 
 		var loaded [][]byte
@@ -214,7 +214,7 @@ func decodeWorkspace(w *schema.Workspace) (cue.Value, error) {
 func parseWorkspaceValue(ctx context.Context, val cue.Value) (*schema.Workspace, error) {
 	var m cueModule
 	if err := val.Decode(&m); err != nil {
-		return nil, fnerrors.New("failed to decode workspace contents: %w", err)
+		return nil, fnerrors.Newf("failed to decode workspace contents: %w", err)
 	}
 
 	w := &schema.Workspace{
@@ -282,7 +282,7 @@ func parseWorkspaceValue(ctx context.Context, val cue.Value) (*schema.Workspace,
 	for name, env := range m.Environments {
 		purpose, ok := schema.Environment_Purpose_value[strings.ToUpper(env.Purpose)]
 		if !ok || purpose == 0 {
-			return nil, fnerrors.New("%s: no such environment purpose %q", name, env.Purpose)
+			return nil, fnerrors.Newf("%s: no such environment purpose %q", name, env.Purpose)
 		}
 
 		out := &schema.Workspace_EnvironmentSpec{
@@ -311,7 +311,7 @@ func parseWorkspaceValue(ctx context.Context, val cue.Value) (*schema.Workspace,
 			// This is a bit sad, but alas.
 			packed, err := anypb.New(msg)
 			if err != nil {
-				return nil, fnerrors.New("failed to repack message: %w", err)
+				return nil, fnerrors.Newf("failed to repack message: %w", err)
 			}
 			out.Configuration = append(out.Configuration, packed)
 		}
@@ -333,7 +333,7 @@ func parseWorkspaceValue(ctx context.Context, val cue.Value) (*schema.Workspace,
 		// This is a bit sad, but alas.
 		packed, err := anypb.New(msg)
 		if err != nil {
-			return nil, fnerrors.New("failed to repack message: %w", err)
+			return nil, fnerrors.Newf("failed to repack message: %w", err)
 		}
 
 		w.SecretBinding = append(w.SecretBinding, &schema.Workspace_SecretBinding{
@@ -379,7 +379,7 @@ func (r workspaceData) LoadedFrom() *schema.Workspace_LoadedFrom {
 func (r workspaceData) FormatTo(w io.Writer) error {
 	formatted, err := format.Node(&ast.File{Decls: r.structLit().Elts})
 	if err != nil {
-		return fnerrors.New("failed to produce cue syntax: %w", err)
+		return fnerrors.Newf("failed to produce cue syntax: %w", err)
 	}
 
 	_, err = w.Write(formatted)

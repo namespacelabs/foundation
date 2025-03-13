@@ -30,7 +30,7 @@ func NewExchangeGithubTokenCmd() *cobra.Command {
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if !ghenv.IsRunningInActions() {
-			return fnerrors.New("not running in a GitHub action")
+			return fnerrors.Newf("not running in a GitHub action")
 		}
 
 		if *ensuredDuration > 0 {

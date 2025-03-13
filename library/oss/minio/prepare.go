@@ -103,7 +103,7 @@ func New(ctx context.Context, opts MinioOpts) (*minio.Client, error) {
 func EnsureBucket(ctx context.Context, instance EnsureBucketOptions) error {
 	min, err := New(ctx, instance.Minio)
 	if err != nil {
-		return fnerrors.New("failed to create client: %w", err)
+		return fnerrors.Newf("failed to create client: %w", err)
 	}
 
 	if err := min.MakeBucket(ctx, instance.BucketName, minio.MakeBucketOptions{
@@ -115,7 +115,7 @@ func EnsureBucket(ctx context.Context, instance EnsureBucketOptions) error {
 				return nil
 			}
 		}
-		return fnerrors.New("failed to create bucket: %w", err)
+		return fnerrors.Newf("failed to create bucket: %w", err)
 	}
 
 	return nil

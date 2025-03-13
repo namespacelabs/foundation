@@ -131,13 +131,13 @@ func fixEnv(ctx context.Context, pl EarlyPackageLoader, pp *pkggraph.Package, en
 		if rf := x.GetValue().GetFromResourceField(); rf != nil {
 			instance, err := pkggraph.LookupResource(ctx, pl, pp, rf.Resource)
 			if err != nil {
-				return fnerrors.New("%s: %w", rf.Resource.Canonical(), err)
+				return fnerrors.Newf("%s: %w", rf.Resource.Canonical(), err)
 			}
 
 			sel := rf.FieldSelector
 			newSel, err := canonicalizeJsonPath(pp.Location, instance.Spec.Class.InstanceType.Descriptor, instance.Spec.Class.InstanceType.Descriptor, sel, sel)
 			if err != nil {
-				return fnerrors.New("%s: %s", rf.Resource.Canonical(), err)
+				return fnerrors.Newf("%s: %s", rf.Resource.Canonical(), err)
 			}
 
 			rf.FieldSelector = newSel

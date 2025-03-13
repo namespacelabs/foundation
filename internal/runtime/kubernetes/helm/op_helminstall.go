@@ -51,7 +51,7 @@ func Register() {
 			var values map[string]any
 			if apply.Values != nil {
 				if err := json.Unmarshal([]byte(apply.Values.Inline), &values); err != nil {
-					return nil, fnerrors.New("failed to unserialize values: %w", err)
+					return nil, fnerrors.Newf("failed to unserialize values: %w", err)
 				}
 			}
 

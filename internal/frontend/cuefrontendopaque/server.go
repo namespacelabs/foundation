@@ -192,7 +192,7 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 		case "udp":
 			p.Protocol = schema.Endpoint_Port_UDP
 		default:
-			return nil, fnerrors.New("unknown protocol %q", port.Protocol)
+			return nil, fnerrors.Newf("unknown protocol %q", port.Protocol)
 		}
 
 		out.MainContainer.ContainerPort = append(out.MainContainer.ContainerPort, p)

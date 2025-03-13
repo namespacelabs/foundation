@@ -39,9 +39,14 @@ func (c *buildTarget) WithSourcePackage(pkg schema.PackageName) *buildConfigurat
 	return d.WithSourcePackage(pkg)
 }
 
-func (c *buildTarget) WithSourceLabel(format string, args ...any) *buildConfiguration {
+func (c *buildTarget) WithSourceLabel(label string) *buildConfiguration {
 	d := buildConfiguration{buildTarget: c}
-	return d.WithSourceLabel(format, args...)
+	return d.WithSourceLabel(label)
+}
+
+func (c *buildTarget) WithSourceLabelf(format string, args ...any) *buildConfiguration {
+	d := buildConfiguration{buildTarget: c}
+	return d.WithSourceLabel(fmt.Sprintf(format, args...))
 }
 
 func (c *buildTarget) WithWorkspace(w Workspace) *buildConfiguration {
@@ -59,8 +64,8 @@ func (d *buildConfiguration) WithSourcePackage(pkg schema.PackageName) *buildCon
 	return d
 }
 
-func (d *buildConfiguration) WithSourceLabel(format string, args ...any) *buildConfiguration {
-	d.label = fmt.Sprintf(format, args...)
+func (d *buildConfiguration) WithSourceLabel(label string) *buildConfiguration {
+	d.label = label
 	return d
 }
 

@@ -548,7 +548,7 @@ func EventDataFromProto(cat string, in *protocol.Task) EventData {
 		data.Completed = time.Unix(0, in.CompletedTs)
 	}
 	if in.ErrorMessage != "" {
-		data.Err = fmt.Errorf(in.ErrorMessage)
+		data.Err = errors.New(in.ErrorMessage)
 	}
 	return data
 }

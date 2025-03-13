@@ -96,7 +96,7 @@ func planResources(ctx context.Context, planner planning.Planner, stack *plannin
 		switch {
 		case parsing.IsSecretResource(resource.Class.Ref):
 			if len(resource.Dependencies) > 0 {
-				return nil, fnerrors.New("runtime secrets don't support dependencies")
+				return nil, fnerrors.Newf("runtime secrets don't support dependencies")
 			}
 
 			// Nothing to do
@@ -104,7 +104,7 @@ func planResources(ctx context.Context, planner planning.Planner, stack *plannin
 
 		case parsing.IsServerResource(resource.Class.Ref):
 			if len(resource.Dependencies) > 0 {
-				return nil, fnerrors.New("runtime servers don't support dependencies")
+				return nil, fnerrors.Newf("runtime servers don't support dependencies")
 			}
 
 			if err := pkggraph.ValidateFoundation("runtime resources", parsing.Version_LibraryIntentsChanged, pkggraph.ModuleFromModules(sealedCtx)); err != nil {
@@ -149,11 +149,11 @@ func planResources(ctx context.Context, planner planning.Planner, stack *plannin
 		case provider.PrepareWith != nil:
 			var errs []error
 			if len(resource.Dependencies) > 0 {
-				errs = append(errs, fnerrors.New("providers with prepareWith don't support dependencies yet"))
+				errs = append(errs, fnerrors.Newf("providers with prepareWith don't support dependencies yet"))
 			}
 
 			if len(resource.Secrets) > 0 {
-				errs = append(errs, fnerrors.New("providers with prepareWith don't support secrets yet"))
+				errs = append(errs, fnerrors.Newf("providers with prepareWith don't support secrets yet"))
 			}
 
 			inv, err := invocation.BuildAndPrepare(ctx, sealedCtx, sealedCtx, nil, provider.PrepareWith)
@@ -405,7 +405,7 @@ func makeState(c *buildkit.GatewayClient, pkg schema.PackageName, image compute.
 				env.FromServiceIngress != nil ||
 				env.FromResourceField != nil ||
 				env.FromFieldSelector != nil {
-				return nil, fnerrors.New("invocation: only support environment variables with static values")
+				return nil, fnerrors.Newf("invocation: only support environment variables with static values")
 			}
 
 			runOpts = append(runOpts, llb.AddEnv(entry.Name, env.Value))

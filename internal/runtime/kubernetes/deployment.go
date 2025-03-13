@@ -269,17 +269,17 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 			}
 
 			if clusterRole == nil {
-				return fnerrors.New("permissions refer to %q which is not present", role.Label)
+				return fnerrors.Newf("permissions refer to %q which is not present", role.Label)
 			}
 
 			const roleInstance = "library.kubernetes.rbac.ClusterRoleInstance"
 			if clusterRole.InstanceType.GetProtoType() != roleInstance {
-				return fnerrors.New("expected resource class to be %q, got %q", roleInstance, clusterRole.InstanceType.GetProtoType())
+				return fnerrors.Newf("expected resource class to be %q, got %q", roleInstance, clusterRole.InstanceType.GetProtoType())
 			}
 
 			instance := &rbac.ClusterRoleInstance{}
 			if err := json.Unmarshal(clusterRole.InstanceSerializedJSON, instance); err != nil {
-				return fnerrors.New("failed to unmarshal instance %q: %w", roleInstance, err)
+				return fnerrors.Newf("failed to unmarshal instance %q: %w", roleInstance, err)
 			}
 
 			s.operations = append(s.operations, kubedef.Apply{

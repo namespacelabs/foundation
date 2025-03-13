@@ -21,5 +21,5 @@ func ParseBuildPlatform(value string) (BuildPlatform, error) {
 		return "arm64", nil
 	}
 
-	return "", fnerrors.New("invalid build platform %q", value)
+	return "", fnerrors.Newf("invalid build platform %q", value)
 }

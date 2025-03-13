@@ -80,7 +80,7 @@ func NewDeployCmd() *cobra.Command {
 			planningargs.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
 			if deploy.RequireReason(env.Configuration()) && serializePath == "" && deployReason(deployOpts) == "" {
-				return fnerrors.New("--reason is required when deploying to environment %q", env.Environment().Name)
+				return fnerrors.Newf("--reason is required when deploying to environment %q", env.Environment().Name)
 			}
 
 			p, err := planning.NewPlanner(ctx, env)
@@ -218,7 +218,7 @@ func completeDeployment(ctx context.Context, env cfg.Context, cluster runtime.Cl
 		}
 
 		if err := os.WriteFile(opts.outputPath, serialized, 0644); err != nil {
-			return fnerrors.New("failed to write %q: %w", opts.outputPath, err)
+			return fnerrors.Newf("failed to write %q: %w", opts.outputPath, err)
 		}
 	}
 

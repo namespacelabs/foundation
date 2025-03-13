@@ -49,7 +49,7 @@ func TestHandleExitsWhenHandlerErrs(t *testing.T) {
 		Provider:    &fakeProvider{},
 		Keybindings: []Handler{},
 		Handler: func(context.Context) error {
-			return fnerrors.New("expected-in-test")
+			return fnerrors.Newf("expected-in-test")
 		},
 	}); err == nil {
 		t.Fatal("expected an error")

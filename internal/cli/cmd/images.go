@@ -279,7 +279,7 @@ func imageFromArgs(cmd *cobra.Command) *oci.Image {
 
 	fncobra.PushParse(cmd, func(ctx context.Context, args []string) error {
 		if len(args) != 1 {
-			return fnerrors.New("expected a single argument, with an image reference")
+			return fnerrors.Newf("expected a single argument, with an image reference")
 		}
 
 		image, err := resolveImage(ctx, args[0], *env, parsing.NewPackageLoader(*env))

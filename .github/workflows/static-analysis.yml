@@ -31,13 +31,15 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.21.x
+          go-version: 1.24.x
       - name: Check out code
         uses: actions/checkout@v4
       - name: Run go vet
         run: go vet ./...
 
   staticcheck:
+    # Temporarily disable staticcheck until we get it working with go 1.23.
+    if: false
     runs-on: nscloud
     strategy:
       matrix:
@@ -48,7 +50,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.21.x
+          go-version: 1.24.x
 
       - name: Check out code
         uses: actions/checkout@v4

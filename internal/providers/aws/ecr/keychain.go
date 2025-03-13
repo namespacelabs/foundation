@@ -76,7 +76,7 @@ func (em keychainSession) Resolve(ctx context.Context, r authn.Resource) (authn.
 
 func (em keychainSession) refreshPrivateAuth(ctx context.Context) (*dockertypes.AuthConfig, error) {
 	if em.sesh == nil {
-		return nil, fnerrors.New("aws/ecr: no credentials available")
+		return nil, fnerrors.Newf("aws/ecr: no credentials available")
 	}
 
 	return tasks.Return(ctx, tasks.Action("aws.ecr.auth"), func(ctx context.Context) (*dockertypes.AuthConfig, error) {
@@ -121,7 +121,7 @@ func (cat cachedAuthToken) Compute(ctx context.Context, _ compute.Resolved) (*ec
 	token, err := ecr.NewFromConfig(cat.sesh.Config()).GetAuthorizationToken(ctx, &ecr.GetAuthorizationTokenInput{})
 	if err != nil {
 		return nil, auth.CheckNeedsLoginOr(cat.sesh, err, func(err error) error {
-			return fnerrors.New("ecr: get auth token failed: %w", err)
+			return fnerrors.Newf("ecr: get auth token failed: %w", err)
 		})
 	}
 

@@ -271,7 +271,7 @@ func (s *sealer) finishSealing(ctx context.Context) (Sealed, error) {
 		}
 
 		if parsed == nil {
-			return Sealed{}, fnerrors.New("%v: missing parsed package", n.PackageName)
+			return Sealed{}, fnerrors.Newf("%v: missing parsed package", n.PackageName)
 		}
 
 		deps = append(deps, parsed)

@@ -30,7 +30,7 @@ func Map(ctx context.Context, fqdn, target string) error {
 			Target: target,
 		}, DecodeJSONResponse(&nr))
 		if err != nil {
-			return fnerrors.New("mapping %q to %q failed: %w", fqdn, target, err)
+			return fnerrors.Newf("mapping %q to %q failed: %w", fqdn, target, err)
 		}
 
 		return nil

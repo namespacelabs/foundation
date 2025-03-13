@@ -30,7 +30,7 @@ func parseTransport(ctx context.Context, t *registry.RegistryTransport) ([]remot
 	case t.Ssh != nil:
 		remoteAddr := t.Ssh.RemoteAddr
 		if remoteAddr == "" {
-			return nil, fnerrors.New("transport.ssh: missing remote address")
+			return nil, fnerrors.Newf("transport.ssh: missing remote address")
 		}
 
 		var teleportProxy *ssh.TeleportProxy

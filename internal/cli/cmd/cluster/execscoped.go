@@ -36,12 +36,12 @@ func NewExecScoped() *cobra.Command {
 		command := args[1:]
 
 		if len(command) == 0 {
-			return fnerrors.New("at least one command is required")
+			return fnerrors.Newf("at least one command is required")
 		}
 
 		svcs := unique(*service)
 		if len(svcs) == 0 {
-			return fnerrors.New("at least one --service is required")
+			return fnerrors.Newf("at least one --service is required")
 		}
 
 		response, err := api.EnsureCluster(ctx, api.Methods, nil, clusterId)
@@ -65,7 +65,7 @@ func NewExecScoped() *cobra.Command {
 				}
 				injected = append(injected, inj)
 			} else {
-				return fnerrors.New("no such service %q", svc)
+				return fnerrors.Newf("no such service %q", svc)
 			}
 		}
 

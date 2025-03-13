@@ -15,17 +15,17 @@ import (
 func WriteFile(path string, msg proto.Message) error {
 	serialized, err := proto.MarshalOptions{Deterministic: true}.Marshal(msg)
 	if err != nil {
-		return fnerrors.New("failed to marshal: %w", err)
+		return fnerrors.Newf("failed to marshal: %w", err)
 	}
 
 	dir := filepath.Dir(path)
 
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fnerrors.New("mkdir: failed: %w", err)
+		return fnerrors.Newf("mkdir: failed: %w", err)
 	}
 
 	if err := os.WriteFile(path, serialized, 0644); err != nil {
-		return fnerrors.New("failed to write %q: %w", path, err)
+		return fnerrors.Newf("failed to write %q: %w", path, err)
 	}
 
 	return nil

@@ -49,7 +49,7 @@ func NewKubeCtlCmd(hidden bool) *cobra.Command {
 
 		kubectlBin, err := kubectl.EnsureSDK(ctx, host.HostPlatform())
 		if err != nil {
-			return fnerrors.New("failed to download Kubernetes SDK: %w", err)
+			return fnerrors.Newf("failed to download Kubernetes SDK: %w", err)
 		}
 
 		kubectl := exec.CommandContext(ctx, string(kubectlBin), cmdLine...)
@@ -85,7 +85,7 @@ func writeKubeconfig(ctx context.Context, env cfg.Context, keepConfig bool) (*ku
 	k8sconfig := cluster.KubeConfig()
 	rawConfig, err := kluster.PreparedClient().ClientConfig.RawConfig()
 	if err != nil {
-		return nil, fnerrors.New("failed to generate kubeconfig: %w", err)
+		return nil, fnerrors.Newf("failed to generate kubeconfig: %w", err)
 	}
 
 	c, err := kubectl.WriteRawKubeconfig(ctx, rawConfig, keepConfig)

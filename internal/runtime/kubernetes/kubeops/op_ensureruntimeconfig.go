@@ -26,7 +26,7 @@ func registerEnsureRuntimeConfig() {
 			action := tasks.Action("kubernetes.ensure-runtime-config").
 				Scope(ensure.Deployable.GetPackageRef().AsPackageName()).
 				Arg("deployable", ensure.Deployable.GetPackageRef().Canonical()).
-				HumanReadablef(inv.Description)
+				HumanReadable(inv.Description)
 
 			return tasks.Return(ctx, action, func(ctx context.Context) (*execution.HandleResult, error) {
 				data := map[string]string{}

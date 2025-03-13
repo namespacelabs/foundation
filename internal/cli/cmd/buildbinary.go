@@ -82,7 +82,7 @@ const orchTool = "namespacelabs.dev/foundation/orchestration/server/tool"
 
 func buildLocations(ctx context.Context, env cfg.Context, reg registry.Manager, userTag string, locs fncobra.Locations, baseRepository []string, opts buildOpts) error {
 	if opts.outputPrebuilts && len(baseRepository) == 0 {
-		return fnerrors.New("at least one repository has to be set when updating prebuilts")
+		return fnerrors.Newf("at least one repository has to be set when updating prebuilts")
 	}
 
 	pl := parsing.NewPackageLoader(env)
@@ -179,7 +179,7 @@ func buildLocations(ctx context.Context, env cfg.Context, reg registry.Manager, 
 			fmt.Fprintf(out, "%s\n", r.Value.img)
 		}
 		if err := os.WriteFile(opts.outputPath, out.Bytes(), 0644); err != nil {
-			return fnerrors.New("failed to write %q: %w", opts.outputPath, err)
+			return fnerrors.Newf("failed to write %q: %w", opts.outputPath, err)
 		}
 	}
 

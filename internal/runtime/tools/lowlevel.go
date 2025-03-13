@@ -42,7 +42,7 @@ func attachToAction(ctx context.Context, name string, msg proto.Message, redactM
 func InvokeOnBuildkit0(c *buildkit.GatewayClient, secrets secrets.GroundedSecrets, pkg schema.PackageName, state compute.Computable[*buildkit.Input]) compute.Computable[fs.FS] {
 	p := c.BuildkitOpts().HostPlatform
 
-	return buildkit.DeferBuildFilesystem(c, secrets, build.NewBuildTarget(&p).WithSourceLabel("Invocation %s", pkg).WithSourcePackage(pkg), state)
+	return buildkit.DeferBuildFilesystem(c, secrets, build.NewBuildTarget(&p).WithSourceLabelf("Invocation %s", pkg).WithSourcePackage(pkg), state)
 }
 
 func InvokeOnBuildkit[Resp proto.Message](c *buildkit.GatewayClient, secrets secrets.GroundedSecrets, method string, pkg schema.PackageName, image compute.Computable[oci.Image], opts rtypes.RunBinaryOpts, req proto.Message, oo LowLevelInvokeOptions) compute.Computable[Resp] {
@@ -114,7 +114,7 @@ func makeState(c *buildkit.GatewayClient, pkg schema.PackageName, image compute.
 				env.FromServiceIngress != nil ||
 				env.FromResourceField != nil ||
 				env.FromFieldSelector != nil {
-				return nil, fnerrors.New("invocation: only support environment variables with static values")
+				return nil, fnerrors.Newf("invocation: only support environment variables with static values")
 			}
 
 			runOpts = append(runOpts, llb.AddEnv(entry.Name, env.Value))

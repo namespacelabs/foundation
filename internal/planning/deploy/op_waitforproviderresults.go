@@ -54,7 +54,7 @@ func register_OpWaitForProviderResults() {
 			action := tasks.Action("resource.complete-invocation").
 				Scope(wait.Deployable.GetPackageRef().AsPackageName()).
 				Arg("resource_instance_id", wait.ResourceInstanceId).
-				HumanReadablef(inv.Description)
+				HumanReadable(inv.Description)
 
 			return tasks.Return(ctx, action, func(ctx context.Context) (*execution.HandleResult, error) {
 				cluster, err := execution.Get(ctx, runtime.ClusterNamespaceInjection)

@@ -56,7 +56,7 @@ func newSetupAutopushCmd() *cobra.Command {
 		}
 
 		if eksCluster == nil {
-			return fnerrors.New("not an eks cluster")
+			return fnerrors.Newf("not an eks cluster")
 		}
 
 		result, err := eks.SetupAutopush(eksCluster, iamRole, roleArn)

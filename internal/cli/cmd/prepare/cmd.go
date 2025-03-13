@@ -157,7 +157,7 @@ func NewPrepareBuildClusterCmd() *cobra.Command {
 func parseCreateEnvArgs() (*schema.Workspace_EnvironmentSpec, error) {
 	purpose, ok := schema.Environment_Purpose_value[strings.ToUpper(createEnvPurpose)]
 	if !ok || purpose == 0 {
-		return nil, fnerrors.New("no such environment purpose %q", createEnvPurpose)
+		return nil, fnerrors.Newf("no such environment purpose %q", createEnvPurpose)
 	}
 	env := &schema.Workspace_EnvironmentSpec{
 		Name:    envRef,

@@ -31,7 +31,7 @@ func newSetReadersCmd() *cobra.Command {
 
 	return fncobra.With(cmd, func(ctx context.Context) error {
 		if *fromFile == "" {
-			return fnerrors.New("--file_file is required")
+			return fnerrors.Newf("--file_file is required")
 		}
 
 		contents, err := os.ReadFile(*fromFile)

@@ -215,7 +215,7 @@ func (g *compiledPlan) apply(ctx context.Context, ch chan *orchestration.Event, 
 			}
 
 			if n.invocation.Description != "" {
-				action = action.HumanReadablef(n.invocation.Description)
+				action = action.HumanReadable(n.invocation.Description)
 			}
 
 			if opts.TaskOnDone != nil {

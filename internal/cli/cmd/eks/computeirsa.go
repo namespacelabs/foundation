@@ -39,7 +39,7 @@ func newComputeIrsaCmd() *cobra.Command {
 		}
 
 		if eksCluster == nil {
-			return fnerrors.New("not an eks cluster")
+			return fnerrors.Newf("not an eks cluster")
 		}
 
 		result, err := fneks.PrepareIrsa(eksCluster, iamRole, namespace, serviceAccount, nil)

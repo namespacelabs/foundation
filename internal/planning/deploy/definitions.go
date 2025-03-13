@@ -313,7 +313,7 @@ func flattenInvocationOrder(ctx context.Context, stack *planning.Stack, perServe
 func compileComputable(ctx context.Context, env pkggraph.SealedContext, src *schema.SerializedInvocationSource_ComputableValue) (proto.Message, error) {
 	m, err := src.Value.UnmarshalNew()
 	if err != nil {
-		return nil, fnerrors.New("%s: failed to unmarshal: %w", src.Value.TypeUrl, err)
+		return nil, fnerrors.Newf("%s: failed to unmarshal: %w", src.Value.TypeUrl, err)
 	}
 
 	switch x := m.(type) {
@@ -351,7 +351,7 @@ func compileComputable(ctx context.Context, env pkggraph.SealedContext, src *sch
 		return result.Resource, nil
 
 	default:
-		return nil, fnerrors.New("%s: don't know how to compile this type", src.Value.TypeUrl)
+		return nil, fnerrors.Newf("%s: don't know how to compile this type", src.Value.TypeUrl)
 	}
 }
 
@@ -368,17 +368,17 @@ func makeInvocation(ctx context.Context, env pkggraph.SealedContext, inv *types.
 		var err error
 		ref, err = schema.ParsePackageRef(fakeOwner, inv.Binary)
 		if err != nil {
-			return nil, nil, fnerrors.New("%s: failed to parse package ref: %w", inv.Binary, err)
+			return nil, nil, fnerrors.Newf("%s: failed to parse package ref: %w", inv.Binary, err)
 		}
 	} else if inv.BinaryRef != nil {
 		ref = inv.BinaryRef
 	} else {
-		return nil, nil, fnerrors.New("binary package definition is missing")
+		return nil, nil, fnerrors.Newf("binary package definition is missing")
 	}
 
 	pkg, err := env.LoadByName(ctx, ref.AsPackageName())
 	if err != nil {
-		return nil, nil, fnerrors.New("%s: failed to load: %w", inv.Binary, err)
+		return nil, nil, fnerrors.Newf("%s: failed to load: %w", inv.Binary, err)
 	}
 
 	cli, err := buildkit.Client(ctx, env.Configuration(), nil)

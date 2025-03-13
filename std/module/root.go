@@ -37,7 +37,7 @@ func FindRootWithArgs(ctx context.Context, dir string, args parsing.ModuleAtArgs
 func findWorkspaceRoot(ctx context.Context, dir string, args parsing.ModuleAtArgs) (*parsing.Root, error) {
 	path, err := parsing.FindModuleRoot(dir)
 	if err != nil {
-		return nil, fnerrors.New("workspace: %w", err)
+		return nil, fnerrors.Newf("workspace: %w", err)
 	}
 
 	data, err := parsing.ModuleAt(ctx, path, args, workspaceFiles...)

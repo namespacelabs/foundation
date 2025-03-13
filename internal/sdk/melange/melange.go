@@ -68,7 +68,7 @@ func SDK(ctx context.Context, p specs.Platform) (compute.Computable[Melange], er
 	key := fmt.Sprintf("%s/%s", p.OS, p.Architecture)
 	ref, ok := Pins[key]
 	if !ok {
-		return nil, fnerrors.New("platform not supported: %s", key)
+		return nil, fnerrors.Newf("platform not supported: %s", key)
 	}
 
 	w := unpack.Unpack("melange", tarfs.TarGunzip(download.URL(ref)))

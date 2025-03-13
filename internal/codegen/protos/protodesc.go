@@ -31,7 +31,7 @@ func LoadMessageByName(src *FileDescriptorSetAndDeps, name string) (*protoregist
 
 	msgdesc, ok := desc.(protoreflect.MessageDescriptor)
 	if !ok {
-		return nil, nil, fnerrors.New("%s: expected a message type", name)
+		return nil, nil, fnerrors.Newf("%s: expected a message type", name)
 	}
 
 	return pd, msgdesc, nil

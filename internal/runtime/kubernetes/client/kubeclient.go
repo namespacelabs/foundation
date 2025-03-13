@@ -95,7 +95,7 @@ func computeConfig(ctx context.Context, c *HostEnv, config cfg.Configuration) (*
 	}
 
 	if c.GetKubeconfig() == "" {
-		return nil, fnerrors.New("hostEnv.Kubeconfig is required")
+		return nil, fnerrors.Newf("hostEnv.Kubeconfig is required")
 	}
 
 	existing, err := LoadExistingConfiguration(c.GetKubeconfig(), c.GetContext())
@@ -126,10 +126,10 @@ func obtainRESTConfig(ctx context.Context, hostEnv *HostEnv, computed *configRes
 	restcfg, err := computed.ClientConfig.ClientConfig()
 	if err != nil {
 		if computed.ConfigurationSource != "" {
-			return nil, fnerrors.New("failed to load existing configuration from %q: %w", computed.ConfigurationSource, err)
+			return nil, fnerrors.Newf("failed to load existing configuration from %q: %w", computed.ConfigurationSource, err)
 		}
 
-		return nil, fnerrors.New("failed to load kubernetes configuration: %w", err)
+		return nil, fnerrors.Newf("failed to load kubernetes configuration: %w", err)
 	}
 
 	if computed.TokenProvider != nil {

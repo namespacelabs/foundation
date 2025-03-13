@@ -39,7 +39,7 @@ func (r *AllocState) Alloc(ctx context.Context, server *schema.Server, allocator
 	}
 
 	if k >= len(n.GetNeed()) {
-		return pkggraph.ValueWithPath{}, fnerrors.New("k is too large")
+		return pkggraph.ValueWithPath{}, fnerrors.Newf("k is too large")
 	}
 
 	v, err := r.allocValue(ctx, allocator, n, n.GetNeed()[k])

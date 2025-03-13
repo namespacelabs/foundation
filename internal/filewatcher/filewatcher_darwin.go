@@ -67,7 +67,7 @@ func (fsn *fsEvents) StartWatching(ctx context.Context) (EventsAndErrors, error)
 
 	root := longestCommonPathPrefix(dirs.Strings())
 	if root == "" || root == "/" {
-		return nil, fnerrors.New("fs notify common root is /, would watch too many files")
+		return nil, fnerrors.Newf("fs notify common root is /, would watch too many files")
 	}
 
 	root, err := filepath.EvalSymlinks(root)
@@ -155,5 +155,5 @@ func (p *passEvents) Close() error {
 		return nil
 	}
 
-	return fnerrors.New("already closed")
+	return fnerrors.Newf("already closed")
 }

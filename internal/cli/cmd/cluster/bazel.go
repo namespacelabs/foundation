@@ -52,57 +52,57 @@ func newSetupCacheCmd() *cobra.Command {
 		}
 
 		if response.CacheEndpoint == "" {
-			return fnerrors.New("did not receive a valid cache endpoint")
+			return fnerrors.Newf("did not receive a valid cache endpoint")
 		}
 
 		var buffer bytes.Buffer
 		if _, err := buffer.WriteString(fmt.Sprintf("build --remote_cache=%s\n", response.CacheEndpoint)); err != nil {
-			return fnerrors.New("failed to append cache endpoint: %w", err)
+			return fnerrors.Newf("failed to append cache endpoint: %w", err)
 		}
 
 		if len(response.ServerCaPem) > 0 {
 			loc, err := writeTempFile(bazelCachePathBase, "*.cert", []byte(response.ServerCaPem))
 			if err != nil {
-				return fnerrors.New("failed to create temp file: %w", err)
+				return fnerrors.Newf("failed to create temp file: %w", err)
 			}
 
 			if _, err := buffer.WriteString(fmt.Sprintf("build --tls_certificate=%s\n", loc)); err != nil {
-				return fnerrors.New("failed to append tls_certificate config: %w", err)
+				return fnerrors.Newf("failed to append tls_certificate config: %w", err)
 			}
 		}
 
 		if len(response.ClientCertPem) > 0 {
 			loc, err := writeTempFile(bazelCachePathBase, "*.cert", []byte(response.ClientCertPem))
 			if err != nil {
-				return fnerrors.New("failed to create temp file: %w", err)
+				return fnerrors.Newf("failed to create temp file: %w", err)
 			}
 
 			if _, err := buffer.WriteString(fmt.Sprintf("build --tls_client_certificate=%s\n", loc)); err != nil {
-				return fnerrors.New("failed to append tls_client_certificate config: %w", err)
+				return fnerrors.Newf("failed to append tls_client_certificate config: %w", err)
 			}
 		}
 
 		if len(response.ClientKeyPem) > 0 {
 			loc, err := writeTempFile(bazelCachePathBase, "*.key", []byte(response.ClientKeyPem))
 			if err != nil {
-				return fnerrors.New("failed to create temp file: %w", err)
+				return fnerrors.Newf("failed to create temp file: %w", err)
 			}
 
 			if _, err := buffer.WriteString(fmt.Sprintf("build --tls_client_key=%s\n", loc)); err != nil {
-				return fnerrors.New("failed to append tls_client_key config: %w", err)
+				return fnerrors.Newf("failed to append tls_client_key config: %w", err)
 			}
 		}
 
 		if bazelRcPath == "" {
 			loc, err := writeTempFile(bazelCachePathBase, "*.bazelrc", buffer.Bytes())
 			if err != nil {
-				return fnerrors.New("failed to create temp file: %w", err)
+				return fnerrors.Newf("failed to create temp file: %w", err)
 			}
 
 			bazelRcPath = loc
 		} else {
 			if err := os.WriteFile(bazelRcPath, buffer.Bytes(), 0644); err != nil {
-				return fnerrors.New("failed to write %q: %w", bazelRcPath, err)
+				return fnerrors.Newf("failed to write %q: %w", bazelRcPath, err)
 			}
 		}
 
@@ -119,15 +119,15 @@ func newSetupCacheCmd() *cobra.Command {
 func writeTempFile(base, pattern string, content []byte) (string, error) {
 	f, err := dirs.CreateUserTemp(base, pattern)
 	if err != nil {
-		return "", fnerrors.New("failed to create temp file: %w", err)
+		return "", fnerrors.Newf("failed to create temp file: %w", err)
 	}
 
 	if _, err := f.Write(content); err != nil {
-		return "", fnerrors.New("failed to write to %s: %w", f.Name(), err)
+		return "", fnerrors.Newf("failed to write to %s: %w", f.Name(), err)
 	}
 
 	if err := f.Close(); err != nil {
-		return "", fnerrors.New("failed to close %s: %w", f.Name(), err)
+		return "", fnerrors.Newf("failed to close %s: %w", f.Name(), err)
 	}
 
 	return f.Name(), nil

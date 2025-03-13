@@ -53,7 +53,7 @@ func RegisterGraphHandlers() {
 				return nil, fnerrors.InvocationError("kubernetes", "nginx: failed to ensure namespace: %w", err)
 			}
 
-			if err := tasks.Action("nginx.generate-webhook").HumanReadablef(g.Description).Run(ctx, func(ctx context.Context) error {
+			if err := tasks.Action("nginx.generate-webhook").HumanReadable(g.Description).Run(ctx, func(ctx context.Context) error {
 				webhook := &admissionregistrationv1.ValidatingWebhookConfigurationApplyConfiguration{}
 				if err := json.Unmarshal(op.WebhookDefinition, webhook); err != nil {
 					return fnerrors.InternalError("nginx: failed to deserialize webhook definition: %w", err)

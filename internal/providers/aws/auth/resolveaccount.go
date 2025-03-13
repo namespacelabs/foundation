@@ -58,7 +58,7 @@ func CheckNeedsLoginOr(s *awsprovider.Session, err error, transformErr func(erro
 			return fnerrors.UsageError(usage, "AWS session credentials have expired.")
 		}
 
-		return fnerrors.New("AWS session credentials have expired")
+		return fnerrors.Newf("AWS session credentials have expired")
 	}
 
 	return transformErr(err)

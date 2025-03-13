@@ -61,17 +61,17 @@ func bazelCredGet(ctx context.Context) error {
 
 	input, err := readStdin()
 	if err != nil {
-		return fnerrors.New("failed to read from stdin: %w", err)
+		return fnerrors.Newf("failed to read from stdin: %w", err)
 	}
 
 	var req credentialsReq
 	if err := json.Unmarshal(input, &req); err != nil {
-		return fnerrors.New("failed to parse JSON from stdin: %w", err)
+		return fnerrors.Newf("failed to parse JSON from stdin: %w", err)
 	}
 
 	url, err := url.Parse(req.Uri)
 	if err != nil {
-		return fnerrors.New("failed to parse '%s' as URL: %w", req.Uri, err)
+		return fnerrors.Newf("failed to parse '%s' as URL: %w", req.Uri, err)
 	}
 
 	hdrs, expires, err := fetchHeaders(ctx, url)
@@ -85,15 +85,15 @@ func bazelCredGet(ctx context.Context) error {
 	}
 	output, err := json.Marshal(resp)
 	if err != nil {
-		return fnerrors.New("failed to marshal JSON: %w", err)
+		return fnerrors.Newf("failed to marshal JSON: %w", err)
 	}
 
 	n, err := os.Stdout.Write(output)
 	if err != nil {
-		return fnerrors.New("failed to output to stdout: %w", err)
+		return fnerrors.Newf("failed to output to stdout: %w", err)
 	}
 	if n != len(output) {
-		return fnerrors.New("failed to write %d bytes to stdout, only wrote %d", len(output), n)
+		return fnerrors.Newf("failed to write %d bytes to stdout, only wrote %d", len(output), n)
 	}
 
 	return nil
@@ -104,7 +104,7 @@ func bazelCredGet(ctx context.Context) error {
 // - until when bazel is allowed to cache those
 func fetchHeaders(ctx context.Context, url *url.URL) (http.Header, *time.Time, error) {
 	if url.Scheme != "https" {
-		return nil, nil, fnerrors.New("nsc bazel credential helper configured for non-https endpoint")
+		return nil, nil, fnerrors.Newf("nsc bazel credential helper configured for non-https endpoint")
 	}
 
 	// Bazel asking for credentials is a good time to ensure that the remote bazel cache is initialized.
@@ -115,11 +115,11 @@ func fetchHeaders(ctx context.Context, url *url.URL) (http.Header, *time.Time, e
 
 	cacheUrl, err := url.Parse(response.HttpsCacheEndpoint)
 	if err != nil {
-		return nil, nil, fnerrors.New("internal error: bad URL from EnsureBazelCache: %v", err)
+		return nil, nil, fnerrors.Newf("internal error: bad URL from EnsureBazelCache: %v", err)
 	}
 
 	if cacheUrl.Host != url.Host {
-		return nil, nil, fnerrors.New("Please re-configure --remote-cache=%s", cacheUrl.Host)
+		return nil, nil, fnerrors.Newf("Please re-configure --remote-cache=%s", cacheUrl.Host)
 	}
 
 	token, err := fnapi.IssueToken(ctx, bazelBearerTokenDuration)

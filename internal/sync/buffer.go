@@ -123,7 +123,7 @@ func (failedWriter) GuaranteedWrite(p []byte) {
 }
 
 func (failedWriter) Write(p []byte) (int, error) {
-	return 0, fnerrors.New("already sealed")
+	return 0, fnerrors.Newf("already sealed")
 }
 
 type discard struct{ io.Writer }

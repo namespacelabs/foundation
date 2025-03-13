@@ -136,7 +136,7 @@ func newReleaseVolumesCmd() *cobra.Command {
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if len(args) > 0 && *volumeId != "" {
-			return fnerrors.New("please provide either a volume tag or a volume id to release")
+			return fnerrors.Newf("please provide either a volume tag or a volume id to release")
 		}
 
 		switch {
@@ -156,7 +156,7 @@ func newReleaseVolumesCmd() *cobra.Command {
 			fmt.Fprintf(console.Stdout(ctx), "Released volumes with tag %s.\n", tag)
 
 		default:
-			return fnerrors.New("please provide exactly one volume tag to release")
+			return fnerrors.Newf("please provide exactly one volume tag to release")
 		}
 
 		return nil

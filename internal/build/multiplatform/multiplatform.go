@@ -57,7 +57,7 @@ func PrepareMultiPlatformImage(ctx context.Context, env pkggraph.SealedContext, 
 		})
 	}
 
-	return compute.Sticky(tasks.Action("build").HumanReadablef(prefix("Build", p.SourceLabel)).Scope(p.SourcePackage), img), nil
+	return compute.Sticky(tasks.Action("build").HumanReadable(prefix("Build", p.SourceLabel)).Scope(p.SourcePackage), img), nil
 }
 
 func prefix(p, label string) string {

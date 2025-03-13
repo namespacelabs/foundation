@@ -28,7 +28,7 @@ var _ fnfs.VisitFS = FS{}
 
 func (l FS) Open(path string) (fs.File, error) {
 	if !fs.ValidPath(path) {
-		return nil, &fs.PathError{Op: "open", Path: path, Err: fnerrors.New("invalid path")}
+		return nil, &fs.PathError{Op: "open", Path: path, Err: fnerrors.Newf("invalid path")}
 	}
 
 	var inmem memfs.FS
@@ -50,7 +50,7 @@ func (c checkPath) Match(p string) (string, bool) { return p, p == string(c) }
 
 func (l FS) ReadDir(dir string) ([]fs.DirEntry, error) {
 	if !fs.ValidPath(dir) {
-		return nil, &fs.PathError{Op: "readdir", Path: dir, Err: fnerrors.New("invalid path")}
+		return nil, &fs.PathError{Op: "readdir", Path: dir, Err: fnerrors.Newf("invalid path")}
 	}
 
 	f, err := l.TarStream()

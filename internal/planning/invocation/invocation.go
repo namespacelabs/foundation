@@ -62,7 +62,7 @@ func buildAndPrepareForPlatform(ctx context.Context, cli *buildkit.GatewayClient
 	} else if with.Binary != "" {
 		binRef = schema.MakePackageSingleRef(schema.MakePackageName(with.Binary))
 	} else {
-		return nil, fnerrors.New("`binary` is required to point to a binary package")
+		return nil, fnerrors.Newf("`binary` is required to point to a binary package")
 	}
 
 	prepared, err := binary.Load(ctx, pl, env, binRef, binary.BuildImageOpts{
@@ -100,7 +100,7 @@ func buildAndPrepareForPlatform(ctx context.Context, cli *buildkit.GatewayClient
 
 	for k, v := range with.Snapshots {
 		if serverLocRef == nil {
-			return nil, fnerrors.New("snapshots are not allowed in this context")
+			return nil, fnerrors.Newf("snapshots are not allowed in this context")
 		}
 
 		serverLoc := *serverLocRef
@@ -149,7 +149,7 @@ func buildAndPrepareForPlatform(ctx context.Context, cli *buildkit.GatewayClient
 	// We're ok doing this for now because tools' runtime invocation is hermetic.
 	if with.RequiresKeys {
 		if serverLocRef == nil {
-			return nil, fnerrors.New("requiresKeys is not allowed in this context")
+			return nil, fnerrors.Newf("requiresKeys is not allowed in this context")
 		}
 
 		keySnapshot, err := keys.Collect(ctx)
@@ -190,7 +190,7 @@ func MergeBinaryConfig(original, with *schema.BinaryConfig) (*schema.BinaryConfi
 	if t.WorkingDir != "" {
 		if with.WorkingDir != "" {
 			if t.WorkingDir != with.WorkingDir {
-				return nil, fnerrors.New("incompatible working dirs %q vs %q", t.WorkingDir, with.WorkingDir)
+				return nil, fnerrors.Newf("incompatible working dirs %q vs %q", t.WorkingDir, with.WorkingDir)
 			}
 		}
 	} else {
@@ -200,7 +200,7 @@ func MergeBinaryConfig(original, with *schema.BinaryConfig) (*schema.BinaryConfi
 	if len(t.Command) != 0 {
 		if len(with.Command) != 0 {
 			if !slices.Equal(t.Command, with.Command) {
-				return nil, fnerrors.New("incompatible commands %v vs %v", t.Command, with.Command)
+				return nil, fnerrors.Newf("incompatible commands %v vs %v", t.Command, with.Command)
 			}
 		}
 	} else {

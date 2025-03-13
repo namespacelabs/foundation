@@ -24,7 +24,7 @@ type Kubeconfig struct {
 func WriteRawKubeconfig(ctx context.Context, rawConfig clientcmdapi.Config, keepConfig bool) (*Kubeconfig, error) {
 	configBytes, err := clientcmd.Write(rawConfig)
 	if err != nil {
-		return nil, fnerrors.New("failed to serialize kubeconfig: %w", err)
+		return nil, fnerrors.Newf("failed to serialize kubeconfig: %w", err)
 	}
 
 	return WriteKubeconfig(ctx, configBytes, keepConfig)
@@ -33,15 +33,15 @@ func WriteRawKubeconfig(ctx context.Context, rawConfig clientcmdapi.Config, keep
 func WriteKubeconfig(ctx context.Context, configBytes []byte, keepConfig bool) (*Kubeconfig, error) {
 	tmpFile, err := dirs.CreateUserTemp("kubeconfig", "*.yaml")
 	if err != nil {
-		return nil, fnerrors.New("failed to create temp file: %w", err)
+		return nil, fnerrors.Newf("failed to create temp file: %w", err)
 	}
 
 	if _, err := tmpFile.Write(configBytes); err != nil {
-		return nil, fnerrors.New("failed to write kubeconfig: %w", err)
+		return nil, fnerrors.Newf("failed to write kubeconfig: %w", err)
 	}
 
 	if err := tmpFile.Close(); err != nil {
-		return nil, fnerrors.New("failed to close kubeconfig: %w", err)
+		return nil, fnerrors.Newf("failed to close kubeconfig: %w", err)
 	}
 
 	return &Kubeconfig{

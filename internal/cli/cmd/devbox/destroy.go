@@ -91,9 +91,9 @@ func checkAllExist(ctx context.Context, devboxClient *private.DevBoxServiceClien
 	missingTags := maps.Keys(missing)
 
 	if len(missingTags) == 1 {
-		return fmt.Errorf("devbox '" + missingTags[0] + "' not found")
+		return fmt.Errorf("devbox '%s' not found", missingTags[0])
 	} else if len(missingTags) > 1 {
-		return fmt.Errorf("devboxes with tags " + strings.Join(missingTags, ", ") + " not found")
+		return fmt.Errorf("devboxes with tags %s not found", strings.Join(missingTags, ", "))
 	}
 
 	return nil

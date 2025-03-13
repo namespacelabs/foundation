@@ -103,7 +103,7 @@ func checkDelete(ctx context.Context, env string, single bool) error {
 	}
 
 	if written != env {
-		return fnerrors.New("environment name didn't match, canceling")
+		return fnerrors.Newf("environment name didn't match, canceling")
 	}
 
 	return nil

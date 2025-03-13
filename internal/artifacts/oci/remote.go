@@ -117,7 +117,7 @@ func RefWithRegistryMirror(ctx context.Context, imageRef name.Reference) (name.R
 
 	defaultMirrorPort, ok := mirrorPortMap[mirrorURL.Scheme]
 	if !ok {
-		return nil, fnerrors.New("docker hub mirror scheme %q is not supported; supported values: %s",
+		return nil, fnerrors.Newf("docker hub mirror scheme %q is not supported; supported values: %s",
 			mirrorURL.Scheme, strings.Join(maps.Keys(mirrorPortMap), ","))
 	}
 

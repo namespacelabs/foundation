@@ -30,7 +30,7 @@ func register_OpCaptureServerConfig() {
 
 		t := time.Now()
 		if err := c.WaitUntilReady(ctx, capture.Deployable); err != nil {
-			return nil, fnerrors.New("deployable %q (id: %s) never became ready in time: %w",
+			return nil, fnerrors.Newf("deployable %q (id: %s) never became ready in time: %w",
 				capture.Deployable.GetPackageRef(), capture.Deployable.Id, err)
 		}
 

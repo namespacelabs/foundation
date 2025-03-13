@@ -128,7 +128,7 @@ func (p *PodObserver) runWatcher(ctx context.Context, debug io.Writer) (bool, er
 
 		case ev, ok := <-w.ResultChan():
 			if !ok {
-				return true, fnerrors.New("unexpected watch closure, will retry (was connected for %v)", time.Since(connected))
+				return true, fnerrors.Newf("unexpected watch closure, will retry (was connected for %v)", time.Since(connected))
 			}
 
 			if ev.Object == nil {

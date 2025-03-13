@@ -69,7 +69,7 @@ func (l local) Open(path string) (fs.File, error) {
 
 func (l local) ReadDir(path string) ([]fs.DirEntry, error) {
 	if !fs.ValidPath(path) {
-		return nil, &fs.PathError{Op: "readdir", Path: path, Err: fnerrors.New("invalid name")}
+		return nil, &fs.PathError{Op: "readdir", Path: path, Err: fnerrors.Newf("invalid name")}
 	}
 
 	return os.ReadDir(filepath.Join(l.root, path))
@@ -77,11 +77,11 @@ func (l local) ReadDir(path string) ([]fs.DirEntry, error) {
 
 func (l local) OpenWrite(path string, mode fs.FileMode) (WriteFileHandle, error) {
 	if !l.readWrite {
-		return nil, &fs.PathError{Op: "write", Path: path, Err: fnerrors.New("fs is read-only")}
+		return nil, &fs.PathError{Op: "write", Path: path, Err: fnerrors.Newf("fs is read-only")}
 	}
 
 	if !fs.ValidPath(path) {
-		return nil, &fs.PathError{Op: "write", Path: path, Err: fnerrors.New("invalid name")}
+		return nil, &fs.PathError{Op: "write", Path: path, Err: fnerrors.Newf("invalid name")}
 	}
 
 	f, err := os.OpenFile(filepath.Join(l.root, path), os.O_CREATE|os.O_WRONLY|os.O_TRUNC|os.O_SYNC, mode)
@@ -99,7 +99,7 @@ func (l local) OpenWrite(path string, mode fs.FileMode) (WriteFileHandle, error)
 
 func (l local) Remove(path string) error {
 	if !fs.ValidPath(path) {
-		return &fs.PathError{Op: "remove", Path: path, Err: fnerrors.New("invalid name")}
+		return &fs.PathError{Op: "remove", Path: path, Err: fnerrors.Newf("invalid name")}
 	}
 
 	return os.Remove(filepath.Join(l.root, path))
@@ -107,7 +107,7 @@ func (l local) Remove(path string) error {
 
 func (l local) RemoveAll(path string) error {
 	if !fs.ValidPath(path) {
-		return &fs.PathError{Op: "removeAll", Path: path, Err: fnerrors.New("invalid name")}
+		return &fs.PathError{Op: "removeAll", Path: path, Err: fnerrors.Newf("invalid name")}
 	}
 
 	return os.RemoveAll(filepath.Join(l.root, path))
@@ -115,7 +115,7 @@ func (l local) RemoveAll(path string) error {
 
 func (l local) MkdirAll(path string, mode fs.FileMode) error {
 	if !fs.ValidPath(path) {
-		return &fs.PathError{Op: "mkdir", Path: path, Err: fnerrors.New("invalid name")}
+		return &fs.PathError{Op: "mkdir", Path: path, Err: fnerrors.Newf("invalid name")}
 	}
 
 	return os.MkdirAll(filepath.Join(l.root, path), mode)
@@ -123,7 +123,7 @@ func (l local) MkdirAll(path string, mode fs.FileMode) error {
 
 func (l local) Sub(dir string) (fs.FS, error) {
 	if strings.HasPrefix(dir, "../") {
-		return nil, fnerrors.New("can't escape the local workspace")
+		return nil, fnerrors.Newf("can't escape the local workspace")
 	}
 
 	return &local{

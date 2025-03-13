@@ -36,7 +36,7 @@ func NewGenerateDevTokenCmd() *cobra.Command {
 
 		if *outputPath != "" {
 			if err := os.WriteFile(*outputPath, []byte(res), 0644); err != nil {
-				return fnerrors.New("failed to write %q: %w", *outputPath, err)
+				return fnerrors.Newf("failed to write %q: %w", *outputPath, err)
 			}
 		} else {
 			fmt.Fprintln(console.Stdout(ctx), res)
@@ -80,7 +80,7 @@ func NewGenerateTokenCmd() *cobra.Command {
 
 		if *outputPath != "" {
 			if err := os.WriteFile(*outputPath, []byte(token), 0644); err != nil {
-				return fnerrors.New("failed to write %q: %w", *outputPath, err)
+				return fnerrors.Newf("failed to write %q: %w", *outputPath, err)
 			}
 		} else {
 			fmt.Fprintln(console.Stdout(ctx), token)

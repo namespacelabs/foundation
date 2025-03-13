@@ -217,7 +217,7 @@ func TrustAWSCognitoJWT(ctx context.Context, tenantID, identityPool, identityPro
 	}
 
 	if claims.TenantID != tenantID {
-		return fnerrors.New("authenticated as %q, wanted %q", claims.TenantID, tenantID)
+		return fnerrors.Newf("authenticated as %q, wanted %q", claims.TenantID, tenantID)
 	}
 
 	return Call[TrustAWSCognitoIdentityPoolRequest]{

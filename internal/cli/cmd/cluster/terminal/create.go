@@ -34,7 +34,7 @@ func newCreateCmd() *cobra.Command {
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *image == "" {
-			return fnerrors.New("--image is required")
+			return fnerrors.Newf("--image is required")
 		}
 
 		opts := cluster.CreateContainerOpts{
@@ -77,7 +77,7 @@ func newCreateCmd() *cobra.Command {
 func parseEnvFile(path string) (map[string]string, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, fnerrors.New("failed to open env file %s: %w", path, err)
+		return nil, fnerrors.Newf("failed to open env file %s: %w", path, err)
 	}
 
 	defer f.Close()
@@ -94,7 +94,7 @@ func parseEnvFile(path string) (map[string]string, error) {
 
 		arr := strings.SplitN(line, "=", 2)
 		if arr[0] == "" || len(arr) != 2 {
-			return nil, fnerrors.New("invalid environment variable: %q", line)
+			return nil, fnerrors.Newf("invalid environment variable: %q", line)
 		}
 
 		vars[arr[0]] = arr[1]

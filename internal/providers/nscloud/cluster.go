@@ -134,7 +134,7 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, env cfg.Context, purpos
 	ephemeral := env.Environment().Ephemeral
 	response, err := createCluster(ctx, purpose, nil)
 	if err != nil {
-		return nil, fnerrors.New("failed to create instance: %w", err)
+		return nil, fnerrors.Newf("failed to create instance: %w", err)
 	}
 
 	return ensureCluster(ctx, config, response.ApiEndpoint, response.InstanceId, response.Region, response.Registry, ephemeral)
@@ -157,7 +157,7 @@ func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose stri
 
 	response, err := createCluster(ctx, purpose, labels)
 	if err != nil {
-		return nil, fnerrors.New("failed to create instance: %w", err)
+		return nil, fnerrors.Newf("failed to create instance: %w", err)
 	}
 
 	reg := response.Registry

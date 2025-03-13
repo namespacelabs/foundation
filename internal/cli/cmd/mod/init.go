@@ -34,7 +34,7 @@ func newInitCmd(runCommand func(context.Context, []string) error) *cobra.Command
 			}
 
 			if findroot.LookForFile(workspace.WorkspaceFile, workspace.LegacyWorkspaceFile)(dir) {
-				return fnerrors.New("workspace file aready exists.")
+				return fnerrors.Newf("workspace file aready exists.")
 			}
 
 			moduleName := args[0]

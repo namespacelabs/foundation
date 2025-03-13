@@ -31,7 +31,7 @@ func RegisterGraphHandlers() {
 			}
 
 			if err := awsAuth.Upsert(args); err != nil {
-				return nil, fnerrors.New("unable to update AWS auth configmap: %w", err)
+				return nil, fnerrors.Newf("unable to update AWS auth configmap: %w", err)
 			}
 
 			return nil, nil

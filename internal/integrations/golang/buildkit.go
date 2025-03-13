@@ -84,7 +84,7 @@ func buildUsingBuildkit(ctx context.Context, env pkggraph.SealedContext, bin GoB
 		WorkingDir: ".",
 		Platform:   conf.TargetPlatform(),
 	}).With(
-		llbutil.PrefixSh(label, conf.TargetPlatform(), "go "+strings.Join(goBuild, " "))...).
+		llbutil.PrefixSh(label, conf.TargetPlatform(), "%s", "go "+strings.Join(goBuild, " "))...).
 		AddMount("/out", prodBase)
 
 	return buildkit.BuildImage(ctx, buildkit.DeferClient(env.Configuration(), conf.TargetPlatform()), conf, state, local)

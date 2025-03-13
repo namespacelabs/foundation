@@ -77,7 +77,7 @@ func NewBuildCmd() *cobra.Command {
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
 		if len(*tags) > 0 && len(*names) > 0 {
-			return fnerrors.New("usage of both --tag and --name flags is not supported")
+			return fnerrors.Newf("usage of both --tag and --name flags is not supported")
 		}
 
 		// XXX: having multiple outputs is not supported by buildctl.
@@ -92,19 +92,19 @@ func NewBuildCmd() *cobra.Command {
 			activeModes++
 		}
 		if activeModes > 1 {
-			return fnerrors.New("only one of --push, --load or --output-local can be used at a time")
+			return fnerrors.Newf("only one of --push, --load or --output-local can be used at a time")
 		}
 
 		if len(*platforms) > 1 && *dockerLoad {
-			return fnerrors.New("multi-platform builds require --push, --load is not supported")
+			return fnerrors.Newf("multi-platform builds require --push, --load is not supported")
 		}
 
 		if len(*platforms) > 1 && *outputLocal != "" {
-			return fnerrors.New("multi-platform builds require --push, --output-local is not supported")
+			return fnerrors.Newf("multi-platform builds require --push, --output-local is not supported")
 		}
 
 		if len(*tags)+len(*names) == 0 && *push {
-			return fnerrors.New("--push requires at least one tag or name")
+			return fnerrors.Newf("--push requires at least one tag or name")
 		}
 
 		if len(*platforms) == 0 {

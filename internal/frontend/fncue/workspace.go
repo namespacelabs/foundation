@@ -24,7 +24,7 @@ func EvalWorkspace(ctx context.Context, fsys fs.FS, dir string, files []string) 
 		}
 
 		berr := bldctx.NewInstance(dir, nil)
-		berr.Err = errors.Promote(fnerrors.New("imports not allowed"), "")
+		berr.Err = errors.Promote(fnerrors.Newf("imports not allowed"), "")
 		return berr
 	})
 

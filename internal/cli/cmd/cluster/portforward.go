@@ -31,7 +31,7 @@ func newPortForwardCmd() *cobra.Command {
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *port == 0 {
-			return fnerrors.New("--target_port is required")
+			return fnerrors.Newf("--target_port is required")
 		}
 
 		cluster, _, err := SelectRunningCluster(ctx, args)

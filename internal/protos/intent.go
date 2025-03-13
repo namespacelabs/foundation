@@ -30,7 +30,7 @@ type ParseContext struct {
 
 func allocateValue(ctx context.Context, pctx ParseContext, parent protoreflect.Message, field protoreflect.FieldDescriptor, value any) (protoreflect.Value, error) {
 	if field.IsMap() {
-		return protoreflect.Value{}, fnerrors.New("maps not supported")
+		return protoreflect.Value{}, fnerrors.Newf("maps not supported")
 	}
 
 	if field.IsList() {
@@ -41,7 +41,7 @@ func allocateValue(ctx context.Context, pctx ParseContext, parent protoreflect.M
 			for k, v := range x {
 				allocated, err := allocateSingleValue(ctx, pctx, field, v)
 				if err != nil {
-					return protoreflect.Value{}, fnerrors.New("[%d]: %w", k, err)
+					return protoreflect.Value{}, fnerrors.Newf("[%d]: %w", k, err)
 				}
 				list.Append(allocated)
 			}
@@ -49,7 +49,7 @@ func allocateValue(ctx context.Context, pctx ParseContext, parent protoreflect.M
 			return protoreflect.ValueOfList(list), nil
 		}
 
-		return protoreflect.Value{}, fnerrors.New("expected []any, got %s", reflect.TypeOf(value).String())
+		return protoreflect.Value{}, fnerrors.Newf("expected []any, got %s", reflect.TypeOf(value).String())
 	}
 
 	return allocateSingleValue(ctx, pctx, field, value)
@@ -63,7 +63,7 @@ func allocateSingleValue(ctx context.Context, pctx ParseContext, field protorefl
 			return protoreflect.ValueOfBool(x), nil
 		}
 
-		return protoreflect.Value{}, fnerrors.New("expected bool, got %s", reflect.TypeOf(value).String())
+		return protoreflect.Value{}, fnerrors.Newf("expected bool, got %s", reflect.TypeOf(value).String())
 
 	case protoreflect.DoubleKind,
 		protoreflect.FloatKind:
@@ -74,13 +74,13 @@ func allocateSingleValue(ctx context.Context, pctx ParseContext, field protorefl
 		case json.Number:
 			f, err := x.Float64()
 			if err != nil {
-				return protoreflect.Value{}, fnerrors.New("failed to parse json number %v as float: %w", x, err)
+				return protoreflect.Value{}, fnerrors.Newf("failed to parse json number %v as float: %w", x, err)
 			}
 
 			return protoreflect.ValueOf(f), nil
 		}
 
-		return protoreflect.Value{}, fnerrors.New("expected float, got %s", reflect.TypeOf(value).String())
+		return protoreflect.Value{}, fnerrors.Newf("expected float, got %s", reflect.TypeOf(value).String())
 
 	case protoreflect.Int32Kind,
 		protoreflect.Fixed32Kind,
@@ -94,13 +94,13 @@ func allocateSingleValue(ctx context.Context, pctx ParseContext, field protorefl
 		case json.Number:
 			n, err := x.Int64()
 			if err != nil {
-				return protoreflect.Value{}, fnerrors.New("failed to parse json number %v as integer: %w", x, err)
+				return protoreflect.Value{}, fnerrors.Newf("failed to parse json number %v as integer: %w", x, err)
 			}
 
 			return protoreflect.ValueOf(int32(n)), nil
 		}
 
-		return protoreflect.Value{}, fnerrors.New("expected int32 or uint32, got %s", reflect.TypeOf(value).String())
+		return protoreflect.Value{}, fnerrors.Newf("expected int32 or uint32, got %s", reflect.TypeOf(value).String())
 
 	case protoreflect.Int64Kind,
 		protoreflect.Fixed64Kind,
@@ -114,13 +114,13 @@ func allocateSingleValue(ctx context.Context, pctx ParseContext, field protorefl
 		case json.Number:
 			n, err := x.Int64()
 			if err != nil {
-				return protoreflect.Value{}, fnerrors.New("failed to parse json number %v as integer: %w", x, err)
+				return protoreflect.Value{}, fnerrors.Newf("failed to parse json number %v as integer: %w", x, err)
 			}
 
 			return protoreflect.ValueOf(n), nil
 		}
 
-		return protoreflect.Value{}, fnerrors.New("expected int64 or uint64, got %s", reflect.TypeOf(value).String())
+		return protoreflect.Value{}, fnerrors.Newf("expected int64 or uint64, got %s", reflect.TypeOf(value).String())
 
 	case protoreflect.StringKind:
 		switch x := value.(type) {
@@ -128,7 +128,7 @@ func allocateSingleValue(ctx context.Context, pctx ParseContext, field protorefl
 			return protoreflect.ValueOf(x), nil
 		}
 
-		return protoreflect.Value{}, fnerrors.New("expected string, got %s", reflect.TypeOf(value).String())
+		return protoreflect.Value{}, fnerrors.Newf("expected string, got %s", reflect.TypeOf(value).String())
 
 	case protoreflect.BytesKind:
 		switch x := value.(type) {
@@ -136,14 +136,14 @@ func allocateSingleValue(ctx context.Context, pctx ParseContext, field protorefl
 			return protoreflect.ValueOf(x), nil
 		}
 
-		return protoreflect.Value{}, fnerrors.New("expected bytes, got %s", reflect.TypeOf(value).String())
+		return protoreflect.Value{}, fnerrors.Newf("expected bytes, got %s", reflect.TypeOf(value).String())
 
 	case protoreflect.EnumKind:
 		switch x := value.(type) {
 		case string:
 			fieldValue := field.Enum().Values().ByName(protoreflect.Name(x))
 			if fieldValue == nil {
-				return protoreflect.Value{}, fnerrors.New("unknown enum value %s", x)
+				return protoreflect.Value{}, fnerrors.Newf("unknown enum value %s", x)
 			}
 
 			return protoreflect.ValueOfEnum(fieldValue.Number()), nil
@@ -151,7 +151,7 @@ func allocateSingleValue(ctx context.Context, pctx ParseContext, field protorefl
 		case int32:
 			fieldValue := field.Enum().Values().ByNumber(protoreflect.EnumNumber(x))
 			if fieldValue == nil {
-				return protoreflect.Value{}, fnerrors.New("unknown enum value %v", x)
+				return protoreflect.Value{}, fnerrors.Newf("unknown enum value %v", x)
 			}
 
 			return protoreflect.ValueOfEnum(fieldValue.Number()), nil
@@ -159,18 +159,18 @@ func allocateSingleValue(ctx context.Context, pctx ParseContext, field protorefl
 		case json.Number:
 			n, err := x.Int64()
 			if err != nil {
-				return protoreflect.Value{}, fnerrors.New("failed to parse json number %v as integer: %w", x, err)
+				return protoreflect.Value{}, fnerrors.Newf("failed to parse json number %v as integer: %w", x, err)
 			}
 
 			fieldValue := field.Enum().Values().ByNumber(protoreflect.EnumNumber(n))
 			if fieldValue == nil {
-				return protoreflect.Value{}, fnerrors.New("unknown enum value %v", x)
+				return protoreflect.Value{}, fnerrors.Newf("unknown enum value %v", x)
 			}
 
 			return protoreflect.ValueOfEnum(fieldValue.Number()), nil
 		}
 
-		return protoreflect.Value{}, fnerrors.New("expected string or int32, got %s", reflect.TypeOf(value).String())
+		return protoreflect.Value{}, fnerrors.Newf("expected string or int32, got %s", reflect.TypeOf(value).String())
 
 	case protoreflect.MessageKind:
 		msg, err := AllocateWellKnownMessage(ctx, pctx, field.Message(), value)
@@ -181,7 +181,7 @@ func allocateSingleValue(ctx context.Context, pctx ParseContext, field protorefl
 		return protoreflect.ValueOfMessage(msg.ProtoReflect()), nil
 
 	default:
-		return protoreflect.Value{}, fnerrors.New("kind not supported: %v", field.Kind())
+		return protoreflect.Value{}, fnerrors.Newf("kind not supported: %v", field.Kind())
 	}
 }
 
@@ -195,7 +195,7 @@ func AllocateWellKnownMessage(ctx context.Context, pctx ParseContext, messageTyp
 		case "foundation.schema.InlineJson":
 			serialized, err := json.Marshal(value)
 			if err != nil {
-				return nil, fnerrors.New("value is not serializable as json: %w", err)
+				return nil, fnerrors.Newf("value is not serializable as json: %w", err)
 			}
 			return &schema.InlineJson{InlineJson: string(serialized)}, nil
 
@@ -239,12 +239,12 @@ func allocateMessage(ctx context.Context, pctx ParseContext, msg protoreflect.Me
 			}
 
 			if f == nil {
-				return nil, fnerrors.New("{%s}.%q: no such field", msg.Descriptor().FullName(), key)
+				return nil, fnerrors.Newf("{%s}.%q: no such field", msg.Descriptor().FullName(), key)
 			}
 
 			newValue, err := allocateValue(ctx, pctx, msg, f, v)
 			if err != nil {
-				return nil, fnerrors.New("{%s}.%q: %w", msg.Descriptor().FullName(), key, err)
+				return nil, fnerrors.Newf("{%s}.%q: %w", msg.Descriptor().FullName(), key, err)
 			}
 
 			msg.Set(f, newValue)
@@ -253,7 +253,7 @@ func allocateMessage(ctx context.Context, pctx ParseContext, msg protoreflect.Me
 		return msg.Interface(), nil
 	}
 
-	return nil, fnerrors.New("%s: expected map, got %s", msg.Descriptor().FullName(), reflect.TypeOf(value).String())
+	return nil, fnerrors.Newf("%s: expected map, got %s", msg.Descriptor().FullName(), reflect.TypeOf(value).String())
 }
 
 func allocatePackageRef(ctx context.Context, pctx ParseContext, messageType protoreflect.MessageDescriptor, value any) (protoreflect.ProtoMessage, error) {
@@ -271,14 +271,14 @@ func allocatePackageRef(ctx context.Context, pctx ParseContext, messageType prot
 
 func AllocateFileContents(ctx context.Context, pctx ParseContext, value any) (*schema.FileContents, error) {
 	if pctx.FS == nil {
-		return nil, fnerrors.New("failed to handle resource, no workspace access available")
+		return nil, fnerrors.Newf("failed to handle resource, no workspace access available")
 	}
 
 	switch x := value.(type) {
 	case string:
 		contents, err := fs.ReadFile(pctx.FS, x)
 		if err != nil {
-			return nil, fnerrors.New("failed to load %q: %w", x, err)
+			return nil, fnerrors.Newf("failed to load %q: %w", x, err)
 		}
 
 		return &schema.FileContents{
@@ -289,7 +289,7 @@ func AllocateFileContents(ctx context.Context, pctx ParseContext, value any) (*s
 	case map[string]interface{}:
 		keys := maps.Keys(x)
 		if len(keys) != 1 {
-			return nil, fnerrors.New("failed to handle inline resource, expected single-key map")
+			return nil, fnerrors.Newf("failed to handle inline resource, expected single-key map")
 		}
 
 		switch keys[0] {
@@ -304,7 +304,7 @@ func AllocateFileContents(ctx context.Context, pctx ParseContext, value any) (*s
 				return &schema.FileContents{Contents: y}, nil
 			}
 
-			return nil, fnerrors.New("failed to handle inline resource, got %s", reflect.TypeOf(x[keys[0]]).String())
+			return nil, fnerrors.Newf("failed to handle inline resource, got %s", reflect.TypeOf(x[keys[0]]).String())
 
 		case "fromURL":
 			switch y := x[keys[0]].(type) {
@@ -344,16 +344,16 @@ func AllocateFileContents(ctx context.Context, pctx ParseContext, value any) (*s
 					}
 				}
 
-				return nil, fnerrors.New("failed to handle url resource, expected url and digest keys")
+				return nil, fnerrors.Newf("failed to handle url resource, expected url and digest keys")
 			}
 
-			return nil, fnerrors.New("failed to handle url resource, got %s", reflect.TypeOf(x[keys[0]]).String())
+			return nil, fnerrors.Newf("failed to handle url resource, got %s", reflect.TypeOf(x[keys[0]]).String())
 		}
 
-		return nil, fnerrors.New("failed to handle inline resource, expected %q got %q", "inline", keys[0])
+		return nil, fnerrors.Newf("failed to handle inline resource, expected %q got %q", "inline", keys[0])
 	}
 
-	return nil, fnerrors.New("failed to handle resource type, got %s", reflect.TypeOf(value).String())
+	return nil, fnerrors.Newf("failed to handle resource type, got %s", reflect.TypeOf(value).String())
 }
 
 func str(m map[string]any, key string) (string, bool) {

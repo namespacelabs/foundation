@@ -358,7 +358,7 @@ func handleGrpcStatus(url string, st *spb.Status) error {
 
 	case int32(codes.FailedPrecondition):
 		// Failed precondition is not retryable so we should not suggest that it is transient (e.g. invocation error suggests this).
-		return fnerrors.New("failed to call %s: %w", url, status.ErrorProto(st))
+		return fnerrors.Newf("failed to call %s: %w", url, status.ErrorProto(st))
 
 	case int32(codes.Internal):
 		return fnerrors.InternalError("failed to call %s: %w", url, status.ErrorProto(st))

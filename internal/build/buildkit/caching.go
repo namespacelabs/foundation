@@ -42,7 +42,7 @@ func (c *cacheVar) Set(v string) error {
 		args[kv[0]] = kv[1]
 	}
 	if args["type"] == "" {
-		return fnerrors.New("type is required")
+		return fnerrors.Newf("type is required")
 	}
 	c.cacheType = args["type"]
 	delete(args, "type")

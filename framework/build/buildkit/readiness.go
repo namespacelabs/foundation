@@ -32,7 +32,7 @@ func WaitReadiness(ctx context.Context, maxWait time.Duration, connect func(ctx 
 		}
 
 		if i >= maxRetries {
-			return fnerrors.New("buildkit never became ready, last error: %w", err)
+			return fnerrors.Newf("buildkit never became ready, last error: %w", err)
 		}
 
 		i++

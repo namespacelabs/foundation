@@ -25,7 +25,7 @@ func NewExchangeCircleCITokenCmd() *cobra.Command {
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if !circleci.IsRunningInCircleci() {
-			return fnerrors.New("not running in CircleCI")
+			return fnerrors.Newf("not running in CircleCI")
 		}
 
 		token, err := circleci.GetOidcTokenV2()

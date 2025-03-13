@@ -103,11 +103,11 @@ func RefreshSessionClientCert(ctx context.Context) (bool, error) {
 	newCertPem, err := fetchClientCert(ctx, string(pubKeyPem))
 
 	if err != nil {
-		return false, fnerrors.New("refresh session client cert: could not issue client cert: %w", err)
+		return false, fnerrors.Newf("refresh session client cert: could not issue client cert: %w", err)
 	}
 
 	if err := atomic.WriteFile(clientCertPath, strings.NewReader(newCertPem)); err != nil {
-		return false, fnerrors.New("refresh session client cert: can not write new cert: %w", err)
+		return false, fnerrors.Newf("refresh session client cert: can not write new cert: %w", err)
 	}
 
 	return true, nil
@@ -180,7 +180,7 @@ func makeClientCertificate(ctx context.Context) ([]byte, []byte, error) {
 	certPem, err := fetchClientCert(ctx, string(pubKeyPem))
 
 	if err != nil {
-		return nil, nil, fnerrors.New("could not issue client cert: %w", err)
+		return nil, nil, fnerrors.Newf("could not issue client cert: %w", err)
 	}
 
 	return privKeyPem, []byte(certPem), nil

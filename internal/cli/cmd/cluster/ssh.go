@@ -136,11 +136,11 @@ func NewTopCmd() *cobra.Command {
 func withSsh(ctx context.Context, cluster *api.KubernetesCluster, user string, callback func(context.Context, *ssh.Client) error) error {
 	sshSvc := api.ClusterService(cluster, "ssh")
 	if sshSvc == nil || sshSvc.Endpoint == "" {
-		return fnerrors.New("instance does not have ssh")
+		return fnerrors.Newf("instance does not have ssh")
 	}
 
 	if sshSvc.Status != "READY" {
-		return fnerrors.New("expected ssh to be READY, saw %q", sshSvc.Status)
+		return fnerrors.Newf("expected ssh to be READY, saw %q", sshSvc.Status)
 	}
 
 	signer, err := ssh.ParsePrivateKey(cluster.SshPrivateKey)

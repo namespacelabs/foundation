@@ -53,12 +53,12 @@ func ComputeEndpoints(planner runtime.Planner, srv Server, merged *schema.Server
 			}
 
 			if lst == nil {
-				return nil, nil, fnerrors.New("service %q refers to non-existing listener %q", pkg.PackageName(), service.ListenerName)
+				return nil, nil, fnerrors.Newf("service %q refers to non-existing listener %q", pkg.PackageName(), service.ListenerName)
 			}
 		} else {
 			serverPort := findPort(serverPorts, "server-port")
 			if serverPort == nil {
-				return nil, nil, fnerrors.New("listener %q is missing a corresponding port", service.ListenerName)
+				return nil, nil, fnerrors.Newf("listener %q is missing a corresponding port", service.ListenerName)
 			}
 
 			lst = &schema.Listener{

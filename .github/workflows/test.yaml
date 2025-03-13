@@ -15,7 +15,7 @@ jobs:
   test:
     strategy:
       matrix:
-        go-version: [1.21.x]
+        go-version: [1.24.x]
     runs-on:
       - nscloud-ubuntu-22.04-amd64-8x16-with-cache
       - nscloud-cache-size-10gb

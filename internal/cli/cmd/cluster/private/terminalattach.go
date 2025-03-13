@@ -29,7 +29,7 @@ func newInternalTerminalAttach() *cobra.Command {
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if len(args) == 0 {
-			return fnerrors.New("need at least one command to run")
+			return fnerrors.Newf("need at least one command to run")
 		}
 
 		cli, err := containerd.New("/var/run/containerd/containerd.sock")

@@ -162,7 +162,7 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 			}
 
 		default:
-			return nil, fnerrors.New("%s: unsupported ingress protocol", *protocol)
+			return nil, fnerrors.Newf("%s: unsupported ingress protocol", *protocol)
 		}
 
 		if len(paths) > 0 && len(grpc) > 0 {

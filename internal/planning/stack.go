@@ -297,14 +297,14 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 
 			if frag.MainContainer.BinaryRef != nil {
 				if ps.MergedFragment.MainContainer.BinaryRef != nil {
-					return fnerrors.New("main_container.binary_ref set more than once")
+					return fnerrors.Newf("main_container.binary_ref set more than once")
 				}
 				ps.MergedFragment.MainContainer.BinaryRef = frag.MainContainer.BinaryRef
 			}
 
 			if frag.MainContainer.Name != "" {
 				if ps.MergedFragment.MainContainer.Name != "" {
-					return fnerrors.New("main_container.Name set more than once")
+					return fnerrors.Newf("main_container.Name set more than once")
 				}
 				ps.MergedFragment.MainContainer.Name = frag.MainContainer.Name
 			}
@@ -322,7 +322,7 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 
 			if ps.MergedFragment.MainContainer.Limits != nil {
 				if frag.MainContainer.Limits != nil {
-					return fnerrors.New("resource limits are defined more than once")
+					return fnerrors.Newf("resource limits are defined more than once")
 				}
 			} else {
 				ps.MergedFragment.MainContainer.Limits = frag.MainContainer.Limits
@@ -330,7 +330,7 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 
 			if ps.MergedFragment.MainContainer.Requests != nil {
 				if frag.MainContainer.Requests != nil {
-					return fnerrors.New("resource requests are defined more than once")
+					return fnerrors.Newf("resource requests are defined more than once")
 				}
 			} else {
 				ps.MergedFragment.MainContainer.Requests = frag.MainContainer.Requests
@@ -338,7 +338,7 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 
 			if ps.MergedFragment.MainContainer.TerminationGracePeriodSeconds != 0 {
 				if frag.MainContainer.TerminationGracePeriodSeconds != 0 {
-					return fnerrors.New("termination grace period defined more than once")
+					return fnerrors.Newf("termination grace period defined more than once")
 				}
 			} else {
 				ps.MergedFragment.MainContainer.TerminationGracePeriodSeconds = frag.MainContainer.TerminationGracePeriodSeconds
@@ -346,7 +346,7 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 
 			if frag.MainContainer.Security != nil {
 				if ps.MergedFragment.MainContainer.Security != nil {
-					return fnerrors.New("main_container.security set more than once")
+					return fnerrors.Newf("main_container.security set more than once")
 				}
 				ps.MergedFragment.MainContainer.Security = frag.MainContainer.Security
 			}
@@ -366,7 +366,7 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 
 			if frag.Replicas != 0 {
 				if ps.MergedFragment.Replicas != 0 && frag.Replicas != ps.MergedFragment.Replicas {
-					return fnerrors.New("incompatible replicas definition")
+					return fnerrors.Newf("incompatible replicas definition")
 				} else if ps.MergedFragment.Replicas == 0 {
 					ps.MergedFragment.Replicas = frag.Replicas
 				}
@@ -374,7 +374,7 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 
 			if frag.PodAntiAffinity != nil {
 				if ps.MergedFragment.PodAntiAffinity != nil {
-					return fnerrors.New("pod_anti_affinity defined more than once")
+					return fnerrors.Newf("pod_anti_affinity defined more than once")
 				}
 
 				ps.MergedFragment.PodAntiAffinity = frag.PodAntiAffinity
@@ -382,7 +382,7 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 
 			if frag.SpreadConstraints != nil {
 				if ps.MergedFragment.SpreadConstraints != nil {
-					return fnerrors.New("spread_constraints defined more than once")
+					return fnerrors.Newf("spread_constraints defined more than once")
 				}
 
 				ps.MergedFragment.SpreadConstraints = frag.SpreadConstraints
@@ -390,7 +390,7 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 
 			if frag.UpdateStrategy != nil {
 				if ps.MergedFragment.UpdateStrategy != nil {
-					return fnerrors.New("update_strategy defined more than once")
+					return fnerrors.Newf("update_strategy defined more than once")
 				}
 
 				ps.MergedFragment.UpdateStrategy = frag.UpdateStrategy

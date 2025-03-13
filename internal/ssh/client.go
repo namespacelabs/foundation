@@ -55,11 +55,11 @@ type Deferred struct {
 
 func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 	if endpoint.User == "" {
-		return nil, fnerrors.New("transport.ssh: user is required")
+		return nil, fnerrors.Newf("transport.ssh: user is required")
 	}
 
 	if endpoint.Address == "" {
-		return nil, fnerrors.New("transport.ssh: address is required")
+		return nil, fnerrors.Newf("transport.ssh: address is required")
 	}
 
 	sshAddr, sshPort, err := net.SplitHostPort(endpoint.Address)
@@ -78,7 +78,7 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 
 	if teleportProxy := endpoint.TeleportProxy; teleportProxy != nil {
 		if teleportProxy.Host == "" {
-			return nil, fnerrors.New("transport.ssh: teleport host is required")
+			return nil, fnerrors.Newf("transport.ssh: teleport host is required")
 		}
 
 		// Hardcoded default port. See https://github.com/gravitational/teleport/blob/da589355d4ea55de276062db09f440c6fefdb2d6/lib/defaults/defaults.go#L48
@@ -88,11 +88,11 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 		switch {
 		case teleportProxy.ProfileName != "":
 			if endpoint.AgentSockPath != "" {
-				return nil, fnerrors.New("ssh: can't use both teleport_profile_name and agent_sock_path")
+				return nil, fnerrors.Newf("ssh: can't use both teleport_profile_name and agent_sock_path")
 			}
 
 			if endpoint.PrivateKeyPath != "" {
-				return nil, fnerrors.New("ssh: can't use private_key_path with teleport_profile_name")
+				return nil, fnerrors.Newf("ssh: can't use private_key_path with teleport_profile_name")
 			}
 
 			p, err := profile.FromDir("", teleportProxy.ProfileName)
@@ -132,11 +132,11 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 			}
 		case teleportProxy.TbotIdentityDir != "":
 			if teleportProxy.ProxyAddress == "" {
-				return nil, fnerrors.New("transport.ssh: teleport proxy address is required")
+				return nil, fnerrors.Newf("transport.ssh: teleport proxy address is required")
 			}
 
 			if teleportProxy.Cluster == "" {
-				return nil, fnerrors.New("transport.ssh: teleport cluster is required")
+				return nil, fnerrors.Newf("transport.ssh: teleport cluster is required")
 			}
 
 			tbotIdentity, err := identityfile.ReadFile(filepath.Join(teleportProxy.TbotIdentityDir, "identity"))
@@ -173,7 +173,7 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 				return nil, err
 			}
 		default:
-			return nil, fnerrors.New("transport.ssh: teleport profile and tbot identity dir is required")
+			return nil, fnerrors.Newf("transport.ssh: teleport profile and tbot identity dir is required")
 		}
 	} else {
 		config = &ssh.ClientConfig{
@@ -195,14 +195,14 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 		if endpoint.AgentSockPath != "" {
 			path, err := dirs.ExpandHome(os.ExpandEnv(endpoint.AgentSockPath))
 			if err != nil {
-				return nil, fnerrors.New("failed to resolve ssh agent path: %w", err)
+				return nil, fnerrors.Newf("failed to resolve ssh agent path: %w", err)
 			}
 
 			keyKey += ":agent=" + path
 
 			conn, err := net.Dial("unix", path)
 			if err != nil {
-				return nil, fnerrors.New("failed to connect to ssh agent: %w", err)
+				return nil, fnerrors.Newf("failed to connect to ssh agent: %w", err)
 			}
 
 			agentClient := agent.NewClient(conn)

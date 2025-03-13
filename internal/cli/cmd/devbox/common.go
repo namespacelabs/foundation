@@ -38,7 +38,7 @@ func getSingleDevbox(ctx context.Context, devboxClient *private.DevBoxServiceCli
 
 	devbox := findDevboxByTag(resp.DevBoxes, tag)
 	if devbox == nil {
-		return nil, fmt.Errorf("devbox '" + tag + "' not found")
+		return nil, fmt.Errorf("devbox '%s' not found", tag)
 	}
 
 	return devbox, nil

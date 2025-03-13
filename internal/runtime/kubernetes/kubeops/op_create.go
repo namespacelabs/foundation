@@ -85,7 +85,7 @@ func registerCreate() {
 				obj, err := fetchResource(ctx, cluster, d.Description, *resource, parsed.Name,
 					parsed.Namespace, fnschema.PackageNames(d.Scope...))
 				if err != nil {
-					return nil, fnerrors.New("failed to fetch resource: %w", err)
+					return nil, fnerrors.Newf("failed to fetch resource: %w", err)
 				}
 
 				if obj != nil {
@@ -96,7 +96,7 @@ func registerCreate() {
 					if create.UpdateIfExisting {
 						msg := &unstructured.Unstructured{Object: map[string]interface{}{}}
 						if err := msg.UnmarshalJSON([]byte(create.BodyJson)); err != nil {
-							return nil, fnerrors.New("failed to parse create body: %w", err)
+							return nil, fnerrors.Newf("failed to parse create body: %w", err)
 						}
 
 						// This is not advised. Overwriting without reading.
@@ -108,7 +108,7 @@ func registerCreate() {
 			}
 
 			if err := tasks.Action("kubernetes.create").Scope(fnschema.PackageNames(d.Scope...)...).
-				HumanReadablef(d.Description).
+				HumanReadable(d.Description).
 				Arg("resource", resource.Resource).
 				Arg("name", parsed.Name).
 				Arg("namespace", parsed.Namespace).Run(ctx, func(ctx context.Context) error {
@@ -190,7 +190,7 @@ type parsedCreate struct {
 
 func updateResource(ctx context.Context, d *fnschema.SerializedInvocation, resource schema.GroupVersionResource, body *unstructured.Unstructured, restcfg *rest.Config) error {
 	return tasks.Action("kubernetes.update").Scope(fnschema.PackageNames(d.Scope...)...).
-		HumanReadablef(d.Description).
+		HumanReadable(d.Description).
 		Arg("resource", resource.Resource).
 		Arg("name", body.GetName()).
 		Arg("namespace", body.GetNamespace()).Run(ctx, func(ctx context.Context) error {

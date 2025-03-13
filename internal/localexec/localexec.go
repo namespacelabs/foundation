@@ -49,5 +49,5 @@ func checkCancelation(ctx context.Context, label, what string, err error) error 
 		err = ctx.Err()
 	}
 
-	return fnerrors.New("%s: local %s failed: %w", label, what, err)
+	return fnerrors.Newf("%s: local %s failed: %w", label, what, err)
 }

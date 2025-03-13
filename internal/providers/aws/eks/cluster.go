@@ -224,7 +224,7 @@ func (cd *cachedDescribeCluster) Compute(ctx context.Context, _ compute.Resolved
 		})
 		if err != nil {
 			return auth.CheckNeedsLoginOr(cd.session.sesh, err, func(err error) error {
-				return fnerrors.New("eks: describe cluster failed: %w", err)
+				return fnerrors.Newf("eks: describe cluster failed: %w", err)
 			})
 		}
 
