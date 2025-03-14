@@ -114,7 +114,7 @@ func RefreshSessionClientCert(ctx context.Context) (bool, error) {
 }
 
 func getCertPathToRefresh() (string, any, error) {
-	state, err := getDefaultStateDirIfExists(buildkitProxyPath)
+	state, err := DetermineStateDir("", buildkitProxyPath)
 	if err != nil {
 		return "", nil, err
 	}

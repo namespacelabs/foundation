@@ -129,10 +129,11 @@ func newSetupBuildxCmd() *cobra.Command {
 
 		fmt.Fprintf(console.Debug(ctx), "Using state path %q\n", state)
 
-		if proxyAlreadyExists(state) {
+		// We don't need to clean up a server-side proxy based builder - overwriting it later is good enough.
+		if clientSideProxyStateExists(state) {
 			if *forceCleanup {
 				if err := withStore(dockerCli, func(txn *store.Txn) error {
-					return doBuildxCleanup(ctx, state, txn)
+					return doClientSideProxyCleanup(ctx, state, txn)
 				}); err != nil {
 					console.SetStickyContent(ctx, "build", existingProxyMessage(*stateDir))
 					return err
@@ -292,7 +293,7 @@ func newSetupBuildxCmd() *cobra.Command {
 	return cmd
 }
 
-func proxyAlreadyExists(stateDir string) bool {
+func clientSideProxyStateExists(stateDir string) bool {
 	_, err := os.Stat(filepath.Join(stateDir, metadataFile))
 	return !os.IsNotExist(err)
 }
@@ -334,22 +335,25 @@ func blockWaitForLogin(ctx context.Context) error {
 	}
 }
 
-func ensureStateDir(specified, dir string) (string, error) {
+// Determines the directory to store state in.
+// If "specified" is non-empty, it will be used - for historical reasons, the ${specified}/proxy directory will be returned.
+// If "specified" is empty, a directory that ends with ${subdirIfDefault} will be returned.
+func DetermineStateDir(specified string, subdirIfDefault string) (string, error) {
 	if specified == "" {
 		// Change state dir from cache, which can be removed at any time,
 		// to the app's config folder.
 		// Older state dir might still be under the cache file, so we need to first check that path,
 		// if it does not exist, we can create the new one, under config path.
-		oldStateDirPath, err := dirs.Subdir(dir)
+		oldStateDirPath, err := dirs.Subdir(subdirIfDefault)
 		if err != nil {
 			return "", err
 		}
 
-		if proxyAlreadyExists(oldStateDirPath) {
+		if clientSideProxyStateExists(oldStateDirPath) {
 			return oldStateDirPath, nil
 		}
 
-		return dirs.Ensure(dirs.ConfigSubdir(dir))
+		return dirs.ConfigSubdir(subdirIfDefault)
 	}
 
 	s, err := filepath.Abs(specified)
@@ -357,28 +361,12 @@ func ensureStateDir(specified, dir string) (string, error) {
 		return "", err
 	}
 
-	return dirs.Ensure(filepath.Join(s, proxyDir), nil)
+	return filepath.Join(s, proxyDir), nil
 }
 
-// Returns the default state directory for nsc buildkit state.
-// Otherwise returns "".
-func getDefaultStateDirIfExists(dir string) (string, error) {
-	// Mimic the logic of ensureStateDir but don't create directories.
-	oldStateDirPath, err := dirs.Subdir(dir)
-	if err != nil {
-		return "", err
-	}
-
-	if proxyAlreadyExists(oldStateDirPath) {
-		return oldStateDirPath, nil
-	}
-
-	newStateDirPath, err := dirs.ConfigSubdir(dir)
-	if err != nil {
-		return "", err
-	}
-
-	return newStateDirPath, nil
+// see determineStateDir for how this picks the state directory.
+func ensureStateDir(specified, subdirIfDefault string) (string, error) {
+	return dirs.Ensure(DetermineStateDir(specified, subdirIfDefault))
 }
 
 func ensureLogDir(dir string) (string, error) {
@@ -459,6 +447,7 @@ func newCleanupBuildxCommand() *cobra.Command {
 		Short: "Unregisters Namespace Remote builders from buildx.",
 	}
 
+	name := cmd.Flags().String("name", defaultBuilder, "The name of the builder to clean up.")
 	stateDir := cmd.Flags().String("state", "", "If set, looks for the remote builder context in this directory.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
@@ -472,26 +461,82 @@ func newCleanupBuildxCommand() *cobra.Command {
 		}
 
 		return withStore(dockerCli, func(txn *store.Txn) error {
-			state, err := ensureStateDir(*stateDir, buildkitProxyPath)
+			cleanedUpSomething := false
+
+			if isServerSideProxy(txn, *name) {
+				txn.Remove(*name)
+
+				cleanedUpSomething = true
+				fmt.Fprintf(console.Stderr(ctx), "Removed buildx node group %q.\n", *name)
+			}
+
+			state, err := DetermineStateDir(*stateDir, buildkitProxyPath)
 			if err != nil {
 				return err
 			}
 
-			if !proxyAlreadyExists(state) {
-				console.SetStickyContent(ctx, "build", "State file not found. Nothing to cleanup.")
-				return nil
+			if clientSideProxyStateExists(state) {
+				if err := doClientSideProxyCleanup(ctx, state, txn); err != nil {
+					return err
+				}
+
+				cleanedUpSomething = true
 			}
 
-			return doBuildxCleanup(ctx, state, txn)
+			if cleanedUpSomething {
+				fmt.Fprintf(console.Stderr(ctx), "Cleanup complete.\n")
+			} else {
+				console.SetStickyContent(ctx, "build", "State file not found. Nothing to cleanup.")
+			}
+
+			return nil
+
 		})
 	})
 
 	return cmd
 }
 
-func doBuildxCleanup(ctx context.Context, state string, txn *store.Txn) error {
+type ServerProxyEndpoint struct {
+	Platform string
+	Endpoint string
+}
+
+func getServerSideProxyEndpoints(txn *store.Txn, name string) []ServerProxyEndpoint {
+	var endpoints []ServerProxyEndpoint
+
+	ng, err := txn.NodeGroupByName(name)
+	if err != nil {
+		return endpoints
+	}
+
+	if ng.Driver != "remote" {
+		return endpoints
+	}
+
+	for _, node := range ng.Nodes {
+		for _, plat := range node.Platforms {
+			if strings.Contains(node.Endpoint, "namespaceapis.com") {
+				endpoints = append(endpoints, ServerProxyEndpoint{
+					Platform: plat.OS + "/" + plat.Architecture,
+					Endpoint: node.Endpoint,
+				})
+			}
+		}
+	}
+
+	return endpoints
+}
+
+func isServerSideProxy(txn *store.Txn, name string) bool {
+	return len(getServerSideProxyEndpoints(txn, name)) != 0
+}
+
+func doClientSideProxyCleanup(ctx context.Context, state string, txn *store.Txn) error {
+	metadataPath := filepath.Join(state, metadataFile)
+
 	var md buildxMetadata
-	if err := files.ReadJson(filepath.Join(state, metadataFile), &md); err != nil {
+	if err := files.ReadJson(metadataPath, &md); err != nil {
 		return err
 	}
 
@@ -510,12 +555,12 @@ func doBuildxCleanup(ctx context.Context, state string, txn *store.Txn) error {
 		}
 	}
 
-	if err := os.RemoveAll(state); err != nil {
+	if err := os.Remove(metadataPath); err != nil {
 		console.SetStickyContent(ctx, "build",
 			fmt.Sprintf("Warning: deleting state files in %s failed: %v", state, err))
 	}
 
-	fmt.Fprintf(console.Debug(ctx), "Removed local state directory %q.\n", state)
+	fmt.Fprintf(console.Debug(ctx), "Removed local state file %q.\n", metadataPath)
 
 	if md.NodeGroupName != "" {
 		if err := txn.Remove(md.NodeGroupName); err != nil {
@@ -525,7 +570,6 @@ func doBuildxCleanup(ctx context.Context, state string, txn *store.Txn) error {
 		fmt.Fprintf(console.Stderr(ctx), "Removed buildx node group %q.\n", md.NodeGroupName)
 	}
 
-	fmt.Fprintf(console.Stderr(ctx), "Cleanup complete.\n")
 	return nil
 }
 
@@ -674,46 +718,39 @@ func newStatusBuildxCommand() *cobra.Command {
 
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 	stateDir := cmd.Flags().String("state", "", "If set, looks for the remote builder context in this directory.")
+	name := cmd.Flags().String("name", defaultBuilder, "The name of the builder to clean up.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		state, err := ensureStateDir(*stateDir, buildkitProxyPath)
+		dockerCli, err := command.NewDockerCli()
 		if err != nil {
 			return err
 		}
 
-		var md buildxMetadata
-		if err := files.ReadJson(filepath.Join(state, metadataFile), &md); err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				console.SetStickyContent(ctx, "build", buildxContextNotConfigured())
-				return nil
-			}
+		if err := dockerCli.Initialize(cliflags.NewClientOptions()); err != nil {
 			return err
 		}
 
-		descs := []StatusData{}
-		for _, proxy := range md.Instances {
-			client := makeUnixHTTPClient(proxy.ControlSocketPath)
-			resp, err := client.Get("http://localhost/status")
-			if err != nil {
-				console.SetStickyContent(ctx, "build", buildxContextNotRunning())
-				return err
-			}
-			defer resp.Body.Close()
+		sspDescs, err := determineServerSideProxyConfig(dockerCli, *name)
+		if err != nil {
+			return err
+		}
 
-			var desc StatusData
-			dec := json.NewDecoder(resp.Body)
-			if err := dec.Decode(&desc); err != nil {
-				return err
-			}
+		descs, err := determineCientSideProxyStatus(ctx, *stateDir)
+		if err != nil {
+			return err
+		}
 
-			descs = append(descs, desc)
+		descs = append(descs, sspDescs...)
+
+		if descs == nil {
+			console.SetStickyContent(ctx, "build", buildxContextNotConfigured())
+			return nil
 		}
 
 		stdout := console.Stdout(ctx)
 		switch *output {
 		case "json":
 			enc := json.NewEncoder(console.Stdout(ctx))
-			enc.SetIndent("", "  ")
 			if err := enc.Encode(descs); err != nil {
 				return fnerrors.InternalError("failed to encode status as JSON output: %w", err)
 			}
@@ -740,4 +777,58 @@ func newStatusBuildxCommand() *cobra.Command {
 	})
 
 	return cmd
+}
+
+func determineServerSideProxyConfig(dockerCli *command.DockerCli, name string) ([]StatusData, error) {
+	descs := []StatusData{}
+
+	err := withStore(dockerCli, func(txn *store.Txn) error {
+		endpoints := getServerSideProxyEndpoints(txn, name)
+		for _, e := range endpoints {
+			descs = append(descs, StatusData{
+				Platform: e.Platform,
+				Status:   ProxyStatus_ServerSide,
+			})
+		}
+
+		return nil
+	})
+
+	return descs, err
+}
+
+func determineCientSideProxyStatus(ctx context.Context, state string) ([]StatusData, error) {
+	state, err := ensureStateDir(state, buildkitProxyPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var md buildxMetadata
+	if err := files.ReadJson(filepath.Join(state, metadataFile), &md); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	descs := []StatusData{}
+	for _, proxy := range md.Instances {
+		client := makeUnixHTTPClient(proxy.ControlSocketPath)
+		resp, err := client.Get("http://localhost/status")
+		if err != nil {
+			console.SetStickyContent(ctx, "build", buildxContextNotRunning())
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		var desc StatusData
+		dec := json.NewDecoder(resp.Body)
+		if err := dec.Decode(&desc); err != nil {
+			return nil, err
+		}
+
+		descs = append(descs, desc)
+	}
+
+	return descs, nil
 }

@@ -34,9 +34,10 @@ import (
 type ProxyStatus string
 
 const (
-	ProxyStatus_Starting ProxyStatus = "Starting"
-	ProxyStatus_Running  ProxyStatus = "Running"
-	ProxyStatus_Failing  ProxyStatus = "Failing"
+	ProxyStatus_Starting   ProxyStatus = "Starting"
+	ProxyStatus_Running    ProxyStatus = "Running"
+	ProxyStatus_Failing    ProxyStatus = "Failing"
+	ProxyStatus_ServerSide ProxyStatus = "ServerSideProxy"
 )
 
 const (
