@@ -12,7 +12,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"maps"
 	"os"
 	"path"
 	"strings"
@@ -30,10 +29,10 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/metadata"
 )
 
-func setupServerSideBuildxProxy(ctx context.Context, state, builderName string, use, defaultLoad bool, dockerCli *command.DockerCli, platforms []api.BuildPlatform, createAtStartup bool) error {
+func PrepareServerSideBuildxProxy(ctx context.Context, stateDir string, platforms []api.BuildPlatform, createAtStartup bool) ([]BuilderConfig, error) {
 	privKeyPem, cliCertPem, err := makeClientCertificate(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	serverBuilderConfigs := []*builderv1beta.GetBuilderConfigurationResponse{}
@@ -41,38 +40,49 @@ func setupServerSideBuildxProxy(ctx context.Context, state, builderName string, 
 		// Download the builder config for this platform
 		resp, err := api.GetBuilderConfiguration(ctx, plat, createAtStartup)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		serverBuilderConfigs = append(serverBuilderConfigs, resp)
 	}
 
 	// Write key files in ns state directory
-	privKeyPath := path.Join(state, "private_key.pem")
+	privKeyPath := path.Join(stateDir, "private_key.pem")
 	if err := writeFileToPath(privKeyPem, privKeyPath); err != nil {
-		return err
+		return nil, err
 	}
 
-	clientCertPath := path.Join(state, "client_cert.pem")
+	clientCertPath := path.Join(stateDir, "client_cert.pem")
 	if err := writeFileToPath(cliCertPem, clientCertPath); err != nil {
-		return err
+		return nil, err
 	}
 
-	builderConfigs := []builderConfig{}
+	builderConfigs := []BuilderConfig{}
 	for _, bc := range serverBuilderConfigs {
-		serverCAPath := path.Join(state, fmt.Sprintf("server_%s_cert.pem", bc.GetShape().GetMachineArch()))
+		serverCAPath := path.Join(stateDir, fmt.Sprintf("server_%s_cert.pem", bc.GetShape().GetMachineArch()))
 		if err := writeFileToPath([]byte(bc.GetServerCaPem()), serverCAPath); err != nil {
-			return err
+			return nil, err
 		}
 
-		builderConfigs = append(builderConfigs, builderConfig{
-			serverConfig: bc,
-			serverCAPath: serverCAPath,
+		builderConfigs = append(builderConfigs, BuilderConfig{
+			ServerConfig:   bc,
+			ServerCAPath:   serverCAPath,
+			ClientKeyPath:  privKeyPath,
+			ClientCertPath: clientCertPath,
 		})
 	}
 
+	return builderConfigs, nil
+}
+
+func setupServerSideBuildxProxy(ctx context.Context, stateDir, builderName string, use, defaultLoad bool, dockerCli *command.DockerCli, platforms []api.BuildPlatform, createAtStartup bool) error {
+	builderConfigs, err := PrepareServerSideBuildxProxy(ctx, stateDir, platforms, createAtStartup)
+	if err != nil {
+		return err
+	}
+
 	// Create buildx builders
-	if err := wireRemoteBuildxProxy(dockerCli, builderName, use, defaultLoad, builderConfigs, privKeyPath, clientCertPath); err != nil {
+	if err := wireRemoteBuildxProxy(dockerCli, builderName, use, defaultLoad, builderConfigs); err != nil {
 		return err
 	}
 
@@ -114,7 +124,7 @@ func RefreshSessionClientCert(ctx context.Context) (bool, error) {
 }
 
 func getCertPathToRefresh() (string, any, error) {
-	state, err := DetermineStateDir("", buildkitProxyPath)
+	state, err := DetermineStateDir("", BuildkitProxyPath)
 	if err != nil {
 		return "", nil, err
 	}
@@ -199,9 +209,11 @@ func fetchClientCert(ctx context.Context, pubKeyPem string) (string, error) {
 	}
 }
 
-type builderConfig struct {
-	serverConfig *builderv1beta.GetBuilderConfigurationResponse
-	serverCAPath string
+type BuilderConfig struct {
+	ServerConfig   *builderv1beta.GetBuilderConfigurationResponse
+	ServerCAPath   string
+	ClientKeyPath  string
+	ClientCertPath string
 }
 
 func genPrivAndPublicKeysPEM() ([]byte, []byte, error) {
@@ -239,7 +251,7 @@ func writeFileToPath(content []byte, path string) error {
 	return os.WriteFile(path, content, 0600)
 }
 
-func wireRemoteBuildxProxy(dockerCli *command.DockerCli, name string, use, defaultLoad bool, builderConfigs []builderConfig, privKeyPath, clientCertPath string) error {
+func wireRemoteBuildxProxy(dockerCli *command.DockerCli, name string, use, defaultLoad bool, builderConfigs []BuilderConfig) error {
 	return withStore(dockerCli, func(txn *store.Txn) error {
 		ng, err := txn.NodeGroupByName(name)
 		if err != nil {
@@ -257,28 +269,26 @@ func wireRemoteBuildxProxy(dockerCli *command.DockerCli, name string, use, defau
 			}
 		}
 
-		driverOpts := map[string]string{
-			"cert": clientCertPath,
-			"key":  privKeyPath,
-		}
-
-		if defaultLoad {
-			// Supported starting with v0.14.0
-			driverOpts["default-load"] = "true"
-		}
-
 		for _, bc := range builderConfigs {
 			var platforms []string
-			if bc.serverConfig.GetShape().GetMachineArch() == "arm64" {
+			if bc.ServerConfig.GetShape().GetMachineArch() == "arm64" {
 				platforms = []string{"linux/arm64"}
 			} else {
 				platforms = []string{"linux/amd64"}
 			}
 
-			doCopy := maps.Clone(driverOpts)
-			doCopy["cacert"] = bc.serverCAPath
+			driverOpts := map[string]string{
+				"cert":   bc.ClientCertPath,
+				"key":    bc.ClientKeyPath,
+				"cacert": bc.ServerCAPath,
+			}
 
-			if err := ng.Update(bc.serverConfig.GetShape().GetMachineArch(), getEndpoint(bc.serverConfig), platforms, true, true, nil, "", doCopy); err != nil {
+			if defaultLoad {
+				// Supported starting with v0.14.0
+				driverOpts["default-load"] = "true"
+			}
+
+			if err := ng.Update(bc.ServerConfig.GetShape().GetMachineArch(), getEndpoint(bc.ServerConfig), platforms, true, true, nil, "", driverOpts); err != nil {
 				return err
 			}
 		}

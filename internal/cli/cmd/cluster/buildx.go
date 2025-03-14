@@ -43,7 +43,7 @@ const (
 	metadataFile      = "metadata.json"
 	defaultBuilder    = "nsc-remote"
 	proxyDir          = "proxy"
-	buildkitProxyPath = "buildkit/" + proxyDir
+	BuildkitProxyPath = "buildkit/" + proxyDir
 )
 
 func newSetupBuildxCmd() *cobra.Command {
@@ -110,7 +110,7 @@ func newSetupBuildxCmd() *cobra.Command {
 			return rpcerrors.Errorf(codes.Internal, "no builders available")
 		}
 
-		state, err := ensureStateDir(*stateDir, buildkitProxyPath)
+		state, err := ensureStateDir(*stateDir, BuildkitProxyPath)
 		if err != nil {
 			return err
 		}
@@ -140,7 +140,7 @@ func newSetupBuildxCmd() *cobra.Command {
 				}
 
 				// Cleanup deletes also the state directory, recreate it
-				state, err = ensureStateDir(*stateDir, buildkitProxyPath)
+				state, err = ensureStateDir(*stateDir, BuildkitProxyPath)
 				if err != nil {
 					return err
 				}
@@ -470,7 +470,7 @@ func newCleanupBuildxCommand() *cobra.Command {
 				fmt.Fprintf(console.Stderr(ctx), "Removed buildx node group %q.\n", *name)
 			}
 
-			state, err := DetermineStateDir(*stateDir, buildkitProxyPath)
+			state, err := DetermineStateDir(*stateDir, BuildkitProxyPath)
 			if err != nil {
 				return err
 			}
@@ -798,7 +798,7 @@ func determineServerSideProxyConfig(dockerCli *command.DockerCli, name string) (
 }
 
 func determineCientSideProxyStatus(ctx context.Context, state string) ([]StatusData, error) {
-	state, err := ensureStateDir(state, buildkitProxyPath)
+	state, err := ensureStateDir(state, BuildkitProxyPath)
 	if err != nil {
 		return nil, err
 	}

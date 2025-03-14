@@ -26,6 +26,7 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/cfg/knobs"
@@ -43,6 +44,7 @@ var (
 	BuildOnNamespaceCloud           = knobs.Bool("build_in_nscloud", "If set to true, builds are triggered remotely.", false)
 	BuildOnNamespaceCloudUnlessHost = knobs.Bool("build_in_nscloud_unless_host", "If set to true, builds that match the host platform run locally. All other builds are triggered remotely.", false)
 	BuildOnExistingBuildkit         = knobs.String("buildkit_addr", "The address of an existing buildkitd to use.", "")
+	BuildUsingServerSideProxy       = knobs.Bool("build_using_server_side_proxy", "If set to true, builds are performed using the server-side buildkit proxy.", false)
 )
 
 const SSHAgentProviderID = "default"
@@ -171,6 +173,35 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 	}
 
 	if buildRemotely(c.conf, c.platform) {
+		profile, err := api.GetProfile(ctx, api.Methods)
+		if err != nil {
+			return nil, err
+		}
+
+		if profile.BuildServerSideProxyHint || BuildUsingServerSideProxy.Get(c.conf) {
+			parsedPlatform, err := api.ParseBuildPlatform(c.platform.Architecture)
+			if err != nil {
+				return nil, fnerrors.InternalError("failed to parse build platform: %v", err)
+			}
+
+			stateDir, err := dirs.Ensure(cluster.DetermineStateDir("", cluster.BuildkitProxyPath))
+			if err != nil {
+				return nil, fnerrors.InternalError("failed to ensure state dir: %v", err)
+			}
+
+			builderConfigs, err := cluster.PrepareServerSideBuildxProxy(ctx, stateDir, []api.BuildPlatform{parsedPlatform}, true)
+			if err != nil {
+				return nil, err
+			}
+			if len(builderConfigs) != 1 {
+				return nil, fnerrors.InternalError("expected one builder config, got %d", len(builderConfigs))
+			}
+
+			fmt.Fprintf(console.Info(ctx), "buildkit: using server-side build proxy (endpoint: %s)\n", builderConfigs[0].ServerConfig.FullBuildkitEndpoint)
+
+			return useRemoteClusterViaMtls(ctx, builderConfigs[0])
+		}
+
 		bp, err := cluster.NewBuildCluster(ctx, formatPlatformOrDefault(c.platform), "")
 		if err != nil {
 			return nil, err
@@ -250,6 +281,13 @@ func useRemoteClusterViaEndpoint(ctx context.Context, endpoint string) (*Gateway
 			// Do the expirations work? We don't re-fetch tokens here yet.
 			return api.DialEndpointWithToken(ctx, token, endpoint)
 		}))
+	})
+}
+
+func useRemoteClusterViaMtls(ctx context.Context, bc cluster.BuilderConfig) (*GatewayClient, error) {
+	return waitAndConnect(ctx, func(ctx context.Context) (*client.Client, error) {
+		return client.New(ctx, bc.ServerConfig.FullBuildkitEndpoint, client.WithCredentials(bc.ClientCertPath, bc.ClientKeyPath), client.WithServerConfig("", bc.ServerCAPath))
+
 	})
 }
 
