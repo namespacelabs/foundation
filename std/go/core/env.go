@@ -34,8 +34,10 @@ var (
 )
 
 type data struct {
-	rt          *runtimepb.RuntimeConfig
-	rtVcs       *runtimepb.BuildVCS
+	rt                *runtimepb.RuntimeConfig
+	rtVcs             *runtimepb.BuildVCS
+	rtSecretChecksums []*runtimepb.SecretChecksum
+
 	serverName  string
 	startupTime time.Time
 }
@@ -74,7 +76,12 @@ func loadData(specifiedServerName string) (data, error) {
 		return data{}, err
 	}
 
-	return data{rt, rtVcs, specifiedServerName, time.Now()}, nil
+	secChecksums, err := fnruntime.LoadSecretChecksums()
+	if err != nil {
+		return data{}, err
+	}
+
+	return data{rt, rtVcs, secChecksums, specifiedServerName, time.Now()}, nil
 }
 
 func initializedData() data {
@@ -88,10 +95,11 @@ func initializedData() data {
 func ProvideServerInfo(ctx context.Context, _ *types.ServerInfoArgs) (*types.ServerInfo, error) {
 	data := initializedData()
 	return &types.ServerInfo{
-		ServerName: data.serverName,
-		EnvName:    data.rt.Environment.Name,
-		EnvPurpose: data.rt.Environment.Purpose,
-		Vcs:        data.rtVcs,
+		ServerName:     data.serverName,
+		EnvName:        data.rt.Environment.Name,
+		EnvPurpose:     data.rt.Environment.Purpose,
+		Vcs:            data.rtVcs,
+		SecretChecksum: data.rtSecretChecksums,
 	}, nil
 }
 
