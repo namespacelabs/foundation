@@ -66,6 +66,15 @@ func registerEnsureRuntimeConfig() {
 					data["buildvcs.json"] = string(serializedConfig)
 				}
 
+				if ensure.SecretChecksum != nil {
+					serializedConfig, err := json.Marshal(ensure.SecretChecksum)
+					if err != nil {
+						return nil, fnerrors.InternalError("failed to serialize runtime configuration: %w", err)
+					}
+					// Deliberately not an hash input.
+					data["secret_checksums.json"] = string(serializedConfig)
+				}
+
 				resourceData, err := deploy.BuildResourceMap(ctx, ensure.Dependency)
 				if err != nil {
 					return nil, err

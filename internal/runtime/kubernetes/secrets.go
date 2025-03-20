@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
+	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/go-ids"
 )
 
@@ -117,6 +118,18 @@ func (s *secretCollector) planDeployment(ns string, annotations, labels map[stri
 	}
 
 	return operations
+}
+
+func (s *secretCollector) secretsChecksums() []*runtimepb.SecretChecksum {
+	secretChecksums := make([]*runtimepb.SecretChecksum, 0, len(s.items.checksums))
+	for k, v := range s.items.checksums {
+		secretChecksums = append(secretChecksums, &runtimepb.SecretChecksum{
+			SecretRef: k,
+			Checksum:  v,
+		})
+	}
+
+	return secretChecksums
 }
 
 func generatedSecretName(spec *schema.SecretSpec_GenerateSpec) (string, string) {

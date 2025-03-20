@@ -92,6 +92,7 @@ type EnsureRuntimeConfig struct {
 	InjectedResources    []*OpEnsureRuntimeConfig_InjectedResource
 	BuildVCS             *runtimepb.BuildVCS
 	PersistConfiguration bool
+	SecretChecksums      []*runtimepb.SecretChecksum
 }
 
 type EnsureDeployment struct {
@@ -305,6 +306,7 @@ func (a EnsureRuntimeConfig) ToDefinition(scope ...schema.PackageName) (*schema.
 		PersistConfiguration: a.PersistConfiguration,
 		InjectResource:       a.InjectedResources,
 		BuildVcs:             a.BuildVCS,
+		SecretChecksum:       a.SecretChecksums,
 	}
 
 	order := &schema.ScheduleOrder{
