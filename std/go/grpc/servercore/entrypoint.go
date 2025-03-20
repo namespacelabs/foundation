@@ -30,6 +30,12 @@ var (
 		Subsystem: "gogrpc",
 		Name:      "certificate_validity_not_after_timestamp_seconds",
 	}, []string{"common_name"})
+
+	secretChecksumInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "ns",
+		Subsystem: "gogrpc",
+		Name:      "secret_checksum_info",
+	}, []string{"secret_ref", "checksum"})
 )
 
 func init() {
@@ -37,6 +43,7 @@ func init() {
 		serverInitializedInfo,
 		serverInitializedTimestamp,
 		serverCertValidity,
+		secretChecksumInfo,
 	)
 }
 
