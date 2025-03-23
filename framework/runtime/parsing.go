@@ -76,9 +76,9 @@ func LoadSecretChecksums() ([]*runtime.SecretChecksum, error) {
 		return nil, fmt.Errorf("failed to load SecretChecksums: %w", err)
 	}
 
-	secChecksums := []*runtime.SecretChecksum{}
+	var secChecksums []*runtime.SecretChecksum
 	if err := json.Unmarshal(serialized, &secChecksums); err != nil {
-		return nil, fmt.Errorf("failed to parse BuildVCS: %w", err)
+		return nil, fmt.Errorf("failed to parse SecretChecksum: %w", err)
 	}
 
 	return secChecksums, nil
