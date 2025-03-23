@@ -179,7 +179,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 		}
 
 		if profile.BuildServerSideProxyHint || BuildUsingServerSideProxy.Get(c.conf) {
-			parsedPlatform, err := api.ParseBuildPlatform(c.platform.Architecture)
+			parsedPlatform, err := parsePlatformOrDefault(c.platform)
 			if err != nil {
 				return nil, fnerrors.InternalError("failed to parse build platform: %v", err)
 			}
@@ -252,6 +252,14 @@ func formatPlatformOrDefault(p *specs.Platform) string {
 	}
 
 	return platforms.Format(docker.HostPlatform())
+}
+
+func parsePlatformOrDefault(p *specs.Platform) (api.BuildPlatform, error) {
+	if p != nil {
+		return api.ParseBuildPlatform(p.Architecture)
+	}
+
+	return api.ParseBuildPlatform(docker.HostPlatform().Architecture)
 }
 
 func useRemoteCluster(ctx context.Context, cluster *api.KubernetesCluster, port int) (*GatewayClient, error) {
