@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -764,6 +765,7 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 			ResourceDependencies: regularResources,
 			InjectedResources:    injected,
 			BuildVCS:             deployable.BuildVCS,
+			SecretChecksums:      seccol.secretsChecksums(),
 			PersistConfiguration: deployable.MountRuntimeConfigPath != "",
 		}
 
@@ -1136,15 +1138,21 @@ func isOneShotLike(class schema.DeployableClass) bool {
 type collector struct {
 	mu         sync.Mutex
 	binaryData map[string][]byte
+	checksums  map[string]string
 }
 
 func newDataItemCollector() *collector {
-	return &collector{binaryData: map[string][]byte{}}
+	return &collector{binaryData: map[string][]byte{}, checksums: map[string]string{}}
 }
 
 func (cm *collector) set(key string, rsc []byte) {
+	h := sha256.New()
+	h.Write(rsc)
+	checksum := hex.EncodeToString(h.Sum(nil))
+
 	cm.mu.Lock()
 	cm.binaryData[key] = rsc
+	cm.checksums[key] = checksum
 	cm.mu.Unlock()
 }
 

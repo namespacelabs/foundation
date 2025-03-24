@@ -30,6 +30,12 @@ var (
 		Subsystem: "gogrpc",
 		Name:      "certificate_validity_not_after_timestamp_seconds",
 	}, []string{"common_name"})
+
+	secretChecksumInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "ns",
+		Subsystem: "gogrpc",
+		Name:      "secret_checksum_info",
+	}, []string{"secret_ref", "checksum"})
 )
 
 func init() {
@@ -37,6 +43,7 @@ func init() {
 		serverInitializedInfo,
 		serverInitializedTimestamp,
 		serverCertValidity,
+		secretChecksumInfo,
 	)
 }
 
@@ -49,7 +56,7 @@ type RunOpts struct {
 func Run(ctx context.Context, opts RunOpts, listenOpts ListenOpts) {
 	ctx = core.ZLog.WithContext(ctx)
 
-	resources, rev := core.PrepareEnv(opts.PackageName)
+	resources, srvInfo := core.PrepareEnv(opts.PackageName)
 	defer resources.Close(ctx)
 
 	ctx = core.WithResources(ctx, resources)
@@ -62,8 +69,11 @@ func Run(ctx context.Context, opts RunOpts, listenOpts ListenOpts) {
 
 	core.InitializationDone()
 
-	serverInitializedInfo.WithLabelValues(opts.PackageName, rev).Inc()
-	serverInitializedTimestamp.WithLabelValues(opts.PackageName, rev).Set(float64(time.Now().Unix()))
+	serverInitializedInfo.WithLabelValues(opts.PackageName, srvInfo.Revision).Inc()
+	serverInitializedTimestamp.WithLabelValues(opts.PackageName, srvInfo.Revision).Set(float64(time.Now().Unix()))
+	for _, sec := range srvInfo.SecretChecksums {
+		secretChecksumInfo.WithLabelValues(sec.SecretRef, sec.Checksum).Set(1)
+	}
 
 	if err := Listen(ctx, listenOpts, func(srv Server) {
 		if errs := opts.WireServices(ctx, srv, depgraph); len(errs) > 0 {

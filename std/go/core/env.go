@@ -34,8 +34,10 @@ var (
 )
 
 type data struct {
-	rt          *runtimepb.RuntimeConfig
-	rtVcs       *runtimepb.BuildVCS
+	rt                *runtimepb.RuntimeConfig
+	rtVcs             *runtimepb.BuildVCS
+	rtSecretChecksums []*runtimepb.SecretChecksum
+
 	serverName  string
 	startupTime time.Time
 }
@@ -46,13 +48,16 @@ var (
 	ZLog = zerolog.New(os.Stderr).With().Timestamp().Logger().Level(zerolog.DebugLevel)
 )
 
-func PrepareEnv(specifiedServerName string) (*ServerResources, string) {
+type ServerInfo struct {
+	Revision        string
+	SecretChecksums []*runtimepb.SecretChecksum
+}
+
+func PrepareEnv(specifiedServerName string) (*ServerResources, *ServerInfo) {
 	d, err := loadData(specifiedServerName)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	rev := d.rtVcs.GetRevision()
 
 	if !datamarker.CompareAndSwap(nil, &d) {
 		log.Fatal("already initialized")
@@ -60,7 +65,7 @@ func PrepareEnv(specifiedServerName string) (*ServerResources, string) {
 
 	ZLog.Info().Msg("Initializing server...")
 
-	return &ServerResources{startupTime: time.Now()}, rev
+	return &ServerResources{startupTime: time.Now()}, &ServerInfo{d.rtVcs.GetRevision(), d.rtSecretChecksums}
 }
 
 func loadData(specifiedServerName string) (data, error) {
@@ -74,7 +79,12 @@ func loadData(specifiedServerName string) (data, error) {
 		return data{}, err
 	}
 
-	return data{rt, rtVcs, specifiedServerName, time.Now()}, nil
+	secChecksums, err := fnruntime.LoadSecretChecksums()
+	if err != nil {
+		return data{}, err
+	}
+
+	return data{rt, rtVcs, secChecksums, specifiedServerName, time.Now()}, nil
 }
 
 func initializedData() data {
@@ -88,10 +98,11 @@ func initializedData() data {
 func ProvideServerInfo(ctx context.Context, _ *types.ServerInfoArgs) (*types.ServerInfo, error) {
 	data := initializedData()
 	return &types.ServerInfo{
-		ServerName: data.serverName,
-		EnvName:    data.rt.Environment.Name,
-		EnvPurpose: data.rt.Environment.Purpose,
-		Vcs:        data.rtVcs,
+		ServerName:     data.serverName,
+		EnvName:        data.rt.Environment.Name,
+		EnvPurpose:     data.rt.Environment.Purpose,
+		Vcs:            data.rtVcs,
+		SecretChecksum: data.rtSecretChecksums,
 	}, nil
 }
 

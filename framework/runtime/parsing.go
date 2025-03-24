@@ -66,6 +66,24 @@ func LoadBuildVCS() (*runtime.BuildVCS, error) {
 	return vcs, nil
 }
 
+func LoadSecretChecksums() ([]*runtime.SecretChecksum, error) {
+	serialized, err := os.ReadFile("/namespace/config/secret_checksums.json")
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("failed to load SecretChecksums: %w", err)
+	}
+
+	var secChecksums []*runtime.SecretChecksum
+	if err := json.Unmarshal(serialized, &secChecksums); err != nil {
+		return nil, fmt.Errorf("failed to parse SecretChecksum: %w", err)
+	}
+
+	return secChecksums, nil
+}
+
 func Endpoint(srv *Server, name string) (string, error) {
 	for _, s := range srv.Service {
 		if s.Name == name {
