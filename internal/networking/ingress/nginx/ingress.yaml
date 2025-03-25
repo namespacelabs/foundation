@@ -31,6 +31,7 @@ metadata:
 data:
   allow-snippet-annotations: "true"
   upstream-keepalive-requests: "1"
+  strict-validate-path-type: "false"
 ---
 # Source: ingress-nginx/templates/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
