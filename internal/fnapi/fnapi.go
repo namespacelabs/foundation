@@ -12,16 +12,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"strconv"
-	"syscall"
 	"time"
 
-	"github.com/cenkalti/backoff"
 	"github.com/spf13/pflag"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -29,6 +24,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/versions"
+	"namespacelabs.dev/foundation/std/tryhard"
 	"namespacelabs.dev/go-ids"
 	"namespacelabs.dev/integrations/nsc/apienv"
 )
@@ -185,7 +181,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 
 	fmt.Fprintf(console.Debug(ctx), "[%s] Body: %s\n", tid, reqDebugBytes)
 
-	return callSideEffectFree(ctx, c.Retryable, func(ctx context.Context) error {
+	return tryhard.CallSideEffectFree0(ctx, c.Retryable, func(ctx context.Context) error {
 		t := time.Now()
 		url := endpoint + "/" + c.Method
 		httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(reqBytes))
@@ -303,49 +299,6 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 			return fnerrors.InvocationError("namespace api", "unexpected %d error reaching %q: %s", response.StatusCode, url, response.Status)
 		}
 	})
-}
-
-func callSideEffectFree(ctx context.Context, retryable bool, method func(context.Context) error) error {
-	if !retryable {
-		return method(ctx)
-	}
-
-	b := &backoff.ExponentialBackOff{
-		InitialInterval:     500 * time.Millisecond,
-		RandomizationFactor: 0.5,
-		Multiplier:          1.5,
-		MaxInterval:         5 * time.Second,
-		MaxElapsedTime:      2 * time.Minute,
-		Clock:               backoff.SystemClock,
-	}
-
-	b.Reset()
-
-	span := trace.SpanFromContext(ctx)
-
-	return backoff.Retry(func() error {
-		if methodErr := method(ctx); methodErr != nil {
-			// grpc's ConnectionError have a Temporary() signature. If we, for example, write to
-			// a channel and that channel is gone, then grpc observes a ECONNRESET. And propagates
-			// it as a temporary error. It doesn't know though whether it's safe to retry, so it
-			// doesn't.
-			if temp, ok := methodErr.(interface{ Temporary() bool }); ok && temp.Temporary() {
-				span.RecordError(methodErr, trace.WithAttributes(attribute.Bool("grpc.temporary_error", true)))
-				return methodErr
-			}
-
-			var netErr *net.OpError
-			if errors.As(methodErr, &netErr) {
-				if errno, ok := netErr.Err.(syscall.Errno); ok && errno == syscall.ECONNRESET {
-					return methodErr // Retry
-				}
-			}
-
-			return backoff.Permanent(methodErr)
-		}
-
-		return nil
-	}, backoff.WithContext(b, ctx))
 }
 
 func handleGrpcStatus(url string, st *spb.Status) error {
