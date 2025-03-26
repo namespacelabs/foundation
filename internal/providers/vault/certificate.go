@@ -28,6 +28,7 @@ type certificateRequest struct {
 	sans              []string
 	ipSans            []string
 	excludeCnFromSans bool
+	ttl               string
 }
 
 func certificateProvider(ctx context.Context, conf cfg.Configuration, _ *secrets.SecretLoadRequest, cfg *vault.Certificate) ([]byte, error) {
@@ -49,6 +50,7 @@ func certificateProvider(ctx context.Context, conf cfg.Configuration, _ *secrets
 		commonName: cfg.GetCommonName(),
 		sans:       cfg.GetSans(),
 		ipSans:     cfg.GetIpSans(),
+		ttl:        cfg.GetTtl(),
 	}
 
 	if certConfig, ok := GetCertificateConfig(conf); ok {
@@ -80,6 +82,7 @@ func issueCertificate(ctx context.Context, vaultClient *vaultclient.Client, pkiM
 					AltNames:          strings.Join(req.sans, ","),
 					ExcludeCnFromSans: req.excludeCnFromSans,
 					IpSans:            req.ipSans,
+					Ttl:               req.ttl,
 				},
 				vaultclient.WithMountPath(pkiMount),
 			)

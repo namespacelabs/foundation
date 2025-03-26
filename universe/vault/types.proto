@@ -21,6 +21,7 @@ message Certificate {
     string          mount       = 7;
     string          role        = 8;
     repeated string ip_sans     = 9;
+    string          ttl         = 10;
 
     reserved 1, 2, 3, 4;
 }
