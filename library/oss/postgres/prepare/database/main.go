@@ -6,9 +6,7 @@ package main
 
 import (
 	"context"
-	"embed"
 	"fmt"
-	"io/fs"
 	"log"
 	"math/rand"
 	"os"
@@ -29,13 +27,7 @@ const (
 	connIdleTimeout = 15 * time.Minute
 	connTimeout     = 5 * time.Minute
 
-	caCertPath          = "/tmp/ca.pem"
-	helperFunctionsPath = "functions.sql"
-)
-
-var (
-	//go:embed *.sql
-	data embed.FS
+	caCertPath = "/tmp/ca.pem"
 )
 
 func main() {
@@ -94,25 +86,35 @@ func run(ctx context.Context, p *provider.Provider[*postgres.DatabaseIntent]) er
 			}
 		}()
 
-		if p.Intent.ProvisionHelperFunctions {
-			content, err := fs.ReadFile(data, helperFunctionsPath)
-			if err != nil {
-				return fmt.Errorf("failed to read %s: %w", helperFunctionsPath, err)
-			}
-
-			if err := applyWithRetry(ctx, db, string(content)); err != nil {
-				return fmt.Errorf("unable to apply helper functions: %w", err)
-			}
-		}
-
-		for _, schema := range p.Intent.Schema {
-			if err := applyWithRetry(ctx, db, string(schema.Contents)); err != nil {
-				return fmt.Errorf("unable to apply schema %q: %w", schema.Path, err)
-			}
-		}
+		helpers := allHelperFunctions()
+		applyWithCleanup(ctx, p, db, helpers)
 	}
 
 	p.EmitResult(instance)
+	return nil
+}
+
+func applyWithCleanup(ctx context.Context, p *provider.Provider[*postgres.DatabaseIntent], db *universepg.DB, helpers []helperFunction) (reserr error) {
+	if p.Intent.AutoRemoveHelperFunctions {
+		defer func() {
+			if err := applyWithRetry(ctx, db, helpersCleanupSql()); err != nil {
+				reserr = fmt.Errorf("unable to clean up helper functions: %w", err)
+			}
+		}()
+	}
+
+	if p.Intent.ProvisionHelperFunctions {
+		if err := applyWithRetry(ctx, db, helpersProvisionSql()); err != nil {
+			return fmt.Errorf("unable to apply helper functions: %w", err)
+		}
+	}
+
+	for _, schema := range p.Intent.Schema {
+		if err := applyWithRetry(ctx, db, string(schema.Contents)); err != nil {
+			return fmt.Errorf("unable to apply schema %q: %w", schema.Path, err)
+		}
+	}
+
 	return nil
 }
 
