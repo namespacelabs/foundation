@@ -86,15 +86,16 @@ func run(ctx context.Context, p *provider.Provider[*postgres.DatabaseIntent]) er
 			}
 		}()
 
-		helpers := allHelperFunctions()
-		applyWithCleanup(ctx, p, db, helpers)
+		if err := applyWithCleanup(ctx, p, db); err != nil {
+			return err
+		}
 	}
 
 	p.EmitResult(instance)
 	return nil
 }
 
-func applyWithCleanup(ctx context.Context, p *provider.Provider[*postgres.DatabaseIntent], db *universepg.DB, helpers []helperFunction) (reserr error) {
+func applyWithCleanup(ctx context.Context, p *provider.Provider[*postgres.DatabaseIntent], db *universepg.DB) (reserr error) {
 	if p.Intent.AutoRemoveHelperFunctions {
 		defer func() {
 			if err := applyWithRetry(ctx, db, helpersCleanupSql()); err != nil {
