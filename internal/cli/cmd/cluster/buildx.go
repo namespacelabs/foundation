@@ -718,7 +718,7 @@ func newStatusBuildxCommand() *cobra.Command {
 
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 	stateDir := cmd.Flags().String("state", "", "If set, looks for the remote builder context in this directory.")
-	name := cmd.Flags().String("name", defaultBuilder, "The name of the builder to clean up.")
+	name := cmd.Flags().String("name", defaultBuilder, "The name of the buildx builder to check.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		dockerCli, err := command.NewDockerCli()
