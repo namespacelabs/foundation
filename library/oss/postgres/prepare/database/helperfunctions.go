@@ -46,7 +46,7 @@ END
 $func$;
 `,
 			cleanupSql: `
-DROP FUNCTION fn_ensure_table(tname TEXT, def TEXT);
+DROP FUNCTION IF EXISTS fn_ensure_table(tname TEXT, def TEXT);
 `,
 		},
 
@@ -74,7 +74,7 @@ END
 $func$;
 `,
 			cleanupSql: `
-DROP FUNCTION fn_ensure_column(tname TEXT, cname TEXT, def TEXT);
+DROP FUNCTION IF EXISTS fn_ensure_column(tname TEXT, cname TEXT, def TEXT);
 `,
 		},
 
@@ -102,7 +102,7 @@ END
 $func$;
 `,
 			cleanupSql: `
-DROP FUNCTION fn_ensure_column_not_exists(tname TEXT, cname TEXT);
+DROP FUNCTION IF EXISTS fn_ensure_column_not_exists(tname TEXT, cname TEXT);
 `,
 		},
 
@@ -130,7 +130,7 @@ END
 $func$;
 `,
 			cleanupSql: `
-DROP FUNCTION fn_ensure_column_not_null(tname TEXT, cname TEXT);
+DROP FUNCTION IF EXISTS fn_ensure_column_not_null(tname TEXT, cname TEXT);
 `,
 		},
 
@@ -158,7 +158,7 @@ END
 $func$;
 `,
 			cleanupSql: `
-DROP FUNCTION fn_ensure_column_nullable(tname TEXT, cname TEXT);
+DROP FUNCTION IF EXISTS fn_ensure_column_nullable(tname TEXT, cname TEXT);
 `,
 		},
 
@@ -191,7 +191,7 @@ END
 $func$;
 `,
 			cleanupSql: `
-DROP FUNCTION fn_ensure_replica_identity(tname TEXT, replident TEXT);
+DROP FUNCTION IF EXISTS fn_ensure_replica_identity(tname TEXT, replident TEXT);
 `,
 		},
 	}

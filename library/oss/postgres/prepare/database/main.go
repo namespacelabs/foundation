@@ -16,6 +16,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/jackc/pgx/v5"
 	"namespacelabs.dev/foundation/framework/resources/provider"
+	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	postgresclass "namespacelabs.dev/foundation/library/database/postgres"
 	"namespacelabs.dev/foundation/library/oss/postgres"
 	universepg "namespacelabs.dev/foundation/universe/db/postgres"
@@ -99,7 +100,7 @@ func applyWithCleanup(ctx context.Context, p *provider.Provider[*postgres.Databa
 	if p.Intent.AutoRemoveHelperFunctions {
 		defer func() {
 			if err := applyWithRetry(ctx, db, helpersCleanupSql()); err != nil {
-				reserr = fmt.Errorf("unable to clean up helper functions: %w", err)
+				reserr = multierr.New(reserr, fmt.Errorf("unable to clean up helper functions: %w", err))
 			}
 		}()
 	}
