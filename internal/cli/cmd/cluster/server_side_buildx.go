@@ -5,6 +5,7 @@
 package cluster
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -12,8 +13,10 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	builderv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/builder/v1beta"
@@ -30,7 +33,7 @@ import (
 )
 
 func PrepareServerSideBuildxProxy(ctx context.Context, stateDir string, platforms []api.BuildPlatform, createAtStartup bool) ([]BuilderConfig, error) {
-	privKeyPem, cliCertPem, err := makeClientCertificate(ctx)
+	credPaths, credContents, err := makeClientCertificate(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -46,21 +49,23 @@ func PrepareServerSideBuildxProxy(ctx context.Context, stateDir string, platform
 		serverBuilderConfigs = append(serverBuilderConfigs, resp)
 	}
 
-	// Write key files in ns state directory
-	privKeyPath := path.Join(stateDir, "private_key.pem")
-	if err := writeFileToPath(privKeyPem, privKeyPath); err != nil {
-		return nil, err
-	}
+	privKeyPath := credPaths.privKeyPath
+	clientCertPath := credPaths.clientCertPaths
 
-	clientCertPath := path.Join(stateDir, "client_cert.pem")
-	if err := writeFileToPath(cliCertPem, clientCertPath); err != nil {
-		return nil, err
+	if privKeyPath == "" && clientCertPath == "" {
+		privKeyPath = path.Join(stateDir, "client_cert_and_key.pem")
+		clientCertPath = privKeyPath
+
+		certAndKeyPems := credContents.clientCertPem + "\n" + credContents.privKeyPem
+		if err := writeAtomicFile([]byte(certAndKeyPems), privKeyPath, 0600); err != nil {
+			return nil, err
+		}
 	}
 
 	builderConfigs := []BuilderConfig{}
 	for _, bc := range serverBuilderConfigs {
 		serverCAPath := path.Join(stateDir, fmt.Sprintf("server_%s_cert.pem", bc.GetShape().GetMachineArch()))
-		if err := writeFileToPath([]byte(bc.GetServerCaPem()), serverCAPath); err != nil {
+		if err := writeAtomicFile([]byte(bc.GetServerCaPem()), serverCAPath, 0600); err != nil {
 			return nil, err
 		}
 
@@ -161,39 +166,39 @@ func getCertPathToRefresh() (string, any, error) {
 	return clientCertPath, cert.PublicKey, nil
 }
 
-func makeClientCertificate(ctx context.Context) ([]byte, []byte, error) {
+type clientCredPaths struct {
+	privKeyPath     string
+	clientCertPaths string
+}
+
+type clientCredContents struct {
+	privKeyPem    string
+	clientCertPem string
+}
+
+func makeClientCertificate(ctx context.Context) (clientCredPaths, clientCredContents, error) {
 	md, err := metadata.InstanceMetadataFromFile()
 	if err == nil {
 		// This is running in a Namespace instance.
 		// -> use prepared instance client certificate
-		privKeyPem, err := os.ReadFile(md.Certs.PrivateKeyPath)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		cliCert, err := os.ReadFile(md.Certs.PublicPemPath)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		return privKeyPem, cliCert, nil
+		return clientCredPaths{privKeyPath: md.Certs.PrivateKeyPath, clientCertPaths: md.Certs.PublicPemPath}, clientCredContents{}, nil
 	}
 
-	// Not running in a Namespae instance.
+	// Not running in a Namespace instance.
 	// We generate public and private key and ask IAM service to issue a client certificate.
 
 	privKeyPem, pubKeyPem, err := genPrivAndPublicKeysPEM()
 	if err != nil {
-		return nil, nil, err
+		return clientCredPaths{}, clientCredContents{}, err
 	}
 
 	certPem, err := fetchClientCert(ctx, string(pubKeyPem))
 
 	if err != nil {
-		return nil, nil, fnerrors.Newf("could not issue client cert: %w", err)
+		return clientCredPaths{}, clientCredContents{}, fnerrors.Newf("could not issue client cert: %w", err)
 	}
 
-	return privKeyPem, []byte(certPem), nil
+	return clientCredPaths{}, clientCredContents{privKeyPem: string(privKeyPem), clientCertPem: (certPem)}, nil
 }
 
 func fetchClientCert(ctx context.Context, pubKeyPem string) (string, error) {
@@ -247,8 +252,37 @@ func genPrivAndPublicKeysPEM() ([]byte, []byte, error) {
 	return privateKeyPEM, publicKeyPEM, nil
 }
 
-func writeFileToPath(content []byte, path string) error {
-	return os.WriteFile(path, content, 0600)
+func writeAtomicFile(content []byte, targetpath string, mode os.FileMode) error {
+	// Would want to use atomic.WriteFile, but setting file mode.
+	dir, file := filepath.Split(targetpath)
+	if dir == "" {
+		dir = "."
+	}
+
+	tmpfile, err := os.CreateTemp(dir, file)
+	if err != nil {
+		return fmt.Errorf("create temp file failed: %v", err)
+	}
+	defer func() {
+		tmpfile.Close()
+		_ = os.Remove(tmpfile.Name())
+	}()
+
+	if _, err := io.Copy(tmpfile, bytes.NewReader(content)); err != nil {
+		return fmt.Errorf("write data to temp file %s failed: %v", tmpfile.Name(), err)
+	}
+	if err := tmpfile.Sync(); err != nil {
+		return fmt.Errorf("flush temp file %s failed: %v", tmpfile.Name(), err)
+	}
+	if err := tmpfile.Close(); err != nil {
+		return fmt.Errorf("close temp file %s failed: %v", tmpfile.Name(), err)
+	}
+
+	if err := os.Chmod(tmpfile.Name(), mode); err != nil {
+		return fmt.Errorf("chmod temp file %s failed: %v", tmpfile.Name(), err)
+	}
+
+	return atomic.ReplaceFile(tmpfile.Name(), targetpath)
 }
 
 func wireRemoteBuildxProxy(dockerCli *command.DockerCli, name string, use, defaultLoad bool, builderConfigs []BuilderConfig) error {
