@@ -32,7 +32,7 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/metadata"
 )
 
-func PrepareServerSideBuildxProxy(ctx context.Context, stateDir string, platforms []api.BuildPlatform, createAtStartup bool) ([]BuilderConfig, error) {
+func PrepareServerSideBuildxProxy(ctx context.Context, stateDir string, platforms []api.BuildPlatform, createAtStartup bool, builderTag string) ([]BuilderConfig, error) {
 	credPaths, credContents, err := makeClientCertificate(ctx)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func PrepareServerSideBuildxProxy(ctx context.Context, stateDir string, platform
 	serverBuilderConfigs := []*builderv1beta.GetBuilderConfigurationResponse{}
 	for _, plat := range platforms {
 		// Download the builder config for this platform
-		resp, err := api.GetBuilderConfiguration(ctx, plat, createAtStartup)
+		resp, err := api.GetBuilderConfiguration(ctx, plat, createAtStartup, builderTag)
 		if err != nil {
 			return nil, err
 		}
@@ -80,8 +80,8 @@ func PrepareServerSideBuildxProxy(ctx context.Context, stateDir string, platform
 	return builderConfigs, nil
 }
 
-func setupServerSideBuildxProxy(ctx context.Context, stateDir, builderName string, use, defaultLoad bool, dockerCli *command.DockerCli, platforms []api.BuildPlatform, createAtStartup bool) error {
-	builderConfigs, err := PrepareServerSideBuildxProxy(ctx, stateDir, platforms, createAtStartup)
+func setupServerSideBuildxProxy(ctx context.Context, stateDir, builderName string, use, defaultLoad bool, dockerCli *command.DockerCli, platforms []api.BuildPlatform, createAtStartup bool, builderTag string) error {
+	builderConfigs, err := PrepareServerSideBuildxProxy(ctx, stateDir, platforms, createAtStartup, builderTag)
 	if err != nil {
 		return err
 	}

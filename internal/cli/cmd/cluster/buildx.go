@@ -53,6 +53,7 @@ func newSetupBuildxCmd() *cobra.Command {
 	}
 
 	name := cmd.Flags().String("name", defaultBuilder, "The name of the builder we setup.")
+	tag := cmd.Flags().String("tag", "", "If set, target a specific remote builder.")
 	use := cmd.Flags().Bool("use", false, "If true, changes the current builder to nsc-remote.")
 	background := cmd.Flags().Bool("background", false, "If true, runs the remote builder context in the background.")
 	createAtStartup := cmd.Flags().Bool("create_at_startup", false, "If true, creates the build clusters eagerly.")
@@ -118,7 +119,7 @@ func newSetupBuildxCmd() *cobra.Command {
 		// NSL-3935 use remote-side buildx proxy
 		// This will be soon the default
 		if serverSideProxyDefault || *useServerSideProxy {
-			if err := setupServerSideBuildxProxy(ctx, state, *name, *use, *defaultLoad, dockerCli, available, *createAtStartup); err != nil {
+			if err := setupServerSideBuildxProxy(ctx, state, *name, *use, *defaultLoad, dockerCli, available, *createAtStartup, *tag); err != nil {
 				return err
 			}
 
