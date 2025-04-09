@@ -90,8 +90,13 @@ func runVnc(ctx context.Context, instance *api.KubernetesCluster) error {
 	})
 
 	fmt.Fprint(console.Stdout(ctx), "Opening VNC client...\n")
-	// XXX receive credentials.
-	if err := browser.OpenURL(fmt.Sprintf("vnc://admin:admin@%s", lst.Addr())); err != nil {
+
+	creds := "admin:admin"
+	if c := vncSvc.Credentials; c != nil {
+		creds = c.Username + ":" + c.Password
+	}
+
+	if err := browser.OpenURL(fmt.Sprintf("vnc://%s@%s", creds, lst.Addr())); err != nil {
 		return err
 	}
 
