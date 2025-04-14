@@ -43,6 +43,10 @@ func Collect0(ctx context.Context, tracer trace.Tracer, name Collected, callback
 		return callback(ctx)
 	}
 
+	if !trace.SpanFromContext(ctx).IsRecording() && !name.newroot {
+		return callback(ctx)
+	}
+
 	opts = append([]trace.SpanStartOption{trace.WithAttributes(name.attributes...)}, opts...)
 	if name.newroot {
 		opts = append(opts, trace.WithNewRoot())
@@ -86,6 +90,10 @@ func Collect1[T any](ctx context.Context, tracer trace.Tracer, name Collected, c
 
 func Collect2[T any, R any](ctx context.Context, tracer trace.Tracer, name Collected, callback func(context.Context) (T, R, error), opts ...trace.SpanStartOption) (T, R, error) {
 	if tracer == nil {
+		return callback(ctx)
+	}
+
+	if !trace.SpanFromContext(ctx).IsRecording() && !name.newroot {
 		return callback(ctx)
 	}
 
