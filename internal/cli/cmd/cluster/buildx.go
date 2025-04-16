@@ -46,6 +46,9 @@ const (
 	BuildkitProxyPath = "buildkit/" + proxyDir
 )
 
+var ErrBuildxNodeGroupNotFound = errors.New("buildx node group not found")
+var ErrIsNotRemoteDriver = errors.New("buildx node group does not have 'remote' driver")
+
 func newSetupBuildxCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "setup",
@@ -503,34 +506,23 @@ type ServerProxyEndpoint struct {
 	Endpoint string
 }
 
-func getServerSideProxyEndpoints(txn *store.Txn, name string) []ServerProxyEndpoint {
-	var endpoints []ServerProxyEndpoint
-
-	ng, err := txn.NodeGroupByName(name)
-	if err != nil {
-		return endpoints
-	}
-
-	if ng.Driver != "remote" {
-		return endpoints
-	}
-
-	for _, node := range ng.Nodes {
-		for _, plat := range node.Platforms {
-			if strings.Contains(node.Endpoint, "namespaceapis.com") {
-				endpoints = append(endpoints, ServerProxyEndpoint{
-					Platform: plat.OS + "/" + plat.Architecture,
-					Endpoint: node.Endpoint,
-				})
-			}
-		}
-	}
-
-	return endpoints
+func isNamespaceBuildkitEndpoint(endpoint string) bool {
+	return strings.Contains(endpoint, "namespaceapis.com")
 }
 
 func isServerSideProxy(txn *store.Txn, name string) bool {
-	return len(getServerSideProxyEndpoints(txn, name)) != 0
+	configs, err := readRemoteBuilderConfigsTxn(txn, name)
+	if err != nil {
+		return false
+	}
+
+	for _, cfg := range configs {
+		if isNamespaceBuildkitEndpoint(cfg.FullBuildkitEndpoint) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func doClientSideProxyCleanup(ctx context.Context, state string, txn *store.Txn) error {
@@ -731,7 +723,7 @@ func newStatusBuildxCommand() *cobra.Command {
 			return err
 		}
 
-		sspDescs, err := determineServerSideProxyConfig(dockerCli, *name)
+		sspDescs, err := determineServerSideProxyStatus(ctx, dockerCli, *name)
 		if err != nil {
 			return err
 		}
@@ -765,12 +757,20 @@ func newStatusBuildxCommand() *cobra.Command {
 			for _, desc := range descs {
 				fmt.Fprintf(stdout, "Platform: %s\n", desc.Platform)
 				fmt.Fprintf(stdout, "  Status: %s\n", desc.Status)
-				fmt.Fprintf(stdout, "  Last Instance ID: %s\n", desc.LastInstanceID)
-				fmt.Fprintf(stdout, "  Last Update: %v\n", desc.LastUpdate)
-				fmt.Fprintf(stdout, "  Last Error: %v\n", desc.LastError)
-				fmt.Fprintf(stdout, "  Requests Handled: %v\n", desc.Requests)
-				fmt.Fprintf(stdout, "  Log Path: %v\n", desc.LogPath)
-				fmt.Fprintf(stdout, "\n")
+				if desc.IsServerSideProxy {
+					if desc.LastError == "" {
+						fmt.Fprintf(stdout, "  Connectivity check successful\n")
+					} else {
+						fmt.Fprintf(stdout, "  Connectivity error: %s\n", desc.LastError)
+					}
+				} else {
+					fmt.Fprintf(stdout, "  Last Instance ID: %s\n", desc.LastInstanceID)
+					fmt.Fprintf(stdout, "  Last Error: %v\n", desc.LastError)
+					fmt.Fprintf(stdout, "  Last Update: %v\n", desc.LastUpdate)
+					fmt.Fprintf(stdout, "  Requests Handled: %v\n", desc.Requests)
+					fmt.Fprintf(stdout, "  Log Path: %v\n", desc.LogPath)
+					fmt.Fprintf(stdout, "\n")
+				}
 			}
 		}
 
@@ -780,20 +780,89 @@ func newStatusBuildxCommand() *cobra.Command {
 	return cmd
 }
 
-func determineServerSideProxyConfig(dockerCli *command.DockerCli, name string) ([]StatusData, error) {
-	descs := []StatusData{}
+func readRemoteBuilderConfigs(dockerCli *command.DockerCli, name string) ([]BuilderConfig, error) {
+	var res []BuilderConfig
 
 	err := withStore(dockerCli, func(txn *store.Txn) error {
-		endpoints := getServerSideProxyEndpoints(txn, name)
-		for _, e := range endpoints {
-			descs = append(descs, StatusData{
-				Platform: e.Platform,
-				Status:   ProxyStatus_ServerSide,
-			})
+		r, err := readRemoteBuilderConfigsTxn(txn, name)
+		if err != nil {
+			return err
 		}
 
+		res = r
 		return nil
 	})
+
+	return res, err
+}
+
+func readRemoteBuilderConfigsTxn(txn *store.Txn, name string) ([]BuilderConfig, error) {
+	var configs []BuilderConfig
+
+	ng, err := txn.NodeGroupByName(name)
+	if err != nil {
+		if os.IsNotExist(errors.Cause(err)) {
+			return configs, ErrBuildxNodeGroupNotFound
+		}
+
+		return configs, fmt.Errorf("can not query buildx node group '%s': %v", name, err)
+	}
+
+	if ng.Driver != "remote" {
+		return configs, ErrIsNotRemoteDriver
+	}
+
+	for _, node := range ng.Nodes {
+		for _, plat := range node.Platforms {
+			endpoint := BuilderConfig{
+				Platform:             plat.OS + "/" + plat.Architecture,
+				Arch:                 plat.Architecture,
+				FullBuildkitEndpoint: node.Endpoint,
+			}
+
+			if node.DriverOpts != nil {
+				endpoint.ServerCAPath = node.DriverOpts["cacert"]
+				endpoint.ClientCertPath = node.DriverOpts["cert"]
+				endpoint.ClientKeyPath = node.DriverOpts["key"]
+			}
+
+			configs = append(configs, endpoint)
+		}
+	}
+
+	return configs, nil
+}
+
+func determineServerSideProxyStatus(ctx context.Context, dockerCli *command.DockerCli, name string) ([]StatusData, error) {
+	descs := []StatusData{}
+
+	configs, err := readRemoteBuilderConfigs(dockerCli, name)
+	if err != nil {
+		if err == ErrBuildxNodeGroupNotFound || err == ErrIsNotRemoteDriver {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	for _, cfg := range configs {
+		if !isNamespaceBuildkitEndpoint(cfg.FullBuildkitEndpoint) {
+			continue
+		}
+
+		status := StatusData{
+			Platform:          cfg.Platform,
+			IsServerSideProxy: true,
+			Status:            ProxyStatus_ServerSide,
+		}
+
+		if _, err := TestServerSideBuildxProxyConnectivity(ctx, cfg); err != nil {
+			status.Status = ProxyStatus_ServerSideUnreachable
+			status.LastError = err.Error()
+		}
+
+		descs = append(descs, status)
+	}
 
 	return descs, err
 }

@@ -34,10 +34,11 @@ import (
 type ProxyStatus string
 
 const (
-	ProxyStatus_Starting   ProxyStatus = "Starting"
-	ProxyStatus_Running    ProxyStatus = "Running"
-	ProxyStatus_Failing    ProxyStatus = "Failing"
-	ProxyStatus_ServerSide ProxyStatus = "ServerSideProxy"
+	ProxyStatus_Starting              ProxyStatus = "Starting"
+	ProxyStatus_Running               ProxyStatus = "Running"
+	ProxyStatus_Failing               ProxyStatus = "Failing"
+	ProxyStatus_ServerSide            ProxyStatus = "ServerSideProxy"
+	ProxyStatus_ServerSideUnreachable ProxyStatus = "ServerSideProxyUnreachable"
 )
 
 const (
@@ -176,13 +177,14 @@ type proxyStatusDesc struct {
 }
 
 type StatusData struct {
-	Platform       string
-	Status         ProxyStatus
-	LastError      string
-	LogPath        string
-	LastInstanceID string
-	LastUpdate     time.Time
-	Requests       int
+	Platform          string
+	IsServerSideProxy bool
+	Status            ProxyStatus
+	LastError         string
+	LogPath           string
+	LastInstanceID    string
+	LastUpdate        time.Time
+	Requests          int
 }
 
 func (p *proxyStatusDesc) setLastInstanceID(builderID string) {
