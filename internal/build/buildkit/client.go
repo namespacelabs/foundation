@@ -197,7 +197,17 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 				return nil, fnerrors.InternalError("expected one builder config, got %d", len(builderConfigs))
 			}
 
-			fmt.Fprintf(console.Info(ctx), "buildkit: using server-side build proxy (endpoint: %s)\n", builderConfigs[0].ServerConfig.FullBuildkitEndpoint)
+			endpoint := builderConfigs[0].FullBuildkitEndpoint
+			fmt.Fprintf(console.Info(ctx), "buildkit: using server-side build proxy (endpoint: %s)\n", endpoint)
+
+			isServerSideProxy, err := cluster.TestServerSideBuildxProxyConnectivity(ctx, builderConfigs[0])
+			if err != nil {
+				fmt.Fprintf(console.Warnings(ctx), "buildkit: connectivity check to '%s' failed: %v\n", endpoint, err)
+			}
+
+			if !isServerSideProxy {
+				fmt.Fprintf(console.Warnings(ctx), "buildkit: '%s' has connectivity but doesn't seem to be Namespace Build Ingress\n", endpoint)
+			}
 
 			return useRemoteClusterViaMtls(ctx, builderConfigs[0])
 		}
@@ -294,7 +304,7 @@ func useRemoteClusterViaEndpoint(ctx context.Context, endpoint string) (*Gateway
 
 func useRemoteClusterViaMtls(ctx context.Context, bc cluster.BuilderConfig) (*GatewayClient, error) {
 	return waitAndConnect(ctx, func(ctx context.Context) (*client.Client, error) {
-		return client.New(ctx, bc.ServerConfig.FullBuildkitEndpoint, client.WithCredentials(bc.ClientCertPath, bc.ClientKeyPath), client.WithServerConfig("", bc.ServerCAPath))
+		return client.New(ctx, bc.FullBuildkitEndpoint, client.WithCredentials(bc.ClientCertPath, bc.ClientKeyPath), client.WithServerConfig("", bc.ServerCAPath))
 
 	})
 }

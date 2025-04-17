@@ -10,10 +10,12 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -26,6 +28,11 @@ import (
 	"github.com/natefinch/atomic"
 	"github.com/pkg/errors"
 	"golang.org/x/exp/slices"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
@@ -70,14 +77,94 @@ func PrepareServerSideBuildxProxy(ctx context.Context, stateDir string, platform
 		}
 
 		builderConfigs = append(builderConfigs, BuilderConfig{
-			ServerConfig:   bc,
-			ServerCAPath:   serverCAPath,
-			ClientKeyPath:  privKeyPath,
-			ClientCertPath: clientCertPath,
+			Platform:             bc.GetShape().GetMachineArch() + "/" + bc.GetShape().GetOs(),
+			Arch:                 bc.GetShape().GetMachineArch(),
+			FullBuildkitEndpoint: bc.GetFullBuildkitEndpoint(),
+			ServerCAPath:         serverCAPath,
+			ClientKeyPath:        privKeyPath,
+			ClientCertPath:       clientCertPath,
 		})
 	}
 
 	return builderConfigs, nil
+}
+
+func TestServerSideBuildxProxyConnectivity(ctx context.Context, bc BuilderConfig) (bool, error) {
+	clientConn, err := CreateGrpcClientConn(bc)
+	if err != nil {
+		return false, err
+	}
+
+	defer clientConn.Close()
+
+	streamDesc := &grpc.StreamDesc{
+		ServerStreams: true,
+		ClientStreams: true,
+	}
+
+	clientStream, err := grpc.NewClientStream(ctx, streamDesc, clientConn, "/nsl.buildkit.ConnectivityTest/Ping")
+	if err != nil {
+		return false, fmt.Errorf("failed to create client stream to '%s': %v", bc.FullBuildkitEndpoint, err)
+	}
+
+	empty := &emptypb.Empty{}
+	if err := clientStream.SendMsg(empty); err != nil {
+		return false, fmt.Errorf("failed to send message to '%s': %v", bc.FullBuildkitEndpoint, err)
+	}
+
+	clientStream.CloseSend()
+
+	if err := clientStream.RecvMsg(empty); err != nil {
+		if status.Code(err) == codes.Unimplemented {
+			// The endpoint does not implement nsl.buildkit.ConnectivityTest, but is reachable as a grpc server.
+			return false, nil
+		}
+
+		return false, fmt.Errorf("failed to recv message from '%s': %v", bc.FullBuildkitEndpoint, err)
+	}
+
+	return true, nil
+}
+
+func CreateGrpcClientConn(bc BuilderConfig) (*grpc.ClientConn, error) {
+	endpoint := bc.FullBuildkitEndpoint
+	// buildkit expects this to be a URL
+	parsed, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("can't parse '%s' as url: %v", endpoint, err)
+	}
+
+	if parsed.Scheme != "tcp" {
+		return nil, fmt.Errorf("don't support scheme '%s' in '%s' yet", parsed.Scheme, endpoint)
+	}
+
+	cfg := &tls.Config{
+		ServerName: parsed.Hostname(),
+		RootCAs:    x509.NewCertPool(),
+	}
+
+	serverCAs, err := os.ReadFile(bc.ServerCAPath)
+	if err != nil {
+		return nil, fmt.Errorf("can't read server CA file '%s': %v", bc.ServerCAPath, err)
+	}
+
+	if ok := cfg.RootCAs.AppendCertsFromPEM(serverCAs); !ok {
+		return nil, fmt.Errorf("can't append server CA certs from '%s'", bc.ServerCAPath)
+	}
+
+	clientCert, err := tls.LoadX509KeyPair(bc.ClientCertPath, bc.ClientKeyPath)
+	if err != nil {
+		return nil, fmt.Errorf("can't read certificate/key ('%s'/'%s'): %v", bc.ClientCertPath, bc.ClientKeyPath, err)
+	}
+
+	cfg.Certificates = append(cfg.Certificates, clientCert)
+
+	cl, err := grpc.NewClient(parsed.Host, grpc.WithAuthority(parsed.Hostname()), grpc.WithTransportCredentials(credentials.NewTLS(cfg)))
+	if err != nil {
+		return nil, fmt.Errorf("can't create client to '%s': %v", endpoint, err)
+	}
+
+	return cl, nil
 }
 
 func setupServerSideBuildxProxy(ctx context.Context, stateDir, builderName string, use, defaultLoad bool, dockerCli *command.DockerCli, platforms []api.BuildPlatform, createAtStartup bool, builderTag string) error {
@@ -215,10 +302,12 @@ func fetchClientCert(ctx context.Context, pubKeyPem string) (string, error) {
 }
 
 type BuilderConfig struct {
-	ServerConfig   *builderv1beta.GetBuilderConfigurationResponse
-	ServerCAPath   string
-	ClientKeyPath  string
-	ClientCertPath string
+	Platform             string // e.g. "linux/amd64"
+	Arch                 string // e.g. "amd64"
+	FullBuildkitEndpoint string
+	ServerCAPath         string
+	ClientKeyPath        string
+	ClientCertPath       string
 }
 
 func genPrivAndPublicKeysPEM() ([]byte, []byte, error) {
@@ -304,12 +393,7 @@ func wireRemoteBuildxProxy(dockerCli *command.DockerCli, name string, use, defau
 		}
 
 		for _, bc := range builderConfigs {
-			var platforms []string
-			if bc.ServerConfig.GetShape().GetMachineArch() == "arm64" {
-				platforms = []string{"linux/arm64"}
-			} else {
-				platforms = []string{"linux/amd64"}
-			}
+			platforms := []string{bc.Platform}
 
 			driverOpts := map[string]string{
 				"cert":   bc.ClientCertPath,
@@ -322,7 +406,7 @@ func wireRemoteBuildxProxy(dockerCli *command.DockerCli, name string, use, defau
 				driverOpts["default-load"] = "true"
 			}
 
-			if err := ng.Update(bc.ServerConfig.GetShape().GetMachineArch(), getEndpoint(bc.ServerConfig), platforms, true, true, nil, "", driverOpts); err != nil {
+			if err := ng.Update(bc.Arch, bc.FullBuildkitEndpoint, platforms, true, true, nil, "", driverOpts); err != nil {
 				return err
 			}
 		}
@@ -344,12 +428,4 @@ func wireRemoteBuildxProxy(dockerCli *command.DockerCli, name string, use, defau
 
 		return nil
 	})
-}
-
-func getEndpoint(builderConfig *builderv1beta.GetBuilderConfigurationResponse) string {
-	if builderConfig.GetFullBuildkitEndpoint() != "" {
-		return builderConfig.GetFullBuildkitEndpoint()
-	}
-
-	return "tcp://" + builderConfig.GetBuildkitEndpoint() + ":443"
 }
