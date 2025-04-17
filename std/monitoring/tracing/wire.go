@@ -170,10 +170,10 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 		serverResources.Add(closeable)
 	}
 
-	filter := func(*otelgrpc.InterceptorInfo) bool { return true } // By default we trace every gRPC method
+	grpcFilter := func(*otelgrpc.InterceptorInfo) bool { return true } // By default we trace every gRPC method
 	if skipStr := os.Getenv("FOUNDATION_GRPCTRACE_SKIP_METHODS"); skipStr != "" {
 		skipTraces := strings.Split(skipStr, ",")
-		filter = func(info *otelgrpc.InterceptorInfo) bool {
+		grpcFilter = func(info *otelgrpc.InterceptorInfo) bool {
 			if info != nil {
 				if slices.Contains(skipTraces, info.Method) {
 					return false
@@ -190,9 +190,9 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	}
 
 	uni := otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
-		otelgrpc.WithInterceptorFilter(filter))
+		otelgrpc.WithInterceptorFilter(grpcFilter))
 	stream := otelgrpc.StreamServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
-		otelgrpc.WithMessageEvents(), otelgrpc.WithInterceptorFilter(filter))
+		otelgrpc.WithMessageEvents(), otelgrpc.WithInterceptorFilter(grpcFilter))
 
 	deps.Interceptors.ForServer(func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		return uni(ctx, req, info, func(ctx context.Context, req any) (any, error) {
@@ -216,10 +216,22 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 
 	deps.Interceptors.ForClient(
 		otelgrpc.UnaryClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
-			otelgrpc.WithInterceptorFilter(filter)),
+			otelgrpc.WithInterceptorFilter(grpcFilter)),
 		otelgrpc.StreamClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
-			otelgrpc.WithMessageEvents(), otelgrpc.WithInterceptorFilter(filter)),
+			otelgrpc.WithMessageEvents(), otelgrpc.WithInterceptorFilter(grpcFilter)),
 	)
+
+	httpFilter := func(r *http.Request) bool { return true } // By default we trace every HTTP path
+	if skipStr := os.Getenv("FOUNDATION_HTTP_TRACE_SKIP_PATHS"); skipStr != "" {
+		skipPaths := strings.Split(skipStr, ",")
+		httpFilter = func(r *http.Request) bool {
+			if slices.Contains(skipPaths, r.URL.Path) {
+				return false
+			}
+
+			return true
+		}
+	}
 
 	deps.Middleware.Add(func(h http.Handler) http.Handler {
 		return otelhttp.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -236,7 +248,8 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 			otelhttp.WithTracerProvider(provider),
 			otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
 				return fmt.Sprintf("%s %s", r.Method, r.URL.Path)
-			}))
+			}),
+			otelhttp.WithFilter(httpFilter))
 	})
 
 	global.mu.Lock()
