@@ -12,6 +12,7 @@ package postgres
 			nanos?:   int
 		}
 		idleInTransactionSessionTimeoutMs?: int
+		connectTimeoutMs?:                  int
 
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/universe/db/postgres"
