@@ -31,6 +31,7 @@ type ConfigOverrides struct {
 	MaxConns                        int32
 	MaxConnIdleTime                 time.Duration
 	IdleInTransactionSessionTimeout time.Duration
+	ConnectTimeout                  time.Duration
 }
 
 func NewDatabaseFromConnectionUri(ctx context.Context, db *postgrespb.DatabaseInstance, connuri string, tp trace.TracerProvider, client string) (*DB, error) {
@@ -61,6 +62,10 @@ func NewDatabaseFromConnectionUriWithOverrides(ctx context.Context, db *postgres
 
 		if overrides.IdleInTransactionSessionTimeout > 0 {
 			config.ConnConfig.RuntimeParams["idle_in_transaction_session_timeout"] = fmt.Sprintf("%d", overrides.IdleInTransactionSessionTimeout.Milliseconds())
+		}
+
+		if overrides.ConnectTimeout > 0 {
+			config.ConnConfig.ConnectTimeout = overrides.ConnectTimeout
 		}
 	}
 
