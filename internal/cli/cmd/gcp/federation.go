@@ -49,6 +49,11 @@ func newImpersonateCmd() *cobra.Command {
 			ip = strings.TrimPrefix(ip, gcpIamUrl)
 		}
 
+		// Trim leading slashes
+		for strings.HasPrefix(ip, "/") {
+			ip = strings.TrimPrefix(ip, "/")
+		}
+
 		resp, err := fnapi.IssueIdToken(ctx, fmt.Sprintf("%s/%s", gcpIamUrl, ip), idTokenVersion)
 		if err != nil {
 			return err
