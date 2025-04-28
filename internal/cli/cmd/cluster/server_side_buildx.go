@@ -77,7 +77,7 @@ func PrepareServerSideBuildxProxy(ctx context.Context, stateDir string, platform
 		}
 
 		builderConfigs = append(builderConfigs, BuilderConfig{
-			Platform:             bc.GetShape().GetMachineArch() + "/" + bc.GetShape().GetOs(),
+			Platform:             bc.GetShape().GetOs() + "/" + bc.GetShape().GetMachineArch(),
 			Arch:                 bc.GetShape().GetMachineArch(),
 			FullBuildkitEndpoint: bc.GetFullBuildkitEndpoint(),
 			ServerCAPath:         serverCAPath,
