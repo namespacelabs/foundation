@@ -17,7 +17,7 @@ var DefaultKeychain oci.Keychain = defaultKeychain{}
 type defaultKeychain struct{}
 
 func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.Authenticator, error) {
-	if strings.HasSuffix(r.RegistryStr(), ".nscluster.cloud") || strings.HasSuffix(r.RegistryStr(), ".namespace.systems") || r.RegistryStr() == "nscr.io" {
+	if strings.HasSuffix(r.RegistryStr(), ".nscluster.cloud") || strings.HasSuffix(r.RegistryStr(), ".namespace.systems") || r.RegistryStr() == "nscr.io" || strings.HasSuffix(r.RegistryStr(), ".nscr.io") {
 		return RegistryCreds(ctx)
 	}
 
