@@ -260,7 +260,6 @@ type InstanceResponse struct {
 	ApiEndpoint string
 	Region      string
 	Registry    *ImageRegistry
-	NsRegistry  *ImageRegistry
 }
 
 func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*InstanceResponse, error) {
@@ -344,7 +343,6 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Insta
 				resp.ApiEndpoint = response.ClusterFragment.ApiEndpoint
 				resp.Region = response.ClusterFragment.IngressDomain
 				resp.Registry = response.Registry
-				resp.NsRegistry = response.NsRegistry
 
 				if response.ClusterFragment != nil {
 					if shape := response.ClusterFragment.Shape; shape != nil {
