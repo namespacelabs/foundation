@@ -147,12 +147,7 @@ func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose stri
 			return nil, err
 		}
 
-		reg := response.Registry
-		if response.NsRegistry != nil {
-			reg = response.NsRegistry
-		}
-
-		return completePlanner(ctx, env, conf.ApiEndpoint, conf.ClusterId, response.Cluster.IngressDomain, reg, false)
+		return completePlanner(ctx, env, conf.ApiEndpoint, conf.ClusterId, response.Cluster.IngressDomain, response.Registry, false)
 	}
 
 	response, err := createCluster(ctx, purpose, labels)
@@ -160,12 +155,7 @@ func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose stri
 		return nil, fnerrors.Newf("failed to create instance: %w", err)
 	}
 
-	reg := response.Registry
-	if response.NsRegistry != nil {
-		reg = response.NsRegistry
-	}
-
-	return completePlanner(ctx, env, response.ApiEndpoint, response.InstanceId, response.Region, reg, env.Environment().Ephemeral)
+	return completePlanner(ctx, env, response.ApiEndpoint, response.InstanceId, response.Region, response.Registry, env.Environment().Ephemeral)
 }
 
 func createCluster(ctx context.Context, purpose string, labels map[string]string) (*api.InstanceResponse, error) {
