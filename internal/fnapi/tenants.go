@@ -60,8 +60,9 @@ type TrustAWSCognitoIdentityPoolRequest struct {
 }
 
 type IssueIdTokenRequest struct {
-	Audience string `json:"audience,omitempty"`
-	Version  int    `json:"version,omitempty"`
+	Audience     string `json:"audience,omitempty"`
+	Version      int    `json:"version,omitempty"`
+	DurationSecs int64  `json:"duration_secs,omitempty"`
 }
 
 type IssueIdTokenResponse struct {
@@ -144,10 +145,11 @@ func ExchangeAWSCognitoJWT(ctx context.Context, tenantID, token string) (Exchang
 	return res, nil
 }
 
-func IssueIdToken(ctx context.Context, aud string, version int) (IssueIdTokenResponse, error) {
+func IssueIdToken(ctx context.Context, aud string, version int, duration time.Duration) (IssueIdTokenResponse, error) {
 	req := IssueIdTokenRequest{
-		Audience: aud,
-		Version:  version,
+		Audience:     aud,
+		Version:      version,
+		DurationSecs: int64(duration.Seconds()),
 	}
 
 	var res IssueIdTokenResponse

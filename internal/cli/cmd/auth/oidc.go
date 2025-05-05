@@ -30,13 +30,14 @@ func NewIssueIdTokenCmd() *cobra.Command {
 
 	audience := cmd.Flags().String("audience", "", "The audience of an ID token.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+	duration := cmd.Flags().Duration("duration", 0, "How long the token should last")
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if *audience == "" {
 			return fmt.Errorf("ID token audience is not provided")
 		}
 
-		resp, err := fnapi.IssueIdToken(ctx, *audience, idTokenVersion)
+		resp, err := fnapi.IssueIdToken(ctx, *audience, idTokenVersion, *duration)
 		if err != nil {
 			return err
 		}

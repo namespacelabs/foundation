@@ -28,6 +28,7 @@ func newSetupWebIdentity() *cobra.Command {
 	roleArn := cmd.Flags().String("role_arn", "", "The ARN of the role to assume.")
 	envFile := cmd.Flags().String("write_env", "", "Instead of outputting, write the environment variables to the specified file.")
 	tokenDir := cmd.Flags().String("token_dir", "", "If specified, stores any obtained tokens here.")
+	duration := cmd.Flags().Duration("duration", 0, "How long the token should last.")
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if *roleArn == "" {
@@ -63,7 +64,7 @@ func newSetupWebIdentity() *cobra.Command {
 		defer tokenFile.Close()
 
 		t := time.Now()
-		resp, err := fnapi.IssueIdToken(ctx, "sts.amazonaws.com", idTokenVersion)
+		resp, err := fnapi.IssueIdToken(ctx, "sts.amazonaws.com", idTokenVersion, *duration)
 		if err != nil {
 			return err
 		}
