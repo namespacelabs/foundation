@@ -320,7 +320,7 @@ func JwtLogin(ctx context.Context, client *vault.Client, authMount, audience str
 		aud = VaultJwtAudience
 	}
 
-	idTokenResp, err := fnapi.IssueIdToken(ctx, audience, 1)
+	idTokenResp, err := fnapi.IssueIdToken(ctx, audience, 1, 0)
 	if err != nil {
 		return nil, err
 	}

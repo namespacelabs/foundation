@@ -63,7 +63,7 @@ func newAssumeRoleCmd() *cobra.Command {
 		}
 
 		t := time.Now()
-		resp, err := fnapi.IssueIdToken(ctx, "sts.amazonaws.com", idTokenVersion)
+		resp, err := fnapi.IssueIdToken(ctx, "sts.amazonaws.com", idTokenVersion, *duration)
 		if err != nil {
 			return err
 		}

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -35,6 +36,10 @@ func newImpersonateCmd() *cobra.Command {
 	workloadIdentityProvider := cmd.Flags().String("workload_identity_provider", "",
 		"The full identifier of the GCP Workload Identity Provider, including the project number, pool name, and provider name.")
 	credsFile := cmd.Flags().String("write_creds", "", "Instead of outputting, write the credentials to the specified file.")
+
+	duration := cmd.Flags().Duration("duration", time.Hour, "How long the generated credentials should be valid. Default is 1 hour.")
+	gcpTokenLifetime := cmd.Flags().Duration("gcp_token_lifetime", 10*time.Minute, "Lifetime of GCP tokens generated using these credentials. As long as the credentials are valid the GCP token can be refreshed.")
+
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if *serviceAccount == "" {
 			return fnerrors.Newf("--service_account is required")
@@ -54,7 +59,7 @@ func newImpersonateCmd() *cobra.Command {
 			ip = strings.TrimPrefix(ip, "/")
 		}
 
-		resp, err := fnapi.IssueIdToken(ctx, fmt.Sprintf("%s/%s", gcpIamUrl, ip), idTokenVersion)
+		resp, err := fnapi.IssueIdToken(ctx, fmt.Sprintf("%s/%s", gcpIamUrl, ip), idTokenVersion, *duration)
 		if err != nil {
 			return err
 		}
@@ -92,7 +97,7 @@ func newImpersonateCmd() *cobra.Command {
 			},
 			"service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/" + *serviceAccount + ":generateAccessToken",
 			"service_account_impersonation": map[string]any{
-				"token_lifetime_seconds": 600,
+				"token_lifetime_seconds": int32(gcpTokenLifetime.Seconds()),
 			},
 		})
 	})
