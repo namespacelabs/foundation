@@ -60,8 +60,7 @@ func NewCreateCmd() *cobra.Command {
 
 	volumes := cmd.Flags().StringSlice("volume", nil, "Attach a volume to the instance, {cache|persistent}:{tag}:{mountpoint}:{size}")
 
-	computeAPI := cmd.Flags().Bool("compute_api", true, "Whether to use the Compute API.")
-	cmd.Flags().MarkHidden("compute_api")
+	computeAPI := cmd.Flags().Bool("compute_api", false, "Whether to use the Compute API.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *unusedEphemeral {

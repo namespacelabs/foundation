@@ -53,7 +53,6 @@ func PrepareNewNamespaceCluster(ctx context.Context, env cfg.Context, machineTyp
 			KeepAtExit:      true,
 			Purpose:         env.Environment().Name,
 			WaitClusterOpts: api.WaitClusterOpts{WaitKind: "kubernetes"},
-			UseComputeAPI:   true,
 		})
 		if err != nil {
 			return err
