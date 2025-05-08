@@ -166,6 +166,12 @@ func NewCreateCmd() *cobra.Command {
 
 		if *bare {
 			opts.Features = append(opts.Features, "EXP_DISABLE_KUBERNETES")
+		} else if opts.Experimental == nil {
+			opts.Experimental = map[string]any{
+				"k3s": map[string]any{
+					"kubernetes_version": "1.32",
+				},
+			}
 		}
 
 		switch *ingress {
