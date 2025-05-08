@@ -137,12 +137,7 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, env cfg.Context, purpos
 		return nil, fnerrors.Newf("failed to create instance: %w", err)
 	}
 
-	reg, err := api.GetImageRegistry(ctx, api.Methods)
-	if err != nil {
-		return nil, err
-	}
-
-	return ensureCluster(ctx, config, response.ApiEndpoint, response.InstanceId, response.Region, reg.NSCR, ephemeral)
+	return ensureCluster(ctx, config, response.ApiEndpoint, response.InstanceId, response.Region, response.Registry, ephemeral)
 }
 
 func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose string, labels map[string]string) (runtime.Planner, error) {
@@ -160,26 +155,15 @@ func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose stri
 		return nil, fnerrors.Newf("failed to create instance: %w", err)
 	}
 
-	reg, err := api.GetImageRegistry(ctx, api.Methods)
-	if err != nil {
-		return nil, err
-	}
-
-	return completePlanner(ctx, env, response.ApiEndpoint, response.InstanceId, response.Region, reg.NSCR, env.Environment().Ephemeral)
+	return completePlanner(ctx, env, response.ApiEndpoint, response.InstanceId, response.Region, response.Registry, env.Environment().Ephemeral)
 }
 
 func createCluster(ctx context.Context, purpose string, labels map[string]string) (*api.InstanceResponse, error) {
 	opts := api.CreateClusterOpts{
-		MachineType:   defaultMachineType,
-		Purpose:       purpose,
-		Labels:        labels,
-		Duration:      defaultDuration,
-		UseComputeAPI: true,
-		Experimental: map[string]any{
-			"k3s": map[string]any{
-				"kubernetes_version": "1.32",
-			},
-		},
+		MachineType: defaultMachineType,
+		Purpose:     purpose,
+		Labels:      labels,
+		Duration:    defaultDuration,
 	}
 
 	return api.CreateCluster(ctx, api.Methods, opts)
