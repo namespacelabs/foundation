@@ -8,7 +8,8 @@ eval `ssh-agent -s`
 ssh-add /tmp/cluster_key
 
 # Test ns cluster create
-$NSC_BIN create --output_to /tmp/cluster_id --ssh_key /tmp/cluster_key.pub
+# use old API to pass a custom SSH key.
+$NSC_BIN create --output_to /tmp/cluster_id --ssh_key /tmp/cluster_key.pub --compute_api=false
 CLUSTER_ID=$(cat /tmp/cluster_id)
 
 # Test ns cluster list

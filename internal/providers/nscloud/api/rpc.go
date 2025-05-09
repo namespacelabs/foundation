@@ -209,7 +209,6 @@ func MakeAPI() API {
 type CreateClusterResult struct {
 	ClusterId    string
 	Cluster      *KubernetesCluster
-	Registry     *ImageRegistry
 	BuildCluster *BuildCluster
 	Deadline     *time.Time
 }
@@ -259,7 +258,6 @@ type InstanceResponse struct {
 	InstanceId  string
 	ApiEndpoint string
 	Region      string
-	Registry    *ImageRegistry
 }
 
 func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*InstanceResponse, error) {
@@ -281,7 +279,8 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Insta
 				}
 
 				if opts.Duration > 0 {
-					req.Deadline = timestamppb.New(time.Now().Add(opts.Duration))
+					dl := time.Now().Add(opts.Duration)
+					req.Deadline = &dl
 				}
 
 				labelKeys := maps.Keys(opts.Labels)
@@ -342,7 +341,6 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Insta
 				resp.InstanceId = response.ClusterId
 				resp.ApiEndpoint = response.ClusterFragment.ApiEndpoint
 				resp.Region = response.ClusterFragment.IngressDomain
-				resp.Registry = response.Registry
 
 				if response.ClusterFragment != nil {
 					if shape := response.ClusterFragment.Shape; shape != nil {
@@ -603,7 +601,6 @@ func WaitClusterReady(ctx context.Context, api API, clusterId string, opts WaitC
 	result := &CreateClusterResult{
 		ClusterId:    cr.ClusterId,
 		Cluster:      cr.Cluster,
-		Registry:     cr.Registry,
 		BuildCluster: cr.BuildCluster,
 	}
 

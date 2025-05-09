@@ -39,11 +39,14 @@ func NewSshCmd() *cobra.Command {
 	tag := cmd.Flags().String("unique_tag", "", "If specified, creates a instance with the specified unique tag.")
 	oneshot := cmd.Flags().Bool("oneshot", false, "If specified, a temporary instance will be created and destroyed upon disconnection.")
 	sshAgent := cmd.Flags().BoolP("ssh_agent", "A", false, "If specified, forwards the local SSH agent.")
-	user := cmd.Flags().String("user", "", "The user to connect as.")
 	forcePty := cmd.Flags().BoolP("force-pty", "t", false, "Force pseudo-terminal allocation.")
 	disablePty := cmd.Flags().BoolP("disable-pty", "T", false, "Disable pseudo-terminal allocation.")
 
+	user := cmd.Flags().String("user", "", "The user to connect as.")
 	cmd.Flags().MarkHidden("user")
+
+	computeAPI := cmd.Flags().Bool("compute_api", true, "Whether to use the Compute API.")
+	cmd.Flags().MarkHidden("compute_api")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *forcePty && *disablePty {
@@ -76,6 +79,7 @@ func NewSshCmd() *cobra.Command {
 				Purpose:         fmt.Sprintf("Temporary instance for SSH"),
 				WaitClusterOpts: api.WaitClusterOpts{WaitForService: "ssh", WaitKind: "kubernetes"},
 				Duration:        time.Minute,
+				UseComputeAPI:   *computeAPI,
 			}
 
 			cluster, err := api.CreateAndWaitCluster(ctx, api.Methods, opts)

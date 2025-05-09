@@ -123,6 +123,7 @@ jobs:
           NS_LOG_TO_FILE: /tmp/action_log
         run: |
           /tmp/ns deploy \
+            --debug_to_file=/tmp/debug_log \
             --use_prebuilts=${{ matrix.use_prebuilts }} \
             --golang_use_buildkit=false \
             --naming_no_tls=true \
@@ -130,11 +131,13 @@ jobs:
             --build_in_nscloud \
             internal/testdata/server/gogrpc
 
-      - name: Upload action log
+      - name: Upload logs
         uses: namespace-actions/upload-artifact@v0
         with:
-          name: ns-action-log-${{ github.job }}-use_prebuilts-${{ matrix.use_prebuilts }}
-          path: /tmp/action_log
+          name: ns-logs-${{ github.job }}-use_prebuilts-${{ matrix.use_prebuilts }}
+          path: |
+            /tmp/action_log
+            /tmp/debug_log
           retention-days: 3
         if: always()
 
@@ -214,6 +217,7 @@ jobs:
         run: |
           /tmp/ns test \
             --also_report_start_events \
+            --debug_to_file=/tmp/debug_log \
             --use_prebuilts=true \
             --deploy_push_prebuilts_to_registry=false \
             --golang_use_buildkit=true \
@@ -222,11 +226,13 @@ jobs:
             --parallel \
             --all
 
-      - name: Upload action log
+      - name: Upload logs
         uses: namespace-actions/upload-artifact@v0
         with:
-          name: ns-action-log-${{ github.job }}
-          path: /tmp/action_log
+          name: ns-logs-${{ github.job }}
+          path: |
+            /tmp/action_log
+            /tmp/debug_log
           retention-days: 3
         if: always()
 
@@ -288,6 +294,7 @@ jobs:
           /tmp/ns test \
             golang/01-simple/server \
             golang/02-withsecrets/server \
+            --debug_to_file=/tmp/debug_log \
             --use_prebuilts=true \
             --deploy_push_prebuilts_to_registry=false \
             --golang_use_buildkit=true \
@@ -295,11 +302,13 @@ jobs:
             --testing_use_namespace_cloud_build \
             --parallel
 
-      - name: Upload action log
+      - name: Upload logs
         uses: namespace-actions/upload-artifact@v0
         with:
-          name: ns-action-log-${{ github.job }}
-          path: /tmp/action_log
+          name: ns-logs-${{ github.job }}
+          path: |
+            /tmp/action_log
+            /tmp/debug_log
           retention-days: 3
         if: always()
 
