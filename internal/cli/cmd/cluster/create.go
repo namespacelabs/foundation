@@ -170,7 +170,7 @@ func NewCreateCmd() *cobra.Command {
 		}
 
 		// XXX hacky for backwards compatibility.
-		if opts.Experimental == nil && !*bare && !strings.HasPrefix(*machineType, "macos") {
+		if opts.Experimental == nil && !*bare && !strings.HasPrefix(*machineType, "mac") {
 			opts.Experimental = map[string]any{
 				"k3s": private.K3sCfg,
 			}
