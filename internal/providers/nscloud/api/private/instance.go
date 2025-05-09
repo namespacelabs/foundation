@@ -17,6 +17,12 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/metadata"
 )
 
+var (
+	K3sCfg = map[string]any{
+		"kubernetes_version": "1.32",
+	}
+)
+
 type InstanceServiceClient struct {
 	instance.InstanceServiceClient
 }

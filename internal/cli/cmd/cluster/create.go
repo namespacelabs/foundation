@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/files"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/api/private"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/ctl"
 )
 
@@ -60,7 +61,8 @@ func NewCreateCmd() *cobra.Command {
 
 	volumes := cmd.Flags().StringSlice("volume", nil, "Attach a volume to the instance, {cache|persistent}:{tag}:{mountpoint}:{size}")
 
-	computeAPI := cmd.Flags().Bool("compute_api", false, "Whether to use the Compute API.")
+	computeAPI := cmd.Flags().Bool("compute_api", true, "Whether to use the Compute API.")
+	cmd.Flags().MarkHidden("compute_api")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *unusedEphemeral {
@@ -167,6 +169,13 @@ func NewCreateCmd() *cobra.Command {
 			opts.Features = append(opts.Features, "EXP_DISABLE_KUBERNETES")
 		}
 
+		// XXX hacky for backwards compatibility.
+		if opts.Experimental == nil && !*bare && !strings.HasPrefix(*machineType, "macos") {
+			opts.Experimental = map[string]any{
+				"k3s": private.K3sCfg,
+			}
+		}
+
 		switch *ingress {
 		case "":
 			// nothing to do
@@ -204,7 +213,12 @@ func NewCreateCmd() *cobra.Command {
 		}
 
 		if *outputRegistryPath != "" {
-			if err := os.WriteFile(*outputRegistryPath, []byte(cluster.Registry.EndpointAddress), 0644); err != nil {
+			reg, err := api.GetImageRegistry(ctx, api.Methods)
+			if err != nil {
+				return fnerrors.Newf("failed to fetch registry: %w", err)
+			}
+
+			if err := os.WriteFile(*outputRegistryPath, []byte(reg.NSCR.EndpointAddress), 0644); err != nil {
 				return fnerrors.Newf("failed to write %q: %w", *outputRegistryPath, err)
 			}
 		}

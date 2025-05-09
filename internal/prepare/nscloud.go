@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/api/private"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -53,6 +54,10 @@ func PrepareNewNamespaceCluster(ctx context.Context, env cfg.Context, machineTyp
 			KeepAtExit:      true,
 			Purpose:         env.Environment().Name,
 			WaitClusterOpts: api.WaitClusterOpts{WaitKind: "kubernetes"},
+			UseComputeAPI:   true,
+			Experimental: map[string]any{
+				"k3s": private.K3sCfg,
+			},
 		})
 		if err != nil {
 			return err

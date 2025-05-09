@@ -168,7 +168,6 @@ func ensureCluster(ctx context.Context, clusterID string) (*api.CreateClusterRes
 	return &api.CreateClusterResult{
 		ClusterId: response.Cluster.ClusterId,
 		Cluster:   response.Cluster,
-		Registry:  response.Registry,
 	}, nil
 }
 

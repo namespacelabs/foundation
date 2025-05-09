@@ -34,11 +34,13 @@ type CreateInstanceRequest struct {
 	DocumentedPurpose string                                 `json:"documented_purpose,omitempty"`
 	Label             []*LabelEntry                          `json:"label,omitempty"`
 	Feature           []string                               `json:"feature,omitempty"`
-	Deadline          *timestamppb.Timestamp                 `json:"deadline,omitempty"`
 	AvailableSecrets  []*SecretRef                           `json:"available_secrets,omitempty"`
 	Experimental      any                                    `json:"experimental,omitempty"`
 
 	Container []*ContainerRequest `json:"container,omitempty"`
+
+	// XXX We're using *time.Time instead of *timestamppb.Timestamp to force string serialization (e.g. mimic what protojson.Marshal would do).
+	Deadline *time.Time `json:"deadline,omitempty"`
 }
 
 type CreateInstanceRequest_RegionSelection struct {

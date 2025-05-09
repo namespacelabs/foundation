@@ -290,7 +290,8 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration t
 				}
 
 				if duration > 0 {
-					req.Deadline = timestamppb.New(time.Now().Add(duration))
+					dl := time.Now().Add(duration)
+					req.Deadline = &dl
 				}
 
 				if devmode || len(opts.AuthorizedSshKeys) > 0 {
