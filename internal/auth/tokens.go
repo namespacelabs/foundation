@@ -76,10 +76,11 @@ func (t *Token) UnmarshalJSON(data []byte) error {
 type TokenClaims struct {
 	jwt.RegisteredClaims
 
-	TenantID      string `json:"tenant_id"`
-	InstanceID    string `json:"instance_id"`
-	OwnerID       string `json:"owner_id"`
-	PrimaryRegion string `json:"primary_region"`
+	TenantID       string `json:"tenant_id"`
+	InstanceID     string `json:"instance_id"`
+	OwnerID        string `json:"owner_id"`
+	PrimaryRegion  string `json:"primary_region"`
+	WorkloadRegion string `json:"workload_region"`
 }
 
 func (t *Token) IsSessionToken() bool { return t.SessionToken != "" }
@@ -99,13 +100,21 @@ func (t *Token) Claims(ctx context.Context) (*TokenClaims, error) {
 	}
 }
 
-func (t *Token) PrimaryRegion(ctx context.Context) (string, error) {
+func (t *Token) PreferredRegion(ctx context.Context) (string, error) {
 	claims, err := t.Claims(ctx)
 	if err != nil {
 		return "", err
 	}
 
-	return claims.PrimaryRegion, nil
+	if claims.WorkloadRegion != "" {
+		return claims.WorkloadRegion, nil
+	}
+
+	if claims.PrimaryRegion != "" {
+		return claims.PrimaryRegion, nil
+	}
+
+	return "", nil
 }
 
 func parseClaims(ctx context.Context, raw string) (*TokenClaims, error) {
