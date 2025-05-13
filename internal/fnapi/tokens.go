@@ -19,7 +19,7 @@ import (
 type Token interface {
 	IsSessionToken() bool
 	Claims(context.Context) (*auth.TokenClaims, error)
-	PrimaryRegion(context.Context) (string, error)
+	PreferredRegion(context.Context) (string, error)
 	IssueToken(context.Context, time.Duration, func(context.Context, string, time.Duration) (string, error), bool) (string, error)
 
 	// This fails if it is not a session token.
@@ -38,7 +38,7 @@ func BearerToken(ctx context.Context, t Token, skipCache bool) (string, error) {
 type ResolvedToken struct {
 	BearerToken string
 
-	PrimaryRegion string // Only available in tenant tokens.
+	PreferredRegion string
 }
 
 func FetchToken(ctx context.Context) (Token, error) {
@@ -70,7 +70,7 @@ func IssueBearerToken(ctx context.Context) (ResolvedToken, error) {
 }
 
 func IssueBearerTokenFromToken(ctx context.Context, tok Token) (ResolvedToken, error) {
-	primaryRegion, err := tok.PrimaryRegion(ctx)
+	reg, err := tok.PreferredRegion(ctx)
 	if err != nil {
 		return ResolvedToken{}, err
 	}
@@ -80,7 +80,7 @@ func IssueBearerTokenFromToken(ctx context.Context, tok Token) (ResolvedToken, e
 		return ResolvedToken{}, err
 	}
 
-	return ResolvedToken{BearerToken: bt, PrimaryRegion: primaryRegion}, nil
+	return ResolvedToken{BearerToken: bt, PreferredRegion: reg}, nil
 }
 
 func IssueToken(ctx context.Context, minDur time.Duration) (string, error) {

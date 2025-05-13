@@ -46,9 +46,8 @@ func ResolveRegionalEndpoint(ctx context.Context, tok fnapi.ResolvedToken) (stri
 		return rpcEndpoint, nil
 	}
 
-	// XXX Rely on global endpoint instead.
-	if tok.PrimaryRegion != "" {
-		return "https://api." + tok.PrimaryRegion, nil
+	if tok.PreferredRegion != "" {
+		return "https://api." + tok.PreferredRegion, nil
 	}
 
 	return rpcEndpoint(defaultRegion), nil
