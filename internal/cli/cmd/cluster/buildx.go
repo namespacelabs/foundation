@@ -76,7 +76,7 @@ func newSetupBuildxCmd() *cobra.Command {
 	_ = cmd.Flags().MarkHidden("buildkit_sock_path")
 	defaultLoad := cmd.Flags().Bool("default_load", false, "If true, load images to the Docker Engine image store if no other output is specified.")
 	_ = cmd.Flags().MarkHidden("default_load")
-	useServerSideProxy := cmd.Flags().Bool("use_server_side_proxy", false, "If set, buildx is setup to use transparent server-side proxy powered by Namespace")
+	useServerSideProxy := cmd.Flags().Bool("use_server_side_proxy", true, "If set, buildx is setup to use transparent server-side proxy powered by Namespace")
 	_ = cmd.Flags().MarkHidden("use_server_side_proxy")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
@@ -105,7 +105,7 @@ func newSetupBuildxCmd() *cobra.Command {
 			return err
 		}
 
-		available, serverSideProxyDefault, err := determineAvailable(ctx)
+		available, err := determineAvailable(ctx)
 		if err != nil {
 			return err
 		}
@@ -119,9 +119,7 @@ func newSetupBuildxCmd() *cobra.Command {
 			return err
 		}
 
-		// NSL-3935 use remote-side buildx proxy
-		// This will be soon the default
-		if serverSideProxyDefault || *useServerSideProxy {
+		if *useServerSideProxy {
 			if err := setupServerSideBuildxProxy(ctx, state, *name, *use, *defaultLoad, dockerCli, available, *createAtStartup, *tag); err != nil {
 				return err
 			}
@@ -604,10 +602,10 @@ func newWireBuildxCommand(hidden bool) *cobra.Command {
 	return cmd
 }
 
-func determineAvailable(ctx context.Context) ([]api.BuildPlatform, bool, error) {
+func determineAvailable(ctx context.Context) ([]api.BuildPlatform, error) {
 	profile, err := api.GetProfile(ctx, api.Methods)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
 	avail := make([]api.BuildPlatform, len(profile.ClusterPlatform))
@@ -615,7 +613,7 @@ func determineAvailable(ctx context.Context) ([]api.BuildPlatform, bool, error) 
 		avail[k] = api.BuildPlatform(x)
 	}
 
-	return avail, profile.BuildxServerSideProxyDefaultHint, nil
+	return avail, nil
 }
 
 func banner(ctx context.Context, name string, use bool, native []api.BuildPlatform, background, serverSideProxy bool) string {
