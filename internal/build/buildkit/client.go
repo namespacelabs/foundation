@@ -44,7 +44,6 @@ var (
 	BuildOnNamespaceCloud           = knobs.Bool("build_in_nscloud", "If set to true, builds are triggered remotely.", false)
 	BuildOnNamespaceCloudUnlessHost = knobs.Bool("build_in_nscloud_unless_host", "If set to true, builds that match the host platform run locally. All other builds are triggered remotely.", false)
 	BuildOnExistingBuildkit         = knobs.String("buildkit_addr", "The address of an existing buildkitd to use.", "")
-	BuildUsingServerSideProxy       = knobs.Bool("build_using_server_side_proxy", "If set to true, builds are performed using the server-side buildkit proxy.", false)
 )
 
 const SSHAgentProviderID = "default"
@@ -173,51 +172,37 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 	}
 
 	if buildRemotely(c.conf, c.platform) {
-		profile, err := api.GetProfile(ctx, api.Methods)
+		parsedPlatform, err := parsePlatformOrDefault(c.platform)
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to parse build platform: %v", err)
+		}
+
+		stateDir, err := dirs.Ensure(cluster.DetermineStateDir("", cluster.BuildkitProxyPath))
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to ensure state dir: %v", err)
+		}
+
+		builderConfigs, err := cluster.PrepareServerSideBuildxProxy(ctx, stateDir, []api.BuildPlatform{parsedPlatform}, true, "")
 		if err != nil {
 			return nil, err
 		}
-
-		if profile.BuildServerSideProxyHint || BuildUsingServerSideProxy.Get(c.conf) {
-			parsedPlatform, err := parsePlatformOrDefault(c.platform)
-			if err != nil {
-				return nil, fnerrors.InternalError("failed to parse build platform: %v", err)
-			}
-
-			stateDir, err := dirs.Ensure(cluster.DetermineStateDir("", cluster.BuildkitProxyPath))
-			if err != nil {
-				return nil, fnerrors.InternalError("failed to ensure state dir: %v", err)
-			}
-
-			builderConfigs, err := cluster.PrepareServerSideBuildxProxy(ctx, stateDir, []api.BuildPlatform{parsedPlatform}, true, "")
-			if err != nil {
-				return nil, err
-			}
-			if len(builderConfigs) != 1 {
-				return nil, fnerrors.InternalError("expected one builder config, got %d", len(builderConfigs))
-			}
-
-			endpoint := builderConfigs[0].FullBuildkitEndpoint
-			fmt.Fprintf(console.Info(ctx), "buildkit: using server-side build proxy (endpoint: %s)\n", endpoint)
-
-			isServerSideProxy, err := cluster.TestServerSideBuildxProxyConnectivity(ctx, builderConfigs[0])
-			if err != nil {
-				fmt.Fprintf(console.Warnings(ctx), "buildkit: connectivity check to '%s' failed: %v\n", endpoint, err)
-			}
-
-			if !isServerSideProxy {
-				fmt.Fprintf(console.Warnings(ctx), "buildkit: '%s' has connectivity but doesn't seem to be Namespace Build Ingress\n", endpoint)
-			}
-
-			return useRemoteClusterViaMtls(ctx, builderConfigs[0])
+		if len(builderConfigs) != 1 {
+			return nil, fnerrors.InternalError("expected one builder config, got %d", len(builderConfigs))
 		}
 
-		bp, err := cluster.NewBuildCluster(ctx, formatPlatformOrDefault(c.platform), "")
+		endpoint := builderConfigs[0].FullBuildkitEndpoint
+		fmt.Fprintf(console.Info(ctx), "buildkit: using server-side build proxy (endpoint: %s)\n", endpoint)
+
+		isServerSideProxy, err := cluster.TestServerSideBuildxProxyConnectivity(ctx, builderConfigs[0])
 		if err != nil {
-			return nil, err
+			fmt.Fprintf(console.Warnings(ctx), "buildkit: connectivity check to '%s' failed: %v\n", endpoint, err)
 		}
 
-		return useBuildClusterCluster(ctx, bp)
+		if !isServerSideProxy {
+			fmt.Fprintf(console.Warnings(ctx), "buildkit: '%s' has connectivity but doesn't seem to be Namespace Build Ingress\n", endpoint)
+		}
+
+		return useRemoteClusterViaMtls(ctx, builderConfigs[0])
 	}
 
 	localAddr, err := EnsureBuildkitd(ctx, c.overrides.ContainerName)

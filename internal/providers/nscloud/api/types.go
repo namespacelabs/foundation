@@ -486,9 +486,7 @@ type EnsureBazelCacheResponse struct {
 }
 
 type GetProfileResponse struct {
-	ClusterPlatform                  []string `json:"cluster_platform,omitempty"`
-	BuildxServerSideProxyDefaultHint bool     `json:"buildx_server_side_proxy_default_hint,omitempty"`
-	BuildServerSideProxyHint         bool     `json:"build_server_side_proxy_hint,omitempty"`
+	ClusterPlatform []string `json:"cluster_platform,omitempty"`
 }
 
 type RegisterIngressRequest struct {
