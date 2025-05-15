@@ -274,8 +274,18 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Insta
 					Experimental:      opts.Experimental,
 				}
 
-				if len(opts.AuthorizedSshKeys) > 0 || opts.InternalExtra != "" || len(opts.Volumes) > 0 {
+				if len(opts.AuthorizedSshKeys) > 0 || opts.InternalExtra != "" {
 					return nil, fnerrors.Newf("not supported")
+				}
+
+				if len(opts.Volumes) > 0 {
+					if req.Experimental != nil {
+						return nil, fnerrors.Newf("not supported")
+					}
+
+					req.Experimental = map[string]any{
+						"volumes": opts.Volumes,
+					}
 				}
 
 				if opts.Duration > 0 {
