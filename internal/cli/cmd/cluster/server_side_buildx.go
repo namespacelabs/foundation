@@ -25,6 +25,7 @@ import (
 	"github.com/docker/buildx/store"
 	"github.com/docker/buildx/util/dockerutil"
 	"github.com/docker/cli/cli/command"
+	controlapi "github.com/moby/buildkit/api/services/control"
 	"github.com/natefinch/atomic"
 	"github.com/pkg/errors"
 	"golang.org/x/exp/slices"
@@ -87,6 +88,18 @@ func PrepareServerSideBuildxProxy(ctx context.Context, stateDir string, platform
 	}
 
 	return builderConfigs, nil
+}
+
+func DumpListWorkers(ctx context.Context, bc BuilderConfig) (*controlapi.ListWorkersResponse, error) {
+	clientConn, err := CreateGrpcClientConn(bc)
+	if err != nil {
+		return nil, err
+	}
+
+	defer clientConn.Close()
+
+	client := controlapi.NewControlClient(clientConn)
+	return client.ListWorkers(ctx, &controlapi.ListWorkersRequest{})
 }
 
 func TestServerSideBuildxProxyConnectivity(ctx context.Context, bc BuilderConfig) (bool, error) {

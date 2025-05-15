@@ -900,3 +900,50 @@ func determineCientSideProxyStatus(ctx context.Context, state string) ([]StatusD
 
 	return descs, nil
 }
+
+func newDumpListWorkersBuildxCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    "dump-list-workers ...",
+		Short:  "Dump ListWorkers response of a Namespace remote builder.",
+		Hidden: true,
+	}
+
+	name := cmd.Flags().String("name", defaultBuilder, "The name of the buildx builder to dump ListWorkers for.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		dockerCli, err := command.NewDockerCli()
+		if err != nil {
+			return err
+		}
+
+		if err := dockerCli.Initialize(cliflags.NewClientOptions()); err != nil {
+			return err
+		}
+
+		// Currently only implemented for our remote builders.
+		configs, err := readRemoteBuilderConfigs(dockerCli, *name)
+		if err != nil {
+			return err
+		}
+
+		for _, cfg := range configs {
+			listWorkersResp, err := DumpListWorkers(ctx, cfg)
+			if err != nil {
+				return fmt.Errorf("while processing %s: %v", cfg.FullBuildkitEndpoint, err)
+			}
+
+			marshalled, err := json.MarshalIndent(listWorkersResp, "", "  ")
+			if err != nil {
+				return fmt.Errorf("while marshalling response from %s: %v", cfg.FullBuildkitEndpoint, err)
+			}
+
+			fmt.Println(cfg.FullBuildkitEndpoint)
+			fmt.Println(string(marshalled))
+			fmt.Println()
+		}
+
+		return nil
+	})
+
+	return cmd
+}
