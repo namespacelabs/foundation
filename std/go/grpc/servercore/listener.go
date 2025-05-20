@@ -119,13 +119,18 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 	anyL := m.Match(cmux.Any())
 
 	grpcopts := OrderedServerInterceptors()
+
 	if gogrpc.ServerCreds != nil {
 		grpcopts = append(grpcopts, grpc.Creds(gogrpc.ServerCreds))
 	}
 
 	grpcopts = append(grpcopts, grpc.KeepaliveParams(keepalive.ServerParameters{
-		// Without keepalives Nginx-ingress gives up on long-running streaming RPCs.
-		Time: 30 * time.Second,
+		Time:              5 * time.Second,
+		Timeout:           20 * time.Second,
+		MaxConnectionIdle: 60 * time.Second, // If a connection is idle, close it, so that clients re-establish TCP connections.
+	}), grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+		MinTime:             10 * time.Second,
+		PermitWithoutStream: true,
 	}))
 
 	defaultServer := grpc.NewServer(grpcopts...)
