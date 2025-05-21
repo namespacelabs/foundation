@@ -70,7 +70,7 @@ func (test *testRun) Inputs() *compute.In {
 
 func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*storage.TestResultBundle, error) {
 	// The actual test run is wrapped in another action, so we can apply policies to it (e.g. constrain how many tests are deployed in parallel).
-	return tasks.Return(ctx, tasks.Action(TestRunAction), func(ctx context.Context) (*storage.TestResultBundle, error) {
+	return tasks.Return(ctx, tasks.Action(TestRunAction).Arg("test.name", test.TestRef.Name), func(ctx context.Context) (*storage.TestResultBundle, error) {
 		return test.compute(ctx, r)
 	})
 }
