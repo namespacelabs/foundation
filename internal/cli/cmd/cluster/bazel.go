@@ -24,9 +24,8 @@ const bazelCachePathBase = "bazelcache"
 
 func NewBazelCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "bazel",
-		Short:  "Bazel-related activities.",
-		Hidden: true,
+		Use:   "bazel",
+		Short: "Bazel-related activities.",
 	}
 
 	cache := &cobra.Command{Use: "cache", Short: "Bazel cache related functionality."}

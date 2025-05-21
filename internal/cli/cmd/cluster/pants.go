@@ -23,9 +23,8 @@ const pantsCachePathBase = "pantscache"
 
 func NewPantsCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "pants",
-		Short:  "Pants-related activities.",
-		Hidden: true,
+		Use:   "pants",
+		Short: "Pants-related activities.",
 	}
 
 	cache := &cobra.Command{Use: "cache", Short: "Pants cache related functionality."}

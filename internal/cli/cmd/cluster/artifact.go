@@ -32,9 +32,8 @@ const (
 
 func NewArtifactCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "artifact",
-		Short:  "Artifact-related activities.",
-		Hidden: true,
+		Use:   "artifact",
+		Short: "Artifact-related activities.",
 	}
 
 	cmd.AddCommand(newArtifactUploadCmd())
