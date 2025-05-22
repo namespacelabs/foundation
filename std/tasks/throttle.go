@@ -24,17 +24,13 @@ const (
 )
 
 var (
-	BaseDefaultConfig = computeDefaultConfig()
-
-	baseTestConfig = []*ThrottleConfiguration{
-		{Labels: map[string]string{"action": "test"}, Capacity: 5},
-	}
+	concurrentBuilds int32 = 3
 )
 
-func computeDefaultConfig() []*ThrottleConfiguration {
+func BaseDefaultConfig() []*ThrottleConfiguration {
 	confs := []*ThrottleConfiguration{
 		{Labels: map[string]string{"action": "lowlevel.invocation"}, Capacity: 3},
-		{Labels: map[string]string{"action": "go.build.binary"}, Capacity: 3},
+		{Labels: map[string]string{"action": "go.build.binary"}, Capacity: concurrentBuilds},
 	}
 
 	if !environment.IsRunningInCI() {
@@ -71,8 +67,7 @@ func LoadThrottlerConfig(ctx context.Context, debugLog io.Writer) *ThrottleConfi
 	}
 
 	configs := &ThrottleConfigurations{}
-	configs.ThrottleConfiguration = append(configs.ThrottleConfiguration, BaseDefaultConfig...)
-	configs.ThrottleConfiguration = append(configs.ThrottleConfiguration, baseTestConfig...)
+	configs.ThrottleConfiguration = append(configs.ThrottleConfiguration, BaseDefaultConfig()...)
 	return configs
 }
 
