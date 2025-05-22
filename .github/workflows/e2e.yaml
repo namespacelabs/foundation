@@ -46,7 +46,7 @@ jobs:
           CGO_ENABLED: 0
         run: go build -v -o ns ./cmd/ns
       - name: Upload ns
-        uses: namespace-actions/upload-artifact@v0
+        uses: namespace-actions/upload-artifact@v1
         with:
           name: ns-${{ runner.os }}
           path: ns
@@ -59,7 +59,7 @@ jobs:
         run: go build -v -o nsc ./cmd/nsc
 
       - name: Upload nsc
-        uses: namespace-actions/upload-artifact@v0
+        uses: namespace-actions/upload-artifact@v1
         with:
           name: nsc-${{ runner.os }}
           path: nsc
@@ -103,7 +103,7 @@ jobs:
           cache: go
 
       - name: Download ns
-        uses: namespace-actions/download-artifact@v0
+        uses: namespace-actions/download-artifact@v1
         with:
           name: ns-${{ runner.os }}
 
@@ -132,7 +132,7 @@ jobs:
             internal/testdata/server/gogrpc
 
       - name: Upload logs
-        uses: namespace-actions/upload-artifact@v0
+        uses: namespace-actions/upload-artifact@v1
         with:
           name: ns-logs-${{ github.job }}-use_prebuilts-${{ matrix.use_prebuilts }}
           path: |
@@ -172,7 +172,7 @@ jobs:
           cache: go
 
       - name: Download ns
-        uses: namespace-actions/download-artifact@v0
+        uses: namespace-actions/download-artifact@v1
         with:
           name: ns-${{ runner.os }}
 
@@ -200,7 +200,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download ns
-        uses: namespace-actions/download-artifact@v0
+        uses: namespace-actions/download-artifact@v1
         with:
           name: ns-${{ runner.os }}
 
@@ -227,7 +227,7 @@ jobs:
             --all
 
       - name: Upload logs
-        uses: namespace-actions/upload-artifact@v0
+        uses: namespace-actions/upload-artifact@v1
         with:
           name: ns-logs-${{ github.job }}
           path: |
@@ -246,7 +246,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download nsc
-        uses: namespace-actions/download-artifact@v0
+        uses: namespace-actions/download-artifact@v1
         with:
           name: nsc-${{ runner.os }}
 
@@ -275,7 +275,7 @@ jobs:
           path: external-repo
 
       - name: Download ns
-        uses: namespace-actions/download-artifact@v0
+        uses: namespace-actions/download-artifact@v1
         with:
           name: ns-${{ runner.os }}
 
@@ -303,7 +303,7 @@ jobs:
             --parallel
 
       - name: Upload logs
-        uses: namespace-actions/upload-artifact@v0
+        uses: namespace-actions/upload-artifact@v1
         with:
           name: ns-logs-${{ github.job }}
           path: |
@@ -336,7 +336,7 @@ jobs:
           cache: go
 
       - name: Download ns
-        uses: namespace-actions/download-artifact@v0
+        uses: namespace-actions/download-artifact@v1
         with:
           name: ns-${{ runner.os }}
 
