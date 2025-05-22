@@ -51,6 +51,7 @@ func NewTestCmd() *cobra.Command {
 		rocketShip          bool
 		ephemeral           bool = true
 		explain             bool
+		concurrentTests     int32 = 1
 	)
 
 	flags := cmd.Flags()
@@ -60,11 +61,15 @@ func NewTestCmd() *cobra.Command {
 	flags.BoolVar(&parallel, "parallel", parallel, "If true, run tests in parallel.")
 	flags.BoolVar(&parallelWork, "parallel_work", parallelWork, "If true, performs all work in parallel except running the actual test (e.g. builds).")
 	flags.BoolVar(&explain, "explain", explain, "If set to true, rather than applying the graph, output an explanation of what would be done.")
-	flags.BoolVar(&rocketShip, "rocket_ship", rocketShip, "If set, go full parallel without constraints.")
-	flags.BoolVar(&forceOutputProgress, "force_output_progress", forceOutputProgress, "If set to true, always output progress, regardless of whether parallel is set.")
 
+	flags.BoolVar(&rocketShip, "rocket_ship", rocketShip, "If set, go full parallel without constraints.")
 	_ = flags.MarkHidden("rocket_ship")
+
+	flags.BoolVar(&forceOutputProgress, "force_output_progress", forceOutputProgress, "If set to true, always output progress, regardless of whether parallel is set.")
 	_ = flags.MarkHidden("force_output_progress")
+
+	flags.Int32Var(&concurrentTests, "concurrent_test_limit", concurrentTests, "Limit how many tests may run in parallel.")
+	_ = flags.MarkHidden("concurrent_test_limit")
 
 	// Deprecated.
 	flags.Bool("include_servers", false, "Does nothing.")
@@ -79,9 +84,13 @@ func NewTestCmd() *cobra.Command {
 	})
 
 	return fncobra.With(cmd, func(originalCtx context.Context) error {
-		ctx := prepareContext(originalCtx, parallel, rocketShip)
+		if parallel && concurrentTests == 1 {
+			concurrentTests = 5
+		}
 
-		if rocketShip {
+		ctx := prepareContext(originalCtx, rocketShip, concurrentTests)
+
+		if rocketShip || concurrentTests > 1 {
 			parallel = true
 		}
 
@@ -252,22 +261,18 @@ func NewTestCmd() *cobra.Command {
 	})
 }
 
-func prepareContext(ctx context.Context, parallel, rocketShip bool) context.Context {
+func prepareContext(ctx context.Context, rocketShip bool, concurrentTests int32) context.Context {
 	if rocketShip {
 		fmt.Fprintln(console.Stdout(ctx), "Engaging 🚀 mode; all throttling disabled.")
 		return tasks.ContextWithThrottler(ctx, console.Debug(ctx), &tasks.ThrottleConfigurations{})
 	}
 
-	if !parallel {
-		configs := &tasks.ThrottleConfigurations{}
-		configs.ThrottleConfiguration = append(configs.ThrottleConfiguration, tasks.BaseDefaultConfig...)
-		configs.ThrottleConfiguration = append(configs.ThrottleConfiguration, &tasks.ThrottleConfiguration{
-			Labels: map[string]string{"action": testing.TestRunAction}, Capacity: 1,
-		})
-		return tasks.ContextWithThrottler(ctx, console.Debug(ctx), configs)
-	}
-
-	return ctx
+	configs := &tasks.ThrottleConfigurations{}
+	configs.ThrottleConfiguration = append(configs.ThrottleConfiguration, tasks.BaseDefaultConfig()...)
+	configs.ThrottleConfiguration = append(configs.ThrottleConfiguration, &tasks.ThrottleConfiguration{
+		Labels: map[string]string{"action": testing.TestRunAction}, Capacity: int32(concurrentTests),
+	})
+	return tasks.ContextWithThrottler(ctx, console.Debug(ctx), configs)
 }
 
 type incompatibleTest struct {
