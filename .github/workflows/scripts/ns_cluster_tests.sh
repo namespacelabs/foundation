@@ -59,6 +59,10 @@ fi
 $NSC_BIN cluster destroy $CLUSTER_ID --force
 
 # Test ns cluster history
-$NSC_BIN cluster history -o json | grep $CLUSTER_ID
+INSTANCE_COUNT=$($NSC_BIN cluster history -o json --since 24h | jq length)
+if [[ $(($LOGS)) -lt 1 ]]; then
+    echo "no history found!"
+    exit 1
+fi
 
 ssh-add -d /tmp/cluster_key
