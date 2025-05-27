@@ -285,6 +285,13 @@ type Cluster_ServiceState struct {
 	Status   string `json:"status,omitempty"`
 	Endpoint string `json:"endpoint,omitempty"` // Service-specific endpoint.
 	Public   bool   `json:"public,omitempty"`
+
+	Credentials *Cluster_ServiceState_Credentials `json:"credentials,omitempty"`
+}
+
+type Cluster_ServiceState_Credentials struct {
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
 }
 
 type KubernetesCluster_TlsBackedPort struct {
