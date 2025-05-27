@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
+//go:build unix
+
 package ulimit
 
 import (
@@ -25,4 +27,24 @@ func SetFileLimit(n uint64) error {
 	}
 
 	return nil
+}
+
+func SetCoreFileLimit(maxCoreFileSize uint64) error {
+	var rlimit syscall.Rlimit
+
+	if err := syscall.Getrlimit(syscall.RLIMIT_CORE, &rlimit); err != nil {
+		return err
+	}
+
+	if rlimit.Max < maxCoreFileSize {
+		rlimit.Max = maxCoreFileSize
+	}
+
+	if rlimit.Cur < maxCoreFileSize {
+		rlimit.Cur = maxCoreFileSize
+	}
+
+	if err := syscall.Setrlimit(syscall.RLIMIT_CORE, &rlimit); err != nil {
+		return err
+	}
 }
