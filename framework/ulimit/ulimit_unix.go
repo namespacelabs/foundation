@@ -47,4 +47,6 @@ func SetCoreFileLimit(maxCoreFileSize uint64) error {
 	if err := syscall.Setrlimit(syscall.RLIMIT_CORE, &rlimit); err != nil {
 		return err
 	}
+
+	return nil
 }
