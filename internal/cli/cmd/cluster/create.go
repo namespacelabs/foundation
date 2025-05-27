@@ -37,6 +37,7 @@ func NewCreateCmd() *cobra.Command {
 	bare := cmd.Flags().Bool("bare", false, "If set to true, creates an environment with the minimal set of services (e.g. no Kubernetes).")
 	tag := cmd.Flags().String("unique_tag", "", "If specified, creates a instance with the specified unique tag.")
 	labels := cmd.Flags().StringToString("label", nil, "Key-values to attach to the new instance. Multiple key-value pairs may be specified.")
+	purpose := cmd.Flags().String("purpose", "Manually created from CLI", "What documented purpose to attach to the created instance.")
 
 	ingress := cmd.Flags().String("ingress", "", "If set, configures the ingress of this instance. Valid options: wildcard.")
 
@@ -72,7 +73,7 @@ func NewCreateCmd() *cobra.Command {
 		opts := api.CreateClusterOpts{
 			MachineType:   *machineType,
 			KeepAtExit:    true,
-			Purpose:       "Manually created from CLI",
+			Purpose:       *purpose,
 			Features:      *features,
 			InternalExtra: *internalExtra,
 			Labels:        *labels,
