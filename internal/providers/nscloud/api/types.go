@@ -280,14 +280,6 @@ type KubernetesCluster struct {
 	TlsBackedPort []*KubernetesCluster_TlsBackedPort `json:"tls_backed_port,omitempty"`
 }
 
-func (c *KubernetesCluster) GetAppUrl() string {
-	if c == nil {
-		return ""
-	}
-
-	return c.AppURL
-}
-
 type Cluster_ServiceState struct {
 	Name     string `json:"name,omitempty"`
 	Status   string `json:"status,omitempty"`
