@@ -11,11 +11,8 @@ import (
 	"strings"
 	"time"
 
-	composecli "github.com/compose-spec/compose-go/cli"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/types/known/timestamppb"
-	"gopkg.in/yaml.v3"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -56,7 +53,6 @@ func NewRunCmd() *cobra.Command {
 	experimental := run.Flags().String("experimental", "", "A set of experimental settings to pass during creation.")
 	instanceExperimental := run.Flags().String("instance_experimental", "", "A set of experimental instance settings to pass during creation.")
 	userSshey := run.Flags().String("ssh_key", "", "Injects the specified ssh public key in the created instance.")
-	computeAPI := run.Flags().Bool("compute_api", false, "Whether to use the Compute API.")
 
 	run.Flags().MarkHidden("label")
 	run.Flags().MarkHidden("internal_extra")
@@ -105,7 +101,6 @@ func NewRunCmd() *cobra.Command {
 			ForwardNscState: *forwardNscState,
 			ExposeNscBins:   *exposeNscBins,
 			Network:         *network,
-			UseComputeAPI:   *computeAPI,
 		}
 
 		if keys, err := parseAuthorizedKeys(*userSshey); err != nil {
@@ -224,7 +219,6 @@ type CreateContainerOpts struct {
 	Experimental         any
 	InstanceExperimental any
 	AuthorizedSshKeys    []string
-	UseComputeAPI        bool
 }
 
 type exportContainerPort struct {
@@ -280,59 +274,31 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration t
 		const label = "Creating container environment"
 
 		resp, err := tasks.Return(ctx, tasks.Action("nscloud.create-containers").HumanReadable(label), func(ctx context.Context) (*CreateContainerResult, error) {
-			if opts.UseComputeAPI {
-				req := api.CreateInstanceRequest{
-					MachineType:  machineType,
-					Container:    []*api.ContainerRequest{container},
-					Label:        labels,
-					Feature:      opts.Features,
-					Experimental: opts.InstanceExperimental,
-				}
-
-				if duration > 0 {
-					dl := time.Now().Add(duration)
-					req.Deadline = &dl
-				}
-
-				if devmode || len(opts.AuthorizedSshKeys) > 0 {
-					return nil, fnerrors.Newf("not supported yet with compute_api")
-				}
-
-				var response api.CreateInstanceResponse
-				if err := api.Methods.CreateInstance.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
-					return nil, err
-				}
-
-				return &CreateContainerResult{
-					InstanceId:  response.InstanceId,
-					InstanceUrl: response.InstanceUrl,
-					ApiEndpoint: response.ApiEndpoint,
-				}, nil
-			}
-
-			req := api.CreateContainersRequest{
-				MachineType:       machineType,
-				Container:         []*api.ContainerRequest{container},
-				DevelopmentMode:   devmode,
-				Label:             labels,
-				Feature:           opts.Features,
-				InternalExtra:     opts.InternalExtra,
-				Experimental:      opts.InstanceExperimental,
-				AuthorizedSshKeys: opts.AuthorizedSshKeys,
+			req := api.CreateInstanceRequest{
+				MachineType:  machineType,
+				Container:    []*api.ContainerRequest{container},
+				Label:        labels,
+				Feature:      opts.Features,
+				Experimental: opts.InstanceExperimental,
 			}
 
 			if duration > 0 {
-				req.Deadline = timestamppb.New(time.Now().Add(duration))
+				dl := time.Now().Add(duration)
+				req.Deadline = &dl
 			}
 
-			var response api.CreateContainersResponse
-			if err := api.Methods.CreateContainers.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+			if devmode || len(opts.AuthorizedSshKeys) > 0 {
+				return nil, fnerrors.Newf("not supported yet with compute_api")
+			}
+
+			var response api.CreateInstanceResponse
+			if err := api.Methods.CreateInstance.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 				return nil, err
 			}
 
 			return &CreateContainerResult{
-				InstanceId:  response.ClusterId,
-				InstanceUrl: response.ClusterUrl,
+				InstanceId:  response.InstanceId,
+				InstanceUrl: response.InstanceUrl,
 				ApiEndpoint: response.ApiEndpoint,
 			}, nil
 		})
@@ -340,7 +306,7 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration t
 			return nil, err
 		}
 
-		if _, err := api.WaitClusterReady(ctx, api.Methods, resp.InstanceId, api.WaitClusterOpts{
+		if _, err := api.WaitClusterReady(ctx, api.Methods, resp.InstanceId, time.Minute, api.WaitClusterOpts{
 			ApiEndpoint: resp.ApiEndpoint,
 			CreateLabel: label,
 		}); err != nil {
@@ -466,60 +432,10 @@ func printNewEnv(ctx context.Context, clusterID, clusterURL string) {
 	stdout := console.Stdout(ctx)
 
 	fmt.Fprintf(stdout, "\n  Created new ephemeral environment! ID: %s\n", clusterID)
-	fmt.Fprintf(stdout, "\n  %s %s\n", style.Comment.Apply("More at:"), clusterURL)
-}
 
-func createCompose(ctx context.Context, dir string, devmode bool) (*api.CreateContainersResponse, error) {
-	var optionsFn []composecli.ProjectOptionsFn
-	optionsFn = append(optionsFn,
-		composecli.WithOsEnv,
-		// composecli.WithEnvFile(o.EnvFile),
-		composecli.WithConfigFileEnv,
-		composecli.WithDefaultConfigPath,
-		composecli.WithDotEnv,
-		// composecli.WithName(o.Project),
-	)
-
-	if dir != "" {
-		optionsFn = append(optionsFn, composecli.WithWorkingDirectory(dir))
+	if clusterURL != "" {
+		fmt.Fprintf(stdout, "\n  %s %s\n", style.Comment.Apply("More at:"), clusterURL)
 	}
-
-	projectOptions, err := composecli.NewProjectOptions(nil, optionsFn...)
-	if err != nil {
-		return nil, err
-	}
-
-	project, err := composecli.ProjectFromOptions(projectOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	projectYAML, err := yaml.Marshal(project)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := tasks.Return(ctx, tasks.Action("nscloud.create-containers"), func(ctx context.Context) (*api.CreateContainersResponse, error) {
-		var response api.CreateContainersResponse
-		if err := api.Methods.CreateContainers.Do(ctx, api.CreateContainersRequest{
-			Compose:         []*api.ComposeRequest{{Contents: projectYAML}},
-			DevelopmentMode: devmode,
-		}, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
-			return nil, err
-		}
-		return &response, nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err := api.WaitClusterReady(ctx, api.Methods, resp.ClusterId, api.WaitClusterOpts{
-		ApiEndpoint: resp.ApiEndpoint,
-	}); err != nil {
-		return nil, err
-	}
-
-	return resp, nil
 }
 
 func generateNameFromImage(image string) string {

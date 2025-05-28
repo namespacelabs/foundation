@@ -45,9 +45,6 @@ func NewSshCmd() *cobra.Command {
 	user := cmd.Flags().String("user", "", "The user to connect as.")
 	cmd.Flags().MarkHidden("user")
 
-	computeAPI := cmd.Flags().Bool("compute_api", true, "Whether to use the Compute API.")
-	cmd.Flags().MarkHidden("compute_api")
-
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *forcePty && *disablePty {
 			return errors.New("Can not use -t and -T")
@@ -66,23 +63,23 @@ func NewSshCmd() *cobra.Command {
 				WaitClusterOpts: api.WaitClusterOpts{WaitForService: "ssh", WaitKind: "kubernetes"},
 			}
 
-			cluster, err := api.CreateAndWaitCluster(ctx, api.Methods, opts)
+			cluster, err := api.CreateAndWaitCluster(ctx, api.Methods, time.Minute, opts)
 			if err != nil {
 				return err
 			}
 
 			return InlineSsh(ctx, cluster.Cluster, sshOpts, args)
 		}
+
 		if *oneshot {
 			opts := api.CreateClusterOpts{
 				KeepAtExit:      false,
 				Purpose:         fmt.Sprintf("Temporary instance for SSH"),
 				WaitClusterOpts: api.WaitClusterOpts{WaitForService: "ssh", WaitKind: "kubernetes"},
 				Duration:        time.Minute,
-				UseComputeAPI:   *computeAPI,
 			}
 
-			cluster, err := api.CreateAndWaitCluster(ctx, api.Methods, opts)
+			cluster, err := api.CreateAndWaitCluster(ctx, api.Methods, time.Minute, opts)
 			if err != nil {
 				return err
 			}

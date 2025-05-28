@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/docker/go-units"
 	"github.com/spf13/cobra"
@@ -33,6 +34,7 @@ func NewCreateCmd() *cobra.Command {
 	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type.")
 	unusedEphemeral := cmd.Flags().Bool("ephemeral", false, "Create an ephemeral instance.")
 	features := cmd.Flags().StringSlice("features", nil, "A set of features to attach to the instance.")
+	waitDuration := cmd.Flags().Duration("wait_duration", time.Minute, "How long to wait for an instance to become ready. If set to zero, we don't wait.")
 	waitKubeSystem := cmd.Flags().Bool("wait_kube_system", false, "If true, wait until kube-system resources (e.g. coredns and local-path-provisioner) are ready.")
 	bare := cmd.Flags().Bool("bare", false, "If set to true, creates an environment with the minimal set of services (e.g. no Kubernetes).")
 	tag := cmd.Flags().String("unique_tag", "", "If specified, creates a instance with the specified unique tag.")
@@ -62,9 +64,6 @@ func NewCreateCmd() *cobra.Command {
 
 	volumes := cmd.Flags().StringSlice("volume", nil, "Attach a volume to the instance, {cache|persistent}:{tag}:{mountpoint}:{size}")
 
-	computeAPI := cmd.Flags().Bool("compute_api", true, "Whether to use the Compute API.")
-	cmd.Flags().MarkHidden("compute_api")
-
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *unusedEphemeral {
 			fmt.Fprintf(console.Warnings(ctx), "--ephemeral has been removed and does impact the creation request (try --machine_type instead)")
@@ -80,7 +79,6 @@ func NewCreateCmd() *cobra.Command {
 			UniqueTag:     *tag,
 			SecretIDs:     *availableSecrets,
 			Duration:      *duration,
-			UseComputeAPI: *computeAPI,
 		}
 
 		if len(opts.Labels) == 0 {
@@ -190,7 +188,7 @@ func NewCreateCmd() *cobra.Command {
 
 		opts.WaitKind = "kubernetes"
 
-		cluster, err := api.CreateAndWaitCluster(ctx, api.Methods, opts)
+		cluster, err := api.CreateAndWaitCluster(ctx, api.Methods, *waitDuration, opts)
 		if err != nil {
 			return err
 		}
@@ -261,7 +259,7 @@ func NewCreateCmd() *cobra.Command {
 				fmt.Fprintf(console.Warnings(ctx), "defaulting output to plain\n")
 			}
 
-			printNewEnv(ctx, cluster.ClusterId, cluster.Cluster.AppURL)
+			printNewEnv(ctx, cluster.ClusterId, cluster.Cluster.GetAppUrl())
 
 			if api.ClusterService(cluster.Cluster, "kubernetes") != nil {
 				stdout := console.Stdout(ctx)
@@ -276,7 +274,7 @@ func NewCreateCmd() *cobra.Command {
 				fmt.Fprintf(stdout, "    $ nsc ssh %s\n\n", cluster.ClusterId)
 			}
 
-			if len(cluster.Cluster.TlsBackedPort) > 0 {
+			if cluster.Cluster != nil && len(cluster.Cluster.TlsBackedPort) > 0 {
 				stdout := console.Stdout(ctx)
 				fmt.Fprintln(stdout)
 				fmt.Fprintf(stdout, "  (Experimental) TLS backend ports:\n\n")
