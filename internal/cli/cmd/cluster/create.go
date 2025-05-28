@@ -78,7 +78,6 @@ func NewCreateCmd() *cobra.Command {
 			KeepAtExit:    true,
 			Purpose:       *purpose,
 			Features:      *features,
-			InternalExtra: *internalExtra,
 			Labels:        *labels,
 			UniqueTag:     *tag,
 			SecretIDs:     *availableSecrets,
@@ -92,31 +91,44 @@ func NewCreateCmd() *cobra.Command {
 			}
 		}
 
-		if keys, err := parseAuthorizedKeys(*userSshey); err != nil {
-			return err
-		} else {
-			opts.AuthorizedSshKeys = keys
-		}
-
 		if *experimental != "" && *experimentalFrom != "" {
 			return fnerrors.Newf("must only set one of --experimental or --experimental_from")
 		}
 
 		if *experimental != "" {
-			var exp any
+			var exp map[string]any
 			if err := json.Unmarshal([]byte(*experimental), &exp); err != nil {
 				return err
 			}
+
 			opts.Experimental = exp
 		}
 
 		if *experimentalFrom != "" {
-			var exp any
+			var exp map[string]any
 			if err := files.ReadJson(*experimentalFrom, &exp); err != nil {
 				return err
 			}
 
 			opts.Experimental = exp
+		}
+
+		if *internalExtra != "" {
+			if opts.Experimental == nil {
+				opts.Experimental = map[string]any{}
+			}
+
+			opts.Experimental["internal_extra"] = *internalExtra
+		}
+
+		if keys, err := parseAuthorizedKeys(*userSshey); err != nil {
+			return err
+		} else {
+			if opts.Experimental == nil {
+				opts.Experimental = map[string]any{}
+			}
+
+			opts.Experimental["authorized_ssh_keys"] = keys
 		}
 
 		for _, def := range *volumes {
@@ -192,9 +204,8 @@ func NewCreateCmd() *cobra.Command {
 		}
 
 		opts.WaitKind = "kubernetes"
-		opts.WaitTimeout = *waitTimeout
 
-		cluster, err := api.CreateAndWaitCluster(ctx, api.Methods, opts)
+		cluster, err := api.CreateAndWaitCluster(ctx, api.Methods, *waitTimeout, opts)
 		if err != nil {
 			return err
 		}
@@ -229,6 +240,10 @@ func NewCreateCmd() *cobra.Command {
 		}
 
 		if *outputJsonPath != "" {
+			if cluster.Cluster == nil {
+				return fnerrors.New("no instance information available with no wait timeout")
+			}
+
 			// Clear out secrets from output.
 			copy := *cluster.Cluster
 			copy.SshPrivateKey = nil
@@ -251,12 +266,17 @@ func NewCreateCmd() *cobra.Command {
 			enc := json.NewEncoder(console.Stdout(ctx))
 			enc.SetIndent("", "  ")
 
-			if err := enc.Encode(createOutput{
-				ClusterId:     cluster.ClusterId,
-				ClusterUrl:    cluster.Cluster.AppURL,
-				IngressDomain: cluster.Cluster.IngressDomain,
-				ApiEndpoint:   cluster.Cluster.ApiEndpoint,
-			}); err != nil {
+			out := createOutput{
+				ClusterId: cluster.ClusterId,
+			}
+
+			if cluster.Cluster != nil {
+				out.ClusterUrl = cluster.Cluster.AppURL
+				out.IngressDomain = cluster.Cluster.IngressDomain
+				out.ApiEndpoint = cluster.Cluster.ApiEndpoint
+			}
+
+			if err := enc.Encode(out); err != nil {
 				return fnerrors.InternalError("failed to encode instance as JSON output: %w", err)
 			}
 
@@ -280,7 +300,7 @@ func NewCreateCmd() *cobra.Command {
 				fmt.Fprintf(stdout, "    $ nsc ssh %s\n\n", cluster.ClusterId)
 			}
 
-			if len(cluster.Cluster.TlsBackedPort) > 0 {
+			if cluster.Cluster != nil && len(cluster.Cluster.TlsBackedPort) > 0 {
 				stdout := console.Stdout(ctx)
 				fmt.Fprintln(stdout)
 				fmt.Fprintf(stdout, "  (Experimental) TLS backend ports:\n\n")

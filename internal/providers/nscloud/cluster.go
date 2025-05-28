@@ -81,7 +81,7 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 }
 
 func provideClusterExt(ctx context.Context, apiEndpoint, clusterId string, ephemeral bool) (client.ClusterConfiguration, error) {
-	wres, err := api.WaitClusterReady(ctx, api.Methods, clusterId, api.WaitClusterOpts{
+	wres, err := api.WaitClusterReady(ctx, api.Methods, clusterId, time.Minute, api.WaitClusterOpts{
 		ApiEndpoint: apiEndpoint,
 		WaitKind:    "kubernetes",
 	})

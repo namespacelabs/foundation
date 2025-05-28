@@ -10,6 +10,7 @@ import (
 	"net"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/context/docker"
@@ -235,7 +236,7 @@ func ensureDockerCluster(ctx context.Context, instanceId, machineType string, ba
 	}
 
 	featuresList := []string{"EXP_DISABLE_KUBERNETES"}
-	resp, err := api.CreateAndWaitCluster(ctx, api.Methods, api.CreateClusterOpts{
+	resp, err := api.CreateAndWaitCluster(ctx, api.Methods, time.Minute, api.CreateClusterOpts{
 		Purpose:       "Docker environment",
 		Features:      featuresList,
 		KeepAtExit:    background,

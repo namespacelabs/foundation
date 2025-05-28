@@ -220,16 +220,14 @@ type CreateClusterOpts struct {
 	// This is typically needed if you want to execute multiple ns commands on an ephemeral cluster.
 	KeepAtExit bool
 
-	Purpose           string
-	Features          []string
-	AuthorizedSshKeys []string
-	UniqueTag         string
-	InternalExtra     string
-	Labels            map[string]string
-	Duration          time.Duration
-	Experimental      any
-	Volumes           []VolumeSpec
-	SecretIDs         []string
+	Purpose      string
+	Features     []string
+	UniqueTag    string
+	Labels       map[string]string
+	Duration     time.Duration
+	Experimental map[string]any
+	Volumes      []VolumeSpec
+	SecretIDs    []string
 
 	UseComputeAPI bool
 
@@ -244,8 +242,6 @@ type WaitClusterOpts struct {
 	WaitKind string // One of kubernetes, buildcluster, or something else.
 
 	WaitForService string
-
-	WaitTimeout time.Duration
 }
 
 func (w WaitClusterOpts) label() string {
@@ -274,10 +270,6 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Insta
 					Feature:           opts.Features,
 					UniqueTag:         opts.UniqueTag,
 					Experimental:      opts.Experimental,
-				}
-
-				if len(opts.AuthorizedSshKeys) > 0 || opts.InternalExtra != "" {
-					return nil, fnerrors.Newf("not supported")
 				}
 
 				if len(opts.Volumes) > 0 {
@@ -321,9 +313,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Insta
 					DocumentedPurpose: opts.Purpose,
 					MachineType:       opts.MachineType,
 					Feature:           opts.Features,
-					AuthorizedSshKeys: opts.AuthorizedSshKeys,
 					UniqueTag:         opts.UniqueTag,
-					InternalExtra:     opts.InternalExtra,
 					Experimental:      opts.Experimental,
 					Volumes:           opts.Volumes,
 				}
@@ -417,15 +407,19 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Insta
 	})
 }
 
-func CreateAndWaitCluster(ctx context.Context, api API, opts CreateClusterOpts) (*CreateClusterResult, error) {
+func CreateAndWaitCluster(ctx context.Context, api API, waitFor time.Duration, opts CreateClusterOpts) (*CreateClusterResult, error) {
 	cluster, err := CreateCluster(ctx, api, opts)
 	if err != nil {
 		return nil, err
 	}
 
+	if waitFor == 0 {
+		return &CreateClusterResult{ClusterId: cluster.InstanceId}, nil
+	}
+
 	opts.WaitClusterOpts.ApiEndpoint = cluster.ApiEndpoint
 
-	return WaitClusterReady(ctx, api, cluster.InstanceId, opts.WaitClusterOpts)
+	return WaitClusterReady(ctx, api, cluster.InstanceId, waitFor, opts.WaitClusterOpts)
 }
 
 func GetBuilderConfiguration(ctx context.Context, platform BuildPlatform, createAtStartup bool, builderTag string) (*builderv1beta.GetBuilderConfigurationResponse, error) {
@@ -514,13 +508,8 @@ func MaybeEndpoint(api string) fnapi.ResolveFunc {
 	}
 }
 
-func WaitClusterReady(ctx context.Context, api API, clusterId string, opts WaitClusterOpts) (*CreateClusterResult, error) {
-	timeout := opts.WaitTimeout
-	if timeout == 0 {
-		timeout = time.Minute
-	}
-
-	ctx, done := context.WithTimeout(ctx, timeout)
+func WaitClusterReady(ctx context.Context, api API, clusterId string, waitFor time.Duration, opts WaitClusterOpts) (*CreateClusterResult, error) {
+	ctx, done := context.WithTimeout(ctx, waitFor)
 	defer done()
 
 	var cr *CreateKubernetesClusterResponse
