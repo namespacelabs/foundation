@@ -220,16 +220,14 @@ type CreateClusterOpts struct {
 	// This is typically needed if you want to execute multiple ns commands on an ephemeral cluster.
 	KeepAtExit bool
 
-	Purpose           string
-	Features          []string
-	AuthorizedSshKeys []string
-	UniqueTag         string
-	InternalExtra     string
-	Labels            map[string]string
-	Duration          time.Duration
-	Experimental      any
-	Volumes           []VolumeSpec
-	SecretIDs         []string
+	Purpose      string
+	Features     []string
+	UniqueTag    string
+	Labels       map[string]string
+	Duration     time.Duration
+	Experimental map[string]any
+	Volumes      []VolumeSpec
+	SecretIDs    []string
 
 	UseComputeAPI bool
 
@@ -274,10 +272,6 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Insta
 					Experimental:      opts.Experimental,
 				}
 
-				if len(opts.AuthorizedSshKeys) > 0 || opts.InternalExtra != "" {
-					return nil, fnerrors.Newf("not supported")
-				}
-
 				if len(opts.Volumes) > 0 {
 					if req.Experimental != nil {
 						return nil, fnerrors.Newf("not supported")
@@ -319,9 +313,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Insta
 					DocumentedPurpose: opts.Purpose,
 					MachineType:       opts.MachineType,
 					Feature:           opts.Features,
-					AuthorizedSshKeys: opts.AuthorizedSshKeys,
 					UniqueTag:         opts.UniqueTag,
-					InternalExtra:     opts.InternalExtra,
 					Experimental:      opts.Experimental,
 					Volumes:           opts.Volumes,
 				}

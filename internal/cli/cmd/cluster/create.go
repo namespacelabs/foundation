@@ -78,7 +78,6 @@ func NewCreateCmd() *cobra.Command {
 			KeepAtExit:    true,
 			Purpose:       *purpose,
 			Features:      *features,
-			InternalExtra: *internalExtra,
 			Labels:        *labels,
 			UniqueTag:     *tag,
 			SecretIDs:     *availableSecrets,
@@ -92,31 +91,44 @@ func NewCreateCmd() *cobra.Command {
 			}
 		}
 
-		if keys, err := parseAuthorizedKeys(*userSshey); err != nil {
-			return err
-		} else {
-			opts.AuthorizedSshKeys = keys
-		}
-
 		if *experimental != "" && *experimentalFrom != "" {
 			return fnerrors.Newf("must only set one of --experimental or --experimental_from")
 		}
 
 		if *experimental != "" {
-			var exp any
+			var exp map[string]any
 			if err := json.Unmarshal([]byte(*experimental), &exp); err != nil {
 				return err
 			}
+
 			opts.Experimental = exp
 		}
 
 		if *experimentalFrom != "" {
-			var exp any
+			var exp map[string]any
 			if err := files.ReadJson(*experimentalFrom, &exp); err != nil {
 				return err
 			}
 
 			opts.Experimental = exp
+		}
+
+		if *internalExtra != "" {
+			if opts.Experimental == nil {
+				opts.Experimental = map[string]any{}
+			}
+
+			opts.Experimental["internal_extra"] = *internalExtra
+		}
+
+		if keys, err := parseAuthorizedKeys(*userSshey); err != nil {
+			return err
+		} else {
+			if opts.Experimental == nil {
+				opts.Experimental = map[string]any{}
+			}
+
+			opts.Experimental["authorized_ssh_keys"] = keys
 		}
 
 		for _, def := range *volumes {
