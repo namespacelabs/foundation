@@ -343,6 +343,7 @@ type ClusterShape struct {
 	VirtualCpu      int32  `json:"virtual_cpu,omitempty"`
 	MemoryMegabytes int32  `json:"memory_megabytes,omitempty"`
 	MachineArch     string `json:"machine_arch,omitempty"`
+	OS              string `json:"os,omitempty"`
 }
 
 type DestroyKubernetesClusterRequest struct {

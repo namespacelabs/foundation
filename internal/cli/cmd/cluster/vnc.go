@@ -22,43 +22,48 @@ import (
 
 func NewVncCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "vnc [instance-id]",
-		Short:  "Start a VNC session.",
-		Args:   cobra.ArbitraryArgs,
-		Hidden: true,
+		Use:   "vnc [instance-id]",
+		Short: "Start a VNC session.",
+		Args:  cobra.ArbitraryArgs,
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, _, err := SelectRunningCluster(ctx, args)
+		cluster, err := selectClusterFriendly(ctx, args)
 		if err != nil {
-			if errors.Is(err, ErrEmptyClusterList) {
-				PrintCreateClusterMsg(ctx)
-				return nil
-			}
 			return err
 		}
-
 		if cluster == nil {
 			return nil
 		}
 
-		return runVnc(ctx, cluster)
+		return connectToInstanceService(ctx, cluster, "vnc", func(addr string, creds *api.Cluster_ServiceState_Credentials) error {
+			fmt.Fprint(console.Stdout(ctx), "Opening VNC client...\n")
+
+			up := "admin:admin"
+			if creds != nil {
+				up = creds.Username + ":" + creds.Password
+			}
+
+			url := fmt.Sprintf("vnc://%s@%s", up, addr)
+			return browser.OpenURL(url)
+		})
 	})
 
 	return cmd
 }
 
-func runVnc(ctx context.Context, instance *api.KubernetesCluster) error {
-	vncSvc := api.ClusterService(instance, "vnc")
-	if vncSvc == nil || vncSvc.Endpoint == "" {
-		return fnerrors.Newf("instance does not have vnc")
+func connectToInstanceService(ctx context.Context, instance *api.KubernetesCluster, service string,
+	use func(addr string, creds *api.Cluster_ServiceState_Credentials) error) error {
+	svc := api.ClusterService(instance, service)
+	if svc == nil || svc.Endpoint == "" {
+		return fnerrors.Newf("instance does not have %s", service)
 	}
 
-	if vncSvc.Status != "READY" {
-		return fnerrors.Newf("expected vnc to be READY, saw %q", vncSvc.Status)
+	if svc.Status != "READY" {
+		return fnerrors.Newf("expected vnc to be READY, saw %q", svc.Status)
 	}
 
-	peerConn, err := api.DialEndpoint(ctx, vncSvc.Endpoint)
+	peerConn, err := api.DialEndpoint(ctx, svc.Endpoint)
 	if err != nil {
 		return err
 	}
@@ -83,22 +88,26 @@ func runVnc(ctx context.Context, instance *api.KubernetesCluster) error {
 			return err
 		}
 
-		fmt.Fprint(console.Stdout(ctx), "VNC client connected.\n")
+		fmt.Fprint(console.Stdout(ctx), "Client connected.\n")
 		_ = netcopy.CopyConns(nil, conn, peerConn)
-		fmt.Fprint(console.Stdout(ctx), "VNC client disconnected, leaving.\n")
+		fmt.Fprint(console.Stdout(ctx), "Client disconnected, leaving.\n")
 		return nil
 	})
 
-	fmt.Fprint(console.Stdout(ctx), "Opening VNC client...\n")
-
-	creds := "admin:admin"
-	if c := vncSvc.Credentials; c != nil {
-		creds = c.Username + ":" + c.Password
-	}
-
-	if err := browser.OpenURL(fmt.Sprintf("vnc://%s@%s", creds, lst.Addr())); err != nil {
+	if err := use(lst.Addr().String(), svc.Credentials); err != nil {
 		return err
 	}
 
 	return eg.Wait()
+}
+
+func selectClusterFriendly(ctx context.Context, args []string) (*api.KubernetesCluster, error) {
+	cluster, _, err := SelectRunningCluster(ctx, args)
+	if errors.Is(err, ErrEmptyClusterList) {
+		PrintCreateClusterMsg(ctx)
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	return cluster, err
 }
