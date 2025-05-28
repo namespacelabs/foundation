@@ -186,10 +186,12 @@ func NewCreateCmd() *cobra.Command {
 		}
 
 		// XXX hacky for backwards compatibility.
-		if opts.Experimental == nil && !*bare && !strings.HasPrefix(*machineType, "mac") {
-			opts.Experimental = map[string]any{
-				"k3s": private.K3sCfg,
+		if !*bare && !strings.HasPrefix(*machineType, "mac") {
+			if opts.Experimental == nil {
+				opts.Experimental = map[string]any{}
 			}
+
+			opts.Experimental["k3s"] = private.K3sCfg
 		}
 
 		switch *ingress {
