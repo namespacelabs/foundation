@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
 
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
@@ -49,7 +50,12 @@ func NewVncCmd() *cobra.Command {
 }
 
 func runVnc(ctx context.Context, instance *api.KubernetesCluster) error {
-	vncSvc := api.ClusterService(instance, "vnc")
+	service := "vnc"
+	if instance.Shape.OS == "windows" {
+		service = "rdp"
+	}
+
+	vncSvc := api.ClusterService(instance, service)
 	if vncSvc == nil || vncSvc.Endpoint == "" {
 		return fnerrors.Newf("instance does not have vnc")
 	}
@@ -58,7 +64,7 @@ func runVnc(ctx context.Context, instance *api.KubernetesCluster) error {
 		return fnerrors.Newf("expected vnc to be READY, saw %q", vncSvc.Status)
 	}
 
-	peerConn, err := api.DialEndpoint(ctx, vncSvc.Endpoint)
+	peerConn, err := api.DialEndpoint(ctx, "wss://gate.testing-zrh1.nscluster.cloud/"+instance.ClusterId+"/3389") //vncSvc.Endpoint)
 	if err != nil {
 		return err
 	}
@@ -91,12 +97,22 @@ func runVnc(ctx context.Context, instance *api.KubernetesCluster) error {
 
 	fmt.Fprint(console.Stdout(ctx), "Opening VNC client...\n")
 
-	creds := "admin:admin"
-	if c := vncSvc.Credentials; c != nil {
-		creds = c.Username + ":" + c.Password
+	var openUrl string
+	if service == "rdp" {
+		// TODO creds
+		// https://serverfault.com/questions/867467/rdp-file-with-embedded-password-asks-for-password
+		config := fmt.Sprintf("full address=s:%s", lst.Addr().String())
+		openUrl = "rdp://" + url.QueryEscape(config)
+	} else {
+		creds := "admin:admin"
+		if c := vncSvc.Credentials; c != nil {
+			creds = c.Username + ":" + c.Password
+		}
+		openUrl = fmt.Sprintf("vnc://%s@%s", creds, lst.Addr())
 	}
 
-	if err := browser.OpenURL(fmt.Sprintf("vnc://%s@%s", creds, lst.Addr())); err != nil {
+	fmt.Println("Opening ", openUrl)
+	if err := browser.OpenURL(openUrl); err != nil {
 		return err
 	}
 
