@@ -244,6 +244,8 @@ type WaitClusterOpts struct {
 	WaitKind string // One of kubernetes, buildcluster, or something else.
 
 	WaitForService string
+
+	WaitTimeout time.Duration
 }
 
 func (w WaitClusterOpts) label() string {
@@ -502,14 +504,6 @@ func EnsureBazelCache(ctx context.Context, api API, key string) (*EnsureBazelCac
 	})
 }
 
-func buildClusterFeatures(platform BuildPlatform) []string {
-	if platform == "arm64" {
-		return []string{"EXP_ARM64_CLUSTER"}
-	}
-
-	return nil
-}
-
 func MaybeEndpoint(api string) fnapi.ResolveFunc {
 	return func(ctx context.Context, tok fnapi.ResolvedToken) (string, error) {
 		if api != "" {
@@ -521,7 +515,12 @@ func MaybeEndpoint(api string) fnapi.ResolveFunc {
 }
 
 func WaitClusterReady(ctx context.Context, api API, clusterId string, opts WaitClusterOpts) (*CreateClusterResult, error) {
-	ctx, done := context.WithTimeout(ctx, 1*time.Minute) // Wait for cluster creation up to 1 minute.
+	timeout := opts.WaitTimeout
+	if timeout == 0 {
+		timeout = time.Minute
+	}
+
+	ctx, done := context.WithTimeout(ctx, timeout)
 	defer done()
 
 	var cr *CreateKubernetesClusterResponse

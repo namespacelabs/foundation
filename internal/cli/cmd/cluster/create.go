@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/docker/go-units"
 	"github.com/spf13/cobra"
@@ -33,7 +34,6 @@ func NewCreateCmd() *cobra.Command {
 	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type.")
 	unusedEphemeral := cmd.Flags().Bool("ephemeral", false, "Create an ephemeral instance.")
 	features := cmd.Flags().StringSlice("features", nil, "A set of features to attach to the instance.")
-	waitKubeSystem := cmd.Flags().Bool("wait_kube_system", false, "If true, wait until kube-system resources (e.g. coredns and local-path-provisioner) are ready.")
 	bare := cmd.Flags().Bool("bare", false, "If set to true, creates an environment with the minimal set of services (e.g. no Kubernetes).")
 	tag := cmd.Flags().String("unique_tag", "", "If specified, creates a instance with the specified unique tag.")
 	labels := cmd.Flags().StringToString("label", nil, "Key-values to attach to the new instance. Multiple key-value pairs may be specified.")
@@ -53,6 +53,9 @@ func NewCreateCmd() *cobra.Command {
 	experimentalFrom := cmd.Flags().String("experimental_from", "", "Load experimental definitions from the specified file.")
 
 	duration := cmd.Flags().Duration("duration", 0, "For how long to run the ephemeral environment.")
+
+	waitKubeSystem := cmd.Flags().Bool("wait_kube_system", false, "If true, wait until kube-system resources (e.g. coredns and local-path-provisioner) are ready.")
+	waitTimeout := cmd.Flags().Duration("wait_timeout", time.Minute, "For how long to wait until the instance becomes ready.")
 
 	availableSecrets := cmd.Flags().StringSlice("available_secrets", nil, "Attaches the specified secrets to this instance.")
 	cmd.Flags().MarkHidden("available_secrets")
@@ -189,6 +192,7 @@ func NewCreateCmd() *cobra.Command {
 		}
 
 		opts.WaitKind = "kubernetes"
+		opts.WaitTimeout = *waitTimeout
 
 		cluster, err := api.CreateAndWaitCluster(ctx, api.Methods, opts)
 		if err != nil {

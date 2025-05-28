@@ -11,11 +11,9 @@ import (
 	"strings"
 	"time"
 
-	composecli "github.com/compose-spec/compose-go/cli"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"gopkg.in/yaml.v3"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -44,6 +42,7 @@ func NewRunCmd() *cobra.Command {
 	env := run.Flags().StringToStringP("env", "e", map[string]string{}, "Pass these additional environment variables to the container.")
 	devmode := run.Flags().Bool("development", false, "If true, enables a few development facilities, including making containers optional.")
 	wait := run.Flags().Bool("wait", false, "Wait for the container to start running.")
+	waitTimeout := run.Flags().Duration("wait_timeout", time.Minute, "For how long to wait until the instance becomes ready.")
 	features := run.Flags().StringSlice("features", nil, "A set of features to attach to the instance.")
 	ingressRules := run.Flags().StringToString("ingress", map[string]string{}, "Specify ingress rules for ports; specify * to apply rules to any port; separate each rule with ;.")
 	duration := run.Flags().Duration("duration", 0, "For how long to run the ephemeral environment.")
@@ -106,6 +105,7 @@ func NewRunCmd() *cobra.Command {
 			ExposeNscBins:   *exposeNscBins,
 			Network:         *network,
 			UseComputeAPI:   *computeAPI,
+			WaitTimeout:     *waitTimeout,
 		}
 
 		if keys, err := parseAuthorizedKeys(*userSshey); err != nil {
@@ -225,6 +225,7 @@ type CreateContainerOpts struct {
 	InstanceExperimental any
 	AuthorizedSshKeys    []string
 	UseComputeAPI        bool
+	WaitTimeout          time.Duration
 }
 
 type exportContainerPort struct {
@@ -343,6 +344,7 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration t
 		if _, err := api.WaitClusterReady(ctx, api.Methods, resp.InstanceId, api.WaitClusterOpts{
 			ApiEndpoint: resp.ApiEndpoint,
 			CreateLabel: label,
+			WaitTimeout: opts.WaitTimeout,
 		}); err != nil {
 			return nil, err
 		}
@@ -467,59 +469,6 @@ func printNewEnv(ctx context.Context, clusterID, clusterURL string) {
 
 	fmt.Fprintf(stdout, "\n  Created new ephemeral environment! ID: %s\n", clusterID)
 	fmt.Fprintf(stdout, "\n  %s %s\n", style.Comment.Apply("More at:"), clusterURL)
-}
-
-func createCompose(ctx context.Context, dir string, devmode bool) (*api.CreateContainersResponse, error) {
-	var optionsFn []composecli.ProjectOptionsFn
-	optionsFn = append(optionsFn,
-		composecli.WithOsEnv,
-		// composecli.WithEnvFile(o.EnvFile),
-		composecli.WithConfigFileEnv,
-		composecli.WithDefaultConfigPath,
-		composecli.WithDotEnv,
-		// composecli.WithName(o.Project),
-	)
-
-	if dir != "" {
-		optionsFn = append(optionsFn, composecli.WithWorkingDirectory(dir))
-	}
-
-	projectOptions, err := composecli.NewProjectOptions(nil, optionsFn...)
-	if err != nil {
-		return nil, err
-	}
-
-	project, err := composecli.ProjectFromOptions(projectOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	projectYAML, err := yaml.Marshal(project)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := tasks.Return(ctx, tasks.Action("nscloud.create-containers"), func(ctx context.Context) (*api.CreateContainersResponse, error) {
-		var response api.CreateContainersResponse
-		if err := api.Methods.CreateContainers.Do(ctx, api.CreateContainersRequest{
-			Compose:         []*api.ComposeRequest{{Contents: projectYAML}},
-			DevelopmentMode: devmode,
-		}, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
-			return nil, err
-		}
-		return &response, nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err := api.WaitClusterReady(ctx, api.Methods, resp.ClusterId, api.WaitClusterOpts{
-		ApiEndpoint: resp.ApiEndpoint,
-	}); err != nil {
-		return nil, err
-	}
-
-	return resp, nil
 }
 
 func generateNameFromImage(image string) string {
