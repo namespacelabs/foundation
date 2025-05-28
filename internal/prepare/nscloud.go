@@ -55,7 +55,6 @@ func PrepareNewNamespaceCluster(ctx context.Context, env cfg.Context, machineTyp
 			KeepAtExit:      true,
 			Purpose:         env.Environment().Name,
 			WaitClusterOpts: api.WaitClusterOpts{WaitKind: "kubernetes"},
-			UseComputeAPI:   true,
 			Experimental: map[string]any{
 				"k3s": private.K3sCfg,
 			},

@@ -16,14 +16,12 @@ import (
 	builderv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/builder/v1beta"
 	"github.com/bcicen/jstream"
 	"github.com/cenkalti/backoff"
-	"github.com/dustin/go-humanize"
 	"go.uber.org/atomic"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/framework/jsonreparser"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
@@ -229,8 +227,6 @@ type CreateClusterOpts struct {
 	Volumes      []VolumeSpec
 	SecretIDs    []string
 
-	UseComputeAPI bool
-
 	WaitClusterOpts
 }
 
@@ -252,105 +248,48 @@ func (w WaitClusterOpts) label() string {
 	return w.CreateLabel
 }
 
-type InstanceResponse struct {
-	InstanceId  string
-	ApiEndpoint string
-	Region      string
-}
+func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*CreateInstanceResponse, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.cluster-create").HumanReadable(opts.label()), func(ctx context.Context) (*CreateInstanceResponse, error) {
+		tryOnce := func(ctx context.Context) (*CreateInstanceResponse, error) {
+			req := CreateInstanceRequest{
+				DocumentedPurpose: opts.Purpose,
+				MachineType:       opts.MachineType,
+				Feature:           opts.Features,
+				UniqueTag:         opts.UniqueTag,
+				Experimental:      opts.Experimental,
+			}
 
-func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*InstanceResponse, error) {
-	return tasks.Return(ctx, tasks.Action("nscloud.cluster-create").HumanReadable(opts.label()), func(ctx context.Context) (*InstanceResponse, error) {
-		tryOnce := func(ctx context.Context) (*InstanceResponse, error) {
-			var resp InstanceResponse
-
-			if opts.UseComputeAPI {
-				req := CreateInstanceRequest{
-					DocumentedPurpose: opts.Purpose,
-					MachineType:       opts.MachineType,
-					Feature:           opts.Features,
-					UniqueTag:         opts.UniqueTag,
-					Experimental:      opts.Experimental,
+			if len(opts.Volumes) > 0 {
+				if req.Experimental != nil {
+					return nil, fnerrors.Newf("not supported")
 				}
 
-				if len(opts.Volumes) > 0 {
-					if req.Experimental != nil {
-						return nil, fnerrors.Newf("not supported")
-					}
-
-					req.Experimental = map[string]any{
-						"volumes": opts.Volumes,
-					}
+				req.Experimental = map[string]any{
+					"volumes": opts.Volumes,
 				}
+			}
 
-				if opts.Duration > 0 {
-					dl := time.Now().Add(opts.Duration)
-					req.Deadline = &dl
-				}
+			if opts.Duration > 0 {
+				dl := time.Now().Add(opts.Duration)
+				req.Deadline = &dl
+			}
 
-				labelKeys := maps.Keys(opts.Labels)
-				slices.Sort(labelKeys)
-				for _, key := range labelKeys {
-					req.Label = append(req.Label, &LabelEntry{
-						Name:  key,
-						Value: opts.Labels[key],
-					})
-				}
+			labelKeys := maps.Keys(opts.Labels)
+			slices.Sort(labelKeys)
+			for _, key := range labelKeys {
+				req.Label = append(req.Label, &LabelEntry{
+					Name:  key,
+					Value: opts.Labels[key],
+				})
+			}
 
-				for _, sid := range opts.SecretIDs {
-					req.AvailableSecrets = append(req.AvailableSecrets, &SecretRef{SecretID: sid})
-				}
+			for _, sid := range opts.SecretIDs {
+				req.AvailableSecrets = append(req.AvailableSecrets, &SecretRef{SecretID: sid})
+			}
 
-				var response CreateInstanceResponse
-				if err := api.CreateInstance.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
-					return nil, fnerrors.Newf("failed to create cluster: %w", err)
-				}
-
-				resp.InstanceId = response.InstanceId
-				resp.ApiEndpoint = response.ApiEndpoint
-				resp.Region = response.Region
-			} else {
-				req := CreateKubernetesClusterRequest{
-					DocumentedPurpose: opts.Purpose,
-					MachineType:       opts.MachineType,
-					Feature:           opts.Features,
-					UniqueTag:         opts.UniqueTag,
-					Experimental:      opts.Experimental,
-					Volumes:           opts.Volumes,
-				}
-
-				if opts.Duration > 0 {
-					req.Deadline = timestamppb.New(time.Now().Add(opts.Duration))
-				}
-
-				labelKeys := maps.Keys(opts.Labels)
-				slices.Sort(labelKeys)
-				for _, key := range labelKeys {
-					req.Label = append(req.Label, &LabelEntry{
-						Name:  key,
-						Value: opts.Labels[key],
-					})
-				}
-
-				for _, sid := range opts.SecretIDs {
-					req.AvailableSecrets = append(req.AvailableSecrets, &SecretRef{SecretID: sid})
-				}
-
-				var response StartCreateKubernetesClusterResponse
-				if err := api.StartCreateKubernetesCluster.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
-					return nil, fnerrors.Newf("failed to create cluster: %w", err)
-				}
-
-				resp.InstanceId = response.ClusterId
-				resp.ApiEndpoint = response.ClusterFragment.ApiEndpoint
-				resp.Region = response.ClusterFragment.IngressDomain
-
-				if response.ClusterFragment != nil {
-					if shape := response.ClusterFragment.Shape; shape != nil {
-						tasks.Attachments(ctx).
-							AddResult("cluster_cpu", shape.VirtualCpu).
-							AddResult("cluster_ram", humanize.IBytes(uint64(shape.MemoryMegabytes)*humanize.MiByte))
-					}
-				}
+			var resp CreateInstanceResponse
+			if err := api.CreateInstance.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&resp)); err != nil {
+				return nil, fnerrors.Newf("failed to create cluster: %w", err)
 			}
 
 			tasks.Attachments(ctx).AddResult("cluster_id", resp.InstanceId)
@@ -385,7 +324,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Insta
 			Clock:               backoff.SystemClock,
 		}
 
-		var r *InstanceResponse
+		var r *CreateInstanceResponse
 		if err := backoff.Retry(func() error {
 			resp, err := tryOnce(ctx)
 			if err != nil {

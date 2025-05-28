@@ -65,7 +65,8 @@ func NewCreateCmd() *cobra.Command {
 
 	volumes := cmd.Flags().StringSlice("volume", nil, "Attach a volume to the instance, {cache|persistent}:{tag}:{mountpoint}:{size}")
 
-	computeAPI := cmd.Flags().Bool("compute_api", true, "Whether to use the Compute API.")
+	// Leave it on purpose so it's backwards compatible.
+	_ = cmd.Flags().Bool("compute_api", true, "Whether to use the Compute API.")
 	cmd.Flags().MarkHidden("compute_api")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
@@ -74,15 +75,14 @@ func NewCreateCmd() *cobra.Command {
 		}
 
 		opts := api.CreateClusterOpts{
-			MachineType:   *machineType,
-			KeepAtExit:    true,
-			Purpose:       *purpose,
-			Features:      *features,
-			Labels:        *labels,
-			UniqueTag:     *tag,
-			SecretIDs:     *availableSecrets,
-			Duration:      *duration,
-			UseComputeAPI: *computeAPI,
+			MachineType: *machineType,
+			KeepAtExit:  true,
+			Purpose:     *purpose,
+			Features:    *features,
+			Labels:      *labels,
+			UniqueTag:   *tag,
+			SecretIDs:   *availableSecrets,
+			Duration:    *duration,
 		}
 
 		if len(opts.Labels) == 0 {

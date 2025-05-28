@@ -13,7 +13,6 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -55,7 +54,6 @@ func NewRunCmd() *cobra.Command {
 	experimental := run.Flags().String("experimental", "", "A set of experimental settings to pass during creation.")
 	instanceExperimental := run.Flags().String("instance_experimental", "", "A set of experimental instance settings to pass during creation.")
 	userSshey := run.Flags().String("ssh_key", "", "Injects the specified ssh public key in the created instance.")
-	computeAPI := run.Flags().Bool("compute_api", false, "Whether to use the Compute API.")
 
 	run.Flags().MarkHidden("label")
 	run.Flags().MarkHidden("internal_extra")
@@ -104,13 +102,6 @@ func NewRunCmd() *cobra.Command {
 			ForwardNscState: *forwardNscState,
 			ExposeNscBins:   *exposeNscBins,
 			Network:         *network,
-			UseComputeAPI:   *computeAPI,
-		}
-
-		if keys, err := parseAuthorizedKeys(*userSshey); err != nil {
-			return err
-		} else {
-			opts.AuthorizedSshKeys = keys
 		}
 
 		if *experimental != "" {
@@ -126,11 +117,19 @@ func NewRunCmd() *cobra.Command {
 		}
 
 		if *instanceExperimental != "" {
-			var m any
-			if err := json.Unmarshal([]byte(*instanceExperimental), &m); err != nil {
+			if err := json.Unmarshal([]byte(*instanceExperimental), &opts.InstanceExperimental); err != nil {
 				return fnerrors.Newf("failed to parse: %w", err)
 			}
-			opts.InstanceExperimental = m
+		}
+
+		if keys, err := parseAuthorizedKeys(*userSshey); err != nil {
+			return err
+		} else {
+			if opts.InstanceExperimental == nil {
+				opts.InstanceExperimental = map[string]any{}
+			}
+
+			opts.InstanceExperimental["authorized_ssh_keys"] = keys
 		}
 
 		exported, err := fillInIngressRules(*exportedPorts, *ingressRules)
@@ -138,9 +137,17 @@ func NewRunCmd() *cobra.Command {
 			return err
 		}
 
+		if *devmode {
+			if opts.InstanceExperimental == nil {
+				opts.InstanceExperimental = map[string]any{}
+			}
+
+			opts.InstanceExperimental["development_mode"] = *devmode
+		}
+
 		opts.ExportedPorts = exported
 
-		resp, err := CreateContainerInstance(ctx, *machineType, *duration, *waitTimeout, *on, *devmode, opts)
+		resp, err := CreateContainerInstance(ctx, *machineType, *duration, *waitTimeout, *on, opts)
 		if err != nil {
 			return err
 		}
@@ -220,10 +227,8 @@ type CreateContainerOpts struct {
 	ForwardNscState      bool
 	ExposeNscBins        bool
 	Network              string
-	Experimental         any
-	InstanceExperimental any
-	AuthorizedSshKeys    []string
-	UseComputeAPI        bool
+	Experimental         map[string]any
+	InstanceExperimental map[string]any
 }
 
 type exportContainerPort struct {
@@ -239,7 +244,7 @@ type CreateContainerResult struct {
 	LegacyContainer []*api.Container
 }
 
-func CreateContainerInstance(ctx context.Context, machineType string, duration, waitFor time.Duration, target string, devmode bool, opts CreateContainerOpts) (*CreateContainerResult, error) {
+func CreateContainerInstance(ctx context.Context, machineType string, duration, waitFor time.Duration, target string, opts CreateContainerOpts) (*CreateContainerResult, error) {
 	container := &api.ContainerRequest{
 		Name:         opts.Name,
 		Image:        opts.Image,
@@ -279,59 +284,27 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration, 
 		const label = "Creating container environment"
 
 		resp, err := tasks.Return(ctx, tasks.Action("nscloud.create-containers").HumanReadable(label), func(ctx context.Context) (*CreateContainerResult, error) {
-			if opts.UseComputeAPI {
-				req := api.CreateInstanceRequest{
-					MachineType:  machineType,
-					Container:    []*api.ContainerRequest{container},
-					Label:        labels,
-					Feature:      opts.Features,
-					Experimental: opts.InstanceExperimental,
-				}
-
-				if duration > 0 {
-					dl := time.Now().Add(duration)
-					req.Deadline = &dl
-				}
-
-				if devmode || len(opts.AuthorizedSshKeys) > 0 {
-					return nil, fnerrors.Newf("not supported yet with compute_api")
-				}
-
-				var response api.CreateInstanceResponse
-				if err := api.Methods.CreateInstance.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
-					return nil, err
-				}
-
-				return &CreateContainerResult{
-					InstanceId:  response.InstanceId,
-					InstanceUrl: response.InstanceUrl,
-					ApiEndpoint: response.ApiEndpoint,
-				}, nil
-			}
-
-			req := api.CreateContainersRequest{
-				MachineType:       machineType,
-				Container:         []*api.ContainerRequest{container},
-				DevelopmentMode:   devmode,
-				Label:             labels,
-				Feature:           opts.Features,
-				InternalExtra:     opts.InternalExtra,
-				Experimental:      opts.InstanceExperimental,
-				AuthorizedSshKeys: opts.AuthorizedSshKeys,
+			req := api.CreateInstanceRequest{
+				MachineType:  machineType,
+				Container:    []*api.ContainerRequest{container},
+				Label:        labels,
+				Feature:      opts.Features,
+				Experimental: opts.InstanceExperimental,
 			}
 
 			if duration > 0 {
-				req.Deadline = timestamppb.New(time.Now().Add(duration))
+				dl := time.Now().Add(duration)
+				req.Deadline = &dl
 			}
 
-			var response api.CreateContainersResponse
-			if err := api.Methods.CreateContainers.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+			var response api.CreateInstanceResponse
+			if err := api.Methods.CreateInstance.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 				return nil, err
 			}
 
 			return &CreateContainerResult{
-				InstanceId:  response.ClusterId,
-				InstanceUrl: response.ClusterUrl,
+				InstanceId:  response.InstanceId,
+				InstanceUrl: response.InstanceUrl,
 				ApiEndpoint: response.ApiEndpoint,
 			}, nil
 		})
