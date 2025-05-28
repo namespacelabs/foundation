@@ -6,6 +6,7 @@ package prepare
 
 import (
 	"context"
+	"time"
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/executor"
@@ -49,12 +50,11 @@ func PrepareNewNamespaceCluster(ctx context.Context, env cfg.Context, machineTyp
 	var mainMessages, buildMessages []proto.Message
 
 	eg.Go(func(ctx context.Context) error {
-		cfg, err := api.CreateAndWaitCluster(ctx, api.Methods, api.CreateClusterOpts{
+		cfg, err := api.CreateAndWaitCluster(ctx, api.Methods, time.Minute, api.CreateClusterOpts{
 			MachineType:     machineType,
 			KeepAtExit:      true,
 			Purpose:         env.Environment().Name,
 			WaitClusterOpts: api.WaitClusterOpts{WaitKind: "kubernetes"},
-			UseComputeAPI:   true,
 			Experimental: map[string]any{
 				"k3s": private.K3sCfg,
 			},

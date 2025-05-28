@@ -81,7 +81,7 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 }
 
 func provideClusterExt(ctx context.Context, apiEndpoint, clusterId string, ephemeral bool) (client.ClusterConfiguration, error) {
-	wres, err := api.WaitClusterReady(ctx, api.Methods, clusterId, api.WaitClusterOpts{
+	wres, err := api.WaitClusterReady(ctx, api.Methods, clusterId, time.Minute, api.WaitClusterOpts{
 		ApiEndpoint: apiEndpoint,
 		WaitKind:    "kubernetes",
 	})
@@ -166,13 +166,12 @@ func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose stri
 	return completePlanner(ctx, env, response.ApiEndpoint, response.InstanceId, response.Region, reg.NSCR, env.Environment().Ephemeral)
 }
 
-func createCluster(ctx context.Context, purpose string, labels map[string]string) (*api.InstanceResponse, error) {
+func createCluster(ctx context.Context, purpose string, labels map[string]string) (*api.CreateInstanceResponse, error) {
 	opts := api.CreateClusterOpts{
-		MachineType:   defaultMachineType,
-		Purpose:       purpose,
-		Labels:        labels,
-		Duration:      defaultDuration,
-		UseComputeAPI: true,
+		MachineType: defaultMachineType,
+		Purpose:     purpose,
+		Labels:      labels,
+		Duration:    defaultDuration,
 		Experimental: map[string]any{
 			"k3s": private.K3sCfg,
 		},
