@@ -64,7 +64,7 @@ func newCreateCmd() *cobra.Command {
 			maps.Copy(opts.Env, *env)
 		}
 
-		resp, err := cluster.CreateContainerInstance(ctx, *machineType, *duration, time.Minute, "", false, opts)
+		resp, err := cluster.CreateContainerInstance(ctx, *machineType, *duration, time.Minute, "", opts)
 		if err != nil {
 			return err
 		}

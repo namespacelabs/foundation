@@ -43,9 +43,6 @@ func newDockerAttachCmd() *cobra.Command {
 	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type.")
 	background := cmd.Flags().Bool("background", false, "If set, attach in the background.")
 
-	computeAPI := cmd.Flags().Bool("compute_api", true, "Whether to use the Compute API.")
-	cmd.Flags().MarkHidden("compute_api")
-
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if !*new && *toCluster == "" {
 			return fnerrors.Newf("one of --new or --to is required")
@@ -68,7 +65,7 @@ func newDockerAttachCmd() *cobra.Command {
 			}
 		}
 
-		cluster, err := ensureDockerCluster(ctx, *toCluster, *machineType, *background, *computeAPI)
+		cluster, err := ensureDockerCluster(ctx, *toCluster, *machineType, *background)
 		if err != nil {
 			return err
 		}
@@ -225,7 +222,7 @@ func updateContext(dockerCli *command.DockerCli, ctxName string, shouldUpdate fu
 	return nil
 }
 
-func ensureDockerCluster(ctx context.Context, instanceId, machineType string, background bool, computeAPI bool) (*api.KubernetesCluster, error) {
+func ensureDockerCluster(ctx context.Context, instanceId, machineType string, background bool) (*api.KubernetesCluster, error) {
 	if instanceId != "" {
 		resp, err := api.EnsureCluster(ctx, api.Methods, nil, instanceId)
 		if err != nil {
@@ -237,11 +234,10 @@ func ensureDockerCluster(ctx context.Context, instanceId, machineType string, ba
 
 	featuresList := []string{"EXP_DISABLE_KUBERNETES"}
 	resp, err := api.CreateAndWaitCluster(ctx, api.Methods, time.Minute, api.CreateClusterOpts{
-		Purpose:       "Docker environment",
-		Features:      featuresList,
-		KeepAtExit:    background,
-		MachineType:   machineType,
-		UseComputeAPI: computeAPI,
+		Purpose:     "Docker environment",
+		Features:    featuresList,
+		KeepAtExit:  background,
+		MachineType: machineType,
 		WaitClusterOpts: api.WaitClusterOpts{
 			CreateLabel:    "Creating Docker environment",
 			WaitForService: "buildkit",

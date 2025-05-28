@@ -166,13 +166,12 @@ func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose stri
 	return completePlanner(ctx, env, response.ApiEndpoint, response.InstanceId, response.Region, reg.NSCR, env.Environment().Ephemeral)
 }
 
-func createCluster(ctx context.Context, purpose string, labels map[string]string) (*api.InstanceResponse, error) {
+func createCluster(ctx context.Context, purpose string, labels map[string]string) (*api.CreateInstanceResponse, error) {
 	opts := api.CreateClusterOpts{
-		MachineType:   defaultMachineType,
-		Purpose:       purpose,
-		Labels:        labels,
-		Duration:      defaultDuration,
-		UseComputeAPI: true,
+		MachineType: defaultMachineType,
+		Purpose:     purpose,
+		Labels:      labels,
+		Duration:    defaultDuration,
 		Experimental: map[string]any{
 			"k3s": private.K3sCfg,
 		},

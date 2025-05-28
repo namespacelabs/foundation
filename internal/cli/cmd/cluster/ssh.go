@@ -48,9 +48,6 @@ func NewSshCmd() *cobra.Command {
 	user := cmd.Flags().String("user", "", "The user to connect as.")
 	cmd.Flags().MarkHidden("user")
 
-	computeAPI := cmd.Flags().Bool("compute_api", true, "Whether to use the Compute API.")
-	cmd.Flags().MarkHidden("compute_api")
-
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *forcePty && *disablePty {
 			return errors.New("Can not use -t and -T")
@@ -84,8 +81,7 @@ func NewSshCmd() *cobra.Command {
 					WaitForService: "ssh",
 					WaitKind:       "kubernetes",
 				},
-				Duration:      time.Minute,
-				UseComputeAPI: *computeAPI,
+				Duration: time.Minute,
 			}
 
 			cluster, err := api.CreateAndWaitCluster(ctx, api.Methods, *waitTimeout, opts)
