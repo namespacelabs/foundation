@@ -244,8 +244,6 @@ type WaitClusterOpts struct {
 	WaitKind string // One of kubernetes, buildcluster, or something else.
 
 	WaitForService string
-
-	WaitTimeout time.Duration
 }
 
 func (w WaitClusterOpts) label() string {
@@ -417,15 +415,19 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Insta
 	})
 }
 
-func CreateAndWaitCluster(ctx context.Context, api API, opts CreateClusterOpts) (*CreateClusterResult, error) {
+func CreateAndWaitCluster(ctx context.Context, api API, waitFor time.Duration, opts CreateClusterOpts) (*CreateClusterResult, error) {
 	cluster, err := CreateCluster(ctx, api, opts)
 	if err != nil {
 		return nil, err
 	}
 
+	if waitFor == 0 {
+		return &CreateClusterResult{ClusterId: cluster.InstanceId}, nil
+	}
+
 	opts.WaitClusterOpts.ApiEndpoint = cluster.ApiEndpoint
 
-	return WaitClusterReady(ctx, api, cluster.InstanceId, opts.WaitClusterOpts)
+	return WaitClusterReady(ctx, api, cluster.InstanceId, waitFor, opts.WaitClusterOpts)
 }
 
 func GetBuilderConfiguration(ctx context.Context, platform BuildPlatform, createAtStartup bool, builderTag string) (*builderv1beta.GetBuilderConfigurationResponse, error) {
@@ -514,13 +516,8 @@ func MaybeEndpoint(api string) fnapi.ResolveFunc {
 	}
 }
 
-func WaitClusterReady(ctx context.Context, api API, clusterId string, opts WaitClusterOpts) (*CreateClusterResult, error) {
-	timeout := opts.WaitTimeout
-	if timeout == 0 {
-		timeout = time.Minute
-	}
-
-	ctx, done := context.WithTimeout(ctx, timeout)
+func WaitClusterReady(ctx context.Context, api API, clusterId string, waitFor time.Duration, opts WaitClusterOpts) (*CreateClusterResult, error) {
+	ctx, done := context.WithTimeout(ctx, waitFor)
 	defer done()
 
 	var cr *CreateKubernetesClusterResponse

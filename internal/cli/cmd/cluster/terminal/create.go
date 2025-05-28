@@ -9,6 +9,7 @@ import (
 	"context"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
@@ -63,7 +64,7 @@ func newCreateCmd() *cobra.Command {
 			maps.Copy(opts.Env, *env)
 		}
 
-		resp, err := cluster.CreateContainerInstance(ctx, *machineType, *duration, "", false, opts)
+		resp, err := cluster.CreateContainerInstance(ctx, *machineType, *duration, time.Minute, "", false, opts)
 		if err != nil {
 			return err
 		}

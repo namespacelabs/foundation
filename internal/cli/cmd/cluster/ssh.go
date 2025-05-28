@@ -69,7 +69,7 @@ func NewSshCmd() *cobra.Command {
 				WaitClusterOpts: api.WaitClusterOpts{WaitForService: "ssh", WaitKind: "kubernetes"},
 			}
 
-			cluster, err := api.CreateAndWaitCluster(ctx, api.Methods, opts)
+			cluster, err := api.CreateAndWaitCluster(ctx, api.Methods, time.Minute, opts)
 			if err != nil {
 				return err
 			}
@@ -83,13 +83,12 @@ func NewSshCmd() *cobra.Command {
 				WaitClusterOpts: api.WaitClusterOpts{
 					WaitForService: "ssh",
 					WaitKind:       "kubernetes",
-					WaitTimeout:    *waitTimeout,
 				},
 				Duration:      time.Minute,
 				UseComputeAPI: *computeAPI,
 			}
 
-			cluster, err := api.CreateAndWaitCluster(ctx, api.Methods, opts)
+			cluster, err := api.CreateAndWaitCluster(ctx, api.Methods, *waitTimeout, opts)
 			if err != nil {
 				return err
 			}

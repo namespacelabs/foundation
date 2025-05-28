@@ -105,7 +105,6 @@ func NewRunCmd() *cobra.Command {
 			ExposeNscBins:   *exposeNscBins,
 			Network:         *network,
 			UseComputeAPI:   *computeAPI,
-			WaitTimeout:     *waitTimeout,
 		}
 
 		if keys, err := parseAuthorizedKeys(*userSshey); err != nil {
@@ -141,7 +140,7 @@ func NewRunCmd() *cobra.Command {
 
 		opts.ExportedPorts = exported
 
-		resp, err := CreateContainerInstance(ctx, *machineType, *duration, *on, *devmode, opts)
+		resp, err := CreateContainerInstance(ctx, *machineType, *duration, *waitTimeout, *on, *devmode, opts)
 		if err != nil {
 			return err
 		}
@@ -225,7 +224,6 @@ type CreateContainerOpts struct {
 	InstanceExperimental any
 	AuthorizedSshKeys    []string
 	UseComputeAPI        bool
-	WaitTimeout          time.Duration
 }
 
 type exportContainerPort struct {
@@ -241,7 +239,7 @@ type CreateContainerResult struct {
 	LegacyContainer []*api.Container
 }
 
-func CreateContainerInstance(ctx context.Context, machineType string, duration time.Duration, target string, devmode bool, opts CreateContainerOpts) (*CreateContainerResult, error) {
+func CreateContainerInstance(ctx context.Context, machineType string, duration, waitFor time.Duration, target string, devmode bool, opts CreateContainerOpts) (*CreateContainerResult, error) {
 	container := &api.ContainerRequest{
 		Name:         opts.Name,
 		Image:        opts.Image,
@@ -341,10 +339,9 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration t
 			return nil, err
 		}
 
-		if _, err := api.WaitClusterReady(ctx, api.Methods, resp.InstanceId, api.WaitClusterOpts{
+		if _, err := api.WaitClusterReady(ctx, api.Methods, resp.InstanceId, waitFor, api.WaitClusterOpts{
 			ApiEndpoint: resp.ApiEndpoint,
 			CreateLabel: label,
-			WaitTimeout: opts.WaitTimeout,
 		}); err != nil {
 			return nil, err
 		}
