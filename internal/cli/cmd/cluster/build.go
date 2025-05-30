@@ -21,7 +21,9 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/moby/buildkit/client"
+	"github.com/moby/buildkit/client/llb"
 	"github.com/moby/buildkit/cmd/buildctl/build"
+	"github.com/moby/buildkit/frontend/dockerui"
 	"github.com/moby/buildkit/identity"
 	"github.com/moby/buildkit/session"
 	"github.com/moby/buildkit/session/auth"
@@ -160,7 +162,7 @@ func NewBuildCmd() *cobra.Command {
 			return err
 		}
 
-		var fragments []buildFragment
+		var fragments []BuildFragment
 		var localImages []string
 		for _, p := range *platforms {
 			platformSpec, err := platform.ParsePlatform(p)
@@ -182,7 +184,7 @@ func NewBuildCmd() *cobra.Command {
 				}
 			}
 
-			bf := buildFragment{
+			bf := BuildFragment{
 				ContextDir: contextDir,
 				Platform:   platformSpec,
 				BuildArgs:  buildArgs,
@@ -242,23 +244,7 @@ func NewBuildCmd() *cobra.Command {
 			fragments = append(fragments, bf)
 		}
 
-		sink := tasks.SinkFrom(ctx)
-		results, err := startBuilds(ctx, contextDir, fragments, func(ctx context.Context, p specs.Platform) (*client.Client, error) {
-			bp, err := NewBuildCluster(ctx, platform.FormatPlatform(p), "")
-			if err != nil {
-				return nil, err
-			}
-
-			cli, err := client.New(ctx, "buildkitd", client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
-				conn, _, err := bp.NewConn(tasks.WithSink(ctx, sink))
-				return conn, err
-			}))
-			if err != nil {
-				return nil, err
-			}
-
-			return cli, nil
-		})
+		results, err := StartBuilds(ctx, fragments, WireBuilder)
 		if err != nil {
 			return err
 		}
@@ -346,16 +332,17 @@ func plural(n int, singular, plural string) string {
 	return plural
 }
 
-type buildFragment struct {
-	ContextDir string
-	Dockerfile string
-	BuildArgs  map[string]string
-	Platform   specs.Platform
-	Exports    []client.ExportEntry
-	Secrets    []*controllerapi.Secret
+type BuildFragment struct {
+	ContextDir         string
+	Dockerfile         string
+	DockerfileContents []byte
+	BuildArgs          map[string]string
+	Platform           specs.Platform
+	Exports            []client.ExportEntry
+	Secrets            []*controllerapi.Secret
 }
 
-func startBuilds(ctx context.Context, contextDir string, fragments []buildFragment, makeClient func(context.Context, specs.Platform) (*client.Client, error)) ([]*client.SolveResponse, error) {
+func StartBuilds(ctx context.Context, fragments []BuildFragment, makeClient func(context.Context, specs.Platform) (*client.Client, error)) ([]*client.SolveResponse, error) {
 	clients := make([]*client.Client, len(fragments))
 
 	clientsEg := executor.New(ctx, "clients")
@@ -420,7 +407,7 @@ func startBuilds(ctx context.Context, contextDir string, fragments []buildFragme
 	return results, nil
 }
 
-func startSingleBuild(eg *executor.Executor, c *client.Client, mw *progresswriter.MultiWriter, bf buildFragment, set func(*client.SolveResponse) error) {
+func startSingleBuild(eg *executor.Executor, c *client.Client, mw *progresswriter.MultiWriter, bf BuildFragment, set func(*client.SolveResponse) error) {
 	ref := identity.NewID()
 
 	eg.Go(func(ctx context.Context) error {
@@ -444,11 +431,7 @@ func startSingleBuild(eg *executor.Executor, c *client.Client, mw *progresswrite
 		}
 
 		solveOpt := client.SolveOpt{
-			Exports: bf.Exports,
-			LocalDirs: map[string]string{
-				"context":    bf.ContextDir,
-				"dockerfile": bf.ContextDir,
-			},
+			Exports:  bf.Exports,
 			Frontend: "dockerfile.v0",
 			FrontendAttrs: map[string]string{
 				"platform": platform.FormatPlatform(bf.Platform),
@@ -457,8 +440,25 @@ func startSingleBuild(eg *executor.Executor, c *client.Client, mw *progresswrite
 			Ref:     ref,
 		}
 
-		if bf.Dockerfile != "" {
-			solveOpt.FrontendAttrs["filename"] = bf.Dockerfile
+		if bf.ContextDir != "" {
+			solveOpt.LocalDirs = map[string]string{
+				"context":    bf.ContextDir,
+				"dockerfile": bf.ContextDir,
+			}
+
+			if bf.Dockerfile != "" {
+				solveOpt.FrontendAttrs["filename"] = bf.Dockerfile
+			}
+		} else {
+			if bf.Dockerfile != "" {
+				return fmt.Errorf("dockerfile requires a contextdir")
+			}
+		}
+
+		if bf.DockerfileContents != nil {
+			solveOpt.FrontendInputs = map[string]llb.State{
+				dockerui.DefaultLocalNameDockerfile: makeDockerfileState(bf.DockerfileContents),
+			}
 		}
 
 		for k, v := range bf.BuildArgs {
@@ -511,4 +511,28 @@ func determineBuildClusterPlatform(allowedClusterPlatforms []string, platform st
 	}
 
 	return "amd64"
+}
+
+func makeDockerfileState(contents []byte) llb.State {
+	return llb.Scratch().
+		File(llb.Mkfile("/Dockerfile", 0644, contents))
+}
+
+func WireBuilder(ctx context.Context, p specs.Platform) (*client.Client, error) {
+	sink := tasks.SinkFrom(ctx)
+
+	bp, err := NewBuildCluster(ctx, platform.FormatPlatform(p), "")
+	if err != nil {
+		return nil, err
+	}
+
+	cli, err := client.New(ctx, "buildkitd", client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+		conn, _, err := bp.NewConn(tasks.WithSink(ctx, sink))
+		return conn, err
+	}))
+	if err != nil {
+		return nil, err
+	}
+
+	return cli, nil
 }
