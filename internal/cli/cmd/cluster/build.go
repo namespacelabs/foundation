@@ -458,6 +458,8 @@ func startSingleBuild(eg *executor.Executor, c *client.Client, mw *progresswrite
 		if bf.DockerfileContents != nil {
 			solveOpt.FrontendInputs = map[string]llb.State{
 				dockerui.DefaultLocalNameDockerfile: makeDockerfileState(bf.DockerfileContents),
+				dockerui.DefaultLocalNameContext: llb.Scratch().
+					File(llb.Mkfile("/empty", 0644, []byte{})), // Empty context.
 			}
 		}
 
