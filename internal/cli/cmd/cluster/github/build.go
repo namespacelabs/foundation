@@ -15,18 +15,6 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/parsing/platform"
-	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
-)
-
-var (
-	// preferredBuildPlatform is a mapping between supported platforms and preferable build cluster.
-	preferredBuildPlatform = map[string]api.BuildPlatform{
-		"linux/arm64":  "arm64",
-		"linux/arm/v5": "arm64",
-		"linux/arm/v6": "arm64",
-		"linux/arm/v7": "arm64",
-		"linux/arm/v8": "arm64",
-	}
 )
 
 func NewBaseImageBuildCmd() *cobra.Command {
