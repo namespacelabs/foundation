@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/parsing/platform"
 )
 
@@ -25,6 +26,7 @@ func NewBaseImageBuildCmd() *cobra.Command {
 	}
 
 	dockerFile := cmd.Flags().StringP("file", "f", "", "Specifies what Dockerfile to build.")
+	osLabel := cmd.Flags().StringP("os-label", "l", "ubuntu-22.04", "Specifies the OS version of the base image.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
 		if *dockerFile == "" {
@@ -41,8 +43,13 @@ func NewBaseImageBuildCmd() *cobra.Command {
 			"linux/arm64",
 		}
 
+		imgRef, err := getBaseImageRef(ctx, *osLabel)
+		if err != nil {
+			return err
+		}
+
 		buildArgs := map[string]string{
-			"NAMESPACE_BASE_IMAGE_REF": "foobar",
+			"NAMESPACE_BASE_IMAGE_REF": imgRef,
 		}
 
 		var fragments []cluster.BuildFragment
@@ -71,6 +78,23 @@ func NewBaseImageBuildCmd() *cobra.Command {
 	})
 
 	return cmd
+}
+
+func getBaseImageRef(ctx context.Context, osLabel string) (string, error) {
+	images, err := fnapi.ListBaseImages(ctx, osLabel)
+	if err != nil {
+		return "", err
+	}
+
+	if len(images.Images) == 0 {
+		return "", fmt.Errorf("no base image found for os label %q", osLabel)
+	}
+
+	if len(images.Images) > 1 {
+		return "", fmt.Errorf("os %q label maps to more than one base image", osLabel)
+	}
+
+	return images.Images[0].ImageRef, nil
 }
 
 func plural(n int, singular, plural string) string {
