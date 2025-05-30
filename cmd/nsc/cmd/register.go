@@ -10,6 +10,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/auth"
 	"namespacelabs.dev/foundation/internal/cli/cmd/aws"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
+	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/github"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/private"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/terminal"
 	"namespacelabs.dev/foundation/internal/cli/cmd/devbox"
@@ -63,4 +64,18 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(workspace.NewWorkspaceCmd()) // nsc workspace
 
 	root.AddCommand(devbox.NewDevBoxCmd()) // nsc devbox
+
+	root.AddCommand(newGithub())
+}
+
+func newGithub() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    "github",
+		Args:   cobra.NoArgs,
+		Hidden: true,
+	}
+
+	cmd.AddCommand(github.NewBaseImageBuildCmd())
+
+	return cmd
 }
