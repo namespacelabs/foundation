@@ -60,7 +60,7 @@ $NSC_BIN cluster destroy $CLUSTER_ID --force
 
 # Test ns cluster history
 INSTANCE_COUNT=$($NSC_BIN cluster history -o json --since 24h | jq length)
-if [[ $(($LOGS)) -lt 1 ]]; then
+if [[ $((INSTANCE_COUNT)) -lt 1 ]]; then
     echo "no history found!"
     exit 1
 fi
