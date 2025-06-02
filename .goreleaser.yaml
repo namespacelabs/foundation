@@ -1,4 +1,5 @@
 project_name: foundation
+version: 2
 
 builds:
   - id: linux-ns
