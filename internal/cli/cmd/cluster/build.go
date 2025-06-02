@@ -143,8 +143,13 @@ func NewBuildCmd() *cobra.Command {
 				return fmt.Errorf("Could not fetch nscr.io repository")
 			}
 
+			registryEpPrefix := fmt.Sprintf("%s/%s/", resp.NSCR.EndpointAddress, resp.NSCR.Repository)
 			for _, name := range *names {
-				*tags = append(*tags, fmt.Sprintf("%s/%s/%s", resp.NSCR.EndpointAddress, resp.NSCR.Repository, name))
+				if !strings.HasPrefix(name, registryEpPrefix) {
+					name = registryEpPrefix + name
+				}
+
+				*tags = append(*tags, name)
 			}
 		}
 
