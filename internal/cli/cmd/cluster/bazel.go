@@ -7,8 +7,10 @@ package cluster
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -37,13 +39,14 @@ func NewBazelCmd() *cobra.Command {
 }
 
 func newSetupCacheCmd() *cobra.Command {
-	var bazelRcPath string
+	var bazelRcPath, output string
 
 	return fncobra.Cmd(&cobra.Command{
 		Use:   "setup",
 		Short: "Set up a remote Bazel cache and generate a bazelrc to use it.",
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		flags.StringVar(&bazelRcPath, "bazelrc", "", "If specified, write the bazelrc to this path.")
+		flags.StringVarP(&output, "output", "o", "plain", "One of plain or json.")
 	}).Do(func(ctx context.Context) error {
 		response, err := api.EnsureBazelCache(ctx, api.Methods, "")
 		if err != nil {
@@ -54,9 +57,9 @@ func newSetupCacheCmd() *cobra.Command {
 			return fnerrors.Newf("did not receive a valid cache endpoint")
 		}
 
-		var buffer bytes.Buffer
-		if _, err := buffer.WriteString(fmt.Sprintf("build --remote_cache=%s\n", response.CacheEndpoint)); err != nil {
-			return fnerrors.Newf("failed to append cache endpoint: %w", err)
+		out := bazelSetup{
+			Endpoint:  response.CacheEndpoint,
+			ExpiresAt: response.ExpiresAt,
 		}
 
 		if len(response.ServerCaPem) > 0 {
@@ -65,9 +68,7 @@ func newSetupCacheCmd() *cobra.Command {
 				return fnerrors.Newf("failed to create temp file: %w", err)
 			}
 
-			if _, err := buffer.WriteString(fmt.Sprintf("build --tls_certificate=%s\n", loc)); err != nil {
-				return fnerrors.Newf("failed to append tls_certificate config: %w", err)
-			}
+			out.ServerCaCert = loc
 		}
 
 		if len(response.ClientCertPem) > 0 {
@@ -76,9 +77,7 @@ func newSetupCacheCmd() *cobra.Command {
 				return fnerrors.Newf("failed to create temp file: %w", err)
 			}
 
-			if _, err := buffer.WriteString(fmt.Sprintf("build --tls_client_certificate=%s\n", loc)); err != nil {
-				return fnerrors.Newf("failed to append tls_client_certificate config: %w", err)
-			}
+			out.ClientCert = loc
 		}
 
 		if len(response.ClientKeyPem) > 0 {
@@ -87,29 +86,55 @@ func newSetupCacheCmd() *cobra.Command {
 				return fnerrors.Newf("failed to create temp file: %w", err)
 			}
 
-			if _, err := buffer.WriteString(fmt.Sprintf("build --tls_client_key=%s\n", loc)); err != nil {
-				return fnerrors.Newf("failed to append tls_client_key config: %w", err)
-			}
+			out.ClientKey = loc
 		}
 
-		if bazelRcPath == "" {
-			loc, err := writeTempFile(bazelCachePathBase, "*.bazelrc", buffer.Bytes())
+		// If set, we always generate a bazelrc file.
+		if bazelRcPath != "" {
+			data, err := toBazelConfig(out)
 			if err != nil {
-				return fnerrors.Newf("failed to create temp file: %w", err)
+				return err
 			}
 
-			bazelRcPath = loc
-		} else {
-			if err := os.WriteFile(bazelRcPath, buffer.Bytes(), 0644); err != nil {
+			if err := os.WriteFile(bazelRcPath, data, 0644); err != nil {
 				return fnerrors.Newf("failed to write %q: %w", bazelRcPath, err)
 			}
 		}
 
-		fmt.Fprintf(console.Stdout(ctx), "Wrote bazelrc configuration for remote cache to %s.\n", bazelRcPath)
+		switch output {
+		case "json":
+			d := json.NewEncoder(console.Stdout(ctx))
+			d.SetIndent("", "  ")
+			if err := d.Encode(out); err != nil {
+				return fnerrors.InternalError("failed to encode token as JSON output: %w", err)
+			}
 
-		style := colors.Ctx(ctx)
-		fmt.Fprintf(console.Stdout(ctx), "\nStart using it by adding:\n")
-		fmt.Fprintf(console.Stdout(ctx), "  %s", style.Highlight.Apply(fmt.Sprintf("--bazelrc=%s\n", bazelRcPath)))
+		default:
+			if output != "" && output != "plain" {
+				fmt.Fprintf(console.Warnings(ctx), "unsupported output %q, defaulting to plain\n", output)
+			}
+
+			// For plain output, flush the state to a temp bazelrc if none is written yet.
+			if bazelRcPath == "" {
+				data, err := toBazelConfig(out)
+				if err != nil {
+					return err
+				}
+
+				loc, err := writeTempFile(bazelCachePathBase, "*.bazelrc", data)
+				if err != nil {
+					return fnerrors.Newf("failed to create temp file: %w", err)
+				}
+
+				bazelRcPath = loc
+			}
+
+			fmt.Fprintf(console.Stdout(ctx), "Wrote bazelrc configuration for remote cache to %s.\n", bazelRcPath)
+
+			style := colors.Ctx(ctx)
+			fmt.Fprintf(console.Stdout(ctx), "\nStart using it by adding:\n")
+			fmt.Fprintf(console.Stdout(ctx), "  %s", style.Highlight.Apply(fmt.Sprintf("--bazelrc=%s\n", bazelRcPath)))
+		}
 
 		return nil
 	})
@@ -130,4 +155,39 @@ func writeTempFile(base, pattern string, content []byte) (string, error) {
 	}
 
 	return f.Name(), nil
+}
+
+func toBazelConfig(out bazelSetup) ([]byte, error) {
+	var buffer bytes.Buffer
+	if _, err := buffer.WriteString(fmt.Sprintf("build --remote_cache=%s\n", out.Endpoint)); err != nil {
+		return nil, fnerrors.Newf("failed to append cache endpoint: %w", err)
+	}
+
+	if len(out.ServerCaCert) > 0 {
+		if _, err := buffer.WriteString(fmt.Sprintf("build --tls_certificate=%s\n", out.ServerCaCert)); err != nil {
+			return nil, fnerrors.Newf("failed to append tls_certificate config: %w", err)
+		}
+	}
+
+	if len(out.ClientCert) > 0 {
+		if _, err := buffer.WriteString(fmt.Sprintf("build --tls_client_certificate=%s\n", out.ClientCert)); err != nil {
+			return nil, fnerrors.Newf("failed to append tls_client_certificate config: %w", err)
+		}
+	}
+
+	if len(out.ClientKey) > 0 {
+		if _, err := buffer.WriteString(fmt.Sprintf("build --tls_client_key=%s\n", out.ClientKey)); err != nil {
+			return nil, fnerrors.Newf("failed to append tls_client_key config: %w", err)
+		}
+	}
+
+	return buffer.Bytes(), nil
+}
+
+type bazelSetup struct {
+	Endpoint     string     `json:"endpoint,omitempty"`
+	ServerCaCert string     `json:"server_ca_cert,omitempty"`
+	ClientCert   string     `json:"client_cert,omitempty"`
+	ClientKey    string     `json:"client_key,omitempty"`
+	ExpiresAt    *time.Time `json:"expires_at,omitempty"`
 }
