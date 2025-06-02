@@ -484,12 +484,13 @@ type EnsureBazelCacheRequest struct {
 }
 
 type EnsureBazelCacheResponse struct {
-	CacheEndpoint          string `json:"cache_endpoint,omitempty"`
-	HttpsMtlsCacheEndpoint string `json:"https_mtls_cache_endpoint,omitempty"`
-	HttpsCacheEndpoint     string `json:"https_cache_endpoint,omitempty"`
-	ServerCaPem            string `json:"server_ca_pem,omitempty"`
-	ClientCertPem          string `json:"client_cert_pem,omitempty"`
-	ClientKeyPem           string `json:"client_key_pem,omitempty"`
+	CacheEndpoint          string     `json:"cache_endpoint,omitempty"`
+	HttpsMtlsCacheEndpoint string     `json:"https_mtls_cache_endpoint,omitempty"`
+	HttpsCacheEndpoint     string     `json:"https_cache_endpoint,omitempty"`
+	ServerCaPem            string     `json:"server_ca_pem,omitempty"`
+	ClientCertPem          string     `json:"client_cert_pem,omitempty"`
+	ClientKeyPem           string     `json:"client_key_pem,omitempty"`
+	ExpiresAt              *time.Time `json:"expires_at,omitempty"`
 }
 
 type GetProfileResponse struct {
