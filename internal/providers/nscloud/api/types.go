@@ -11,22 +11,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type CreateKubernetesClusterRequest struct {
-	Ephemeral         bool                   `json:"ephemeral,omitempty"`
-	DocumentedPurpose string                 `json:"documented_purpose,omitempty"`
-	AuthorizedSshKeys []string               `json:"authorized_ssh_keys,omitempty"`
-	MachineType       string                 `json:"machine_type,omitempty"`
-	Feature           []string               `json:"feature,omitempty"`
-	Interactive       bool                   `json:"interactive,omitempty"`
-	Label             []*LabelEntry          `json:"label,omitempty"`
-	UniqueTag         string                 `json:"unique_tag,omitempty"`
-	InternalExtra     string                 `json:"internal_extra,omitempty"`
-	Deadline          *timestamppb.Timestamp `json:"deadline,omitempty"`
-	Experimental      any                    `json:"experimental,omitempty"`
-	AvailableSecrets  []*SecretRef           `json:"available_secrets,omitempty"`
-	Volumes           []VolumeSpec           `json:"volume,omitempty"`
-}
-
 type CreateInstanceRequest struct {
 	RegionSelection   *CreateInstanceRequest_RegionSelection `json:"region_selection,omitempty"`
 	UniqueTag         string                                 `json:"unique_tag,omitempty"`
@@ -109,14 +93,6 @@ type GetKubernetesClusterResponse struct {
 	Registry     *ImageRegistry     `json:"registry,omitempty"`
 	BuildCluster *BuildCluster      `json:"build_cluster,omitempty"`
 	Deadline     string             `json:"deadline,omitempty"`
-}
-
-type StartCreateKubernetesClusterResponse struct {
-	ClusterId       string             `json:"cluster_id,omitempty"`
-	ClusterFragment *KubernetesCluster `json:"cluster_fragment,omitempty"`
-	Registry        *ImageRegistry     `json:"registry,omitempty"`
-	NsRegistry      *ImageRegistry     `json:"ns_registry,omitempty"`
-	Deadline        string             `json:"deadline,omitempty"`
 }
 
 type CreateInstanceResponse struct {
