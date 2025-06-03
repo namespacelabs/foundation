@@ -35,7 +35,7 @@ type CreateInstanceRequest struct {
 	Label             []*LabelEntry                          `json:"label,omitempty"`
 	Feature           []string                               `json:"feature,omitempty"`
 	AvailableSecrets  []*SecretRef                           `json:"available_secrets,omitempty"`
-	Experimental      any                                    `json:"experimental,omitempty"`
+	Experimental      map[string]any                         `json:"experimental,omitempty"`
 
 	Container []*ContainerRequest `json:"container,omitempty"`
 
