@@ -34,31 +34,30 @@ import (
 )
 
 type API struct {
-	StartCreateKubernetesCluster fnapi.Call[CreateKubernetesClusterRequest]
-	CreateInstance               fnapi.Call[CreateInstanceRequest]
-	CreateContainers             fnapi.Call[CreateContainersRequest]
-	StartContainers              fnapi.Call[StartContainersRequest]
-	GetKubernetesCluster         fnapi.Call[GetKubernetesClusterRequest]
-	EnsureKubernetesCluster      fnapi.Call[EnsureKubernetesClusterRequest]
-	WaitKubernetesCluster        fnapi.Call[WaitKubernetesClusterRequest]
-	ListKubernetesClusters       fnapi.Call[ListKubernetesClustersRequest]
-	DestroyKubernetesCluster     fnapi.Call[DestroyKubernetesClusterRequest]
-	SuspendKubernetesCluster     fnapi.Call[SuspendKubernetesClusterRequest]
-	ReleaseKubernetesCluster     fnapi.Call[ReleaseKubernetesClusterRequest]
-	WakeKubernetesCluster        fnapi.Call[WakeKubernetesClusterRequest]
-	RefreshKubernetesCluster     fnapi.Call[RefreshKubernetesClusterRequest]
-	GetKubernetesClusterSummary  fnapi.Call[GetKubernetesClusterSummaryRequest]
-	GetKubernetesConfig          fnapi.Call[GetKubernetesConfigRequest]
-	EnsureBazelCache             fnapi.Call[EnsureBazelCacheRequest]
-	GetImageRegistry             fnapi.Call[emptypb.Empty]
-	TailClusterLogs              fnapi.Call[TailLogsRequest]
-	GetClusterLogs               fnapi.Call[GetLogsRequest]
-	GetProfile                   fnapi.Call[emptypb.Empty]
-	RegisterIngress              fnapi.Call[RegisterIngressRequest]
-	ListIngresses                fnapi.Call[ListIngressesRequest]
-	ListVolumes                  fnapi.Call[emptypb.Empty]
-	DestroyVolume                fnapi.Call[DestroyVolumeRequest]
-	DestroyVolumeByTag           fnapi.Call[DestroyVolumeByTagRequest]
+	CreateInstance              fnapi.Call[CreateInstanceRequest]
+	CreateContainers            fnapi.Call[CreateContainersRequest]
+	StartContainers             fnapi.Call[StartContainersRequest]
+	GetKubernetesCluster        fnapi.Call[GetKubernetesClusterRequest]
+	EnsureKubernetesCluster     fnapi.Call[EnsureKubernetesClusterRequest]
+	WaitKubernetesCluster       fnapi.Call[WaitKubernetesClusterRequest]
+	ListKubernetesClusters      fnapi.Call[ListKubernetesClustersRequest]
+	DestroyKubernetesCluster    fnapi.Call[DestroyKubernetesClusterRequest]
+	SuspendKubernetesCluster    fnapi.Call[SuspendKubernetesClusterRequest]
+	ReleaseKubernetesCluster    fnapi.Call[ReleaseKubernetesClusterRequest]
+	WakeKubernetesCluster       fnapi.Call[WakeKubernetesClusterRequest]
+	RefreshKubernetesCluster    fnapi.Call[RefreshKubernetesClusterRequest]
+	GetKubernetesClusterSummary fnapi.Call[GetKubernetesClusterSummaryRequest]
+	GetKubernetesConfig         fnapi.Call[GetKubernetesConfigRequest]
+	EnsureBazelCache            fnapi.Call[EnsureBazelCacheRequest]
+	GetImageRegistry            fnapi.Call[emptypb.Empty]
+	TailClusterLogs             fnapi.Call[TailLogsRequest]
+	GetClusterLogs              fnapi.Call[GetLogsRequest]
+	GetProfile                  fnapi.Call[emptypb.Empty]
+	RegisterIngress             fnapi.Call[RegisterIngressRequest]
+	ListIngresses               fnapi.Call[ListIngressesRequest]
+	ListVolumes                 fnapi.Call[emptypb.Empty]
+	DestroyVolume               fnapi.Call[DestroyVolumeRequest]
+	DestroyVolumeByTag          fnapi.Call[DestroyVolumeByTagRequest]
 }
 
 var (
@@ -67,11 +66,6 @@ var (
 
 func MakeAPI() API {
 	return API{
-		StartCreateKubernetesCluster: fnapi.Call[CreateKubernetesClusterRequest]{
-			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "nsl.vm.api.VMService/StartCreateKubernetesCluster",
-		},
-
 		CreateInstance: fnapi.Call[CreateInstanceRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "namespace.private.compute.InstanceService/CreateInstance",
