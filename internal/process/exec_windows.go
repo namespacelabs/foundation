@@ -2,14 +2,14 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package ulimit
+package process
 
-import "errors"
+import "os/exec"
 
-func SetFileLimit(n uint64) error {
-	return errors.ErrUnsupported
+func SetSIDAttr(cmd *exec.Cmd, val bool) {
+	// Means nothing on Windows.
 }
 
-func SetCoreFileLimit(maxCoreFileSize uint64) error {
-	return errors.ErrUnsupported
+func ForegroundAttr(cmd *exec.Cmd, val bool) {
+	// Means nothing on Windows.
 }
