@@ -21,7 +21,6 @@ import (
 	"github.com/docker/cli/cli/config/configfile"
 	"github.com/docker/cli/cli/config/types"
 	controlapi "github.com/moby/buildkit/api/services/control"
-	"golang.org/x/sys/unix"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/files"
@@ -131,7 +130,7 @@ func internalRunProxy(ctx context.Context, b BuildCluster, socketPath, controlSo
 			return os.RemoveAll(sockDir)
 		}
 	} else {
-		if err := unix.Unlink(socketPath); err != nil && !os.IsNotExist(err) {
+		if err := os.Remove(socketPath); err != nil && !os.IsNotExist(err) {
 			return nil, err
 		}
 	}
@@ -288,7 +287,7 @@ func (bp *buildProxy) Serve(ctx context.Context) error {
 }
 
 func (bp *buildProxy) ServeStatus(ctx context.Context) error {
-	if err := unix.Unlink(bp.controlSocketPath); err != nil && !os.IsNotExist(err) {
+	if err := os.Remove(bp.controlSocketPath); err != nil && !os.IsNotExist(err) {
 		return err
 	}
 

@@ -2,9 +2,16 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
+//go:build unix
+// +build unix
+
 package termios
 
 import (
+	"os"
+	"os/signal"
+	"syscall"
+
 	"golang.org/x/sys/unix"
 )
 
@@ -25,6 +32,10 @@ func TermSize(fd uintptr) (WinSize, error) {
 	ts.Height = uws.Row
 	ts.Width = uws.Col
 	return ts, nil
+}
+
+func NotifyWindowSize(ch chan<- os.Signal) {
+	signal.Notify(ch, syscall.SIGWINCH)
 }
 
 func MakeRaw(fd uintptr) (func() error, error) {

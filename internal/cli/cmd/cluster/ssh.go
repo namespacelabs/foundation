@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"syscall"
 	"time"
 
 	c "github.com/containerd/console"
@@ -24,6 +23,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	con "namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
@@ -286,7 +286,7 @@ func InlineSsh(ctx context.Context, cluster *api.KubernetesCluster, opts InlineS
 
 func listenForResize(ctx context.Context, stdin c.Console, session *ssh.Session) {
 	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGWINCH)
+	termios.NotifyWindowSize(sig)
 
 	defer func() {
 		signal.Stop(sig)

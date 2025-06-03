@@ -10,7 +10,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -18,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/process"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/endpoint"
 )
@@ -67,10 +67,8 @@ func NewProxyCmd() *cobra.Command {
 
 func setupBackgroundProxy(ctx context.Context, clusterId, kind, sockPath, pidFile string) error {
 	cmd := exec.Command(os.Args[0], "cluster", "proxy", "--kind", kind, "--sock_path", sockPath, "--cluster", clusterId, "--region", endpoint.RegionName)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Foreground: false,
-		Setsid:     true,
-	}
+	process.SetSIDAttr(cmd, true)
+	process.ForegroundAttr(cmd, false)
 
 	if err := cmd.Start(); err != nil {
 		return err

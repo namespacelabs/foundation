@@ -15,7 +15,7 @@ import (
 )
 
 func AskSecret(ctx context.Context, title, desc, placeholder string) ([]byte, error) {
-	if !term.IsTerminal(syscall.Stdin) {
+	if !term.IsTerminal(int(syscall.Stdin)) {
 		reader := bufio.NewReader(os.Stdin)
 		// Read until (required) newline.
 		s, err := reader.ReadString('\n')

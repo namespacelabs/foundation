@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"golang.org/x/sys/unix"
 	"namespacelabs.dev/foundation/framework/netcopy"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
@@ -59,7 +58,7 @@ func runUnixSocketProxy(ctx context.Context, clusterId string, opts unixSockProx
 		cleanup = func() {}
 	}
 
-	if err := unix.Unlink(socketPath); err != nil && !os.IsNotExist(err) {
+	if err := os.Remove(socketPath); err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}
 
