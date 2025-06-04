@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -39,7 +40,7 @@ func NewBazelCmd() *cobra.Command {
 }
 
 func newSetupCacheCmd() *cobra.Command {
-	var bazelRcPath, output string
+	var bazelRcPath, output, certPath string
 
 	return fncobra.Cmd(&cobra.Command{
 		Use:   "setup",
@@ -47,6 +48,9 @@ func newSetupCacheCmd() *cobra.Command {
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		flags.StringVar(&bazelRcPath, "bazelrc", "", "If specified, write the bazelrc to this path.")
 		flags.StringVarP(&output, "output", "o", "plain", "One of plain or json.")
+
+		flags.StringVar(&certPath, "cred_path", "", "If specified, write credentials to this directory. Using this flag also ensures stable file names for all emitted credentials.")
+		flags.MarkHidden("cred_path")
 	}).Do(func(ctx context.Context) error {
 		response, err := api.EnsureBazelCache(ctx, api.Methods, "")
 		if err != nil {
@@ -57,36 +61,66 @@ func newSetupCacheCmd() *cobra.Command {
 			return fnerrors.Newf("did not receive a valid cache endpoint")
 		}
 
+		if certPath != "" {
+			if err := os.MkdirAll(certPath, 0755); err != nil {
+				return fnerrors.Newf("failed to create certificate directory: %w", err)
+			}
+		}
+
 		out := bazelSetup{
 			Endpoint:  response.CacheEndpoint,
 			ExpiresAt: response.ExpiresAt,
 		}
 
 		if len(response.ServerCaPem) > 0 {
-			loc, err := writeTempFile(bazelCachePathBase, "*.cert", []byte(response.ServerCaPem))
-			if err != nil {
-				return fnerrors.Newf("failed to create temp file: %w", err)
-			}
+			if certPath == "" {
+				loc, err := writeTempFile(bazelCachePathBase, "*.cert", []byte(response.ServerCaPem))
+				if err != nil {
+					return fnerrors.Newf("failed to create temp file: %w", err)
+				}
 
-			out.ServerCaCert = loc
+				out.ServerCaCert = loc
+			} else {
+				out.ServerCaCert = filepath.Join(certPath, "server_ca.cert")
+
+				if err := writeFile(out.ServerCaCert, []byte(response.ServerCaPem)); err != nil {
+					return err
+				}
+			}
 		}
 
 		if len(response.ClientCertPem) > 0 {
-			loc, err := writeTempFile(bazelCachePathBase, "*.cert", []byte(response.ClientCertPem))
-			if err != nil {
-				return fnerrors.Newf("failed to create temp file: %w", err)
-			}
+			if certPath == "" {
+				loc, err := writeTempFile(bazelCachePathBase, "*.cert", []byte(response.ClientCertPem))
+				if err != nil {
+					return fnerrors.Newf("failed to create temp file: %w", err)
+				}
 
-			out.ClientCert = loc
+				out.ClientCert = loc
+			} else {
+				out.ClientCert = filepath.Join(certPath, "client.cert")
+
+				if err := writeFile(out.ClientCert, []byte(response.ClientCertPem)); err != nil {
+					return err
+				}
+			}
 		}
 
 		if len(response.ClientKeyPem) > 0 {
-			loc, err := writeTempFile(bazelCachePathBase, "*.key", []byte(response.ClientKeyPem))
-			if err != nil {
-				return fnerrors.Newf("failed to create temp file: %w", err)
-			}
+			if certPath == "" {
+				loc, err := writeTempFile(bazelCachePathBase, "*.key", []byte(response.ClientKeyPem))
+				if err != nil {
+					return fnerrors.Newf("failed to create temp file: %w", err)
+				}
 
-			out.ClientKey = loc
+				out.ClientKey = loc
+			} else {
+				out.ClientKey = filepath.Join(certPath, "client.key")
+
+				if err := writeFile(out.ClientKey, []byte(response.ClientKeyPem)); err != nil {
+					return err
+				}
+			}
 		}
 
 		// If set, we always generate a bazelrc file.
@@ -96,8 +130,8 @@ func newSetupCacheCmd() *cobra.Command {
 				return err
 			}
 
-			if err := os.WriteFile(bazelRcPath, data, 0644); err != nil {
-				return fnerrors.Newf("failed to write %q: %w", bazelRcPath, err)
+			if err := writeFile(bazelRcPath, data); err != nil {
+				return err
 			}
 		}
 
@@ -155,6 +189,14 @@ func writeTempFile(base, pattern string, content []byte) (string, error) {
 	}
 
 	return f.Name(), nil
+}
+
+func writeFile(path string, content []byte) error {
+	if err := os.WriteFile(path, content, 0644); err != nil {
+		return fnerrors.Newf("failed to write %q: %w", path, err)
+	}
+
+	return nil
 }
 
 func toBazelConfig(out bazelSetup) ([]byte, error) {
