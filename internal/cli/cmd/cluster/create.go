@@ -185,13 +185,15 @@ func NewCreateCmd() *cobra.Command {
 			opts.Features = append(opts.Features, "EXP_DISABLE_KUBERNETES")
 		}
 
-		// XXX hacky for backwards compatibility.
-		if !*bare && !strings.HasPrefix(*machineType, "mac") {
+		if !*bare && !strings.HasPrefix(*machineType, "mac") && !strings.HasPrefix(*machineType, "windows") {
 			if opts.Experimental == nil {
 				opts.Experimental = map[string]any{}
 			}
 
-			opts.Experimental["k3s"] = private.K3sCfg
+			// XXX for backwards compatibility, add k3s on Linux by default.
+			if _, ok := opts.Experimental["k3s"]; !ok {
+				opts.Experimental["k3s"] = private.K3sCfg
+			}
 		}
 
 		switch *ingress {
