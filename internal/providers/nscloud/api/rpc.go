@@ -254,17 +254,15 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Creat
 			}
 
 			if len(opts.Volumes) > 0 {
-				if opts.Experimental == nil {
-					opts.Experimental = map[string]any{}
+				if req.Experimental == nil {
+					req.Experimental = map[string]any{}
 				}
 
 				if _, ok := req.Experimental["volumes"]; ok {
 					return nil, fnerrors.Newf("not supported")
 				}
 
-				req.Experimental = map[string]any{
-					"volumes": opts.Volumes,
-				}
+				req.Experimental["volumes"] = opts.Volumes
 			}
 
 			if opts.Duration > 0 {
