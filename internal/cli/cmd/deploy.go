@@ -37,7 +37,6 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/eval"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeops"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/orchestration"
@@ -56,7 +55,6 @@ func NewDeployCmd() *cobra.Command {
 		env              cfg.Context
 		locs             fncobra.Locations
 		servers          planningargs.Servers
-		forceApply       bool
 	)
 
 	return fncobra.
@@ -75,8 +73,6 @@ func NewDeployCmd() *cobra.Command {
 			flags.BoolVar(&uploadToRegistry, "upload_to_registry", false, "If set, uploads the deploy plan to the cluster registry, instead of applying it.")
 			flags.StringVar(&deployOpts.outputPath, "output_to", "", "If set, a machine-readable output is emitted after successful deployment.")
 			flags.StringVar(&deployOpts.manualReason, "reason", "", "Why was this deployment triggered.")
-			flags.BoolVar(&forceApply, "force_apply", false, "Force apply resources, overriding field manager conflicts.")
-			flags.MarkHidden("force_apply")
 		}).
 		With(
 			fncobra.ParseEnv(&env),
@@ -85,11 +81,6 @@ func NewDeployCmd() *cobra.Command {
 		Do(func(ctx context.Context) error {
 			if deploy.RequireReason(env.Configuration()) && serializePath == "" && deployReason(deployOpts) == "" {
 				return fnerrors.Newf("--reason is required when deploying to environment %q", env.Environment().Name)
-			}
-
-			// Set force apply flag if specified
-			if forceApply {
-				kubeops.ForceApply = true
 			}
 
 			p, err := planning.NewPlanner(ctx, env)
