@@ -161,10 +161,11 @@ func PrebuiltImageID(ctx context.Context, loc pkggraph.Location, cfg cfg.Configu
 func planImage(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, loc pkggraph.Location, bin *schema.Binary, assets assets.AvailableBuildAssets, opts BuildImageOpts) (build.Spec, error) {
 	// We prepare the build spec, as we need information, e.g. whether it's platform independent,
 	// if a prebuilt is specified.
-	spec, err := buildLayeredSpec(ctx, pl, env, loc, bin, assets, opts)
+	layered, err := buildLayeredSpec(ctx, pl, env, loc, bin, assets, opts)
 	if err != nil {
 		return nil, err
 	}
+	spec := StampImage{layered}
 
 	if opts.UsePrebuilts {
 		imgid, err := PrebuiltImageID(ctx, loc, env.Configuration())
