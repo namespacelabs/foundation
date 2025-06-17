@@ -23,6 +23,9 @@ message Certificate {
     repeated string ip_sans     = 9;
     string          ttl         = 10;
 
+    bool exclude_cn_from_sans           = 11;
+    bool dont_prepend_base_domain_to_cn = 12;
+
     reserved 1, 2, 3, 4;
 }
 

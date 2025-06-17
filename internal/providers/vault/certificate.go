@@ -47,14 +47,15 @@ func certificateProvider(ctx context.Context, conf cfg.Configuration, _ *secrets
 	}
 
 	req := certificateRequest{
-		commonName: cfg.GetCommonName(),
-		sans:       cfg.GetSans(),
-		ipSans:     cfg.GetIpSans(),
-		ttl:        cfg.GetTtl(),
+		commonName:        cfg.GetCommonName(),
+		sans:              cfg.GetSans(),
+		ipSans:            cfg.GetIpSans(),
+		ttl:               cfg.GetTtl(),
+		excludeCnFromSans: cfg.GetExcludeCnFromSans(),
 	}
 
 	if certConfig, ok := GetCertificateConfig(conf); ok {
-		if base := certConfig.GetBaseDomain(); base != "" {
+		if base := certConfig.GetBaseDomain(); base != "" && !cfg.GetDontPrependBaseDomainToCn() {
 			req.commonName = fmt.Sprintf("%s/%s", base, req.commonName)
 			req.excludeCnFromSans = true
 		}
