@@ -49,16 +49,17 @@ func Background() context.Context {
 	return Log.WithContext(context.Background())
 }
 
-type interceptor struct{}
+type Interceptor struct {
+	Logger *zerolog.Logger
+}
 
-func (interceptor) unary(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+func (ic Interceptor) Unary(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	rdata, has := requestid.RequestDataFromContext(ctx)
 	if !has {
 		return handler(ctx, req)
 	}
 
-	zero := prepareLogger(ctx, rdata.RequestID, info.FullMethod)
-	logger := zero.Logger()
+	logger := ic.prepareLogger(rdata.RequestID, info.FullMethod)
 	loggable := !slices.Contains(skipLogging, strings.TrimPrefix(info.FullMethod, "/"))
 
 	if loggable {
@@ -84,7 +85,7 @@ func (interceptor) unary(ctx context.Context, req interface{}, info *grpc.UnaryS
 	return resp, err
 }
 
-func (interceptor) streaming(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+func (ic Interceptor) Streaming(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	ctx := stream.Context()
 
 	rdata, has := requestid.RequestDataFromContext(ctx)
@@ -92,8 +93,7 @@ func (interceptor) streaming(srv interface{}, stream grpc.ServerStream, info *gr
 		return handler(srv, stream)
 	}
 
-	zero := prepareLogger(ctx, rdata.RequestID, info.FullMethod)
-	logger := zero.Logger()
+	logger := ic.prepareLogger(rdata.RequestID, info.FullMethod)
 	loggable := !slices.Contains(skipLogging, strings.TrimPrefix(info.FullMethod, "/"))
 
 	if loggable {
@@ -136,11 +136,16 @@ func ParsePeerAddress(p *peer.Peer, md metadata.MD) (string, string) {
 	return peerAddr, originalAddr
 }
 
-func prepareLogger(ctx context.Context, reqid requestid.RequestID, fullMethod string) zerolog.Context {
+func (ic Interceptor) prepareLogger(reqid requestid.RequestID, fullMethod string) zerolog.Logger {
+	zl := Log
+	if ic.Logger != nil {
+		zl = *ic.Logger
+	}
+
 	service, method := nsgrpc.SplitMethodName(fullMethod)
 
-	return Log.With().Str("service", service).Str("method", method).
-		Str("request_id", string(reqid))
+	return zl.With().Str("service", service).Str("method", method).
+		Str("request_id", string(reqid)).Logger()
 }
 
 func makeNewEvent(ctx context.Context, ev *zerolog.Event) *zerolog.Event {
@@ -197,8 +202,8 @@ func single(md metadata.MD, key string) string {
 }
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
-	var interceptor interceptor
-	deps.Interceptors.ForServer(interceptor.unary, interceptor.streaming)
+	var interceptor Interceptor
+	deps.Interceptors.ForServer(interceptor.Unary, interceptor.Streaming)
 	return nil
 }
 
