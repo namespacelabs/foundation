@@ -21,6 +21,7 @@ func NewAuthCmd() *cobra.Command {
 
 	cmd.AddCommand(NewLoginCmd())
 	cmd.AddCommand(NewExchangeGithubTokenCmd())
+	cmd.AddCommand(NewImpersonateTenantCmd())
 	cmd.AddCommand(NewExchangeCircleCITokenCmd())
 	cmd.AddCommand(newExchangeAwsCognitoCmd())
 	cmd.AddCommand(newTrustAwsCognitoCmd())
