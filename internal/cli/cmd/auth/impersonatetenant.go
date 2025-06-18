@@ -25,14 +25,14 @@ func NewImpersonateTenantCmd() *cobra.Command {
 		Hidden: true,
 	}
 
-	identityPool := cmd.Flags().String("identity_pool", "", "UUID of the identity pool.")
+	identityPool := cmd.Flags().String("aws_identity_pool", "", "UUID of the identity pool.")
 	tenantId := cmd.Flags().String("tenant_id", "", "What tenant to authenticate.")
 	partnerId := cmd.Flags().String("partner_id", "", "What partner owns the tenant.")
 	duration := cmd.Flags().Duration("duration", time.Hour, "How long will the impersonation token last.")
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if *identityPool == "" {
-			return fnerrors.Newf("identity_pool is required")
+			return fnerrors.Newf("aws_identity_pool is required")
 		}
 
 		if *tenantId == "" {
