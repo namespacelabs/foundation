@@ -232,6 +232,8 @@ func loadWorkspaceToken(ctx context.Context, target time.Time) (*Token, error) {
 }
 
 func LoadTokenFromPath(ctx context.Context, path string, validAt time.Time) (*Token, error) {
+	fmt.Fprintf(console.Debug(ctx), "Loading tenant token from %q...\n", path)
+
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
