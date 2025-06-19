@@ -45,32 +45,14 @@ func tokenLoc() string {
 	return fmt.Sprintf("token_%s.json", Workspace)
 }
 
+type IssueShortTermFunc func(context.Context, string, time.Duration) (string, error)
+
 type Token struct {
 	path string
 
-	BearerToken  string `json:"bearer_token,omitempty"`
-	SessionToken string `json:"session_token,omitempty"`
-}
+	ReIssue IssueShortTermFunc
 
-// TODO: remove when legacy token.json format is not used anymore.
-func (t *Token) UnmarshalJSON(data []byte) error {
-	var migrateToken struct {
-		BearerToken  string `json:"bearer_token,omitempty"`
-		SessionToken string `json:"session_token,omitempty"`
-		TenantToken  string `json:"tenant_token,omitempty"`
-	}
-
-	if err := json.Unmarshal(data, &migrateToken); err != nil {
-		return err
-	}
-
-	t.BearerToken = migrateToken.BearerToken
-	t.SessionToken = migrateToken.SessionToken
-	if migrateToken.TenantToken != "" {
-		t.BearerToken = migrateToken.TenantToken
-	}
-
-	return nil
+	StoredToken
 }
 
 type TokenClaims struct {
@@ -129,10 +111,10 @@ func parseClaims(ctx context.Context, raw string) (*TokenClaims, error) {
 	return &claims, nil
 }
 
-func (t *Token) IssueToken(ctx context.Context, minDur time.Duration, issueShortTerm func(context.Context, string, time.Duration) (string, error), skipCache bool) (string, error) {
+func (t *Token) IssueToken(ctx context.Context, minDur time.Duration, skipCache bool) (string, error) {
 	if t.SessionToken != "" {
 		if skipCache {
-			return issueShortTerm(ctx, t.SessionToken, minDur)
+			return t.ReIssue(ctx, t.SessionToken, minDur)
 		}
 
 		if t.path != "" {
@@ -166,7 +148,7 @@ func (t *Token) IssueToken(ctx context.Context, minDur time.Duration, issueShort
 			dur = 8 * time.Hour
 		}
 
-		newToken, err := issueShortTerm(ctx, t.SessionToken, dur)
+		newToken, err := t.ReIssue(ctx, t.SessionToken, dur)
 		if err == nil && t.path != "" {
 			cachePath := filepath.Join(filepath.Dir(t.path), "token.cache")
 			if err := os.WriteFile(cachePath, []byte(newToken), 0600); err != nil {
@@ -191,10 +173,36 @@ func (t *Token) ExchangeForSessionClientCert(ctx context.Context, publicKeyPem s
 }
 
 func StoreTenantToken(token string) error {
-	return StoreToken(Token{BearerToken: token})
+	return StoreToken(StoredToken{BearerToken: token})
 }
 
-func StoreToken(token Token) error {
+type StoredToken struct {
+	BearerToken  string `json:"bearer_token,omitempty"`
+	SessionToken string `json:"session_token,omitempty"`
+}
+
+// TODO: remove when legacy token.json format is not used anymore.
+func (t *StoredToken) UnmarshalJSON(data []byte) error {
+	var migrateToken struct {
+		BearerToken  string `json:"bearer_token,omitempty"`
+		SessionToken string `json:"session_token,omitempty"`
+		TenantToken  string `json:"tenant_token,omitempty"`
+	}
+
+	if err := json.Unmarshal(data, &migrateToken); err != nil {
+		return err
+	}
+
+	t.BearerToken = migrateToken.BearerToken
+	t.SessionToken = migrateToken.SessionToken
+	if migrateToken.TenantToken != "" {
+		t.BearerToken = migrateToken.TenantToken
+	}
+
+	return nil
+}
+
+func StoreToken(token StoredToken) error {
 	data, err := json.Marshal(token)
 	if err != nil {
 		return err
@@ -212,14 +220,14 @@ func StoreToken(token Token) error {
 	return nil
 }
 
-func loadWorkspaceToken(ctx context.Context, target time.Time) (*Token, error) {
+func loadWorkspaceToken(ctx context.Context, issue IssueShortTermFunc, target time.Time) (*Token, error) {
 	dir, err := dirs.Config()
 	if err != nil {
 		return nil, err
 	}
 
 	p := filepath.Join(dir, tokenLoc())
-	token, err := LoadTokenFromPath(ctx, p, target)
+	token, err := LoadTokenFromPath(ctx, issue, p, target)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil, fnerrors.ReauthError("not logged in")
@@ -231,7 +239,7 @@ func loadWorkspaceToken(ctx context.Context, target time.Time) (*Token, error) {
 	return token, nil
 }
 
-func LoadTokenFromPath(ctx context.Context, path string, validAt time.Time) (*Token, error) {
+func LoadTokenFromPath(ctx context.Context, issue IssueShortTermFunc, path string, validAt time.Time) (*Token, error) {
 	fmt.Fprintf(console.Debug(ctx), "Loading tenant token from %q...\n", path)
 
 	data, err := os.ReadFile(path)
@@ -239,8 +247,8 @@ func LoadTokenFromPath(ctx context.Context, path string, validAt time.Time) (*To
 		return nil, err
 	}
 
-	token := &Token{path: path}
-	if err := json.Unmarshal(data, token); err != nil {
+	token := &Token{path: path, ReIssue: issue}
+	if err := json.Unmarshal(data, &token.StoredToken); err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to unmarshal cached tenant token: %v\n", err)
 		return nil, fnerrors.ReauthError("not logged in")
 	}
@@ -265,20 +273,20 @@ func LoadTokenFromPath(ctx context.Context, path string, validAt time.Time) (*To
 	return token, nil
 }
 
-func LoadTenantToken(ctx context.Context) (*Token, error) {
-	return loadWorkspaceToken(ctx, time.Now())
+func LoadTenantToken(ctx context.Context, issue IssueShortTermFunc) (*Token, error) {
+	return loadWorkspaceToken(ctx, issue, time.Now())
 }
 
-func EnsureTokenValidAt(ctx context.Context, target time.Time) error {
-	_, err := loadWorkspaceToken(ctx, target)
+func EnsureTokenValidAt(ctx context.Context, issue IssueShortTermFunc, target time.Time) error {
+	_, err := loadWorkspaceToken(ctx, issue, target)
 	return err
 }
 
-func FetchTokenFromSpec(ctx context.Context, spec string) (*Token, error) {
+func FetchTokenFromSpec(ctx context.Context, issue IssueShortTermFunc, spec string) (*Token, error) {
 	t, err := metadata.FetchTokenFromSpec(ctx, spec)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Token{BearerToken: t}, nil
+	return &Token{StoredToken: StoredToken{BearerToken: t}, ReIssue: issue}, nil
 }

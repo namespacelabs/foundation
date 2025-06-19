@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -63,19 +62,9 @@ func NewGenerateTokenCmd() *cobra.Command {
 			return err
 		}
 
-		token := ""
-
-		// If non-session token
-		if nakedToken, ok := tok.(*auth.Token); ok {
-			token = nakedToken.BearerToken
-		}
-
-		if tok.IsSessionToken() {
-			// Overwrite if it's session token
-			token, err = tok.IssueToken(ctx, *duration, fnapi.IssueTenantTokenFromSession, false)
-			if err != nil {
-				return err
-			}
+		token, err := tok.IssueToken(ctx, *duration, false)
+		if err != nil {
+			return err
 		}
 
 		if *outputPath != "" {

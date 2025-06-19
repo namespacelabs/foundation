@@ -48,7 +48,7 @@ func NewCheckLoginCmd() *cobra.Command {
 
 		// For session tokens we need to try issuing a tenant token
 		// regardless of expiry, because the session could have been revoked.
-		_, err = tok.IssueToken(ctx, dur, fnapi.IssueTenantTokenFromSession, true)
+		_, err = tok.IssueToken(ctx, dur, true)
 		return err
 	})
 }
