@@ -10,10 +10,12 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/internal/auth"
+	localauth "namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/integrations/api/iam"
+	"namespacelabs.dev/integrations/auth"
 	"namespacelabs.dev/integrations/auth/aws"
 )
 
@@ -48,7 +50,12 @@ func NewImpersonateTenantCmd() *cobra.Command {
 			return err
 		}
 
-		token, err := tokenSource.IssueToken(ctx, *duration, false)
+		iam, err := iam.NewClient(ctx, tokenSource)
+		if err != nil {
+			return err
+		}
+
+		token, err := auth.TenantTokenSource(iam, *tenantId).IssueToken(ctx, *duration, false)
 		if err != nil {
 			return err
 		}
@@ -57,6 +64,6 @@ func NewImpersonateTenantCmd() *cobra.Command {
 
 		fmt.Fprintf(stdout, "\nYou are now impersonating %q, for %v.\n", *tenantId, *duration)
 
-		return auth.StoreTenantToken(token)
+		return localauth.StoreTenantToken(token)
 	})
 }
