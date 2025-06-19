@@ -60,7 +60,7 @@ func NewLoginCmd() *cobra.Command {
 			}
 
 			if c.SessionToken != "" {
-				if err := auth.StoreToken(auth.Token{SessionToken: c.SessionToken}); err != nil {
+				if err := auth.StoreToken(auth.StoredToken{SessionToken: c.SessionToken}); err != nil {
 					return err
 				}
 

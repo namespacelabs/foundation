@@ -13,10 +13,8 @@ import (
 	localauth "namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/integrations/api/iam"
-	"namespacelabs.dev/integrations/auth"
-	"namespacelabs.dev/integrations/auth/aws"
 )
 
 func NewImpersonateTenantCmd() *cobra.Command {
@@ -45,17 +43,10 @@ func NewImpersonateTenantCmd() *cobra.Command {
 			return fnerrors.Newf("partner_id is required")
 		}
 
-		tokenSource, err := aws.Federation(ctx, *identityPool, *partnerId)
-		if err != nil {
-			return err
-		}
-
-		iam, err := iam.NewClient(ctx, tokenSource)
-		if err != nil {
-			return err
-		}
-
-		token, err := auth.TenantTokenSource(iam, *tenantId).IssueToken(ctx, *duration, false)
+		tok, err := fnapi.ImpersonateFromSpec(ctx, fnapi.ImpersonationSpec{
+			PartnerId:       *partnerId,
+			AWSIdentityPool: *identityPool,
+		}, *tenantId)
 		if err != nil {
 			return err
 		}
@@ -64,6 +55,6 @@ func NewImpersonateTenantCmd() *cobra.Command {
 
 		fmt.Fprintf(stdout, "\nYou are now impersonating %q, for %v.\n", *tenantId, *duration)
 
-		return localauth.StoreTenantToken(token)
+		return localauth.StoreToken(tok.StoredToken)
 	})
 }
