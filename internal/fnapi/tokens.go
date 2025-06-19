@@ -30,15 +30,6 @@ type Token interface {
 	ExchangeForSessionClientCert(ctx context.Context, publicKeyPem string, issueFromSession localauth.IssueCertFunc) (string, error)
 }
 
-func BearerToken(ctx context.Context, t Token, skipCache bool) (string, error) {
-	raw, err := t.IssueToken(ctx, 5*time.Minute, skipCache)
-	if err != nil {
-		return "", err
-	}
-
-	return raw, nil
-}
-
 type ResolvedToken struct {
 	BearerToken string
 
@@ -110,10 +101,10 @@ func ImpersonateFromSpec(ctx context.Context, spec ImpersonationSpec, tenantId s
 	}
 
 	return &localauth.Token{
-		ReIssue: func(ctx context.Context, _ string, dur time.Duration) (string, error) {
+		ReIssue: func(ctx context.Context, _ *localauth.Token, dur time.Duration) (string, error) {
 			return src.IssueToken(ctx, dur, false)
 		},
-		StoredToken: localauth.StoredToken{BearerToken: token},
+		StoredToken: localauth.StoredToken{TenantToken: token},
 	}, nil
 }
 
@@ -132,7 +123,7 @@ func IssueBearerTokenFromToken(ctx context.Context, tok Token) (ResolvedToken, e
 		return ResolvedToken{}, err
 	}
 
-	bt, err := BearerToken(ctx, tok, false)
+	bt, err := tok.IssueToken(ctx, 15*time.Minute, false)
 	if err != nil {
 		return ResolvedToken{}, err
 	}
