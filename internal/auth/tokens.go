@@ -45,7 +45,7 @@ func tokenLoc() string {
 	return fmt.Sprintf("token_%s.json", Workspace)
 }
 
-type IssueShortTermFunc func(context.Context, string, time.Duration) (string, error)
+type IssueShortTermFunc func(context.Context, *Token, time.Duration) (string, error)
 
 type Token struct {
 	path string
@@ -72,13 +72,26 @@ func (t *Token) Claims(ctx context.Context) (*TokenClaims, error) {
 		return parseClaims(ctx, strings.TrimPrefix(t.SessionToken, "st_"))
 	}
 
-	switch {
-	case strings.HasPrefix(t.BearerToken, "nsct_"):
-		return parseClaims(ctx, strings.TrimPrefix(t.BearerToken, "nsct_"))
-	case strings.HasPrefix(t.BearerToken, "nscw_"):
-		return parseClaims(ctx, strings.TrimPrefix(t.BearerToken, "nscw_"))
-	default:
+	claims, err := parseToken(ctx, t.TenantToken)
+	if err != nil {
+		return nil, err
+	}
+
+	if claims == nil {
 		return nil, fnerrors.ReauthError("not logged in")
+	}
+
+	return claims, nil
+}
+
+func parseToken(ctx context.Context, token string) (*TokenClaims, error) {
+	switch {
+	case strings.HasPrefix(token, "nsct_"):
+		return parseClaims(ctx, strings.TrimPrefix(token, "nsct_"))
+	case strings.HasPrefix(token, "nscw_"):
+		return parseClaims(ctx, strings.TrimPrefix(token, "nscw_"))
+	default:
+		return nil, nil
 	}
 }
 
@@ -112,54 +125,70 @@ func parseClaims(ctx context.Context, raw string) (*TokenClaims, error) {
 }
 
 func (t *Token) IssueToken(ctx context.Context, minDur time.Duration, skipCache bool) (string, error) {
-	if t.SessionToken != "" {
-		if skipCache {
-			return t.ReIssue(ctx, t.SessionToken, minDur)
+	if t.TenantToken != "" && !skipCache {
+		claims, err := parseToken(ctx, t.TenantToken)
+		if err != nil {
+			return "", err
 		}
 
-		if t.path != "" {
-			cachePath := filepath.Join(filepath.Dir(t.path), "token.cache")
-			cacheContents, err := os.ReadFile(cachePath)
-			if err != nil {
-				if !os.IsNotExist(err) {
-					return "", err
-				}
-			} else {
-				cacheClaims, err := parseClaims(ctx, strings.TrimPrefix(string(cacheContents), "nsct_"))
-				if err != nil {
-					return "", err
-				}
+		if claims != nil {
+			if claims.VerifyExpiresAt(time.Now().Add(minDur), true) {
+				fmt.Fprintf(console.Debug(ctx), "Existing tenant token meets minimum duration %v, re-using...\n", minDur)
 
+				return t.TenantToken, nil
+			}
+		}
+	}
+
+	if t.ReIssue == nil {
+		return "", fnerrors.ReauthError("tenant token is expired, and can't re-issue a new one")
+	}
+
+	if skipCache {
+		return t.ReIssue(ctx, t, minDur)
+	}
+
+	if t.path != "" {
+		cachePath := filepath.Join(filepath.Dir(t.path), "token.cache")
+		cacheContents, err := os.ReadFile(cachePath)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				return "", err
+			}
+		} else {
+			claims, err := parseToken(ctx, string(cacheContents))
+			if err != nil {
+				return "", err
+			}
+
+			if claims != nil {
 				sessionClaims, err := t.Claims(ctx)
 				if err != nil {
 					return "", err
 				}
 
-				if cacheClaims.TenantID == sessionClaims.TenantID {
-					if cacheClaims.VerifyExpiresAt(time.Now().Add(minDur), true) {
+				if claims.TenantID == sessionClaims.TenantID {
+					fmt.Fprintf(console.Debug(ctx), "Re-loaded tenant token from cache (expires at %v).\n", claims.ExpiresAt.Time)
+
+					if claims.VerifyExpiresAt(time.Now().Add(minDur), true) {
 						return string(cacheContents), nil
 					}
 				}
 			}
 		}
-
-		dur := 2 * minDur
-		if dur > 8*time.Hour {
-			dur = 8 * time.Hour
-		}
-
-		newToken, err := t.ReIssue(ctx, t.SessionToken, dur)
-		if err == nil && t.path != "" {
-			cachePath := filepath.Join(filepath.Dir(t.path), "token.cache")
-			if err := os.WriteFile(cachePath, []byte(newToken), 0600); err != nil {
-				fmt.Fprintf(console.Warnings(ctx), "Failed to write token cache: %v\n", err)
-			}
-		}
-
-		return newToken, err
 	}
 
-	return t.BearerToken, nil
+	dur := min(2*minDur, 8*time.Hour)
+
+	newToken, err := t.ReIssue(ctx, t, dur)
+	if err == nil && t.path != "" {
+		cachePath := filepath.Join(filepath.Dir(t.path), "token.cache")
+		if err := os.WriteFile(cachePath, []byte(newToken), 0600); err != nil {
+			fmt.Fprintf(console.Warnings(ctx), "Failed to write token cache: %v\n", err)
+		}
+	}
+
+	return newToken, err
 }
 
 type IssueCertFunc func(context.Context, string, string) (string, error)
@@ -173,11 +202,11 @@ func (t *Token) ExchangeForSessionClientCert(ctx context.Context, publicKeyPem s
 }
 
 func StoreTenantToken(token string) error {
-	return StoreToken(StoredToken{BearerToken: token})
+	return StoreToken(StoredToken{TenantToken: token})
 }
 
 type StoredToken struct {
-	BearerToken  string `json:"bearer_token,omitempty"`
+	TenantToken  string `json:"bearer_token,omitempty"`
 	SessionToken string `json:"session_token,omitempty"`
 }
 
@@ -193,10 +222,10 @@ func (t *StoredToken) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	t.BearerToken = migrateToken.BearerToken
+	t.TenantToken = migrateToken.BearerToken
 	t.SessionToken = migrateToken.SessionToken
 	if migrateToken.TenantToken != "" {
-		t.BearerToken = migrateToken.TenantToken
+		t.TenantToken = migrateToken.TenantToken
 	}
 
 	return nil
@@ -240,7 +269,7 @@ func loadWorkspaceToken(ctx context.Context, issue IssueShortTermFunc, target ti
 }
 
 func LoadTokenFromPath(ctx context.Context, issue IssueShortTermFunc, path string, validAt time.Time) (*Token, error) {
-	fmt.Fprintf(console.Debug(ctx), "Loading tenant token from %q...\n", path)
+	fmt.Fprintf(console.Debug(ctx), "Loading credentials from %q...\n", path)
 
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -263,12 +292,14 @@ func LoadTokenFromPath(ctx context.Context, issue IssueShortTermFunc, path strin
 			return nil, fnerrors.ReauthError("session expired")
 		}
 
-		if strings.HasPrefix(token.BearerToken, "nscw_") {
+		if strings.HasPrefix(token.TenantToken, "nscw_") {
 			return nil, fnerrors.InternalError("workload token expired")
 		}
 
 		return nil, fnerrors.ReauthError("login token expired")
 	}
+
+	fmt.Fprintf(console.Debug(ctx), "Credentials valid until %v.\n", claims.ExpiresAt.Time)
 
 	return token, nil
 }
@@ -288,5 +319,5 @@ func FetchTokenFromSpec(ctx context.Context, issue IssueShortTermFunc, spec stri
 		return nil, err
 	}
 
-	return &Token{StoredToken: StoredToken{BearerToken: t}, ReIssue: issue}, nil
+	return &Token{StoredToken: StoredToken{TenantToken: t}, ReIssue: issue}, nil
 }

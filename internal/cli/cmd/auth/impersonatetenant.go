@@ -51,10 +51,16 @@ func NewImpersonateTenantCmd() *cobra.Command {
 			return err
 		}
 
+		// Make sure the token returned has the correct final duration.
+		finalToken, err := tok.IssueToken(ctx, *duration, true)
+		if err != nil {
+			return err
+		}
+
 		stdout := console.Stdout(ctx)
 
 		fmt.Fprintf(stdout, "\nYou are now impersonating %q, for %v.\n", *tenantId, *duration)
 
-		return localauth.StoreToken(tok.StoredToken)
+		return localauth.StoreToken(localauth.StoredToken{TenantToken: finalToken})
 	})
 }

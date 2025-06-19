@@ -64,7 +64,7 @@ func DialEndpointWithToken(ctx context.Context, token fnapi.Token, endpoint stri
 		HandshakeTimeout: 15 * time.Second,
 	}
 
-	bt, err := fnapi.BearerToken(ctx, token, true)
+	bt, err := token.IssueToken(ctx, 4*time.Hour, false)
 	if err != nil {
 		return nil, err
 	}

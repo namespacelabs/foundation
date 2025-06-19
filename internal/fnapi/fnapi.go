@@ -26,6 +26,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/versions"
@@ -79,7 +80,11 @@ func AuthenticatedCall(ctx context.Context, endpoint ResolveFunc, method string,
 	}.Do(ctx, req, endpoint, handle)
 }
 
-func IssueTenantTokenFromSession(ctx context.Context, sessionToken string, duration time.Duration) (string, error) {
+func IssueTenantTokenFromSession(ctx context.Context, t *auth.Token, duration time.Duration) (string, error) {
+	if t == nil || t.SessionToken == "" {
+		return "", fnerrors.New("missing session token to issue tenant token")
+	}
+
 	req := IssueTenantTokenFromSessionRequest{
 		TokenDurationSecs: int64(duration.Seconds()),
 	}
@@ -89,7 +94,7 @@ func IssueTenantTokenFromSession(ctx context.Context, sessionToken string, durat
 	if err := (Call[IssueTenantTokenFromSessionRequest]{
 		Method: "nsl.signin.SigninService/IssueTenantTokenFromSession",
 		IssueBearerToken: func(ctx context.Context) (ResolvedToken, error) {
-			return ResolvedToken{BearerToken: sessionToken}, nil
+			return ResolvedToken{BearerToken: t.SessionToken}, nil
 		},
 		ScrubRequest: func(req *IssueTenantTokenFromSessionRequest) {
 			if req.SessionToken != "" {
