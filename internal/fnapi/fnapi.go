@@ -81,8 +81,13 @@ func AuthenticatedCall(ctx context.Context, endpoint ResolveFunc, method string,
 }
 
 func IssueTenantTokenFromSession(ctx context.Context, t *auth.Token, duration time.Duration) (string, error) {
-	if t == nil || t.SessionToken == "" {
-		return "", fnerrors.New("missing session token to issue tenant token")
+	if t == nil {
+		return "", fnerrors.New("can't issue tenant token")
+	}
+
+	if t.SessionToken == "" {
+		// Retain old functionality.
+		return t.TenantToken, nil
 	}
 
 	req := IssueTenantTokenFromSessionRequest{
