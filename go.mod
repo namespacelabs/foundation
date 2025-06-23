@@ -1,6 +1,6 @@
 module namespacelabs.dev/foundation
 
-go 1.24.1
+go 1.24.4
 
 require (
 	buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250327002427-a1c59b2abe12.2
