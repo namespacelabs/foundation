@@ -37,7 +37,7 @@ func NewRunCmd() *cobra.Command {
 	requestedName := run.Flags().String("name", "", "If no name is specified, one is generated.")
 	exportedPorts := run.Flags().Int32SliceP("publish", "p", nil, "Publish the specified ports.")
 	output := run.Flags().StringP("output", "o", "plain", "One of plain or json.")
-	on := run.Flags().String("on", "", "Run the container in the specified container, instead of creating a new one.")
+	on := run.Flags().String("on", "", "Run the container in the specified instance, instead of creating a new one.")
 	env := run.Flags().StringToStringP("env", "e", map[string]string{}, "Pass these additional environment variables to the container.")
 	devmode := run.Flags().Bool("development", false, "If true, enables a few development facilities, including making containers optional.")
 	wait := run.Flags().Bool("wait", false, "Wait for the container to start running.")
