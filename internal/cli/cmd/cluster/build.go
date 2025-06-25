@@ -74,6 +74,8 @@ func NewBuildCmd() *cobra.Command {
 	buildArg := cmd.Flags().StringSlice("build-arg", nil, "Pass build arguments to the build.")
 	names := cmd.Flags().StringSliceP("name", "n", nil, "Provide a list of name tags for the image in nscr.io Workspace registry")
 	secrets := cmd.Flags().StringArray("secret", nil, `Secret to expose to the build (format: "id=mysecret[,src=/local/secret]")`)
+	useServerSideProxy := cmd.Flags().Bool("use_server_side_proxy", false, "If set, client is setup to use transparent mTLS server-side proxy instead of websockets.")
+	_ = cmd.Flags().MarkHidden("use_server_side_proxy")
 
 	outputLocal := cmd.Flags().String("output-local", "", "If set, outputs the build results to the specified directory.")
 
@@ -249,7 +251,7 @@ func NewBuildCmd() *cobra.Command {
 			fragments = append(fragments, bf)
 		}
 
-		results, err := StartBuilds(ctx, fragments, WireBuilder)
+		results, err := StartBuilds(ctx, fragments, MakeWireBuilder(*useServerSideProxy))
 		if err != nil {
 			return err
 		}
@@ -525,21 +527,73 @@ func makeDockerfileState(contents []byte) llb.State {
 		File(llb.Mkfile("/Dockerfile", 0644, contents))
 }
 
-func WireBuilder(ctx context.Context, p specs.Platform) (*client.Client, error) {
-	sink := tasks.SinkFrom(ctx)
+func MakeWireBuilder(useServerSideProxy bool) func(context.Context, specs.Platform) (*client.Client, error) {
+	return func(ctx context.Context, p specs.Platform) (*client.Client, error) {
+		sink := tasks.SinkFrom(ctx)
 
-	bp, err := NewBuildCluster(ctx, platform.FormatPlatform(p), "")
+		bp, err := NewBuildCluster(ctx, platform.FormatPlatform(p), "")
+		if err != nil {
+			return nil, err
+		}
+
+		// Check if this is a remote build cluster that supports mTLS
+		if useServerSideProxy {
+			if remoteBp, ok := bp.(*RemoteBuildClusterInstance); ok {
+				// Use mTLS connection for remote build clusters
+				cli, err := createMTLSBuildKitClient(ctx, remoteBp)
+				if err != nil {
+					return nil, err
+				}
+				return cli, nil
+			}
+		}
+
+		// Fallback to WebSocket connection for backward compatibility
+		cli, err := client.New(ctx, "buildkitd", client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			conn, _, err := bp.NewConn(tasks.WithSink(ctx, sink))
+			return conn, err
+		}))
+		if err != nil {
+			return nil, err
+		}
+
+		return cli, nil
+	}
+}
+
+func createMTLSBuildKitClient(ctx context.Context, remoteBp *RemoteBuildClusterInstance) (*client.Client, error) {
+	// Get builder configuration with certificates
+	builderConfig, err := getBuilderConfigWithCerts(ctx, remoteBp.platform)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get builder configuration: %w", err)
 	}
 
-	cli, err := client.New(ctx, "buildkitd", client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
-		conn, _, err := bp.NewConn(tasks.WithSink(ctx, sink))
-		return conn, err
-	}))
+	// Create BuildKit client with mTLS credentials
+	cli, err := client.New(ctx, builderConfig.FullBuildkitEndpoint,
+		client.WithCredentials(builderConfig.ClientCertPath, builderConfig.ClientKeyPath),
+		client.WithServerConfig("", builderConfig.ServerCAPath))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create BuildKit client with mTLS: %w", err)
 	}
 
 	return cli, nil
+}
+
+func getBuilderConfigWithCerts(ctx context.Context, platform api.BuildPlatform) (BuilderConfig, error) {
+	// Get state directory for storing certificates
+	stateDir, err := DetermineStateDir("", BuildkitProxyPath)
+	if err != nil {
+		return BuilderConfig{}, fmt.Errorf("failed to get state directory: %w", err)
+	}
+
+	builderConfigs, err := PrepareServerSideBuildxProxy(ctx, stateDir, []api.BuildPlatform{platform}, true, "")
+	if err != nil {
+		return BuilderConfig{}, fmt.Errorf("failed to prepare certificates: %w", err)
+	}
+
+	if len(builderConfigs) == 0 {
+		return BuilderConfig{}, fmt.Errorf("no builder configuration returned")
+	}
+
+	return builderConfigs[0], nil
 }

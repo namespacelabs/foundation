@@ -68,7 +68,7 @@ func NewBaseImageBuildCmd() *cobra.Command {
 			fragments = append(fragments, bf)
 		}
 
-		if _, err := cluster.StartBuilds(ctx, fragments, cluster.WireBuilder); err != nil {
+		if _, err := cluster.StartBuilds(ctx, fragments, cluster.MakeWireBuilder(false)); err != nil {
 			return err
 		}
 
