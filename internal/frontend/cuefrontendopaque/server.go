@@ -29,15 +29,18 @@ var (
 		"extensions", "nodeSelector", "replicas", "pod_anti_affinity", "update_strategy",
 		"spread_constraints", "listeners",
 		// This is needed for the "spec" in server templates. This can't be a private field, otherwise it can't be overridden.
-		"spec"}
+		"spec",
+	}
 
 	serverFields = append(slices.Clone(extensionFields),
-		"name", "class", "integration", "image", "imageFrom", "unstable_naming", "spec")
+		"id", "name", "class", "integration", "image", "imageFrom", "unstable_naming", "spec",
+	)
 )
 
 type cueServer struct {
 	Name  string `json:"name"`
 	Class string `json:"class"`
+	ID    string `json:"id"`
 
 	cueServerExtension
 }
@@ -106,6 +109,7 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		Name:         bits.Name,
 		Framework:    schema.Framework_OPAQUE,
 		RunByDefault: true,
+		Id:           bits.ID,
 		Self:         fragment,
 	}
 
