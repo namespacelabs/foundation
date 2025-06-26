@@ -38,6 +38,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/metadata"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
 func PrepareServerSideBuildxProxy(ctx context.Context, stateDir string, platforms []api.BuildPlatform, createAtStartup bool, builderTag string) ([]BuilderConfig, error) {
@@ -359,6 +360,10 @@ func writeAtomicFile(content []byte, targetpath string, mode os.FileMode) error 
 	dir, file := filepath.Split(targetpath)
 	if dir == "" {
 		dir = "."
+	}
+
+	if _, err := dirs.Ensure(dir, nil); err != nil {
+		return err
 	}
 
 	tmpfile, err := os.CreateTemp(dir, file)
