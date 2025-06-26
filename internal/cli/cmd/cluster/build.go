@@ -74,7 +74,7 @@ func NewBuildCmd() *cobra.Command {
 	buildArg := cmd.Flags().StringSlice("build-arg", nil, "Pass build arguments to the build.")
 	names := cmd.Flags().StringSliceP("name", "n", nil, "Provide a list of name tags for the image in nscr.io Workspace registry")
 	secrets := cmd.Flags().StringArray("secret", nil, `Secret to expose to the build (format: "id=mysecret[,src=/local/secret]")`)
-	useServerSideProxy := cmd.Flags().Bool("use_server_side_proxy", false, "If set, client is setup to use transparent mTLS server-side proxy instead of websockets.")
+	useServerSideProxy := cmd.Flags().Bool("use_server_side_proxy", true, "If set, client is setup to use transparent mTLS server-side proxy instead of websockets.")
 	_ = cmd.Flags().MarkHidden("use_server_side_proxy")
 
 	outputLocal := cmd.Flags().String("output-local", "", "If set, outputs the build results to the specified directory.")
