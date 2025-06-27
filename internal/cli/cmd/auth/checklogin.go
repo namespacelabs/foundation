@@ -17,10 +17,9 @@ import (
 
 func NewCheckLoginCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "check-login",
-		Short:  "Return a successful exit code if the caller is still authenticated to Namespace.",
-		Args:   cobra.NoArgs,
-		Hidden: true,
+		Use:   "check-login",
+		Short: "Return a successful exit code if the caller is still authenticated to Namespace.",
+		Args:  cobra.NoArgs,
 	}
 
 	var dur time.Duration
