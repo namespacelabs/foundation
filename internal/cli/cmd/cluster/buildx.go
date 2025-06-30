@@ -78,6 +78,8 @@ func newSetupBuildxCmd() *cobra.Command {
 	_ = cmd.Flags().MarkHidden("default_load")
 	useServerSideProxy := cmd.Flags().Bool("use_server_side_proxy", true, "If set, buildx is setup to use transparent server-side proxy powered by Namespace")
 	_ = cmd.Flags().MarkHidden("use_server_side_proxy")
+	experimental := cmd.Flags().String("experimental", "", "A set of experimental features to be passed at construction time.")
+	_ = cmd.Flags().MarkHidden("experimental")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *debugDir != "" && !*background {
@@ -120,7 +122,11 @@ func newSetupBuildxCmd() *cobra.Command {
 		}
 
 		if *useServerSideProxy {
-			if err := setupServerSideBuildxProxy(ctx, state, *name, *use, *defaultLoad, dockerCli, available, *createAtStartup, *tag); err != nil {
+			if err := setupServerSideBuildxProxy(ctx, state, *name, *use, *defaultLoad, dockerCli, available, api.BuilderConfiguration{
+				SkipPrespawn: *createAtStartup,
+				Name:         *tag,
+				Experimental: *experimental,
+			}); err != nil {
 				return err
 			}
 
