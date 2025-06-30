@@ -586,7 +586,7 @@ func getBuilderConfigWithCerts(ctx context.Context, platform api.BuildPlatform) 
 		return BuilderConfig{}, fmt.Errorf("failed to get state directory: %w", err)
 	}
 
-	builderConfigs, err := PrepareServerSideBuildxProxy(ctx, stateDir, []api.BuildPlatform{platform}, true, "")
+	builderConfigs, err := PrepareServerSideBuildxProxy(ctx, stateDir, []api.BuildPlatform{platform}, api.BuilderConfiguration{})
 	if err != nil {
 		return BuilderConfig{}, fmt.Errorf("failed to prepare certificates: %w", err)
 	}
