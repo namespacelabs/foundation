@@ -3,8 +3,8 @@ module namespacelabs.dev/foundation
 go 1.24.4
 
 require (
-	buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250327002427-a1c59b2abe12.2
-	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.6-20250331121718-98a5ed3e2bdc.1
+	buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250630144806-55d9b0f7f34a.2
+	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.6-20250630144806-55d9b0f7f34a.1
 	cloud.google.com/go/artifactregistry v1.14.7
 	cloud.google.com/go/container v1.31.0
 	cuelang.org/go v0.10.0

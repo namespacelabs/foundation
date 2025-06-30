@@ -182,7 +182,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 			return nil, fnerrors.InternalError("failed to ensure state dir: %v", err)
 		}
 
-		builderConfigs, err := cluster.PrepareServerSideBuildxProxy(ctx, stateDir, []api.BuildPlatform{parsedPlatform}, true, "")
+		builderConfigs, err := cluster.PrepareServerSideBuildxProxy(ctx, stateDir, []api.BuildPlatform{parsedPlatform}, api.BuilderConfiguration{})
 		if err != nil {
 			return nil, err
 		}

@@ -41,7 +41,7 @@ import (
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
-func PrepareServerSideBuildxProxy(ctx context.Context, stateDir string, platforms []api.BuildPlatform, createAtStartup bool, builderTag string) ([]BuilderConfig, error) {
+func PrepareServerSideBuildxProxy(ctx context.Context, stateDir string, platforms []api.BuildPlatform, conf api.BuilderConfiguration) ([]BuilderConfig, error) {
 	credPaths, credContents, err := makeClientCertificate(ctx)
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func PrepareServerSideBuildxProxy(ctx context.Context, stateDir string, platform
 	serverBuilderConfigs := []*builderv1beta.GetBuilderConfigurationResponse{}
 	for _, plat := range platforms {
 		// Download the builder config for this platform
-		resp, err := api.GetBuilderConfiguration(ctx, plat, createAtStartup, builderTag)
+		resp, err := api.GetBuilderConfiguration(ctx, plat, conf)
 		if err != nil {
 			return nil, err
 		}
@@ -181,8 +181,8 @@ func CreateGrpcClientConn(bc BuilderConfig) (*grpc.ClientConn, error) {
 	return cl, nil
 }
 
-func setupServerSideBuildxProxy(ctx context.Context, stateDir, builderName string, use, defaultLoad bool, dockerCli *command.DockerCli, platforms []api.BuildPlatform, createAtStartup bool, builderTag string) error {
-	builderConfigs, err := PrepareServerSideBuildxProxy(ctx, stateDir, platforms, createAtStartup, builderTag)
+func setupServerSideBuildxProxy(ctx context.Context, stateDir, builderName string, use, defaultLoad bool, dockerCli *command.DockerCli, platforms []api.BuildPlatform, conf api.BuilderConfiguration) error {
+	builderConfigs, err := PrepareServerSideBuildxProxy(ctx, stateDir, platforms, conf)
 	if err != nil {
 		return err
 	}
