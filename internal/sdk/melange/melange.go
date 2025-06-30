@@ -20,35 +20,35 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-const version = "0.19.4"
+const version = "0.28.0"
 
 var Pins = map[string]artifacts.Reference{
 	"linux/amd64": {
 		URL: fmt.Sprintf("https://github.com/chainguard-dev/melange/releases/download/v%s/melange_%s_linux_amd64.tar.gz", version, version),
 		Digest: schema.Digest{
 			Algorithm: "sha256",
-			Hex:       "940df40fd759b50c9426150496a83a6eff48ef864bd790eeb8b27d3e9bbcb5ff",
+			Hex:       "6941deb77c43813007a126250ad43f1d52296ae27a523cc7d064d2772bd21653",
 		},
 	},
 	"linux/arm64": {
 		URL: fmt.Sprintf("https://github.com/chainguard-dev/melange/releases/download/v%s/melange_%s_linux_arm64.tar.gz", version, version),
 		Digest: schema.Digest{
 			Algorithm: "sha256",
-			Hex:       "f1da4af66164ba9ba9aa83a90fe6080b1800838f2cadc2dc49bc49d6bc266884",
+			Hex:       "a848a837d49668fc1cca404e158b7d6d05648827b802eebc34de14f6ade7dfb0",
 		},
 	},
 	"darwin/arm64": {
 		URL: fmt.Sprintf("https://github.com/chainguard-dev/melange/releases/download/v%s/melange_%s_darwin_arm64.tar.gz", version, version),
 		Digest: schema.Digest{
 			Algorithm: "sha256",
-			Hex:       "9a511cb67618f6782dfb29a44b5ed47a44b184c3ea783e13b418b22f56c696b4",
+			Hex:       "0e13f30e08fac51c0b3048f210bbcb1993f5cb4343822f7063c7279c154d802f",
 		},
 	},
 	"darwin/amd64": {
 		URL: fmt.Sprintf("https://github.com/chainguard-dev/melange/releases/download/v%s/melange_%s_darwin_amd64.tar.gz", version, version),
 		Digest: schema.Digest{
 			Algorithm: "sha256",
-			Hex:       "f3306ba66f9f4d83947ecf0b05ae52d2d75a8cfca9e470ad8a4b83430a889c2b",
+			Hex:       "e488edc9e258d7f4628f0cee5bc115c539dccb8741cc8a3b961613459b6dad8c",
 		},
 	},
 }
