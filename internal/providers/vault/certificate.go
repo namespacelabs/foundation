@@ -13,6 +13,7 @@ import (
 	vaultclient "github.com/hashicorp/vault-client-go"
 	"github.com/hashicorp/vault-client-go/schema"
 	"namespacelabs.dev/foundation/framework/secrets"
+	"namespacelabs.dev/foundation/framework/security/tlsbundle"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -91,7 +92,7 @@ func issueCertificate(ctx context.Context, vaultClient *vaultclient.Client, pkiM
 				return nil, fnerrors.InvocationError("vault", "failed to issue a certificate: %w", err)
 			}
 
-			data, err := vault.TlsBundle{
+			data, err := tlsbundle.TlsBundle{
 				PrivateKeyPem:  issueResp.Data.PrivateKey,
 				CertificatePem: issueResp.Data.Certificate,
 				CaChainPem:     issueResp.Data.CaChain,

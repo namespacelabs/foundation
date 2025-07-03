@@ -2,14 +2,18 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package vault_test
+package tlsbundle_test
 
 import (
+	"embed"
 	"os"
 	"testing"
 
-	"namespacelabs.dev/foundation/universe/vault"
+	"namespacelabs.dev/foundation/framework/security/tlsbundle"
 )
+
+//go:embed testdata/*.json
+var lib embed.FS
 
 func TestParseTlsBundle(t *testing.T) {
 	if tb := testBundle(t); tb == nil {
@@ -20,7 +24,7 @@ func TestParseTlsBundle(t *testing.T) {
 func TestParseTlsBundleFromEnv(t *testing.T) {
 	key := "TLS_BUNDLE"
 	os.Setenv(key, string(testBundleData(t)))
-	tb, err := vault.ParseTlsBundleFromEnv(key)
+	tb, err := tlsbundle.ParseTlsBundleFromEnv(key)
 	if err != nil {
 		t.Fatalf("could not parse bundle: %v", err)
 	}
@@ -89,8 +93,8 @@ func ClientConfig(t *testing.T) {
 	}
 }
 
-func testBundle(t *testing.T) *vault.TlsBundle {
-	tb, err := vault.ParseTlsBundle(testBundleData(t))
+func testBundle(t *testing.T) *tlsbundle.TlsBundle {
+	tb, err := tlsbundle.ParseTlsBundle(testBundleData(t))
 	if err != nil {
 		t.Fatalf("could not parse bundle: %v", err)
 	}

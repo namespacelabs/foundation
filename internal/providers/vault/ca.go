@@ -17,6 +17,7 @@ import (
 	vaultclient "github.com/hashicorp/vault-client-go"
 	"github.com/hashicorp/vault-client-go/schema"
 	"namespacelabs.dev/foundation/framework/secrets"
+	"namespacelabs.dev/foundation/framework/security/tlsbundle"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -87,7 +88,7 @@ func genCertAuthority(ctx context.Context, vaultClient *vaultclient.Client, vaul
 				return nil, fnerrors.InvocationError("vault", "failed to sign intermediate CA: %w", err)
 			}
 
-			tb := vault.TlsBundle{
+			tb := tlsbundle.TlsBundle{
 				PrivateKeyPem:  string(privKeyPem),
 				CertificatePem: intCaResp.Data.Certificate,
 			}
