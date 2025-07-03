@@ -26,10 +26,16 @@ var retryableSqlStates = []string{
 	pgerrcode.AdminShutdown,
 }
 
+type TxOptions struct {
+	pgx.TxOptions
+
+	EnableTracing bool
+}
+
 func ReturnFromReadWriteTx[T any](ctx context.Context, db *DB, b backoff.BackOff, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
 	var attempt int64
 	return backoff.RetryWithData(func() (T, error) {
-		value, err := doTxFunc(ctx, db, pgx.TxOptions{IsoLevel: pgx.Serializable}, attempt, f)
+		value, err := doTxFunc(ctx, db, TxOptions{TxOptions: pgx.TxOptions{IsoLevel: pgx.Serializable}}, attempt, f)
 		if err == nil {
 			return value, nil
 		}
@@ -43,22 +49,15 @@ func ReturnFromReadWriteTx[T any](ctx context.Context, db *DB, b backoff.BackOff
 	}, b)
 }
 
-func ReturnFromTx[T any](ctx context.Context, db *DB, txoptions pgx.TxOptions, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
+func ReturnFromTx[T any](ctx context.Context, db *DB, txoptions TxOptions, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
 	return doTxFunc(ctx, db, txoptions, 0, f)
 }
 
-func doTxFunc[T any](ctx context.Context, db *DB, txoptions pgx.TxOptions, attempt int64, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
-	n := tracing.Name("pg.Transaction").Attribute(
-		attribute.String("pg.isolation-level", string(txoptions.IsoLevel)),
-		attribute.String("pg.access-mode", string(txoptions.AccessMode))).Attribute(db.traceAttributes()...)
-	if attempt > 0 {
-		n = n.Attribute(attribute.Int64("db.tx_attempt", attempt))
-	}
-
-	return tracing.Collect1(ctx, db.t, n, func(ctx context.Context) (T, error) {
+func doTxFunc[T any](ctx context.Context, db *DB, txoptions TxOptions, attempt int64, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
+	do := func(ctx context.Context) (T, error) {
 		var empty T
 
-		tx, err := db.base.BeginTx(ctx, txoptions)
+		tx, err := db.base.BeginTx(ctx, txoptions.TxOptions)
 		if err != nil {
 			return empty, TransactionError{err}
 		}
@@ -75,7 +74,20 @@ func doTxFunc[T any](ctx context.Context, db *DB, txoptions pgx.TxOptions, attem
 		}
 
 		return value, nil
-	})
+	}
+
+	if !txoptions.EnableTracing {
+		return do(ctx)
+	}
+
+	n := tracing.Name("pg.Transaction").Attribute(
+		attribute.String("pg.isolation-level", string(txoptions.IsoLevel)),
+		attribute.String("pg.access-mode", string(txoptions.AccessMode))).Attribute(db.traceAttributes()...)
+	if attempt > 0 {
+		n = n.Attribute(attribute.Int64("db.tx_attempt", attempt))
+	}
+
+	return tracing.Collect1(ctx, db.t, n, do)
 }
 
 // Returns the error code (to be compared to pgerrcode.* constants).

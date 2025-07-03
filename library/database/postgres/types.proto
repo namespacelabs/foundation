@@ -38,5 +38,7 @@ message DatabaseInstance {
 
     string ssl_mode = 9;
 
+    bool enable_tracing = 10;
+
     reserved 2;
 }
