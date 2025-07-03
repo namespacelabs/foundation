@@ -71,6 +71,7 @@ func run(ctx context.Context, p *provider.Provider[*postgres.DatabaseIntent]) er
 		ClusterHost:    cluster.Host,
 		ClusterPort:    cluster.Port,
 		SslMode:        cluster.SslMode,
+		EnableTracing:  p.Intent.EnableTracing,
 	}
 
 	if !exists || !p.Intent.SkipSchemaInitializationIfExists {

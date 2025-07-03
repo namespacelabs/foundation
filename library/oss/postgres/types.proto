@@ -26,4 +26,5 @@ message DatabaseIntent {
     bool                                    provision_helper_functions           = 4;
     // Remove the helper functions after provisioning - no matter if the deployment was successful or not.
     bool                                    auto_remove_helper_functions         = 5;
+    bool enable_tracing = 6;
 }
