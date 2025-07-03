@@ -23,8 +23,9 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
-	"go.opentelemetry.io/otel/sdk/trace"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.opentelemetry.io/otel/trace"
 	oteltrace "go.opentelemetry.io/otel/trace"
 	t "go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
@@ -41,7 +42,7 @@ var (
 	global struct {
 		mu              sync.Mutex
 		initialized     bool
-		exporters       []trace.SpanExporter
+		exporters       []sdktrace.SpanExporter
 		metricExporters []metric.Exporter
 		detectors       []resource.Detector
 		tracerProvider  t.TracerProvider // We don't use otel's global, to ensure that dependency order is respected.
@@ -56,7 +57,7 @@ type Exporter struct {
 	name string
 }
 
-func (e Exporter) Register(exp trace.SpanExporter) error {
+func (e Exporter) Register(exp sdktrace.SpanExporter) error {
 	global.mu.Lock()
 	defer global.mu.Unlock()
 
@@ -122,7 +123,7 @@ func CreateResource(ctx context.Context, serverInfo *types.ServerInfo, detectors
 	)
 }
 
-func CreateProvider(ctx context.Context, serverInfo *types.ServerInfo, exporters []trace.SpanExporter, detectors []resource.Detector) (t.TracerProvider, core.CtxCloseable, error) {
+func CreateProvider(ctx context.Context, serverInfo *types.ServerInfo, exporters []sdktrace.SpanExporter, detectors []resource.Detector) (t.TracerProvider, core.CtxCloseable, error) {
 	if len(exporters) == 0 {
 		if os.Getenv("FOUNDATION_TRACE_TO_STDOUT") != "1" {
 			return noop.NewTracerProvider(), nil, nil
@@ -136,13 +137,13 @@ func CreateProvider(ctx context.Context, serverInfo *types.ServerInfo, exporters
 		exporters = append(exporters, out)
 	}
 
-	var opts []trace.TracerProviderOption
+	var opts []sdktrace.TracerProviderOption
 
 	for _, exp := range exporters {
 		if core.EnvIs(schema.Environment_PRODUCTION) {
-			opts = append(opts, trace.WithBatcher(exp, trace.WithBatchTimeout(10*time.Second)))
+			opts = append(opts, sdktrace.WithBatcher(exp, sdktrace.WithBatchTimeout(10*time.Second)))
 		} else {
-			opts = append(opts, trace.WithSyncer(exp))
+			opts = append(opts, sdktrace.WithSyncer(exp))
 		}
 	}
 
@@ -151,12 +152,42 @@ func CreateProvider(ctx context.Context, serverInfo *types.ServerInfo, exporters
 		return nil, nil, fmt.Errorf("failed to create resource: %w", err)
 	}
 
-	opts = append(opts, trace.WithResource(resource))
+	opts = append(opts, sdktrace.WithResource(resource))
 
-	tp := trace.NewTracerProvider(opts...)
+	if skip := os.Getenv("FOUNDATION_TRACE_SKIP_SPANS"); skip != "" {
+		m := map[string]struct{}{}
+		for _, name := range strings.Split(skip, ",") {
+			m[strings.TrimSpace(name)] = struct{}{}
+		}
+
+		opts = append(opts, sdktrace.WithSampler(sampler{m}))
+	}
+
+	tp := sdktrace.NewTracerProvider(opts...)
 
 	return tp, close{tp}, nil
 }
+
+type sampler struct {
+	drop map[string]struct{}
+}
+
+func (s sampler) ShouldSample(params sdktrace.SamplingParameters) sdktrace.SamplingResult {
+	parent := trace.SpanContextFromContext(params.ParentContext)
+
+	// If the parent is valid and sampled, inherit
+	if parent.IsValid() && parent.IsSampled() {
+		return sdktrace.SamplingResult{Decision: sdktrace.RecordAndSample}
+	}
+
+	if _, shouldDrop := s.drop[params.Name]; shouldDrop {
+		return sdktrace.SamplingResult{Decision: sdktrace.Drop}
+	}
+
+	return sdktrace.SamplingResult{Decision: sdktrace.RecordAndSample}
+}
+
+func (sampler) Description() string { return "Foundation" }
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	provider, closeable, err := CreateProvider(ctx, deps.ServerInfo, consumeExporters(), consumeDetectors())
@@ -259,7 +290,7 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	return nil
 }
 
-func consumeExporters() []trace.SpanExporter {
+func consumeExporters() []sdktrace.SpanExporter {
 	global.mu.Lock()
 	defer global.mu.Unlock()
 
@@ -287,7 +318,7 @@ func consumeDetectors() []resource.Detector {
 }
 
 type close struct {
-	tp *trace.TracerProvider
+	tp *sdktrace.TracerProvider
 }
 
 func (c close) Close(ctx context.Context) error {
