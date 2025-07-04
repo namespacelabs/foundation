@@ -19,8 +19,9 @@ import (
 	"github.com/hashicorp/vault-client-go/schema"
 	"github.com/pkg/browser"
 	"github.com/rs/zerolog"
+	"google.golang.org/grpc/codes"
+	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/go-ids"
 )
 
@@ -39,6 +40,8 @@ const (
 	oidcCallbackPort = 8250
 	oidcLoginTimeout = 5 * time.Minute
 )
+
+var IssueIdToken func(ctx context.Context, aud string, version int, duration time.Duration) (string, error)
 
 type AuthMethod string
 
@@ -320,7 +323,11 @@ func JwtLogin(ctx context.Context, client *vault.Client, authMount, audience str
 		aud = VaultJwtAudience
 	}
 
-	idTokenResp, err := fnapi.IssueIdToken(ctx, audience, 1, 0)
+	if IssueIdToken == nil {
+		return nil, rpcerrors.Errorf(codes.FailedPrecondition, "missing token issuer")
+	}
+
+	idTokenResp, err := IssueIdToken(ctx, audience, 1, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -330,14 +337,10 @@ func JwtLogin(ctx context.Context, client *vault.Client, authMount, audience str
 		opts = append(opts, vault.WithMountPath(authMount))
 	}
 
-	loginResp, err := client.Auth.JwtLogin(ctx, schema.JwtLoginRequest{Jwt: idTokenResp.IdToken}, opts...)
+	loginResp, err := client.Auth.JwtLogin(ctx, schema.JwtLoginRequest{Jwt: idTokenResp}, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to login to vault: %w", err)
 	}
 
 	return loginResp.Auth, nil
-}
-
-func AppRoleLogin(ctx context.Context) {
-
 }

@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"runtime/pprof"
+	"time"
 
 	containerdlog "github.com/containerd/containerd/log"
 	crlogs "github.com/google/go-containerregistry/pkg/logs"
@@ -43,6 +44,7 @@ import (
 	"namespacelabs.dev/foundation/std/tasks/actiontracing"
 	"namespacelabs.dev/foundation/std/tasks/idtypes"
 	"namespacelabs.dev/foundation/std/tasks/simplelog"
+	"namespacelabs.dev/foundation/universe/vault"
 )
 
 var (
@@ -93,6 +95,15 @@ func doMain(opts MainOpts) (colors.Style, error) {
 	compute.RegisterProtoCacheable()
 	compute.RegisterBytesCacheable()
 	fscache.RegisterFSCacheable()
+
+	vault.IssueIdToken = func(ctx context.Context, aud string, version int, duration time.Duration) (string, error) {
+		r, err := fnapi.IssueIdToken(ctx, aud, version, duration)
+		if err != nil {
+			return "", err
+		}
+
+		return r.IdToken, nil
+	}
 
 	rootCtx, style, flushLogs := setupContext(context.Background(), opts.ConsoleInhibitReport, opts.ConsoleRenderer)
 
