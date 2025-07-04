@@ -197,7 +197,7 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	uni := otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
 		otelgrpc.WithInterceptorFilter(grpcFilter))
 	stream := otelgrpc.StreamServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
-		otelgrpc.WithMessageEvents(), otelgrpc.WithInterceptorFilter(grpcFilter))
+		otelgrpc.WithInterceptorFilter(grpcFilter))
 
 	deps.Interceptors.ForServer(func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		return uni(ctx, req, info, func(ctx context.Context, req any) (any, error) {
@@ -223,7 +223,7 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 		otelgrpc.UnaryClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
 			otelgrpc.WithInterceptorFilter(grpcFilter)),
 		otelgrpc.StreamClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
-			otelgrpc.WithMessageEvents(), otelgrpc.WithInterceptorFilter(grpcFilter)),
+			otelgrpc.WithInterceptorFilter(grpcFilter)),
 	)
 
 	httpFilter := func(r *http.Request) bool { return true } // By default we trace every HTTP path
