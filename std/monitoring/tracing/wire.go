@@ -25,7 +25,6 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
-	"go.opentelemetry.io/otel/trace"
 	oteltrace "go.opentelemetry.io/otel/trace"
 	t "go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
@@ -34,6 +33,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/core/types"
 	"namespacelabs.dev/foundation/std/go/core"
+	"namespacelabs.dev/foundation/std/monitoring/tracing/filter"
 )
 
 var (
@@ -154,40 +154,14 @@ func CreateProvider(ctx context.Context, serverInfo *types.ServerInfo, exporters
 
 	opts = append(opts, sdktrace.WithResource(resource))
 
-	if skip := os.Getenv("FOUNDATION_TRACE_SKIP_SPANS"); skip != "" {
-		m := map[string]struct{}{}
-		for _, name := range strings.Split(skip, ",") {
-			m[strings.TrimSpace(name)] = struct{}{}
-		}
-
-		opts = append(opts, sdktrace.WithSampler(sampler{m}))
+	if sampler := filter.FilterFromEnv(filter.DefaultEnvKey); sampler != nil {
+		opts = append(opts, sdktrace.WithSampler(sampler))
 	}
 
 	tp := sdktrace.NewTracerProvider(opts...)
 
 	return tp, close{tp}, nil
 }
-
-type sampler struct {
-	drop map[string]struct{}
-}
-
-func (s sampler) ShouldSample(params sdktrace.SamplingParameters) sdktrace.SamplingResult {
-	parent := trace.SpanContextFromContext(params.ParentContext)
-
-	// If the parent is valid and sampled, inherit
-	if parent.IsValid() && parent.IsSampled() {
-		return sdktrace.SamplingResult{Decision: sdktrace.RecordAndSample}
-	}
-
-	if _, shouldDrop := s.drop[params.Name]; shouldDrop {
-		return sdktrace.SamplingResult{Decision: sdktrace.Drop}
-	}
-
-	return sdktrace.SamplingResult{Decision: sdktrace.RecordAndSample}
-}
-
-func (sampler) Description() string { return "Foundation" }
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	provider, closeable, err := CreateProvider(ctx, deps.ServerInfo, consumeExporters(), consumeDetectors())
