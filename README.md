@@ -7,7 +7,8 @@
 <p>
   <b><i>Namespace</i> is a development-optimized compute platform. It improves the performance and observability of Docker builds, GitHub Actions, and more, without requiring workflow changes. Learn more at https://namespace.so.</b>
 
-  Namespace is a purpose-built ephemeral compute platform that is optimized for developer use-cases: high performance workloads, with high I/O requirements, where caches and incrementally are first class. Many teams use the infrastructure programmatically (via our CLI and APIs) to build custom Previews, Developer Environments, and more. Learn more about our [APIs](https://buf.build/namespace/cloud).
+Namespace is a purpose-built ephemeral compute platform that is optimized for developer use-cases: high performance workloads, with high I/O requirements, where caches and incrementally are first class. Many teams use the infrastructure programmatically (via our CLI and APIs) to build custom Previews, Developer Environments, and more. Learn more about our [APIs](https://buf.build/namespace/cloud).
+
 </p>
 
 <p>
@@ -15,11 +16,11 @@
 </p>
 
 <p>
-  
+
 </p>
 
 <div>
- 🎬 <a href="https://namespace.so/docs/getting-started/quickstart?utm_source=github"><b>Getting Started</b></a>
+ 🎬 <a href="https://namespace.so/docs/solutions/github-actions?utm_source=github"><b>Getting Started</b></a>
  <span>&nbsp;•&nbsp;</span>
  🗼 <a href="https://namespace.so/docs?utm_source=github">Documentation</a>
  <span>&nbsp;•&nbsp;</span>
@@ -66,8 +67,7 @@ extensible blocks -- Namespace orchestrates:
 
 ### **Getting Started**
 
-To get started follow our [getting started guide](https://namespace.so/docs/getting-started/). After
-installing `ns`, explore some of the [examples](https://namespacelabs.dev/examples) our team put
+To get started follow our [examples](https://namespacelabs.dev/examples) our team put
 together.
 
 ### **Issues**
