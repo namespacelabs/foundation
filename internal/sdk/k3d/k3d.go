@@ -190,6 +190,15 @@ func (k3d K3D) ListClusters(ctx context.Context) ([]Cluster, error) {
 func (k3d K3D) CreateCluster(ctx context.Context, name, registry, image string, updateDefault bool) error {
 	fmt.Fprintf(console.Stdout(ctx), "Creating a Kubernetes cluster, this may take up to a minute (image=%s).\n", image)
 
+	// handle k3d issue with BTRFS type by using https://k3d.io/v5.4.6/faq/faq/#issues-with-btrfs
+	if fstype, err := disk.FSType("/"); err != nil {
+		fmt.Fprintf(console.Warnings(ctx), "failed to retrieve filesystem type while creating cluster, can't check for btrfs: %v\n", err)
+	} else if fstype == "btrfs" {
+		return tasks.Action("k3d.create-cluster").Arg("image", image).Run(ctx, func(ctx context.Context) error {
+			return k3d.do(ctx, "cluster", "create", "-v /dev/mapper:/dev/mapper", "--registry-use", registry, "--image", image, fmt.Sprintf("--kubeconfig-update-default=%v", updateDefault), "--k3s-arg", "--disable=traefik@server:0", "--wait", name)
+		})
+	}
+
 	return tasks.Action("k3d.create-cluster").Arg("image", image).Run(ctx, func(ctx context.Context) error {
 		return k3d.do(ctx, "cluster", "create", "--registry-use", registry, "--image", image, fmt.Sprintf("--kubeconfig-update-default=%v", updateDefault), "--k3s-arg", "--disable=traefik@server:0", "--wait", name)
 	})
