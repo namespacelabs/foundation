@@ -54,6 +54,7 @@ func NewRunCmd() *cobra.Command {
 	experimental := run.Flags().String("experimental", "", "A set of experimental settings to pass during creation.")
 	instanceExperimental := run.Flags().String("instance_experimental", "", "A set of experimental instance settings to pass during creation.")
 	userSshey := run.Flags().String("ssh_key", "", "Injects the specified ssh public key in the created instance.")
+	volumes := run.Flags().StringSlice("volume", nil, "Attach a volume to the instance, {cache|persistent}:{tag}:{mountpoint}:{size}")
 
 	run.Flags().MarkHidden("label")
 	run.Flags().MarkHidden("internal_extra")
@@ -129,6 +130,44 @@ func NewRunCmd() *cobra.Command {
 			}
 
 			opts.InstanceExperimental["authorized_ssh_keys"] = keys
+		}
+
+		var volumeSpecs []api.VolumeSpec
+		var hostMounts []api.ContainerBindMount
+		for i, def := range *volumes {
+			spec, err := ParseVolumeFlag(def)
+			if err != nil {
+				return err
+			}
+
+			// Translate volume spec into: host VolumeSpec at static path + container mount at requested path
+			hostPath := fmt.Sprintf("/volumes/volume%d", i)
+			volumeSpecs = append(volumeSpecs, api.VolumeSpec{
+				Tag:             spec.Tag,
+				SizeMb:          spec.SizeMb,
+				PersistencyKind: spec.PersistencyKind,
+				MountPoint:      hostPath,
+			})
+			hostMounts = append(hostMounts, api.ContainerBindMount{
+				HostPath:      hostPath,
+				ContainerPath: spec.MountPoint,
+			})
+		}
+
+		if len(volumeSpecs) > 0 {
+			if opts.InstanceExperimental == nil {
+				opts.InstanceExperimental = map[string]any{}
+			}
+
+			opts.InstanceExperimental["volumes"] = volumeSpecs
+		}
+
+		if len(hostMounts) > 0 {
+			if opts.Experimental == nil {
+				opts.Experimental = map[string]any{}
+			}
+
+			opts.Experimental["host_mount"] = hostMounts
 		}
 
 		exported, err := fillInIngressRules(*exportedPorts, *ingressRules)

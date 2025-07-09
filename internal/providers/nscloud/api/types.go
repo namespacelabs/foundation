@@ -55,6 +55,12 @@ type VolumeSpec struct {
 	Labels          map[string]string          `json:"labels,omitempty"`
 }
 
+type ContainerBindMount struct {
+	HostPath      string `json:"host_path,omitempty"`
+	ContainerPath string `json:"container_path,omitempty"`
+	Readonly      bool   `json:"readonly,omitempty"`
+}
+
 type VolumeSpec_PersistencyKind int32
 
 const (
