@@ -57,7 +57,6 @@ func NewRunCmd() *cobra.Command {
 
 	run.Flags().MarkHidden("label")
 	run.Flags().MarkHidden("internal_extra")
-	run.Flags().MarkHidden("enable_docker")
 	run.Flags().MarkHidden("forward_nsc_state")
 	run.Flags().MarkHidden("network")
 	run.Flags().MarkHidden("experimental")
