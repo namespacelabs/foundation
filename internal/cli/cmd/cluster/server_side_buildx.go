@@ -229,6 +229,20 @@ func RefreshSessionClientCert(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
+func DeleteSessionClientCert() error {
+	state, err := DetermineStateDir("", BuildkitProxyPath)
+	if err != nil {
+		return err
+	}
+
+	clientCertPath := path.Join(state, "client_cert.pem")
+	if _, err := os.Stat(clientCertPath); err == nil {
+		return os.Remove(clientCertPath)
+	}
+
+	return nil
+}
+
 func getCertPathToRefresh() (string, any, error) {
 	state, err := DetermineStateDir("", BuildkitProxyPath)
 	if err != nil {

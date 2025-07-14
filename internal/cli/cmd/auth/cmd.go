@@ -20,6 +20,7 @@ func NewAuthCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(NewLoginCmd())
+	cmd.AddCommand(NewLogoutCmd())
 	cmd.AddCommand(NewExchangeGithubTokenCmd())
 	cmd.AddCommand(NewImpersonateTenantCmd())
 	cmd.AddCommand(NewExchangeCircleCITokenCmd())

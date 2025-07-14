@@ -249,6 +249,20 @@ func StoreToken(token StoredToken) error {
 	return nil
 }
 
+func DeleteStoredToken() error {
+	dir, err := dirs.Config()
+	if err != nil {
+		return err
+	}
+
+	conf := filepath.Join(dir, tokenLoc())
+	if _, err := os.Stat(conf); err == nil {
+		return os.Remove(conf)
+	}
+
+	return nil
+}
+
 func loadWorkspaceToken(ctx context.Context, issue IssueShortTermFunc, target time.Time) (*Token, error) {
 	dir, err := dirs.Config()
 	if err != nil {
