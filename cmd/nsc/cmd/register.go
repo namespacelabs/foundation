@@ -23,6 +23,7 @@ import (
 func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(auth.NewAuthCmd())
 	root.AddCommand(auth.NewLoginCmd()) // register `nsc login` as an alias for `nsc auth login`
+	root.AddCommand(auth.NewLogoutCmd())
 	root.AddCommand(aws.NewAwsCmd())
 	root.AddCommand(gcp.NewGcpCmd())
 

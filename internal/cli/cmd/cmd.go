@@ -36,7 +36,8 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(mod.NewTidyCmd()) // register `ns tidy` as an alias for `ns mod tidy`
 	root.AddCommand(NewLogsCmd())
 	root.AddCommand(auth.NewAuthCmd())
-	root.AddCommand(auth.NewLoginCmd())               // register `ns login` as an alias for `ns auth login`
+	root.AddCommand(auth.NewLoginCmd()) // register `ns login` as an alias for `ns auth login`
+	root.AddCommand(auth.NewLogoutCmd())
 	root.AddCommand(auth.NewExchangeGithubTokenCmd()) // register `ns exchange-github-token` as an alias for `ns auth exchange-github-token` to support old nscloud action versions. TODO remove
 	root.AddCommand(NewKeysCmd())
 	root.AddCommand(NewTestCmd())
