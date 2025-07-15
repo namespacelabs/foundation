@@ -19,10 +19,9 @@ import (
 
 func NewGenerateDevTokenCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "generate-dev-token",
-		Short:  "Generate a Namespace Cloud token for development purposes.",
-		Args:   cobra.NoArgs,
-		Hidden: true,
+		Use:   "generate-dev-token",
+		Short: "Generate a Namespace Cloud token for development purposes.",
+		Args:  cobra.NoArgs,
 	}
 
 	outputPath := cmd.Flags().String("output_to", "", "If specified, write the access token to this path.")

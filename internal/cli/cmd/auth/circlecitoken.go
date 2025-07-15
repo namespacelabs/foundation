@@ -17,10 +17,9 @@ import (
 
 func NewExchangeCircleCITokenCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "exchange-circleci-token",
-		Short:  "Generate a Namespace Cloud token from a CircleCI JWT.",
-		Args:   cobra.NoArgs,
-		Hidden: true,
+		Use:   "exchange-circleci-token",
+		Short: "Generate a Namespace Cloud token from a CircleCI JWT.",
+		Args:  cobra.NoArgs,
 	}
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {

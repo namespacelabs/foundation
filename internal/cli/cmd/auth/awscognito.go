@@ -24,10 +24,9 @@ import (
 
 func newExchangeAwsCognitoCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "exchange-aws-cognito-token",
-		Short:  "Generate a Namespace Cloud token from a AWS Cognito JWT.",
-		Args:   cobra.NoArgs,
-		Hidden: true,
+		Use:   "exchange-aws-cognito-token",
+		Short: "Generate a Namespace Cloud token from a AWS Cognito JWT.",
+		Args:  cobra.NoArgs,
 	}
 
 	awsRegion := cmd.Flags().String("aws_region", "", "The AWS region to connect to.")
@@ -111,10 +110,9 @@ func newCognitoClient(ctx context.Context, awsProfile string) (*cognitoidentity.
 
 func newTrustAwsCognitoCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "trust-aws-cognito-identity-pool",
-		Short:  "Trust a AWS Cognito Identity pool.",
-		Args:   cobra.NoArgs,
-		Hidden: true,
+		Use:   "trust-aws-cognito-identity-pool",
+		Short: "Trust a AWS Cognito Identity pool.",
+		Args:  cobra.NoArgs,
 	}
 
 	awsRegion := cmd.Flags().String("aws_region", "", "The AWS region to connect to.")

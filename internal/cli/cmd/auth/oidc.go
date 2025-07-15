@@ -22,10 +22,9 @@ const (
 
 func NewIssueIdTokenCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "issue-id-token",
-		Short:  "Generate a Namespace ID token to authenticate with cloud providers.",
-		Args:   cobra.NoArgs,
-		Hidden: true,
+		Use:   "issue-id-token",
+		Short: "Generate a Namespace ID token to authenticate with cloud providers.",
+		Args:  cobra.NoArgs,
 	}
 
 	audience := cmd.Flags().String("audience", "", "The audience of an ID token.")
