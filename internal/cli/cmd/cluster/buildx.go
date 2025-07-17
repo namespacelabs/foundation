@@ -123,7 +123,7 @@ func newSetupBuildxCmd() *cobra.Command {
 
 		if *useServerSideProxy {
 			if err := setupServerSideBuildxProxy(ctx, state, *name, *use, *defaultLoad, dockerCli, available, api.BuilderConfiguration{
-				SkipPrespawn: *createAtStartup,
+				SkipPrespawn: !*createAtStartup,
 				Name:         *tag,
 				Experimental: *experimental,
 			}); err != nil {
