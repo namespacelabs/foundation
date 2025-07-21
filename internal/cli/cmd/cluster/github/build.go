@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -27,6 +28,7 @@ func NewBaseImageBuildCmd() *cobra.Command {
 
 	dockerFile := cmd.Flags().StringP("file", "f", "", "Specifies what Dockerfile to build.")
 	osLabel := cmd.Flags().StringP("os-label", "l", "ubuntu-22.04", "Specifies the OS version of the base image.")
+	platforms := cmd.Flags().StringSliceP("platform", "p", []string{"linux/amd64"}, "Which platforms to build for (linux/amd64 or linux/arm64)")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
 		if *dockerFile == "" {
@@ -38,11 +40,6 @@ func NewBaseImageBuildCmd() *cobra.Command {
 			return err
 		}
 
-		platforms := []string{
-			"linux/amd64",
-			"linux/arm64",
-		}
-
 		imgRef, err := getBaseImageRef(ctx, *osLabel)
 		if err != nil {
 			return err
@@ -52,8 +49,17 @@ func NewBaseImageBuildCmd() *cobra.Command {
 			"NAMESPACE_BASE_IMAGE_REF": imgRef,
 		}
 
+		supportedPlatforms := []string{
+			"linux/amd64",
+			"linux/arm64",
+		}
+
 		var fragments []cluster.BuildFragment
-		for _, p := range platforms {
+		for _, p := range *platforms {
+			if !slices.Contains(supportedPlatforms, p) {
+				return fmt.Errorf("platform %s not supported", p)
+			}
+
 			platformSpec, err := platform.ParsePlatform(p)
 			if err != nil {
 				return err
@@ -72,7 +78,7 @@ func NewBaseImageBuildCmd() *cobra.Command {
 			return err
 		}
 
-		fmt.Fprintf(console.Stdout(ctx), "\nBuilt %d %s (platforms %s).\n", len(fragments), plural(len(fragments), "image", "images"), strings.Join(platforms, ","))
+		fmt.Fprintf(console.Stdout(ctx), "\nBuilt %d %s (platforms %s).\n", len(fragments), plural(len(fragments), "image", "images"), strings.Join(*platforms, ","))
 
 		return nil
 	})
