@@ -56,6 +56,10 @@ func ProvideDatabase(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps) 
 		overrides.IdleInTransactionSessionTimeout = time.Millisecond * time.Duration(db.GetIdleInTransactionSessionTimeoutMs())
 	}
 
+	if db.GetStatementTimeoutMs() > 0 {
+		overrides.StatementTimeout = time.Millisecond * time.Duration(db.GetStatementTimeoutMs())
+	}
+
 	if db.GetConnectTimeoutMs() > 0 {
 		overrides.ConnectTimeout = time.Millisecond * time.Duration(db.GetConnectTimeoutMs())
 	}

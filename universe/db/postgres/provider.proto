@@ -18,6 +18,7 @@ message DatabaseArgs {
     string                   max_conns_from_env                     = 6;
     google.protobuf.Duration max_conns_idle_time                    = 5;
     int32                    idle_in_transaction_session_timeout_ms = 8;
+    int32                    statement_timeout_ms                   = 10;
     int32                    connect_timeout_ms                     = 9;
 }
 
