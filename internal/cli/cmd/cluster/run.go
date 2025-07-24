@@ -56,6 +56,8 @@ func NewRunCmd() *cobra.Command {
 	userSshey := run.Flags().String("ssh_key", "", "Injects the specified ssh public key in the created instance.")
 	volumes := run.Flags().StringSlice("volume", nil, "Attach a volume to the instance, {cache|persistent}:{tag}:{mountpoint}:{size}")
 
+	user := run.Flags().String("user", "", "Customize the user to run the container as.")
+
 	run.Flags().MarkHidden("label")
 	run.Flags().MarkHidden("internal_extra")
 	run.Flags().MarkHidden("forward_nsc_state")
@@ -102,6 +104,7 @@ func NewRunCmd() *cobra.Command {
 			ForwardNscState: *forwardNscState,
 			ExposeNscBins:   *exposeNscBins,
 			Network:         *network,
+			User:            *user,
 		}
 
 		if *experimental != "" {
@@ -267,6 +270,7 @@ type CreateContainerOpts struct {
 	Network              string
 	Experimental         map[string]any
 	InstanceExperimental map[string]any
+	User                 string
 }
 
 type exportContainerPort struct {
@@ -303,6 +307,12 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration, 
 
 	if opts.ExposeNscBins {
 		container.ExposeNscBins = "/nsc/bin"
+	}
+
+	if opts.User != "" {
+		container.UserOverride = &api.UserOverride{
+			User: opts.User,
+		}
 	}
 
 	for _, port := range opts.ExportedPorts {

@@ -144,6 +144,7 @@ type ContainerRequest struct {
 	ExposeNscBins  string            `json:"expose_nsc_bins,omitempty"`
 	Network        string            `json:"network,omitempty"`
 	Experimental   any               `json:"experimental,omitempty"`
+	UserOverride   *UserOverride     `json:"user_override,omitempty"`
 }
 
 type ComposeRequest struct {
@@ -164,6 +165,10 @@ type ContainerPort_HttpMatchRule struct {
 type ContainerPort_HttpMatch struct {
 	Method []string `json:"method,omitempty"` // If empty, matches any method.
 	Path   string   `json:"path,omitempty"`   // If empty, matches any path.
+}
+
+type UserOverride struct {
+	User string `json:"user,omitempty"`
 }
 
 type CreateContainersResponse struct {
