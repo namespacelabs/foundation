@@ -5,6 +5,7 @@
 package k3s
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -16,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubeclient"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/internal/build/registry"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/internal/ssh"
@@ -124,16 +126,28 @@ func makeRemoteConfig(ctx context.Context, publicEndpoint string, endpoint ssh.E
 
 		defer session.Close()
 
-		r, err := session.StdoutPipe()
+		stdout, err := session.StdoutPipe()
 		if err != nil {
 			return nil, err
 		}
+
+		stderr, err := session.StderrPipe()
+		if err != nil {
+			return nil, err
+		}
+
+		stderrScanner := bufio.NewScanner(stderr)
+		go func() {
+			for stderrScanner.Scan() {
+				fmt.Fprint(console.Output(ctx, "ssh"), stderrScanner.Text())
+			}
+		}()
 
 		if err := session.Run("cat /etc/rancher/k3s/k3s.yaml"); err != nil {
 			return nil, err
 		}
 
-		contents, err := io.ReadAll(r)
+		contents, err := io.ReadAll(stdout)
 		if err != nil {
 			return nil, err
 		}
