@@ -17,7 +17,29 @@ func ImageAsFS(image v1.Image) tarfs.FS {
 	return tarfs.FS{TarStream: func() (io.ReadCloser, error) { return mutate.Extract(image), nil }}
 }
 
-func VisitFilesFromImage(img v1.Image, visitor func(layer, path string, typ byte, contents []byte) error) error {
+func ReadFilesFromImage(img v1.Image, visitor func(layer, path string, typ byte, contents []byte) error) error {
+	return VisitFilesFromImage(img, func(layer string, h *tar.Header, reader io.Reader) error {
+		var contents []byte
+		switch {
+		case h.Typeflag == tar.TypeReg:
+			fileContents, err := io.ReadAll(reader)
+			if err != nil {
+				return err
+			}
+			contents = fileContents
+		case h.Typeflag == tar.TypeLink || h.Typeflag == tar.TypeSymlink:
+			contents = []byte(h.Linkname)
+		}
+
+		if err := visitor(layer, h.Name, h.Typeflag, contents); err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+func VisitFilesFromImage(img v1.Image, visitor func(layer string, header *tar.Header, reader io.Reader) error) error {
 	layers, err := img.Layers()
 	if err != nil {
 		return err
@@ -43,17 +65,7 @@ func VisitFilesFromImage(img v1.Image, visitor func(layer, path string, typ byte
 				break
 			}
 
-			var contents []byte
-			if h.Typeflag == tar.TypeReg {
-				contents, err = io.ReadAll(tr)
-				if err != nil {
-					return err
-				}
-			} else if h.Typeflag == tar.TypeLink || h.Typeflag == tar.TypeSymlink {
-				contents = []byte(h.Linkname)
-			}
-
-			if err := visitor(digest.String(), h.Name, h.Typeflag, contents); err != nil {
+			if err := visitor(digest.String(), h, tr); err != nil {
 				return err
 			}
 		}

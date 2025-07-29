@@ -171,7 +171,7 @@ func printContents(ctx context.Context, img v1.Image, filename string) error {
 	}
 
 	var buf bytes.Buffer
-	return oci.VisitFilesFromImage(img, func(layer, path string, typ byte, contents []byte) error {
+	return oci.ReadFilesFromImage(img, func(layer, path string, typ byte, contents []byte) error {
 		fmt.Fprintf(&buf, "%s: %s", layer, path)
 		switch typ {
 		case tar.TypeReg:
