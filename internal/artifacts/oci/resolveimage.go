@@ -41,7 +41,7 @@ func (r *resolveDigest) Compute(ctx context.Context, _ compute.Resolved) (ImageI
 		return imageID, nil
 	}
 
-	desc, err := fetchRemoteDescriptor(ctx, r.ref, r.opts)
+	desc, err := FetchRemoteDescriptor(ctx, r.ref, r.opts)
 	if err != nil {
 		return ImageID{}, err
 	}

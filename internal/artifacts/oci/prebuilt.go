@@ -35,7 +35,7 @@ func (f *fetchPrebuilt) Inputs() *compute.In {
 }
 
 func (f *fetchPrebuilt) Compute(ctx context.Context, _ compute.Resolved) (ResolvableImage, error) {
-	descriptor, err := fetchRemoteDescriptor(ctx, f.imgid.RepoAndDigest(), f.opts)
+	descriptor, err := FetchRemoteDescriptor(ctx, f.imgid.RepoAndDigest(), f.opts)
 	if err != nil {
 		return nil, err
 	}

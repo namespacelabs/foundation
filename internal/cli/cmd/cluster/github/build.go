@@ -19,9 +19,9 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing/platform"
 )
 
-func NewBaseImageBuildCmd() *cobra.Command {
+func NewBaseImageBuildCmd(use string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "build-base-image",
+		Use:   use,
 		Short: "Test the build of a base image.",
 		Args:  cobra.NoArgs,
 	}
