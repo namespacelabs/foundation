@@ -51,7 +51,7 @@ func Rehydrate(ctx context.Context, srv planning.Server, imageID oci.ImageID) (*
 
 		var r Rehydrated
 
-		if err := oci.VisitFilesFromImage(img, func(layer, path string, typ byte, contents []byte) error {
+		if err := oci.ReadFilesFromImage(img, func(layer, path string, typ byte, contents []byte) error {
 			switch path {
 			case envBinaryPb:
 				r.Env = &schema.Environment{}

@@ -167,7 +167,7 @@ func FetchRemoteImage(ctx context.Context, imageid ImageID, opts RegistryAccess)
 	return img, nil
 }
 
-func fetchRemoteDescriptor(ctx context.Context, imageRef string, opts RegistryAccess) (*remote.Descriptor, error) {
+func FetchRemoteDescriptor(ctx context.Context, imageRef string, opts RegistryAccess) (*remote.Descriptor, error) {
 	ref, remoteOpts, err := ParseRefAndKeychain(ctx, imageRef, opts)
 	if err != nil {
 		return nil, err
@@ -201,7 +201,7 @@ func (r *fetchDescriptor) Action() *tasks.ActionEvent {
 
 func (r *fetchDescriptor) Compute(ctx context.Context, deps compute.Resolved) (*RawDescriptor, error) {
 	digest := compute.MustGetDepValue(deps, r.imageID.ImageID(), "resolved")
-	d, err := fetchRemoteDescriptor(ctx, digest.ImageRef(), r.opts)
+	d, err := FetchRemoteDescriptor(ctx, digest.ImageRef(), r.opts)
 	if err != nil {
 		return nil, fnerrors.InvocationError("kubernetes", "failed to fetch descriptor: %w", err)
 	}

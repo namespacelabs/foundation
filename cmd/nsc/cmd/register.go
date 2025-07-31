@@ -9,6 +9,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/admin"
 	"namespacelabs.dev/foundation/internal/cli/cmd/auth"
 	"namespacelabs.dev/foundation/internal/cli/cmd/aws"
+	"namespacelabs.dev/foundation/internal/cli/cmd/baseimage"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/github"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/private"
@@ -65,6 +66,8 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(workspace.NewWorkspaceCmd()) // nsc workspace
 
 	root.AddCommand(newGithub())
+
+	root.AddCommand(baseimage.NewBaseImageCmd())
 }
 
 func newGithub() *cobra.Command {
@@ -74,7 +77,7 @@ func newGithub() *cobra.Command {
 		Hidden: true,
 	}
 
-	cmd.AddCommand(github.NewBaseImageBuildCmd())
+	cmd.AddCommand(github.NewBaseImageBuildCmd("build-base-image"))
 
 	return cmd
 }
