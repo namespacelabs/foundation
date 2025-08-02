@@ -14,8 +14,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/morikuni/aec"
+	"namespacelabs.dev/foundation/framework/console/termios"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/observers"
 	"namespacelabs.dev/foundation/internal/protos"

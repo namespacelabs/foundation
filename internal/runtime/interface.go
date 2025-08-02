@@ -13,10 +13,10 @@ import (
 	"time"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"namespacelabs.dev/foundation/framework/console/termios"
 	"namespacelabs.dev/foundation/framework/secrets"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
-	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
