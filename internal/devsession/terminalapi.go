@@ -12,8 +12,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"google.golang.org/protobuf/encoding/protojson"
+	"namespacelabs.dev/foundation/framework/console/termios"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/runtime"
 )
 
