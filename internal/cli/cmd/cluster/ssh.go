@@ -76,7 +76,7 @@ func NewSshCmd() *cobra.Command {
 		if *oneshot {
 			opts := api.CreateClusterOpts{
 				KeepAtExit: false,
-				Purpose:    fmt.Sprintf("Temporary instance for SSH"),
+				Purpose:    "Temporary instance for SSH",
 				WaitClusterOpts: api.WaitClusterOpts{
 					WaitForService: "ssh",
 					WaitKind:       "kubernetes",
