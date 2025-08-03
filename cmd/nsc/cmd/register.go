@@ -13,7 +13,6 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/github"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/private"
-	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/terminal"
 	"namespacelabs.dev/foundation/internal/cli/cmd/gcp"
 	"namespacelabs.dev/foundation/internal/cli/cmd/sdk"
 	"namespacelabs.dev/foundation/internal/cli/cmd/version"
@@ -54,7 +53,6 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(cluster.NewVolumeCmd())                     // nsc volume
 	root.AddCommand(cluster.NewGitCheckoutCmd())                // nsc git-checkout [hidden]
 	root.AddCommand(private.NewInternalCmd())                   // nsc internal [hidden]
-	root.AddCommand(terminal.NewTerminalCmd())                  // nsc terminal [hidden]
 	root.AddCommand(cluster.NewBazelCmd())
 	root.AddCommand(cluster.NewPantsCmd())
 	root.AddCommand(cluster.NewArtifactCmd()) // nsc artifact

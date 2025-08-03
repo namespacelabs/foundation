@@ -22,7 +22,7 @@ import (
 
 type Token interface {
 	IsSessionToken() bool
-	Claims(context.Context) (*localauth.TokenClaims, error)
+	Claims(context.Context) (*auth.TokenClaims, error)
 	PreferredRegion(context.Context) (string, error)
 	IssueToken(context.Context, time.Duration, bool) (string, error)
 

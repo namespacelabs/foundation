@@ -15,12 +15,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/metadata"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
+	"namespacelabs.dev/integrations/auth"
 )
 
 const (
@@ -55,44 +55,14 @@ type Token struct {
 	StoredToken
 }
 
-type TokenClaims struct {
-	jwt.RegisteredClaims
-
-	TenantID       string `json:"tenant_id"`
-	InstanceID     string `json:"instance_id"`
-	OwnerID        string `json:"owner_id"`
-	PrimaryRegion  string `json:"primary_region"`
-	WorkloadRegion string `json:"workload_region"`
-}
-
 func (t *Token) IsSessionToken() bool { return t.SessionToken != "" }
 
-func (t *Token) Claims(ctx context.Context) (*TokenClaims, error) {
+func (t *Token) Claims(ctx context.Context) (*auth.TokenClaims, error) {
 	if t.SessionToken != "" {
-		return parseClaims(ctx, strings.TrimPrefix(t.SessionToken, "st_"))
+		return extractClaims(t.SessionToken)
 	}
 
-	claims, err := parseToken(ctx, t.TenantToken)
-	if err != nil {
-		return nil, err
-	}
-
-	if claims == nil {
-		return nil, fnerrors.ReauthError("not logged in")
-	}
-
-	return claims, nil
-}
-
-func parseToken(ctx context.Context, token string) (*TokenClaims, error) {
-	switch {
-	case strings.HasPrefix(token, "nsct_"):
-		return parseClaims(ctx, strings.TrimPrefix(token, "nsct_"))
-	case strings.HasPrefix(token, "nscw_"):
-		return parseClaims(ctx, strings.TrimPrefix(token, "nscw_"))
-	default:
-		return nil, nil
-	}
+	return extractClaims(t.TenantToken)
 }
 
 func (t *Token) PreferredRegion(ctx context.Context) (string, error) {
@@ -112,21 +82,22 @@ func (t *Token) PreferredRegion(ctx context.Context) (string, error) {
 	return "", nil
 }
 
-func parseClaims(ctx context.Context, raw string) (*TokenClaims, error) {
-	parser := jwt.Parser{}
+func extractClaims(token string) (*auth.TokenClaims, error) {
+	claims, err := auth.ExtractClaims(token)
+	if err != nil {
+		if errors.Is(err, auth.ErrNotLoggedIn) {
+			return nil, fnerrors.ReauthError("not logged in")
+		}
 
-	var claims TokenClaims
-	if _, _, err := parser.ParseUnverified(raw, &claims); err != nil {
-		fmt.Fprintf(console.Debug(ctx), "parsing claims %q failed: %v\n", raw, err)
-		return nil, fnerrors.ReauthError("not logged in")
+		return nil, err
 	}
 
-	return &claims, nil
+	return claims, nil
 }
 
 func (t *Token) IssueToken(ctx context.Context, minDur time.Duration, skipCache bool) (string, error) {
 	if t.TenantToken != "" && !skipCache {
-		claims, err := parseToken(ctx, t.TenantToken)
+		claims, err := extractClaims(t.TenantToken)
 		if err != nil {
 			return "", err
 		}
@@ -156,7 +127,7 @@ func (t *Token) IssueToken(ctx context.Context, minDur time.Duration, skipCache 
 				return "", err
 			}
 		} else {
-			claims, err := parseToken(ctx, string(cacheContents))
+			claims, err := extractClaims(string(cacheContents))
 			if err != nil {
 				return "", err
 			}
