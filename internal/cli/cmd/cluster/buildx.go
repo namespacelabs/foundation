@@ -739,14 +739,14 @@ func newStatusBuildxCommand() *cobra.Command {
 
 		descs = append(descs, sspDescs...)
 
-		if descs == nil {
-			console.SetStickyContent(ctx, "build", buildxContextNotConfigured())
-			return nil
-		}
-
 		stdout := console.Stdout(ctx)
 		switch *output {
 		case "json":
+			if descs == nil {
+				fmt.Fprint(console.Stdout(ctx), "[]")
+				return nil
+			}
+
 			enc := json.NewEncoder(console.Stdout(ctx))
 			if err := enc.Encode(descs); err != nil {
 				return fnerrors.InternalError("failed to encode status as JSON output: %w", err)
@@ -755,6 +755,11 @@ func newStatusBuildxCommand() *cobra.Command {
 		default:
 			if *output != "plain" {
 				fmt.Fprintf(console.Warnings(ctx), "defaulting output to plain\n")
+			}
+
+			if descs == nil {
+				console.SetStickyContent(ctx, "build", buildxContextNotConfigured())
+				return nil
 			}
 
 			fmt.Fprintf(stdout, "\nBuildx context status:\n\n")
