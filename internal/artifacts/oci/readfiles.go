@@ -10,7 +10,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"path/filepath"
+	p "path"
 	"sort"
 	"strings"
 
@@ -58,11 +58,10 @@ type HashPathOpts struct {
 // It takes into account filenames and file contents, other file metadata is ignored
 // The algorithm is based on https://github.com/golang/mod/blob/ce943fd02449f621243c9ea6e64098e84752b92b/sumdb/dirhash/hash.go#L44
 func HashPathInImage(img v1.Image, path string, opts HashPathOpts) (schema.Digest, error) {
-	path = filepath.Clean(path)
+	path = p.Clean(path)
 
 	// Trim leading slash to match tar paths
-	path, ok := strings.CutPrefix(path, "/")
-	if !ok {
+	if !p.IsAbs(path) {
 		return schema.Digest{}, fmt.Errorf("path must be absolute, got: %s", path)
 	}
 
@@ -73,9 +72,12 @@ func HashPathInImage(img v1.Image, path string, opts HashPathOpts) (schema.Diges
 
 	// Collect all relevant files with their hashes
 	if err := VisitFilesFromImage(img, func(layer string, h *tar.Header, reader io.Reader) error {
+		// Tar paths are usually relative to root, normalize to absolute path
+		normalizedPath := p.Join("/", h.Name)
+
 		// Skip files not under path, this matches exact matches (e.g. /etc/passwd) or any items under a directory (e.g. /etc/)
 		// hard-coded separator because tar requires forward slashes
-		if h.Name != path && !strings.HasPrefix(h.Name, path+"/") {
+		if normalizedPath != path && !strings.HasPrefix(normalizedPath, path+"/") {
 			return nil
 		}
 
@@ -99,7 +101,7 @@ func HashPathInImage(img v1.Image, path string, opts HashPathOpts) (schema.Diges
 			return nil
 		}
 
-		fileHashes[h.Name] = hex.EncodeToString(hf.Sum(nil))
+		fileHashes[normalizedPath] = hex.EncodeToString(hf.Sum(nil))
 
 		return nil
 	}); err != nil {
