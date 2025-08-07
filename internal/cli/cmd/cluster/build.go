@@ -17,7 +17,6 @@ import (
 	controllerapi "github.com/docker/buildx/controller/pb"
 	"github.com/docker/buildx/util/buildflags"
 	"github.com/docker/cli/cli/config"
-	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/moby/buildkit/client"
@@ -269,7 +268,7 @@ func NewBuildCmd() *cobra.Command {
 					return rpcerrors.Errorf(codes.Internal, "expected image.name in result")
 				}
 
-				ref, remoteOpts, err := oci.ParseRefAndKeychain(ctx, name, oci.RegistryAccess{Keychain: keychain{}})
+				ref, remoteOpts, err := oci.ParseRefAndKeychain(ctx, name, oci.RegistryAccess{Keychain: api.DefaultKeychainWithFallback})
 				if err != nil {
 					return err
 				}
@@ -297,7 +296,7 @@ func NewBuildCmd() *cobra.Command {
 					if _, err := index.Push(ctx, oci.RepositoryWithAccess{
 						Repository: parsed.Name(),
 						RegistryAccess: oci.RegistryAccess{
-							Keychain: keychain{},
+							Keychain: api.DefaultKeychainWithFallback,
 						},
 					}, false); err != nil {
 						return err
@@ -428,7 +427,7 @@ func startSingleBuild(eg *executor.Executor, c *client.Client, mw *progresswrite
 		attachable = append(attachable, bkkeychain.Wrapper{
 			Context:     ctx,
 			ErrorLogger: io.Discard,
-			Keychain:    keychain{},
+			Keychain:    api.DefaultKeychainWithFallback,
 			Fallback:    authprovider.NewDockerAuthProvider(dockerConfig, nil).(auth.AuthServer),
 		})
 
@@ -504,16 +503,6 @@ func startSingleBuild(eg *executor.Executor, c *client.Client, mw *progresswrite
 
 		return set(resp)
 	})
-}
-
-type keychain struct{}
-
-func (dk keychain) Resolve(ctx context.Context, r authn.Resource) (authn.Authenticator, error) {
-	if strings.HasSuffix(r.RegistryStr(), ".nscluster.cloud") || strings.HasSuffix(r.RegistryStr(), ".namespace.systems") || r.RegistryStr() == "nscr.io" || strings.HasSuffix(r.RegistryStr(), ".nscr.io") {
-		return api.RegistryCreds(ctx)
-	}
-
-	return authn.DefaultKeychain.Resolve(r)
 }
 
 func determineBuildClusterPlatform(allowedClusterPlatforms []string, platform string) api.BuildPlatform {
