@@ -13,12 +13,21 @@ import (
 )
 
 var DefaultKeychain oci.Keychain = defaultKeychain{}
+var DefaultKeychainWithFallback oci.Keychain = defaultKeychain{
+	fallbackToDefaultKeychain: true,
+}
 
-type defaultKeychain struct{}
+type defaultKeychain struct {
+	fallbackToDefaultKeychain bool
+}
 
 func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.Authenticator, error) {
 	if strings.HasSuffix(r.RegistryStr(), ".nscluster.cloud") || strings.HasSuffix(r.RegistryStr(), ".namespace.systems") || r.RegistryStr() == "nscr.io" || strings.HasSuffix(r.RegistryStr(), ".nscr.io") {
 		return RegistryCreds(ctx)
+	}
+
+	if dk.fallbackToDefaultKeychain {
+		return authn.DefaultKeychain.Resolve(r)
 	}
 
 	return authn.Anonymous, nil

@@ -51,7 +51,7 @@ func newUploadBaseImageCmd() *cobra.Command {
 		desc, err := oci.FetchRemoteDescriptor(
 			ctx,
 			sourceImage.RepoAndDigest(),
-			oci.RegistryAccess{Keychain: api.DefaultKeychain},
+			oci.RegistryAccess{Keychain: api.DefaultKeychainWithFallback},
 		)
 		if err != nil {
 			return fmt.Errorf("failed to fetch %s: %w", sourceImage, err)
