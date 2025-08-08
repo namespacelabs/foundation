@@ -25,7 +25,7 @@ func ImageAsFS(image v1.Image) tarfs.FS {
 }
 
 func ReadFilesFromImage(img v1.Image, visitor func(layer, path string, typ byte, contents []byte) error) error {
-	return VisitFilesFromImage(img, func(layer string, h *tar.Header, reader io.Reader) error {
+	return VisitFilesPerImageLayer(img, func(layer string, h *tar.Header, reader io.Reader) error {
 		var contents []byte
 		switch {
 		case h.Typeflag == tar.TypeReg:
@@ -71,7 +71,7 @@ func HashPathInImage(img v1.Image, path string, opts HashPathOpts) (schema.Diges
 	pathExists := false
 
 	// Collect all relevant files with their hashes
-	if err := VisitFilesFromImage(img, func(layer string, h *tar.Header, reader io.Reader) error {
+	if err := VisitFilesInFlattenedImage(img, func(h *tar.Header, reader io.Reader) error {
 		// Tar paths are usually relative to root, normalize to absolute path
 		normalizedPath := p.Join("/", h.Name)
 
@@ -136,7 +136,20 @@ func sortedKeys(m map[string]string) []string {
 	return keys
 }
 
-func VisitFilesFromImage(img v1.Image, visitor func(layer string, header *tar.Header, reader io.Reader) error) error {
+func VisitFilesInFlattenedImage(img v1.Image, visitor func(header *tar.Header, reader io.Reader) error) error {
+	r := mutate.Extract(img)
+	defer r.Close()
+
+	if err := visitTarFiles(r, visitor); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// VisitFilesPerImageLayer iterates through each layer of the image and through each file in those layers
+// i.e. it does not flatten the image, the same file path may exist in multiple layer, and whiteout files are visited as-is
+func VisitFilesPerImageLayer(img v1.Image, visitor func(layer string, header *tar.Header, reader io.Reader) error) error {
 	layers, err := img.Layers()
 	if err != nil {
 		return err
@@ -155,16 +168,28 @@ func VisitFilesFromImage(img v1.Image, visitor func(layer string, header *tar.He
 
 		defer r.Close()
 
-		tr := tar.NewReader(r)
-		for {
-			h, err := tr.Next()
-			if err == io.EOF {
-				break
-			}
+		if err := visitTarFiles(r, func(header *tar.Header, reader io.Reader) error {
+			return visitor(digest.String(), header, reader)
+		}); err != nil {
+			return err
+		}
+	}
 
-			if err := visitor(digest.String(), h, tr); err != nil {
-				return err
-			}
+	return nil
+}
+
+func visitTarFiles(r io.ReadCloser, visitor func(header *tar.Header, reader io.Reader) error) error {
+	tr := tar.NewReader(r)
+	for {
+		h, err := tr.Next()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+
+		if err := visitor(h, tr); err != nil {
+			return err
 		}
 	}
 

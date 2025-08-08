@@ -29,6 +29,7 @@ func newUploadBaseImageCmd() *cobra.Command {
 	}
 
 	annotateWithDigest := run.Flags().StringToString("annotate-with-digest", map[string]string{}, "Add an annotation to the base image with the digest of a specified path. Example: nix.store-digest=/nix")
+	dryRun := run.Flags().Bool("dry-run", false, "Pull source image and calculate annotations without pushing to nscr.io")
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		sourceImage, err := oci.ParseImageID(args[0])
@@ -60,6 +61,12 @@ func newUploadBaseImageCmd() *cobra.Command {
 		annotations, err := makeAnnotations(ctx, desc, *annotateWithDigest)
 		if err != nil {
 			return err
+		}
+		console.WriteJSON(console.Info(ctx), "Image annotations:", annotations)
+
+		if *dryRun {
+			fmt.Fprintf(console.Info(ctx), "Dry run, not pushing image: %s\n", targetRef)
+			return nil
 		}
 
 		fmt.Fprintf(console.Info(ctx), "Pushing image: %s\n", targetRef)
@@ -108,7 +115,6 @@ func newUploadBaseImageCmd() *cobra.Command {
 		}
 
 		fmt.Fprintf(console.Info(ctx), "%s: %s@%s\n", colors.Ctx(ctx).Highlight.Apply("✔ Uploaded base image"), targetRef, h)
-		console.WriteJSON(console.Info(ctx), "with annotations:", annotations)
 		return nil
 	})
 
