@@ -52,7 +52,7 @@ do_install() {
     sh_c="echo"
   fi
 
-  echo "Executing Namespace's installation script..."
+  echo "Executing Foundation installation script..."
 
   if is_darwin; then
     os="darwin"
@@ -106,7 +106,7 @@ do_install() {
     download_uri="https://get.namespace.so/packages/${tool_name}/v${version}/${tool_name}_${version}_${os}_${architecture}.tar.gz"
   fi
 
-  echo "Downloading and installing Namespace from ${download_uri}"
+  echo "Downloading and installing Foundation from ${download_uri}"
 
   ci_header=""
   if [ ! -z "${CI:-}" ]; then
@@ -122,10 +122,7 @@ do_install() {
   $sh_c "rm ${temp_tar}"
 
   echo
-  echo "Namespace was successfully installed to ${bin_dir}/${tool_name}"
-  echo
-  echo "Note: ${tool_name} collects usage telemetry. This data helps us build a better "
-  echo "platform for you. You can learn more at https://namespace.so/telemetry."
+  echo "Foundation was successfully installed to ${bin_dir}/${tool_name}"
   echo
 
 
@@ -135,8 +132,7 @@ do_install() {
     *) shell_profile=".profile" ;;
   esac
   echo "Manually add the directory to your \$HOME/$shell_profile (or similar)"
-  echo "  export NS_ROOT=\"$ns_root\""
-  echo "  export PATH=\"\$NS_ROOT/bin:\$PATH\""
+  echo "  export PATH=\"$ns_root/bin:\$PATH\""
   echo
   echo "Or simply run ${bin_dir}/${tool_name}"
 
