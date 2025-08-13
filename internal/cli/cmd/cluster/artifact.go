@@ -13,6 +13,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/aws/smithy-go/ptr"
 	"github.com/cenkalti/backoff"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -45,6 +46,7 @@ func NewArtifactCmd() *cobra.Command {
 
 func newArtifactUploadCmd() *cobra.Command {
 	var namespace string
+	var expirationDur time.Duration
 
 	return fncobra.Cmd(&cobra.Command{
 		Use:   "upload [src] [dest]",
@@ -53,6 +55,7 @@ func newArtifactUploadCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(2),
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		flags.StringVar(&namespace, "namespace", mainArtifactNamespace, "Target namespace of the artifact.")
+		flags.DurationVar(&expirationDur, "expires_in", 0, "If set, sets the artifact's expiration into the specified future.")
 	}).DoWithArgs(func(ctx context.Context, args []string) error {
 		if len(args) != 2 {
 			return fnerrors.Newf("expected exactly two arguments: a local source and a remote destination")
@@ -76,7 +79,15 @@ func newArtifactUploadCmd() *cobra.Command {
 		}
 		defer cli.Close()
 
-		if err := storage.UploadArtifact(ctx, cli, namespace, dest, uploadFile); err != nil {
+		opts := storage.UploadOpts{}
+
+		if expirationDur > 0 {
+			opts.ExpiresAt = ptr.Time(time.Now().Add(expirationDur))
+		} else if expirationDur < 0 {
+			return fnerrors.BadInputError("expiration can't be negative")
+		}
+
+		if _, err := storage.UploadArtifactWithOpts(ctx, cli, namespace, dest, uploadFile, opts); err != nil {
 			return err
 		}
 
