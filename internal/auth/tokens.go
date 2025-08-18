@@ -208,12 +208,17 @@ func StoreToken(token StoredToken) error {
 		return err
 	}
 
-	configDir, err := dirs.Ensure(dirs.Config())
-	if err != nil {
-		return err
+	tokenFile := os.Getenv("NSC_TOKEN_FILE")
+	if tokenFile == "" {
+		configDir, err := dirs.Ensure(dirs.Config())
+		if err != nil {
+			return err
+		}
+
+		tokenFile = filepath.Join(configDir, tokenLoc())
 	}
 
-	if err := os.WriteFile(filepath.Join(configDir, tokenLoc()), data, 0600); err != nil {
+	if err := os.WriteFile(tokenFile, data, 0600); err != nil {
 		return fnerrors.Newf("failed to write token data: %w", err)
 	}
 
