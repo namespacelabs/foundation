@@ -12,6 +12,7 @@ package postgres
 			nanos?:   int
 		}
 		idleInTransactionSessionTimeoutMs?: int
+		statementTimeoutMs?:                int
 		connectTimeoutMs?:                  int
 
 		#Definition: {
