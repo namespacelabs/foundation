@@ -16,6 +16,7 @@ func NewBaseImageCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newUploadBaseImageCmd())
+	cmd.AddCommand(newOptimizeCmd())
 	cmd.AddCommand(github.NewBaseImageBuildCmd("build-github-image"))
 
 	return cmd

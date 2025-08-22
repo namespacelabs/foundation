@@ -1,7 +1,7 @@
-buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250807002031-b2135457e633.2 h1:eMu9hf1FSCvfBFwUr6l95HqOnJO+Fkfktj1hruX/rGA=
-buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250807002031-b2135457e633.2/go.mod h1:d9r3RSD1F8BdPNhSRxPsZ9Trl7K/ufx7oJV6SrtlpXk=
-buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.6-20250807002031-b2135457e633.1 h1:uA6PUpI0ZncU5Hz80ScbsAujGNNkBsEXJfGJDjp1+AY=
-buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.6-20250807002031-b2135457e633.1/go.mod h1:J6KXPNqce753NzqwbCXNeyoMoVR2BQDPCQqJmtjsF/g=
+buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250822141522-a160a3a95fa5.2 h1:0VgAkrHCSberDbbRoJsesUVIiLekkXHboGdN12sA51A=
+buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250822141522-a160a3a95fa5.2/go.mod h1:lcy4tIdJF73pWN14/pg9xWzlSzJAufuvpLKuQk03XzQ=
+buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.8-20250822141522-a160a3a95fa5.1 h1:tQ4ETufJ4wMvxT2Ya85JHVpXoHSitx7bhhTiexVNN3w=
+buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.8-20250822141522-a160a3a95fa5.1/go.mod h1:Aqk6zUNx25cgmfyxXfFdkja0sKPI0xoTcMsCPCi88WY=
 c2sp.org/CCTV/age v0.0.0-20240306222714-3ec4d716e805 h1:u2qwJeEvnypw+OCPUHmoZE3IqwfuN5kgDfo5MLzpNM0=
 c2sp.org/CCTV/age v0.0.0-20240306222714-3ec4d716e805/go.mod h1:FomMrUJ2Lxt5jCLmZkG3FHa72zUprnhd3v/Z18Snm4w=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
@@ -1527,8 +1527,8 @@ google.golang.org/protobuf v1.25.0/go.mod h1:9JNX74DMeImyA3h4bdi1ymwjUzf21/xIlba
 google.golang.org/protobuf v1.26.0-rc.1/go.mod h1:jlhhOSvTdKEhbULTjvd4ARK9grFBp09yW+WbY/TyQbw=
 google.golang.org/protobuf v1.26.0/go.mod h1:9q0QmTI4eRPtz6boOQmLYwt+qCgq0jsYwAQnmE0givc=
 google.golang.org/protobuf v1.27.1/go.mod h1:9q0QmTI4eRPtz6boOQmLYwt+qCgq0jsYwAQnmE0givc=
-google.golang.org/protobuf v1.36.6 h1:z1NpPI8ku2WgiWnf+t9wTPsn6eP1L7ksHUlkfLvd9xY=
-google.golang.org/protobuf v1.36.6/go.mod h1:jduwjTPXsFjZGTmRluh+L6NjiWu7pchiJ2/5YcXBHnY=
+google.golang.org/protobuf v1.36.8 h1:xHScyCOEuuwZEc6UtSOvPbAT4zRh0xcNRYekJwfqyMc=
+google.golang.org/protobuf v1.36.8/go.mod h1:fuxRtAxBytpl4zzqUh6/eyUujkJdNiuEkXntxiD/uRU=
 gopkg.in/airbrake/gobrake.v2 v2.0.9/go.mod h1:/h5ZAUhDkGaJfjzjKLSjv6zCL6O0LLBxU4K+aSYdM/U=
 gopkg.in/alecthomas/kingpin.v2 v2.2.6/go.mod h1:FMv+mEhP44yOT+4EoQTLFTRgOQ1FBLkstjWtayDeSgw=
 gopkg.in/cenkalti/backoff.v2 v2.2.1 h1:eJ9UAg01/HIHG987TwxvnzK2MgxXq97YY6rYDpY9aII=
