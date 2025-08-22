@@ -3,8 +3,8 @@ module namespacelabs.dev/foundation
 go 1.24.4
 
 require (
-	buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250807002031-b2135457e633.2
-	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.6-20250807002031-b2135457e633.1
+	buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250822141522-a160a3a95fa5.2
+	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.8-20250822141522-a160a3a95fa5.1
 	cloud.google.com/go/artifactregistry v1.14.7
 	cloud.google.com/go/container v1.31.0
 	cuelang.org/go v0.10.0
@@ -129,7 +129,7 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20250106144421-5f5ef82da422
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f
 	google.golang.org/grpc v1.71.0
-	google.golang.org/protobuf v1.36.6
+	google.golang.org/protobuf v1.36.8
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gotest.tools v2.2.0+incompatible
 	helm.sh/helm/v3 v3.18.4

@@ -28,7 +28,7 @@ func NewBaseImageBuildCmd(use string) *cobra.Command {
 
 	dockerFile := cmd.Flags().StringP("file", "f", "", "Specifies what Dockerfile to build.")
 	osLabel := cmd.Flags().StringP("os-label", "l", "ubuntu-22.04", "Specifies the OS version of the base image.")
-	platforms := cmd.Flags().StringSliceP("platform", "p", []string{"linux/amd64"}, "Which platforms to build for (linux/amd64 or linux/arm64)")
+	platforms := cmd.Flags().StringSliceP("platform", "p", []string{"linux/amd64", "linux/arm64"}, "Which platforms to build for (linux/amd64 or linux/arm64)")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
 		if *dockerFile == "" {
