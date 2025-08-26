@@ -211,6 +211,11 @@ func generateForSrv(ctx context.Context, ingress kubedef.IngressClass, env *sche
 		return nil, err
 	}
 
+	if klass, ok := annotations.Annotations["kubernetes.io/ingress.class"]; ok {
+		spec = spec.WithIngressClassName(klass)
+		delete(annotations.Annotations, "kubernetes.io/ingress.class")
+	}
+
 	applies = append(applies, kubedef.Apply{
 		Description: fmt.Sprintf("Ingress %s", g.Name),
 		Resource: applynetworkingv1.Ingress(g.Name, ns).
