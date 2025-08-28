@@ -6,8 +6,15 @@ package oci
 
 import (
 	"context"
+	"errors"
+	"net"
+	"syscall"
+	"time"
 
+	"github.com/cenkalti/backoff/v4"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -93,12 +100,40 @@ func (pi *publishImage) Compute(ctx context.Context, deps compute.Resolved) (Ima
 	// invocation.
 
 	return compute.WithLock(ctx, "publish-image:"+target.Repository, func(ctx context.Context) (ImageID, error) {
-		digest, err := image.Push(ctx, target, true)
-		if err != nil {
+		var pushedDigest v1.Hash
+
+		if err := backoff.Retry(func() error {
+			digest, err := image.Push(ctx, target, true)
+			if err != nil {
+				return maybeAsPermanent(err)
+			}
+
+			pushedDigest = digest
+			return nil
+		}, &backoff.ExponentialBackOff{
+			InitialInterval:     500 * time.Millisecond,
+			RandomizationFactor: 0.5,
+			Multiplier:          1.5,
+			MaxInterval:         5 * time.Second,
+			MaxElapsedTime:      2 * time.Minute,
+			Clock:               backoff.SystemClock,
+		}); err != nil {
 			return ImageID{}, err
 		}
 
 		// Use the original name, not the rewritten one, for readability purposes.
-		return ImageID{Repository: tag.Repository, Digest: digest.String()}, nil
+		return ImageID{Repository: tag.Repository, Digest: pushedDigest.String()}, nil
 	})
+}
+
+func maybeAsPermanent(err error) error {
+	var netErr *net.OpError
+	if fnerrors.IsOfKind(err, fnerrors.Kind_INVOCATION) && errors.As(err, &netErr) {
+		var errno syscall.Errno
+		if errors.As(netErr.Err, &errno) && errno.Is(syscall.EHOSTUNREACH) {
+			return err
+		}
+	}
+
+	return backoff.Permanent(err)
 }

@@ -64,6 +64,15 @@ func WithLogs(err error, readerF func() io.Reader) error {
 	return &ErrWithLogs{err, readerF}
 }
 
+func IsOfKind(err error, kind ErrorKind) bool {
+	var be *BaseError
+	if errors.As(err, &be) {
+		return be.Kind == kind
+	}
+
+	return false
+}
+
 func makeError(kind ErrorKind, format string, args ...interface{}) *BaseError {
 	return &BaseError{Kind: kind, OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.NewWithSkip(2)}
 }
