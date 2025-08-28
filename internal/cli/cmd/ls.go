@@ -7,6 +7,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/kr/text"
 	"github.com/spf13/cobra"
@@ -14,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -24,6 +26,7 @@ func NewLsCmd() *cobra.Command {
 		env     cfg.Context
 		locs    fncobra.Locations
 		details bool
+		kind    string
 	)
 
 	return fncobra.Cmd(
@@ -34,6 +37,7 @@ func NewLsCmd() *cobra.Command {
 		}).
 		WithFlags(func(flags *pflag.FlagSet) {
 			flags.BoolVarP(&details, "details", "l", false, "If set to true, prints the contents of the listed packages.")
+			flags.StringVarP(&kind, "kind", "k", "", "If set, filters servers, services or tests.")
 		}).
 		With(
 			fncobra.HardcodeEnv(&env, "dev"),
@@ -43,13 +47,45 @@ func NewLsCmd() *cobra.Command {
 			stdout := console.Stdout(ctx)
 			pl := parsing.NewPackageLoader(env)
 
-			for _, l := range locs.Locations {
-				fmt.Fprintf(stdout, "%s\n", l)
+			if !slices.Contains([]string{"", "server", "servers", "service", "services", "test", "tests", "binary", "binaries"}, kind) {
+				return fnerrors.Newf("bad kind %q", kind)
+			}
 
-				if locs.UserSpecified || details {
+			for _, l := range locs.Locations {
+				if kind == "" {
+					fmt.Fprintf(stdout, "%s\n", l)
+				}
+
+				if locs.UserSpecified || details || kind != "" {
 					pkg, err := pl.LoadByName(ctx, l.AsPackageName())
 					if err != nil {
 						return err
+					}
+
+					if kind != "" {
+						switch kind {
+						case "server", "servers":
+							if r := pkg.Server; r != nil {
+								fmt.Fprintf(stdout, "%s\n", r.PackageName)
+							}
+
+						case "service", "services":
+							if r := pkg.Service; r != nil {
+								fmt.Fprintf(stdout, "%s\n", r.PackageName)
+							}
+
+						case "test", "tests":
+							for _, r := range pkg.Tests {
+								fmt.Fprintf(stdout, "%s:%s\n", r.PackageName, r.Name)
+							}
+
+						case "binary", "binaries":
+							for _, r := range pkg.Binaries {
+								fmt.Fprintf(stdout, "%s:%s\n", r.PackageName, r.Name)
+							}
+						}
+
+						continue
 					}
 
 					resout := text.NewIndentWriter(stdout, []byte("    "))
@@ -107,6 +143,7 @@ func NewLsCmd() *cobra.Command {
 					fmt.Fprintln(resout)
 				}
 			}
+
 			return nil
 		})
 }
