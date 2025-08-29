@@ -11,12 +11,15 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
+	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
@@ -61,6 +64,8 @@ func NewTestCmd() *cobra.Command {
 	flags.BoolVar(&parallel, "parallel", parallel, "If true, run tests in parallel.")
 	flags.BoolVar(&parallelWork, "parallel_work", parallelWork, "If true, performs all work in parallel except running the actual test (e.g. builds).")
 	flags.BoolVar(&explain, "explain", explain, "If set to true, rather than applying the graph, output an explanation of what would be done.")
+
+	logDir := flags.String("log_dir", "", "If set, write all log files to this directory.")
 
 	flags.BoolVar(&rocketShip, "rocket_ship", rocketShip, "If set, go full parallel without constraints.")
 	_ = flags.MarkHidden("rocket_ship")
@@ -121,7 +126,7 @@ func NewTestCmd() *cobra.Command {
 		style := colors.Ctx(ctx)
 
 		testOpts.ParentRunID = storedrun.ParentID
-		testOpts.OutputProgress = !parallel || forceOutputProgress
+		testOpts.OutputProgress = (!parallel || forceOutputProgress) && *logDir == ""
 
 		var mu sync.Mutex // Protects the slices below.
 		var pending []compute.Computable[testing.StoredTestResults]
@@ -247,6 +252,48 @@ func NewTestCmd() *cobra.Command {
 		for _, run := range completed {
 			if !run.GetTestSummary().GetResult().Success {
 				failed = append(failed, run.GetTestSummary().GetTestPackage())
+			}
+		}
+
+		if *logDir != "" {
+			var errs []error
+			for k, run := range completed {
+				ld := *logDir
+				if len(completed) > 1 {
+					ld = filepath.Join(ld, fmt.Sprintf("%d", k))
+				}
+
+				if err := os.MkdirAll(ld, 0755); err != nil {
+					return err
+				}
+
+				dumpfile := func(name string, s *storage.TestResultBundle_InlineLog) error {
+					fpath := filepath.Join(ld, name)
+					f, err := os.Create(fpath)
+					if err != nil {
+						return err
+					}
+
+					defer f.Close()
+
+					if _, err := f.Write(s.Output); err != nil {
+						return err
+					}
+
+					fmt.Fprintf(out, "Wrote %s\n", fpath)
+
+					return nil
+				}
+
+				errs = append(errs, dumpfile("test.log", run.TestResults.TestLog))
+
+				for _, log := range run.TestResults.ServerLog {
+					errs = append(errs, dumpfile(fmt.Sprintf("%s.%s.log", strings.ReplaceAll(log.PackageName, "/", "--"), log.ContainerName), log))
+				}
+			}
+
+			if err := multierr.New(errs...); err != nil {
+				return err
 			}
 		}
 
