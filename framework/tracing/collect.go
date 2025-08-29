@@ -135,6 +135,18 @@ func CollectAndLog1[T any](ctx context.Context, tracer trace.Tracer, name Collec
 	return v, err
 }
 
+func CollectAndLog2[T any, R any](ctx context.Context, tracer trace.Tracer, name Collected, callback func(context.Context) (T, R, error), opts ...trace.SpanStartOption) (T, R, error) {
+	zlb := LoggerFromAttrs(zerolog.Ctx(ctx).With(), name.attributes).Logger()
+
+	zlb.Info().Msgf("%s", name.name)
+	v, w, err := Collect2(zlb.WithContext(ctx), tracer, name, callback, opts...)
+	if err != nil {
+		zlb.Err(err).Msgf("%s (failed)", name.name)
+	}
+
+	return v, w, err
+}
+
 func CollectAndLogDuration0(ctx context.Context, tracer trace.Tracer, name Collected, callback func(context.Context) error, opts ...trace.SpanStartOption) error {
 	zlb := LoggerFromAttrs(zerolog.Ctx(ctx).With(), name.attributes).Logger()
 
@@ -201,6 +213,10 @@ func CollectAndLog0C(ctx context.Context, name Collected, callback func(context.
 
 func CollectAndLog1C[T any](ctx context.Context, name Collected, callback func(context.Context) (T, error), opts ...trace.SpanStartOption) (T, error) {
 	return CollectAndLog1(ctx, tracer(ctx), name, callback, opts...)
+}
+
+func CollectAndLog2C[T any, R any](ctx context.Context, name Collected, callback func(context.Context) (T, R, error), opts ...trace.SpanStartOption) (T, R, error) {
+	return CollectAndLog2(ctx, tracer(ctx), name, callback, opts...)
 }
 
 func CollectAndLogDuration0C(ctx context.Context, name Collected, callback func(context.Context) error, opts ...trace.SpanStartOption) error {
