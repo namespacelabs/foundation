@@ -285,9 +285,11 @@ func NewTestCmd() *cobra.Command {
 					return nil
 				}
 
-				errs = append(errs, dumpfile("test.log", run.TestResults.TestLog))
+				if log := run.TestResults.GetTestLog(); log != nil {
+					errs = append(errs, dumpfile("test.log", log))
+				}
 
-				for _, log := range run.TestResults.ServerLog {
+				for _, log := range run.TestResults.GetServerLog() {
 					errs = append(errs, dumpfile(fmt.Sprintf("%s.%s.log", strings.ReplaceAll(log.PackageName, "/", "--"), log.ContainerName), log))
 				}
 			}
