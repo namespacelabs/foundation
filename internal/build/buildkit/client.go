@@ -294,6 +294,17 @@ func useRemoteClusterViaMtls(ctx context.Context, bc cluster.BuilderConfig) (*Ga
 	})
 }
 
+func useBuildClusterCluster(ctx context.Context, bp cluster.BuildCluster) (*GatewayClient, error) {
+	sink := tasks.SinkFrom(ctx)
+
+	return waitAndConnect(ctx, func(innerCtx context.Context) (*client.Client, error) {
+		return client.New(innerCtx, "buildkitd", client.WithContextDialer(func(innerCtx context.Context, _ string) (net.Conn, error) {
+			conn, _, err := bp.NewConn(tasks.WithSink(innerCtx, sink))
+			return conn, err
+		}))
+	})
+}
+
 func waitReadiness(ctx context.Context, connect func(ctx context.Context) (*buildkit.Client, error)) error {
 	return tasks.Action("buildkit.wait-until-ready").Run(ctx, func(ctx context.Context) error {
 		return buildkitfw.WaitReadiness(ctx, 5*time.Second, connect)
