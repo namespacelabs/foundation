@@ -11,7 +11,6 @@ import (
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
-	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api/private"
 	"namespacelabs.dev/foundation/schema"
@@ -20,7 +19,7 @@ import (
 	"namespacelabs.dev/foundation/universe/nscloud/configuration"
 )
 
-func NamespaceCluster(machineType string, ephemeral, withBuild bool) Stage {
+func NamespaceCluster(machineType string, ephemeral bool) Stage {
 	return Stage{
 		Pre: func(ch chan *orchestration.Event) {
 			ch <- &orchestration.Event{
@@ -29,22 +28,15 @@ func NamespaceCluster(machineType string, ephemeral, withBuild bool) Stage {
 				ResourceLabel: "New cluster",
 			}
 
-			if withBuild {
-				ch <- &orchestration.Event{
-					Category:      "Namespace Cloud",
-					ResourceId:    "build-cluster",
-					ResourceLabel: "Setup build cluster",
-				}
-			}
 		},
 
 		Run: func(ctx context.Context, env cfg.Context, ch chan *orchestration.Event) (*schema.DevHost_ConfigureEnvironment, error) {
-			return PrepareNewNamespaceCluster(ctx, env, machineType, ephemeral, withBuild, ch)
+			return PrepareNewNamespaceCluster(ctx, env, machineType, ephemeral, ch)
 		},
 	}
 }
 
-func PrepareNewNamespaceCluster(ctx context.Context, env cfg.Context, machineType string, ephemeral, withBuild bool, ch chan *orchestration.Event) (*schema.DevHost_ConfigureEnvironment, error) {
+func PrepareNewNamespaceCluster(ctx context.Context, env cfg.Context, machineType string, ephemeral bool, ch chan *orchestration.Event) (*schema.DevHost_ConfigureEnvironment, error) {
 	eg := executor.New(ctx, "prepare-new-cluster")
 
 	var mainMessages, buildMessages []proto.Message
@@ -66,26 +58,6 @@ func PrepareNewNamespaceCluster(ctx context.Context, env cfg.Context, machineTyp
 		mainMessages = append(mainMessages, &configuration.Cluster{ClusterId: cfg.ClusterId, ApiEndpoint: cfg.Cluster.ApiEndpoint})
 		return nil
 	})
-
-	if withBuild {
-		eg.Go(func(ctx context.Context) error {
-			msg, err := nscloud.EnsureBuildCluster(ctx, api.Methods)
-			if err != nil {
-				return err
-			}
-
-			ch <- &orchestration.Event{
-				Category:      "Namespace Cloud",
-				ResourceId:    "build-cluster",
-				ResourceLabel: "Setup build cluster",
-				Ready:         orchestration.Event_READY,
-				Stage:         orchestration.Event_DONE,
-			}
-
-			buildMessages = append(buildMessages, msg)
-			return nil
-		})
-	}
 
 	if err := eg.Wait(); err != nil {
 		return nil, err
