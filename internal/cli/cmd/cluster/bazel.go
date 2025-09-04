@@ -123,6 +123,14 @@ func newSetupCacheCmd() *cobra.Command {
 			}
 		}
 
+		if len(response.CredentialHelperDomains) > 0 {
+			out = bazelSetup{
+				Endpoint:                response.HttpsCacheEndpoint,
+				ExpiresAt:               response.ExpiresAt,
+				CredentialHelperDomains: response.CredentialHelperDomains,
+			}
+		}
+
 		// If set, we always generate a bazelrc file.
 		if bazelRcPath != "" {
 			data, err := toBazelConfig(out)
@@ -223,13 +231,22 @@ func toBazelConfig(out bazelSetup) ([]byte, error) {
 		}
 	}
 
+	if len(out.CredentialHelperDomains) > 0 {
+		for _, domain := range out.CredentialHelperDomains {
+			if _, err := buffer.WriteString(fmt.Sprintf("build --credential_helper=*.%s=bazel-credential-nsc\n", domain)); err != nil {
+				return nil, fnerrors.Newf("failed to append credential_helper: %w", err)
+			}
+		}
+	}
+
 	return buffer.Bytes(), nil
 }
 
 type bazelSetup struct {
-	Endpoint     string     `json:"endpoint,omitempty"`
-	ServerCaCert string     `json:"server_ca_cert,omitempty"`
-	ClientCert   string     `json:"client_cert,omitempty"`
-	ClientKey    string     `json:"client_key,omitempty"`
-	ExpiresAt    *time.Time `json:"expires_at,omitempty"`
+	Endpoint                string     `json:"endpoint,omitempty"`
+	ServerCaCert            string     `json:"server_ca_cert,omitempty"`
+	ClientCert              string     `json:"client_cert,omitempty"`
+	ClientKey               string     `json:"client_key,omitempty"`
+	ExpiresAt               *time.Time `json:"expires_at,omitempty"`
+	CredentialHelperDomains []string   `json:"credential_helper_domains,omitempty"`
 }
