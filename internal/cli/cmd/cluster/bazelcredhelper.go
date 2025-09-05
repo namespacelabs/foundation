@@ -17,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
 const (
@@ -105,21 +104,6 @@ func bazelCredGet(ctx context.Context) error {
 func fetchHeaders(ctx context.Context, url *url.URL) (http.Header, *time.Time, error) {
 	if url.Scheme != "https" {
 		return nil, nil, fnerrors.Newf("nsc bazel credential helper configured for non-https endpoint")
-	}
-
-	// Bazel asking for credentials is a good time to ensure that the remote bazel cache is initialized.
-	response, err := api.EnsureBazelCache(ctx, api.Methods, "workstation")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	cacheUrl, err := url.Parse(response.HttpsCacheEndpoint)
-	if err != nil {
-		return nil, nil, fnerrors.Newf("internal error: bad URL from EnsureBazelCache: %v", err)
-	}
-
-	if cacheUrl.Host != url.Host {
-		return nil, nil, fnerrors.Newf("Please re-configure --remote-cache=%s", cacheUrl.Host)
 	}
 
 	token, err := fnapi.IssueToken(ctx, bazelBearerTokenDuration)
