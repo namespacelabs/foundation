@@ -8,8 +8,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 
@@ -133,7 +135,7 @@ func newSetupCacheCmd() *cobra.Command {
 
 		// If set, we always generate a bazelrc file.
 		if bazelRcPath != "" {
-			data, err := toBazelConfig(out)
+			data, err := toBazelConfig(ctx, out)
 			if err != nil {
 				return err
 			}
@@ -158,7 +160,7 @@ func newSetupCacheCmd() *cobra.Command {
 
 			// For plain output, flush the state to a temp bazelrc if none is written yet.
 			if bazelRcPath == "" {
-				data, err := toBazelConfig(out)
+				data, err := toBazelConfig(ctx, out)
 				if err != nil {
 					return err
 				}
@@ -207,7 +209,7 @@ func writeFile(path string, content []byte) error {
 	return nil
 }
 
-func toBazelConfig(out bazelSetup) ([]byte, error) {
+func toBazelConfig(ctx context.Context, out bazelSetup) ([]byte, error) {
 	var buffer bytes.Buffer
 	if _, err := buffer.WriteString(fmt.Sprintf("build --remote_cache=%s\n", out.Endpoint)); err != nil {
 		return nil, fnerrors.Newf("failed to append cache endpoint: %w", err)
@@ -235,6 +237,20 @@ func toBazelConfig(out bazelSetup) ([]byte, error) {
 		for _, domain := range out.CredentialHelperDomains {
 			if _, err := buffer.WriteString(fmt.Sprintf("build --credential_helper=*.%s=bazel-credential-nsc\n", domain)); err != nil {
 				return nil, fnerrors.Newf("failed to append credential_helper: %w", err)
+			}
+		}
+
+		if _, err := exec.LookPath(BazelCredHelperBinary); err != nil {
+			stdout := console.Stdout(ctx)
+			style := colors.Ctx(ctx)
+
+			if errors.Is(err, exec.ErrNotFound) {
+				fmt.Fprintln(stdout)
+				fmt.Fprint(stdout, style.Highlight.Apply(fmt.Sprintf("We didn't find %s in your $PATH.", BazelCredHelperBinary)))
+				fmt.Fprintf(stdout, "\nIt's usually installed along-side nsc; so if you have added nsc to the $PATH, %s will also be available.\n", BazelCredHelperBinary)
+				fmt.Fprintf(stdout, "\nWhile your $PATH is not updated, accessing the remote bazel cache won't work.\n")
+			} else {
+				return nil, fnerrors.Newf("failed to look up %s in $PATH: %w", BazelCredHelperBinary, err)
 			}
 		}
 	}

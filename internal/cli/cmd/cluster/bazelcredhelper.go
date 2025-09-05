@@ -23,6 +23,7 @@ import (
 const (
 	bazelBearerTokenDuration    = time.Hour
 	bazelBearerRefetchFrequency = 15 * time.Minute // Ask a bit more often than token expiration to limit the impact in case the instance has an issue.
+	BazelCredHelperBinary       = "bazel-credential-nsc"
 )
 
 func NewBazelCredHelperGetCmd() *cobra.Command {
