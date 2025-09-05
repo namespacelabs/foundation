@@ -22,7 +22,7 @@ jobs:
           go-version: ${{ matrix.go-version }}
           cache: false
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup cross-invocation caching
         uses: namespacelabs/nscloud-cache-action@v1
         with:
