@@ -16,7 +16,7 @@ import (
 // https://github.com/bazelbuild/proposals/blob/main/designs/2022-06-07-bazel-credential-helpers.md
 func main() {
 	fncobra.DoMain(fncobra.MainOpts{
-		Name: "bazel-credential-nsc",
+		Name: cluster.BazelCredHelperBinary,
 		RegisterCommands: func(root *cobra.Command) {
 			endpoint.SetupFlags("", root.PersistentFlags(), false)
 			ia.SetupFlags(root.PersistentFlags())
