@@ -24,13 +24,14 @@ import (
 	"namespacelabs.dev/foundation/std/grpc/requestid"
 )
 
-var (
-	maxOutputToTerminal = 1024
-	skipLogging         []string
-)
-
 func init() {
 	zerolog.TimeFieldFormat = time.RFC3339Nano // Setting external package globals does not make me happy.
+}
+
+func fromEnv() (int, []string) {
+	var maxOutputToTerminal = 1024
+	var skipLogging []string
+
 	if v := os.Getenv("FOUNDATION_GRPCLOG_MESSAGE_MAX_BYTES"); v != "" {
 		if parsed, err := strconv.ParseInt(v, 10, 32); err != nil {
 			panic(err)
@@ -41,6 +42,8 @@ func init() {
 	if v := os.Getenv("FOUNDATION_GRPCLOG_SKIP_METHODS"); v != "" {
 		skipLogging = strings.Split(v, ",")
 	}
+
+	return maxOutputToTerminal, skipLogging
 }
 
 var Log = core.ZLog
@@ -51,6 +54,9 @@ func Background() context.Context {
 
 type Interceptor struct {
 	Logger *zerolog.Logger
+
+	MaxOutputToTerminal int
+	SkipLogging         []string
 }
 
 func (ic Interceptor) Unary(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
@@ -60,16 +66,16 @@ func (ic Interceptor) Unary(ctx context.Context, req interface{}, info *grpc.Una
 	}
 
 	logger := ic.prepareLogger(rdata.RequestID, info.FullMethod)
-	loggable := !slices.Contains(skipLogging, strings.TrimPrefix(info.FullMethod, "/"))
+	loggable := !slices.Contains(ic.SkipLogging, strings.TrimPrefix(info.FullMethod, "/"))
 
 	if loggable {
-		makeNewEvent(ctx, logger.Info().Str("kind", "grpclog").Str("what", "request")).Str("request_body", SerializeMessage(req)).Send()
+		makeNewEvent(ctx, logger.Info().Str("kind", "grpclog").Str("what", "request")).Str("request_body", serializeMessage(req, ic.MaxOutputToTerminal)).Send()
 	}
 
 	resp, err := handler(logger.WithContext(ctx), req)
 	if loggable {
 		if err == nil {
-			logger.Info().Str("kind", "grpclog").Dur("took", time.Since(rdata.Started)).Str("what", "response").Str("response_body", SerializeMessage(resp)).Send()
+			logger.Info().Str("kind", "grpclog").Dur("took", time.Since(rdata.Started)).Str("what", "response").Str("response_body", serializeMessage(resp, ic.MaxOutputToTerminal)).Send()
 		} else {
 			st, ok := status.FromError(err)
 
@@ -94,7 +100,7 @@ func (ic Interceptor) Streaming(srv interface{}, stream grpc.ServerStream, info 
 	}
 
 	logger := ic.prepareLogger(rdata.RequestID, info.FullMethod)
-	loggable := !slices.Contains(skipLogging, strings.TrimPrefix(info.FullMethod, "/"))
+	loggable := !slices.Contains(ic.SkipLogging, strings.TrimPrefix(info.FullMethod, "/"))
 
 	if loggable {
 		makeNewEvent(ctx, logger.Info().Str("kind", "grpclog").Str("what", "stream_start")).Send()
@@ -202,20 +208,26 @@ func single(md metadata.MD, key string) string {
 }
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
-	var interceptor Interceptor
+	n, s := fromEnv()
+
+	interceptor := Interceptor{
+		MaxOutputToTerminal: n,
+		SkipLogging:         s,
+	}
+
 	deps.Interceptors.ForServer(interceptor.Unary, interceptor.Streaming)
 	return nil
 }
 
-func SerializeMessage(msg interface{}) string {
+func serializeMessage(msg interface{}, max int) string {
 	if msg == nil {
 		return "<nil>"
 	}
 
 	reqBytes, _ := json.Marshal(msg)
 	reqStr := string(reqBytes)
-	if len(reqStr) > maxOutputToTerminal {
-		return fmt.Sprintf("%s [...%d chars truncated]", reqStr[:maxOutputToTerminal], len(reqStr)-maxOutputToTerminal)
+	if len(reqStr) > max {
+		return fmt.Sprintf("%s [...%d chars truncated]", reqStr[:max], len(reqStr)-max)
 	}
 
 	return reqStr
