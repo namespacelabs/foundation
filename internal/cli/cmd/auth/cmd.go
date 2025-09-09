@@ -36,6 +36,12 @@ func NewAuthCmd() *cobra.Command {
 	return cmd
 }
 
+func NewAuthCmdWithTrustRelationships() *cobra.Command {
+	cmd := NewAuthCmd()
+	cmd.AddCommand(NewTrustRelationshipsCmd())
+	return cmd
+}
+
 func printLoginInfo(ctx context.Context, tenant *fnapi.Tenant) {
 	if tenant.Name != "" {
 		fmt.Fprintf(console.Stdout(ctx), "You are now logged into workspace %q, have a nice day.\n", tenant.Name)
