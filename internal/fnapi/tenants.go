@@ -254,6 +254,24 @@ type GetTenantResponse struct {
 	Tenant *Tenant `json:"tenant,omitempty"`
 }
 
+type StoredTrustRelationship struct {
+	Id           string     `json:"id,omitempty"`
+	CreatorJson  string     `json:"creator_json,omitempty"`
+	CreatedAt    *time.Time `json:"created_at,omitempty"`
+	Issuer       string     `json:"issuer,omitempty"`
+	SubjectMatch string     `json:"subject_match,omitempty"`
+}
+
+type UpdateTrustRelationshipsRequest struct {
+	Generation         string                    `json:"generation"`
+	TrustRelationships []StoredTrustRelationship `json:"trust_relationships,omitempty"`
+}
+
+type ListTrustRelationshipsResponse struct {
+	Generation         string                    `json:"generation"`
+	TrustRelationships []StoredTrustRelationship `json:"trust_relationships,omitempty"`
+}
+
 func GetTenant(ctx context.Context) (GetTenantResponse, error) {
 	req := struct{}{}
 
@@ -264,6 +282,34 @@ func GetTenant(ctx context.Context) (GetTenantResponse, error) {
 		Retryable:        true,
 	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
 		return GetTenantResponse{}, err
+	}
+
+	return res, nil
+}
+
+func UpdateTrustRelationships(ctx context.Context, generation string, trustRelationships []StoredTrustRelationship) error {
+	req := UpdateTrustRelationshipsRequest{
+		Generation:         generation,
+		TrustRelationships: trustRelationships,
+	}
+
+	return Call[UpdateTrustRelationshipsRequest]{
+		Method:           "nsl.tenants.TenantsService/UpdateTrustRelationships",
+		IssueBearerToken: IssueBearerToken,
+		Retryable:        true,
+	}.Do(ctx, req, ResolveIAMEndpoint, nil)
+}
+
+func ListTrustRelationships(ctx context.Context) (ListTrustRelationshipsResponse, error) {
+	req := struct{}{}
+
+	var res ListTrustRelationshipsResponse
+	if err := (Call[any]{
+		Method:           "nsl.tenants.TenantsService/ListTrustRelationships",
+		IssueBearerToken: IssueBearerToken,
+		Retryable:        true,
+	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
+		return ListTrustRelationshipsResponse{}, err
 	}
 
 	return res, nil
