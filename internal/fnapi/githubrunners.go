@@ -52,19 +52,9 @@ type BaseImage struct {
 	OsVersion string `json:"os_version,omitempty"`
 	// A description used for administration purposes.
 	Description string `json:"description,omitempty"`
-	// Whether this is a production image, or an image being canaried.
-	ReleaseStage BaseImage_ReleaseStage `json:"release_stage,omitempty"`
 	// Set of features that the image supports.
 	Features []string `json:"features,omitempty"`
 }
-
-type BaseImage_ReleaseStage int32
-
-const (
-	BaseImage_STAGE_UNKNOWN BaseImage_ReleaseStage = 0
-	BaseImage_PRODUCTION    BaseImage_ReleaseStage = 1
-	BaseImage_CANARY        BaseImage_ReleaseStage = 2
-)
 
 type RunnerImageDescription struct {
 	// OS label as used by GitHub jobs. (e.g. "ubuntu-22.04" or "ubuntu-22.04-staging")
