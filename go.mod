@@ -36,7 +36,7 @@ require (
 	github.com/creack/pty v1.1.21
 	github.com/docker/buildx v0.16.2
 	github.com/docker/cli v27.1.0+incompatible
-	github.com/docker/docker v27.1.2+incompatible
+	github.com/docker/docker v28.0.0+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/docker/go-units v0.5.0
 	github.com/dustin/go-humanize v1.0.1
