@@ -1,0 +1,30 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package library.oss.cockroach;
+
+option go_package = "namespacelabs.dev/foundation/library/oss/cockroach";
+
+import "schema/package.proto";
+import "schema/filecontents.proto";
+
+message ClusterIntent {
+  // If set, overrides the server package used to instantiate the local database cluster.
+  foundation.schema.PackageRef server = 1;
+  // If set, overrides the root password used to access the cluster.
+  foundation.schema.PackageRef password_secret = 2;
+}
+
+message DatabaseIntent {
+  // The database name is applied as is (e.g. it is case-sensitive).
+  string   name = 1;
+  repeated foundation.schema.FileContents schema = 2;
+  bool     skip_schema_initialization_if_exists = 3;
+  repeated string regions = 4;
+  string survival_goal = 5;
+  // Postgres helpers are unsupported on CockroachDB
+  bool enable_tracing = 6;
+}

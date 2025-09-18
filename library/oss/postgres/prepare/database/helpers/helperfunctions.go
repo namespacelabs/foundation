@@ -1,4 +1,4 @@
-// Copyright 2022, 2025 Namespace Labs Inc; All rights reserved.
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
@@ -16,7 +16,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/library/oss/postgres"
-	"namespacelabs.dev/foundation/schema"
 	universepg "namespacelabs.dev/foundation/universe/db/postgres"
 )
 
@@ -28,12 +27,6 @@ const (
 type helperFunction struct {
 	provisionSql string
 	cleanupSql   string
-}
-
-type DatabaseIntent interface {
-	GetAutoRemoveHelperFunctions() bool
-	GetProvisionHelperFunctions() bool
-	GetSchema() []*schema.FileContents
 }
 
 // Collection of optional helper functions
@@ -246,21 +239,21 @@ func helpersCleanupSql() string {
 	return sb.String()
 }
 
-type backOff struct {
-	interval time.Duration
-	deadline time.Time
-	jitter   time.Duration
+type BackOff struct {
+	Interval time.Duration
+	Deadline time.Time
+	Jitter   time.Duration
 }
 
-func (b backOff) Reset() {}
-func (b backOff) NextBackOff() time.Duration {
-	if time.Now().After(b.deadline) {
+func (b BackOff) Reset() {}
+func (b BackOff) NextBackOff() time.Duration {
+	if time.Now().After(b.Deadline) {
 		return backoff.Stop
 	}
-	return b.interval - b.jitter/2 + time.Duration(rand.Int63n(int64(b.jitter)))
+	return b.Interval - b.Jitter/2 + time.Duration(rand.Int63n(int64(b.Jitter)))
 }
 
-func ApplyWithCleanup(ctx context.Context, intent DatabaseIntent, db *universepg.DB) (reserr error) {
+func ApplyWithCleanup(ctx context.Context, intent *postgres.DatabaseIntent, db *universepg.DB) (reserr error) {
 	if intent.GetAutoRemoveHelperFunctions() {
 		defer func() {
 			if err := applyWithRetry(ctx, db, helpersCleanupSql()); err != nil {
@@ -293,10 +286,10 @@ func applyWithRetry(ctx context.Context, db *universepg.DB, sql string) error {
 		}
 
 		return err
-	}, backOff{
-		interval: 100 * time.Millisecond,
-		deadline: time.Now().Add(15 * time.Second),
-		jitter:   100 * time.Millisecond,
+	}, BackOff{
+		Interval: 100 * time.Millisecond,
+		Deadline: time.Now().Add(15 * time.Second),
+		Jitter:   100 * time.Millisecond,
 	})
 }
 
