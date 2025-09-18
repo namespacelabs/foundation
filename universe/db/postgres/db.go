@@ -2,6 +2,10 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
+// Copyright 2022, 2025 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
 package postgres
 
 import (
@@ -16,7 +20,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.opentelemetry.io/otel/trace"
-	postgrespb "namespacelabs.dev/foundation/library/database/postgres"
 )
 
 type DB struct {
@@ -24,6 +27,12 @@ type DB struct {
 	opts   commonOpts
 	t      trace.Tracer
 	cancel func()
+}
+
+type DBInstance interface {
+	GetClusterAddress() string
+	GetName() string
+	GetEnableTracing() bool
 }
 
 type commonOpts struct {
@@ -57,12 +66,12 @@ func init() {
 	}
 }
 
-func newDatabase(instance *postgrespb.DatabaseInstance, conn *pgxpool.Pool, tracer trace.Tracer, client string) *DB {
+func newDatabase(instance DBInstance, conn *pgxpool.Pool, tracer trace.Tracer, client string) *DB {
 	db := &DB{base: conn, t: tracer}
 
 	if instance != nil {
-		db.opts.clusterAddr = instance.ClusterAddress
-		db.opts.databaseName = instance.Name
+		db.opts.clusterAddr = instance.GetClusterAddress()
+		db.opts.databaseName = instance.GetName()
 	}
 
 	if cfg := conn.Config().ConnConfig; cfg != nil {

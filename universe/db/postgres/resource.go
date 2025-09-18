@@ -35,11 +35,11 @@ type ConfigOverrides struct {
 	ConnectTimeout                  time.Duration
 }
 
-func NewDatabaseFromConnectionUri(ctx context.Context, db *postgrespb.DatabaseInstance, connuri string, tp trace.TracerProvider, client string) (*DB, error) {
+func NewDatabaseFromConnectionUri(ctx context.Context, db DBInstance, connuri string, tp trace.TracerProvider, client string) (*DB, error) {
 	return NewDatabaseFromConnectionUriWithOverrides(ctx, db, connuri, tp, client, nil)
 }
 
-func NewDatabaseFromConnectionUriWithOverrides(ctx context.Context, db *postgrespb.DatabaseInstance, connuri string, tp trace.TracerProvider, client string, overrides *ConfigOverrides) (*DB, error) {
+func NewDatabaseFromConnectionUriWithOverrides(ctx context.Context, db DBInstance, connuri string, tp trace.TracerProvider, client string, overrides *ConfigOverrides) (*DB, error) {
 	config, err := pgxpool.ParseConfig(connuri)
 	if err != nil {
 		return nil, err
