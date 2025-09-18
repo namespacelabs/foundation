@@ -20,6 +20,7 @@ import (
 	"github.com/docker/cli/cli/connhelper"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/system"
 	"github.com/docker/docker/client"
@@ -40,7 +41,7 @@ type Client interface {
 	ContainerRemove(ctx context.Context, containerID string, options container.RemoveOptions) error
 	ContainerWait(ctx context.Context, containerID string, condition container.WaitCondition) (<-chan container.WaitResponse, <-chan error)
 	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
-	ImageLoad(ctx context.Context, input io.Reader, quiet bool) (types.ImageLoadResponse, error)
+	ImageLoad(ctx context.Context, input io.Reader, quiet bool) (image.LoadResponse, error)
 	ImageTag(ctx context.Context, source, target string) error
 	VolumeRemove(ctx context.Context, volumeID string, force bool) error
 	Close() error
@@ -176,8 +177,8 @@ func (w wrappedClient) ImageInspectWithRaw(ctx context.Context, imageID string) 
 	return i, b, maybeReplaceErr(err)
 }
 
-func (w wrappedClient) ImageLoad(ctx context.Context, input io.Reader, quiet bool) (types.ImageLoadResponse, error) {
-	v, err := w.cli.ImageLoad(ctx, input, quiet)
+func (w wrappedClient) ImageLoad(ctx context.Context, input io.Reader, quiet bool) (image.LoadResponse, error) {
+	v, err := w.cli.ImageLoad(ctx, input, client.ImageLoadWithQuiet(quiet))
 	return v, maybeReplaceErr(err)
 }
 
