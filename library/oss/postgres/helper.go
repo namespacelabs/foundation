@@ -6,15 +6,20 @@ package postgres
 
 import (
 	"fmt"
-
-	postgresclass "namespacelabs.dev/foundation/library/database/postgres"
 )
 
-func ConnectionUri(cluster *postgresclass.ClusterInstance, db string) string {
-	uri := fmt.Sprintf("postgres://%s:%s@%s/%s", UserOrDefault(cluster.User), cluster.Password, cluster.Address, db)
+type ClusterInstance interface {
+	GetUser() string
+	GetPassword() string
+	GetAddress() string
+	GetSslMode() string
+}
 
-	if cluster.SslMode != "" {
-		uri = fmt.Sprintf("%s?sslmode=%s", uri, cluster.SslMode)
+func ConnectionUri(cluster ClusterInstance, db string) string {
+	uri := fmt.Sprintf("postgres://%s:%s@%s/%s", UserOrDefault(cluster.GetUser()), cluster.GetPassword(), cluster.GetAddress(), db)
+
+	if cluster.GetSslMode() != "" {
+		uri = fmt.Sprintf("%s?sslmode=%s", uri, cluster.GetSslMode())
 	}
 
 	return uri
