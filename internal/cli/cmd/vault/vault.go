@@ -257,7 +257,7 @@ func NewDeleteCmd() *cobra.Command {
 			return fnerrors.InvocationError("vault", "failed to delete vault object: %w", err)
 		}
 
-		fmt.Fprintf(console.Stdout(ctx), "Successfully deleted object %s\n", args[0])
+		fmt.Fprintf(console.Stdout(ctx), "Successfully deleted object %s\n", *secretId)
 		return nil
 	})
 
