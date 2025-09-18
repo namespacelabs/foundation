@@ -46,7 +46,7 @@ func NewDatabaseFromConnectionUriWithOverrides(ctx context.Context, db DBInstanc
 	}
 
 	var t trace.Tracer
-	if tp != nil && db.GetEnableTracing() {
+	if tp != nil && db != nil && db.GetEnableTracing() {
 		config.ConnConfig.Tracer = otelpgx.NewTracer(otelpgx.WithTracerProvider(tp),
 			otelpgx.WithAttributes(semconv.DBNamespace(config.ConnConfig.Database)))
 		t = tp.Tracer("namespacelabs.dev/foundation/universe/db/postgres")
