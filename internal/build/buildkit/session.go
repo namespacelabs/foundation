@@ -134,7 +134,9 @@ func prepareSession(ctx context.Context, keychain oci.Keychain, src secrets.Grou
 		}
 	} else {
 		dockerConfig := config.LoadDefaultConfigFile(console.Stderr(ctx))
-		attachables = append(attachables, authprovider.NewDockerAuthProvider(dockerConfig, nil))
+		attachables = append(attachables, authprovider.NewDockerAuthProvider(authprovider.DockerAuthProviderConfig{
+			ConfigFile: dockerConfig,
+		}))
 	}
 
 	// XXX make this configurable; eg at the devhost side.

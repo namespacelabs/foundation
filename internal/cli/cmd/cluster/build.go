@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	controllerapi "github.com/docker/buildx/controller/pb"
+	bbuild "github.com/docker/buildx/build"
 	"github.com/docker/buildx/util/buildflags"
 	"github.com/docker/cli/cli/config"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -121,12 +121,13 @@ func NewBuildCmd() *cobra.Command {
 			}
 		}
 
-		var parsedSecrets []*controllerapi.Secret
+		var parsedSecrets buildflags.Secrets
 		if len(*secrets) > 0 {
 			parsed, err := buildflags.ParseSecretSpecs(*secrets)
 			if err != nil {
 				return err
 			}
+
 			parsedSecrets = parsed
 		}
 
@@ -348,7 +349,7 @@ type BuildFragment struct {
 	BuildArgs          map[string]string
 	Platform           specs.Platform
 	Exports            []client.ExportEntry
-	Secrets            []*controllerapi.Secret
+	Secrets            buildflags.Secrets
 }
 
 func StartBuilds(ctx context.Context, fragments []BuildFragment, makeClient func(context.Context, specs.Platform) (*client.Client, error)) ([]*client.SolveResponse, error) {
@@ -428,14 +429,17 @@ func startSingleBuild(eg *executor.Executor, c *client.Client, mw *progresswrite
 			Context:     ctx,
 			ErrorLogger: io.Discard,
 			Keychain:    api.DefaultKeychainWithFallback,
-			Fallback:    authprovider.NewDockerAuthProvider(dockerConfig, nil).(auth.AuthServer),
+			Fallback: authprovider.NewDockerAuthProvider(authprovider.DockerAuthProviderConfig{
+				ConfigFile: dockerConfig,
+			}).(auth.AuthServer),
 		})
 
 		if len(bf.Secrets) > 0 {
-			secrets, err := controllerapi.CreateSecrets(bf.Secrets)
+			secrets, err := bbuild.CreateSecrets(bf.Secrets)
 			if err != nil {
 				return err
 			}
+
 			attachable = append(attachable, secrets)
 		}
 

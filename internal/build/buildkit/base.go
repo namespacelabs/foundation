@@ -11,7 +11,7 @@ import (
 	"io"
 	"path/filepath"
 
-	"github.com/containerd/containerd/content"
+	"github.com/containerd/containerd/v2/core/content"
 	"github.com/dustin/go-humanize"
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/client/llb"
@@ -77,9 +77,9 @@ type keyValue struct {
 }
 
 type explainEntity struct {
-	Op         pb.Op
+	Op         *pb.Op
 	Digest     digest.Digest
-	OpMetadata pb.OpMetadata
+	OpMetadata llb.OpMetadata
 }
 
 type explainInput struct {
@@ -104,7 +104,7 @@ func (l *baseRequest[V]) Explain(ctx context.Context, w io.Writer) error {
 			}
 
 			digest := digest.FromBytes(dt)
-			ents = append(ents, explainEntity{Op: *op, Digest: digest, OpMetadata: def.Metadata[digest]})
+			ents = append(ents, explainEntity{Op: op, Digest: digest, OpMetadata: def.Metadata[digest]})
 		}
 		return ents, nil
 	}
@@ -213,9 +213,8 @@ func (l *baseRequest[V]) solve(ctx context.Context, c *GatewayClient, deps compu
 		}
 	}
 
-	solveOpt.OCIStores = map[string]content.Store{
-		"cache": &cacheStore{compute.Cache(ctx)},
-	}
+	solveOpt.OCIStores = map[string]content.Store{}
+	solveOpt.OCIStores["cache"] = &cacheStore{compute.Cache(ctx)}
 
 	fillInCaching(&solveOpt)
 
