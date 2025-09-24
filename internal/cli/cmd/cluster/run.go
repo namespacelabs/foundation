@@ -283,6 +283,7 @@ type CreateContainerResult struct {
 	InstanceUrl string
 	ApiEndpoint string
 
+	Containers      []api.CreateInstanceResponse_ContainerReference
 	LegacyContainer []*api.Container
 }
 
@@ -354,6 +355,7 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration, 
 				InstanceId:  response.InstanceId,
 				InstanceUrl: response.InstanceUrl,
 				ApiEndpoint: response.ApiEndpoint,
+				Containers:  response.Containers,
 			}, nil
 		})
 		if err != nil {
@@ -446,10 +448,19 @@ func PrintCreateContainersResult(ctx context.Context, output string, resp *Creat
 	case "json":
 		d := json.NewEncoder(console.Stdout(ctx))
 		d.SetIndent("", "  ")
+
+		containers := resp.LegacyContainer
+
+		for _, ctr := range resp.Containers {
+			containers = append(containers, &api.Container{
+				Id: ctr.ContainerId,
+			})
+		}
+
 		if err := d.Encode(createOutput{
 			ClusterId:  resp.InstanceId,
 			ClusterUrl: resp.InstanceUrl,
-			Container:  resp.LegacyContainer,
+			Container:  containers,
 		}); err != nil {
 			return fnerrors.InternalError("failed to encode countainer creation output as JSON output: %w", err)
 		}
