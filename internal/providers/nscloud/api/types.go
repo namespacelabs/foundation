@@ -480,6 +480,7 @@ type EnsureBazelCacheResponse struct {
 	ClientKeyPem            string     `json:"client_key_pem,omitempty"`
 	ExpiresAt               *time.Time `json:"expires_at,omitempty"`
 	CredentialHelperDomains []string   `json:"credential_helper_domains,omitempty"`
+	BuildEventEndpoint      string     `json:"build_event_endpoint,omitempty"`
 }
 
 type GetProfileResponse struct {
