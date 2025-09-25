@@ -43,6 +43,7 @@ func NewBazelCmd() *cobra.Command {
 
 func newSetupCacheCmd() *cobra.Command {
 	var bazelRcPath, output, certPath string
+	var sendBuildEvents bool
 
 	return fncobra.Cmd(&cobra.Command{
 		Use:   "setup",
@@ -52,7 +53,9 @@ func newSetupCacheCmd() *cobra.Command {
 		flags.StringVarP(&output, "output", "o", "plain", "One of plain or json.")
 
 		flags.StringVar(&certPath, "cred_path", "", "If specified, write credentials to this directory. Using this flag also ensures stable file names for all emitted credentials.")
+		flags.BoolVar(&sendBuildEvents, "send_build_events", false, "If specified, send build events to the build event service.")
 		flags.MarkHidden("cred_path")
+		flags.MarkHidden("send_build_events")
 	}).Do(func(ctx context.Context) error {
 		response, err := api.EnsureBazelCache(ctx, api.Methods, "")
 		if err != nil {
@@ -125,11 +128,22 @@ func newSetupCacheCmd() *cobra.Command {
 			}
 		}
 
+		if sendBuildEvents {
+			if response.BuildEventEndpoint == "" {
+				return fnerrors.Newf("did not receive a valid build events endpoint but was asked to send build events")
+			}
+
+			if len(response.CredentialHelperDomains) == 0 {
+				return fnerrors.Newf("the credential helper is not enabled but it is required to send build events")
+			}
+		}
+
 		if len(response.CredentialHelperDomains) > 0 {
 			out = bazelSetup{
 				Endpoint:                response.HttpsCacheEndpoint,
 				ExpiresAt:               response.ExpiresAt,
 				CredentialHelperDomains: response.CredentialHelperDomains,
+				BuildEventEndpoint:      response.BuildEventEndpoint,
 			}
 		}
 
@@ -233,6 +247,12 @@ func toBazelConfig(ctx context.Context, out bazelSetup) ([]byte, error) {
 		}
 	}
 
+	if out.BuildEventEndpoint != "" {
+		if _, err := buffer.WriteString(fmt.Sprintf("build --bes_backend=%s\n", out.BuildEventEndpoint)); err != nil {
+			return nil, fnerrors.Newf("failed to append bes_backend: %w", err)
+		}
+	}
+
 	if len(out.CredentialHelperDomains) > 0 {
 		for _, domain := range out.CredentialHelperDomains {
 			if _, err := buffer.WriteString(fmt.Sprintf("build --credential_helper=*.%s=bazel-credential-nsc\n", domain)); err != nil {
@@ -265,4 +285,5 @@ type bazelSetup struct {
 	ClientKey               string     `json:"client_key,omitempty"`
 	ExpiresAt               *time.Time `json:"expires_at,omitempty"`
 	CredentialHelperDomains []string   `json:"credential_helper_domains,omitempty"`
+	BuildEventEndpoint      string     `json:"build_event_endpoint,omitempty"`
 }
