@@ -128,6 +128,14 @@ func newSetupCacheCmd() *cobra.Command {
 			}
 		}
 
+		if len(response.CredentialHelperDomains) > 0 {
+			out = bazelSetup{
+				Endpoint:                response.HttpsCacheEndpoint,
+				ExpiresAt:               response.ExpiresAt,
+				CredentialHelperDomains: response.CredentialHelperDomains,
+			}
+		}
+
 		if sendBuildEvents {
 			if response.BuildEventEndpoint == "" {
 				return fnerrors.Newf("did not receive a valid build events endpoint but was asked to send build events")
@@ -136,15 +144,8 @@ func newSetupCacheCmd() *cobra.Command {
 			if len(response.CredentialHelperDomains) == 0 {
 				return fnerrors.Newf("the credential helper is not enabled but it is required to send build events")
 			}
-		}
 
-		if len(response.CredentialHelperDomains) > 0 {
-			out = bazelSetup{
-				Endpoint:                response.HttpsCacheEndpoint,
-				ExpiresAt:               response.ExpiresAt,
-				CredentialHelperDomains: response.CredentialHelperDomains,
-				BuildEventEndpoint:      response.BuildEventEndpoint,
-			}
+			out.BuildEventEndpoint = response.BuildEventEndpoint
 		}
 
 		// If set, we always generate a bazelrc file.
