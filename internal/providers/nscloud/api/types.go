@@ -477,6 +477,10 @@ type MakeImagePublicRequest struct {
 	ExpiresAt  *time.Time `json:"expires_at,omitempty"`
 }
 
+type DeletePublicImageRequest struct {
+	Id string `json:"id,omitempty"`
+}
+
 type PublicImage struct {
 	Id         string     `json:"id,omitempty"`
 	Repository string     `json:"repository,omitempty"`

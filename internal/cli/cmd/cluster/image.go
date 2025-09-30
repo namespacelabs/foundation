@@ -28,6 +28,7 @@ func NewImageCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newShareCommand())
+	cmd.AddCommand(newUnshareCommand())
 	return cmd
 }
 
@@ -87,8 +88,40 @@ func newShareCommand() *cobra.Command {
 			return err
 		}
 
-		fmt.Fprintf(console.Stdout(ctx), "\nThe image has been made public and can be accessed at:\n")
+		fmt.Fprintf(console.Stdout(ctx), "\nThe image has been successfully shared and can be accessed at:\n")
 		fmt.Fprintf(console.Stdout(ctx), "  %s\n", response.PublicImage.PublicUrl)
+		return nil
+	})
+}
+
+func newUnshareCommand() *cobra.Command {
+	return fncobra.Cmd(&cobra.Command{
+		Use:   "unshare [image]",
+		Short: "Unshares an existing public image",
+		Args:  cobra.ExactArgs(1),
+	}).DoWithArgs(func(ctx context.Context, args []string) error {
+		if len(args) != 1 {
+			return fnerrors.Newf("expected exactly one arguments: an image reference needs to be specified")
+		}
+
+		image := args[0]
+		ref, err := name.ParseReference(image)
+		if err != nil {
+			return err
+		}
+
+		registry := ref.Context().RegistryStr()
+
+		if !strings.HasSuffix(registry, "nscr.io") {
+			return fnerrors.Newf("can only unshare nscr.io registry images")
+		}
+
+		repo := ref.Context().RepositoryStr()
+		if err := api.DeletePublicImage(ctx, api.Methods, repo); err != nil {
+			return err
+		}
+
+		fmt.Fprintf(console.Stdout(ctx), "\nThe image has been successfully unshared\n")
 		return nil
 	})
 }
