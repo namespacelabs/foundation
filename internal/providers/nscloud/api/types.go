@@ -471,6 +471,24 @@ type EnsureBazelCacheRequest struct {
 	Key string `json:"key,omitempty"`
 }
 
+type MakeImagePublicRequest struct {
+	Repository string     `json:"repository,omitempty"`
+	Digest     string     `json:"digest,omitempty"`
+	ExpiresAt  *time.Time `json:"expires_at,omitempty"`
+}
+
+type PublicImage struct {
+	Id         string     `json:"id,omitempty"`
+	Repository string     `json:"repository,omitempty"`
+	Digest     string     `json:"digest,omitempty"`
+	ExpiresAt  *time.Time `json:"expiresAt,omitempty"`
+	PublicUrl  string     `json:"publicUrl,omitempty"`
+}
+
+type MakeImagePublicResponse struct {
+	PublicImage *PublicImage `json:"publicImage,omitempty"`
+}
+
 type EnsureBazelCacheResponse struct {
 	CacheEndpoint           string     `json:"cache_endpoint,omitempty"`
 	HttpsMtlsCacheEndpoint  string     `json:"https_mtls_cache_endpoint,omitempty"`
