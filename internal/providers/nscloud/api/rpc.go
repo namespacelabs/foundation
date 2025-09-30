@@ -446,13 +446,10 @@ func EnsureBazelCache(ctx context.Context, api API, key string) (*EnsureBazelCac
 	})
 }
 
-func MakeImagePublic(ctx context.Context, api API, repo, digest string) (*MakeImagePublicResponse, error) {
+func MakeImagePublic(ctx context.Context, api API, req MakeImagePublicRequest) (*MakeImagePublicResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nsc.make-image-public"), func(ctx context.Context) (*MakeImagePublicResponse, error) {
 		var response MakeImagePublicResponse
-		if err := api.MakeImagePublic.Do(ctx, MakeImagePublicRequest{
-			Repository: repo,
-			Digest:     digest,
-		}, fnapi.ResolveGlobalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.MakeImagePublic.Do(ctx, req, fnapi.ResolveGlobalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil

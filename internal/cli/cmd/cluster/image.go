@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"path"
 	"strings"
+	"time"
 
+	"github.com/aws/smithy-go/ptr"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -19,10 +21,10 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
-func NewRegistryCmd() *cobra.Command {
+func NewImageCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "registry",
-		Short: "Registry-related activities.",
+		Use:   "image",
+		Short: "Image related activities.",
 	}
 
 	cmd.AddCommand(newShareCommand())
@@ -30,21 +32,29 @@ func NewRegistryCmd() *cobra.Command {
 }
 
 func newShareCommand() *cobra.Command {
-	var image string
+	var expirationDur time.Duration
 
 	return fncobra.Cmd(&cobra.Command{
-		Use:   "share",
-		Short: "Exposes a private registry image publicly.",
+		Use:   "share [image] { --expires_in=[duration] }",
+		Short: "Exposes an image publicly with an optional expiration.",
+		Args:  cobra.ExactArgs(1),
 	}).WithFlags(func(flags *pflag.FlagSet) {
-		flags.StringVar(&image, "image", "", "The image that should be exposed publicly.")
-	}).Do(func(ctx context.Context) error {
-		if image == "" {
-			return fnerrors.Newf("--image is required")
+		flags.DurationVar(&expirationDur, "expires_in", 0, "If set, the public image share expires in the future.")
+	}).DoWithArgs(func(ctx context.Context, args []string) error {
+		if len(args) != 1 {
+			return fnerrors.Newf("expected exactly one arguments: an image reference needs to be specified")
 		}
 
+		image := args[0]
 		ref, err := name.ParseReference(image)
 		if err != nil {
 			return err
+		}
+
+		registry := ref.Context().RegistryStr()
+
+		if !strings.HasSuffix(registry, "nscr.io") {
+			return fnerrors.Newf("can only make nscr.io registry images public")
 		}
 
 		repo := ref.Context().RepositoryStr()
@@ -61,7 +71,18 @@ func newShareCommand() *cobra.Command {
 			return fnerrors.Newf("cannot use an image with a tag, please specify a digest")
 		}
 
-		response, err := api.MakeImagePublic(ctx, api.Methods, repoWithoutTenant, digest)
+		req := api.MakeImagePublicRequest{
+			Repository: repoWithoutTenant,
+			Digest:     digest,
+		}
+
+		if expirationDur > 0 {
+			req.ExpiresAt = ptr.Time(time.Now().Add(expirationDur))
+		} else if expirationDur < 0 {
+			return fnerrors.BadInputError("expiration cannot be negative")
+		}
+
+		response, err := api.MakeImagePublic(ctx, api.Methods, req)
 		if err != nil {
 			return err
 		}
