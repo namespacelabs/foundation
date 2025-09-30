@@ -50,6 +50,7 @@ type API struct {
 	GetKubernetesConfig         fnapi.Call[GetKubernetesConfigRequest]
 	EnsureBazelCache            fnapi.Call[EnsureBazelCacheRequest]
 	MakeImagePublic             fnapi.Call[MakeImagePublicRequest]
+	DeletePublicImage           fnapi.Call[DeletePublicImageRequest]
 	GetImageRegistry            fnapi.Call[emptypb.Empty]
 	TailClusterLogs             fnapi.Call[TailLogsRequest]
 	GetClusterLogs              fnapi.Call[GetLogsRequest]
@@ -144,6 +145,11 @@ func MakeAPI() API {
 		MakeImagePublic: fnapi.Call[MakeImagePublicRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "namespace.private.registry.RegistryService/MakeImagePublic",
+		},
+
+		DeletePublicImage: fnapi.Call[DeletePublicImageRequest]{
+			IssueBearerToken: fnapi.IssueBearerToken,
+			Method:           "namespace.private.registry.RegistryService/DeletePublicImage",
 		},
 
 		// Global APIs.
@@ -453,6 +459,17 @@ func MakeImagePublic(ctx context.Context, api API, req MakeImagePublicRequest) (
 			return nil, err
 		}
 		return &response, nil
+	})
+}
+
+func DeletePublicImage(ctx context.Context, api API, id string) error {
+	return tasks.Return0(ctx, tasks.Action("nsc.delete-public-image"), func(ctx context.Context) error {
+		return api.DeletePublicImage.Do(ctx, DeletePublicImageRequest{
+			Id: id,
+		}, fnapi.ResolveGlobalEndpoint, func(_ io.Reader) error {
+			// ignore the response
+			return nil
+		})
 	})
 }
 
