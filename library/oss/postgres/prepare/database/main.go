@@ -82,7 +82,7 @@ func run(ctx context.Context, p *provider.Provider[*postgres.DatabaseIntent]) er
 			}
 		}()
 
-		if err := helpers.ApplyWithCleanup(ctx, p.Intent, db); err != nil {
+		if err := helpers.ApplyWithHelpers(ctx, p.Intent, db); err != nil {
 			return err
 		}
 	}
