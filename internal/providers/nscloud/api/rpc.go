@@ -49,8 +49,6 @@ type API struct {
 	GetKubernetesClusterSummary fnapi.Call[GetKubernetesClusterSummaryRequest]
 	GetKubernetesConfig         fnapi.Call[GetKubernetesConfigRequest]
 	EnsureBazelCache            fnapi.Call[EnsureBazelCacheRequest]
-	MakeImagePublic             fnapi.Call[MakeImagePublicRequest]
-	DeletePublicImage           fnapi.Call[DeletePublicImageRequest]
 	GetImageRegistry            fnapi.Call[emptypb.Empty]
 	TailClusterLogs             fnapi.Call[TailLogsRequest]
 	GetClusterLogs              fnapi.Call[GetLogsRequest]
@@ -140,16 +138,6 @@ func MakeAPI() API {
 		EnsureBazelCache: fnapi.Call[EnsureBazelCacheRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "namespace.private.bazel.BazelService/EnsureBazelCache",
-		},
-
-		MakeImagePublic: fnapi.Call[MakeImagePublicRequest]{
-			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "namespace.private.registry.RegistryService/MakeImagePublic",
-		},
-
-		DeletePublicImage: fnapi.Call[DeletePublicImageRequest]{
-			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "namespace.private.registry.RegistryService/DeletePublicImage",
 		},
 
 		// Global APIs.
@@ -449,27 +437,6 @@ func EnsureBazelCache(ctx context.Context, api API, key string) (*EnsureBazelCac
 			return nil, err
 		}
 		return &response, nil
-	})
-}
-
-func MakeImagePublic(ctx context.Context, api API, req MakeImagePublicRequest) (*MakeImagePublicResponse, error) {
-	return tasks.Return(ctx, tasks.Action("nsc.make-image-public"), func(ctx context.Context) (*MakeImagePublicResponse, error) {
-		var response MakeImagePublicResponse
-		if err := api.MakeImagePublic.Do(ctx, req, fnapi.ResolveGlobalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
-			return nil, err
-		}
-		return &response, nil
-	})
-}
-
-func DeletePublicImage(ctx context.Context, api API, id string) error {
-	return tasks.Return0(ctx, tasks.Action("nsc.delete-public-image"), func(ctx context.Context) error {
-		return api.DeletePublicImage.Do(ctx, DeletePublicImageRequest{
-			Id: id,
-		}, fnapi.ResolveGlobalEndpoint, func(_ io.Reader) error {
-			// ignore the response
-			return nil
-		})
 	})
 }
 
