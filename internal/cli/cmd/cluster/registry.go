@@ -96,6 +96,7 @@ func newRegistryListCmd() *cobra.Command {
 	repositories := cmd.Flags().Bool("repositories", false, "List repositories instead of images")
 	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
 	matchRepo := cmd.Flags().String("repository", "", "Filter images by repository name")
+	includeDeleted := cmd.Flags().Bool("include_deleted", false, "Include deleted images in results")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		// Use positional argument if provided, unless --repository flag is explicitly set
@@ -160,11 +161,23 @@ func newRegistryListCmd() *cobra.Command {
 				return fnerrors.InvocationError("registry", "failed to list images: %w", err)
 			}
 
+			// Filter out deleted images unless include_deleted is set
+			images := resp.Images
+			if !*includeDeleted {
+				var filtered []*registryv1beta.Image
+				for _, img := range resp.Images {
+					if img.DeletedAt == nil {
+						filtered = append(filtered, img)
+					}
+				}
+				images = filtered
+			}
+
 			switch *output {
 			case "json":
 				// Convert to JSON and add image_ref field
 				var result []map[string]interface{}
-				for _, img := range resp.Images {
+				for _, img := range images {
 					// Marshal to JSON first
 					bb, err := protojson.Marshal(img)
 					if err != nil {
@@ -192,7 +205,7 @@ func newRegistryListCmd() *cobra.Command {
 				fmt.Fprintln(console.Stdout(ctx), string(bb))
 				return nil
 			case "table":
-				return printImagesTable(ctx, resp.Images)
+				return printImagesTable(ctx, images)
 			default:
 				return fnerrors.BadInputError("invalid output format: %s", *output)
 			}
