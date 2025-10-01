@@ -55,7 +55,6 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(cluster.NewGitCheckoutCmd())                // nsc git-checkout [hidden]
 	root.AddCommand(private.NewInternalCmd())                   // nsc internal [hidden]
 	root.AddCommand(cluster.NewBazelCmd())
-	root.AddCommand(cluster.NewImageCmd())
 	root.AddCommand(cluster.NewPantsCmd())
 	root.AddCommand(cluster.NewArtifactCmd()) // nsc artifact
 

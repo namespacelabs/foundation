@@ -7,6 +7,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/jackc/pgerrcode"
@@ -103,6 +104,10 @@ func ErrorIsRetryable(err error) bool {
 	var pgerr *pgconn.PgError
 	if !errors.As(err, &pgerr) {
 		return false
+	}
+
+	if pgerr.SQLState() == pgerrcode.InternalError {
+		return strings.Contains(pgerr.Message, "tuple concurrently updated")
 	}
 
 	return slices.Contains(retryableSqlStates, pgerr.SQLState())

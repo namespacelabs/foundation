@@ -14,7 +14,6 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/jackc/pgx/v5"
-	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/library/oss/postgres"
 	universepg "namespacelabs.dev/foundation/universe/db/postgres"
 )
@@ -26,7 +25,6 @@ const (
 
 type helperFunction struct {
 	provisionSql string
-	cleanupSql   string
 }
 
 // Collection of optional helper functions
@@ -47,7 +45,7 @@ func allHelperFunctions() []helperFunction {
 		//   UserID TEXT NOT NULL,
 		//   PRIMARY KEY(UserID)
 		// $$);
-		helperFunction{
+		{
 			provisionSql: `
 CREATE OR REPLACE FUNCTION fn_ensure_table(tname TEXT, def TEXT)
   RETURNS void
@@ -62,11 +60,7 @@ BEGIN
   END IF;
 END
 $func$;
-`,
-			cleanupSql: `
-DROP FUNCTION IF EXISTS fn_ensure_table(tname TEXT, def TEXT);
-`,
-		},
+`},
 
 		// fn_ensure_column is a lock-friendly replacement for `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`.
 		// WARNING: This function translates all names into lowercase (as plain postgres would).
@@ -75,7 +69,7 @@ DROP FUNCTION IF EXISTS fn_ensure_table(tname TEXT, def TEXT);
 		// Example usage:
 		//
 		// SELECT fn_ensure_column('testtable', 'CreatedAt', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
-		helperFunction{
+		{
 			provisionSql: `
 CREATE OR REPLACE FUNCTION fn_ensure_column(tname TEXT, cname TEXT, def TEXT)
   RETURNS void
@@ -90,12 +84,7 @@ BEGIN
   END IF;
 END
 $func$;
-`,
-			cleanupSql: `
-DROP FUNCTION IF EXISTS fn_ensure_column(tname TEXT, cname TEXT, def TEXT);
-`,
-		},
-
+`},
 		// fn_ensure_column_not_exists is a lock-friendly replacement for `ALTER TABLE ... DROP COLUMN IF EXISTS`.
 		// WARNING: This function translates all names into lowercase (as plain postgres would).
 		// If you want to use lowercase characters, (e.g. through quotation) do not use this function.
@@ -103,7 +92,7 @@ DROP FUNCTION IF EXISTS fn_ensure_column(tname TEXT, cname TEXT, def TEXT);
 		// Example usage:
 		//
 		// SELECT fn_ensure_column_not_exists('testtable', 'CreatedAt');
-		helperFunction{
+		{
 			provisionSql: `
 CREATE OR REPLACE FUNCTION fn_ensure_column_not_exists(tname TEXT, cname TEXT)
   RETURNS void
@@ -118,11 +107,7 @@ BEGIN
 END IF;
 END
 $func$;
-`,
-			cleanupSql: `
-DROP FUNCTION IF EXISTS fn_ensure_column_not_exists(tname TEXT, cname TEXT);
-`,
-		},
+`},
 
 		// fn_ensure_column_not_null is a lock-friendly replacement for `ALTER TABLE ... ALTER COLUMN ... SET NOT NULL`.
 		// WARNING: This function translates all names into lowercase (as plain postgres would).
@@ -131,7 +116,7 @@ DROP FUNCTION IF EXISTS fn_ensure_column_not_exists(tname TEXT, cname TEXT);
 		// Example usage:
 		//
 		// SELECT fn_ensure_column_not_null('testtable', 'Role');
-		helperFunction{
+		{
 			provisionSql: `
 CREATE OR REPLACE FUNCTION fn_ensure_column_not_null(tname TEXT, cname TEXT)
   RETURNS void
@@ -146,11 +131,7 @@ BEGIN
   END IF;
 END
 $func$;
-`,
-			cleanupSql: `
-DROP FUNCTION IF EXISTS fn_ensure_column_not_null(tname TEXT, cname TEXT);
-`,
-		},
+`},
 
 		// fn_ensure_column_nullable is a lock-friendly replacement for `ALTER TABLE ... ALTER COLUMN ... DROP NOT NULL`.
 		// WARNING: This function translates all names into lowercase (as plain postgres would).
@@ -159,7 +140,7 @@ DROP FUNCTION IF EXISTS fn_ensure_column_not_null(tname TEXT, cname TEXT);
 		// Example usage:
 		//
 		// SELECT fn_ensure_column_nullable('testtable', 'Role');
-		helperFunction{
+		{
 			provisionSql: `
 CREATE OR REPLACE FUNCTION fn_ensure_column_nullable(tname TEXT, cname TEXT)
   RETURNS void
@@ -174,11 +155,7 @@ BEGIN
 END IF;
 END
 $func$;
-`,
-			cleanupSql: `
-DROP FUNCTION IF EXISTS fn_ensure_column_nullable(tname TEXT, cname TEXT);
-`,
-		},
+`},
 
 		// fn_ensure_replica_identity is a lock-friendly replacement for `ALTER TABLE ... REPLICA IDENTITY ...`.
 		// WARNING: This function translates all names into lowercase (as plain postgres would).
@@ -188,8 +165,7 @@ DROP FUNCTION IF EXISTS fn_ensure_column_nullable(tname TEXT, cname TEXT);
 		// Example usage:
 		//
 		// SELECT fn_ensure_replica_identity('testtable', 'FULL');
-
-		helperFunction{
+		{
 			provisionSql: `
 CREATE OR REPLACE FUNCTION fn_ensure_replica_identity(tname TEXT, replident TEXT)
   RETURNS void
@@ -207,36 +183,8 @@ BEGIN
   END IF;
 END
 $func$;
-`,
-			cleanupSql: `
-DROP FUNCTION IF EXISTS fn_ensure_replica_identity(tname TEXT, replident TEXT);
-`,
-		},
+`},
 	}
-}
-
-func helpersProvisionSql() string {
-	var sb strings.Builder
-
-	helpers := allHelperFunctions()
-	for _, h := range helpers {
-		sb.WriteString(h.provisionSql)
-		sb.WriteString("\n")
-	}
-
-	return sb.String()
-}
-
-func helpersCleanupSql() string {
-	var sb strings.Builder
-
-	helpers := allHelperFunctions()
-	for i := len(helpers) - 1; i >= 0; i-- {
-		sb.WriteString(helpers[i].cleanupSql)
-		sb.WriteString("\n")
-	}
-
-	return sb.String()
 }
 
 type BackOff struct {
@@ -253,18 +201,16 @@ func (b BackOff) NextBackOff() time.Duration {
 	return b.Interval - b.Jitter/2 + time.Duration(rand.Int63n(int64(b.Jitter)))
 }
 
-func ApplyWithCleanup(ctx context.Context, intent *postgres.DatabaseIntent, db *universepg.DB) (reserr error) {
+func ApplyWithHelpers(ctx context.Context, intent *postgres.DatabaseIntent, db *universepg.DB) error {
 	if intent.GetAutoRemoveHelperFunctions() {
-		defer func() {
-			if err := applyWithRetry(ctx, db, helpersCleanupSql()); err != nil {
-				reserr = multierr.New(reserr, fmt.Errorf("unable to clean up helper functions: %w", err))
-			}
-		}()
+		return fmt.Errorf("automatic helper cleanup has been retired: it is not safe when used concurrently")
 	}
 
 	if intent.GetProvisionHelperFunctions() {
-		if err := applyWithRetry(ctx, db, helpersProvisionSql()); err != nil {
-			return fmt.Errorf("unable to apply helper functions: %w", err)
+		for _, helper := range allHelperFunctions() {
+			if err := applyWithRetry(ctx, db, helper.provisionSql); err != nil {
+				return fmt.Errorf("unable to apply helper functions: %w", err)
+			}
 		}
 	}
 
