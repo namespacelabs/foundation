@@ -13,6 +13,7 @@ import (
 
 	registryv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/registry/v1beta"
 	"buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/stdlib"
+	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -37,11 +38,58 @@ func NewRegistryCmd() *cobra.Command {
 	return cmd
 }
 
+// parseImageReference parses an image reference in the format "repository:tag" or "repository@digest"
+// and returns the repository and reference parts.
+func parseImageReference(imageRef string) (repository, reference string, err error) {
+	// Check for digest format (repository@sha256:...)
+	if idx := strings.Index(imageRef, "@"); idx != -1 {
+		return imageRef[:idx], imageRef[idx+1:], nil
+	}
+
+	// Check for tag format (repository:tag)
+	// Use LastIndex to handle registry URLs like registry.example.com:5000/path:tag
+	if idx := strings.LastIndex(imageRef, ":"); idx != -1 {
+		return imageRef[:idx], imageRef[idx+1:], nil
+	}
+
+	return "", "", fmt.Errorf("invalid format, expected 'repository:tag' or 'repository@digest'")
+}
+
+// resolveImageReference resolves repository and reference from positional args and flags.
+// Positional arg takes precedence unless overridden by explicit flags.
+func resolveImageReference(args []string, repositoryFlag, referenceFlag string) (repository, reference string, err error) {
+	// Parse positional argument if provided
+	if len(args) > 0 {
+		repository, reference, err = parseImageReference(args[0])
+		if err != nil {
+			return "", "", err
+		}
+	}
+
+	// Flags override positional argument
+	if repositoryFlag != "" {
+		repository = repositoryFlag
+	}
+	if referenceFlag != "" {
+		reference = referenceFlag
+	}
+
+	// Validate required fields
+	if repository == "" {
+		return "", "", fmt.Errorf("repository is required (provide image reference as argument or use --repository)")
+	}
+	if reference == "" {
+		return "", "", fmt.Errorf("reference is required (provide image reference as argument or use --reference)")
+	}
+
+	return repository, reference, nil
+}
+
 func newRegistryListCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list",
+		Use:   "list [repository]",
 		Short: "List images or repositories in the registry.",
-		Args:  cobra.NoArgs,
+		Args:  cobra.MaximumNArgs(1),
 	}
 
 	repositories := cmd.Flags().Bool("repositories", false, "List repositories instead of images")
@@ -49,6 +97,11 @@ func newRegistryListCmd() *cobra.Command {
 	matchRepo := cmd.Flags().String("repository", "", "Filter images by repository name")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		// Use positional argument if provided, unless --repository flag is explicitly set
+		repository := *matchRepo
+		if len(args) > 0 && repository == "" {
+			repository = args[0]
+		}
 		tokenSource, err := auth.LoadDefaults()
 		if err != nil {
 			return fnerrors.InvocationError("registry", "failed to get authentication token: %w", err)
@@ -94,9 +147,9 @@ func newRegistryListCmd() *cobra.Command {
 			}
 		} else {
 			req := &registryv1beta.ListImagesRequest{}
-			if *matchRepo != "" {
+			if repository != "" {
 				req.MatchRepository = &stdlib.StringMatcher{
-					Values: []string{*matchRepo},
+					Values: []string{repository},
 				}
 			}
 
@@ -139,19 +192,28 @@ func newRegistryListCmd() *cobra.Command {
 
 func newRegistryDescribeCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "describe",
+		Use:   "describe [image-reference]",
 		Short: "Get detailed information about a specific image.",
-		Args:  cobra.NoArgs,
+		Args:  cobra.MaximumNArgs(1),
+		Long: `Get detailed information about a specific image.
+
+The image reference can be provided as a positional argument in the format:
+  - repository:tag (e.g., myrepo:latest)
+  - repository@digest (e.g., myrepo@sha256:abc123...)
+
+Alternatively, use --repository and --reference flags.`,
 	}
 
-	repository := cmd.Flags().String("repository", "", "Repository name (required)")
-	reference := cmd.Flags().String("reference", "", "Image reference (tag or digest) (required)")
+	repositoryFlag := cmd.Flags().String("repository", "", "Repository name")
+	referenceFlag := cmd.Flags().String("reference", "", "Image reference (tag or digest)")
 	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
 
-	cmd.MarkFlagRequired("repository")
-	cmd.MarkFlagRequired("reference")
-
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		repository, reference, err := resolveImageReference(args, *repositoryFlag, *referenceFlag)
+		if err != nil {
+			return fnerrors.BadInputError("%w", err)
+		}
+
 		tokenSource, err := auth.LoadDefaults()
 		if err != nil {
 			return fnerrors.InvocationError("registry", "failed to get authentication token: %w", err)
@@ -164,8 +226,8 @@ func newRegistryDescribeCmd() *cobra.Command {
 		defer client.Close()
 
 		req := &registryv1beta.GetImageRequest{
-			Repository: *repository,
-			Reference:  *reference,
+			Repository: repository,
+			Reference:  reference,
 		}
 
 		resp, err := client.ContainerRegistry.GetImage(ctx, req)
@@ -196,21 +258,29 @@ func newRegistryDescribeCmd() *cobra.Command {
 
 func newRegistryShareCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "share",
+		Use:   "share [image-reference]",
 		Short: "Share an image publicly or with partner accounts.",
-		Args:  cobra.NoArgs,
+		Args:  cobra.MaximumNArgs(1),
+		Long: `Share an image publicly or with partner accounts.
+
+The image reference can be provided as a positional argument in the format:
+  - repository:tag (e.g., myrepo:latest)
+  - repository@digest (e.g., myrepo@sha256:abc123...)
+
+Alternatively, use --repository and --digest flags.`,
 	}
 
-	repository := cmd.Flags().String("repository", "", "Repository name (required)")
-	digest := cmd.Flags().String("digest", "", "Image digest (required)")
+	repositoryFlag := cmd.Flags().String("repository", "", "Repository name")
+	digestFlag := cmd.Flags().String("digest", "", "Image digest")
 	visibility := cmd.Flags().String("visibility", "public", "Visibility level: public, partner")
 	expiresAt := cmd.Flags().String("expires_at", "", "Expiration time in RFC3339 format (e.g., 2024-12-31T23:59:59Z)")
 	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
 
-	cmd.MarkFlagRequired("repository")
-	cmd.MarkFlagRequired("digest")
-
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		repository, digest, err := resolveImageReference(args, *repositoryFlag, *digestFlag)
+		if err != nil {
+			return fnerrors.BadInputError("%w", err)
+		}
 		tokenSource, err := auth.LoadDefaults()
 		if err != nil {
 			return fnerrors.InvocationError("registry", "failed to get authentication token: %w", err)
@@ -223,8 +293,8 @@ func newRegistryShareCmd() *cobra.Command {
 		defer client.Close()
 
 		req := &registryv1beta.ShareImageRequest{
-			Repository: *repository,
-			Digest:     *digest,
+			Repository: repository,
+			Digest:     digest,
 		}
 
 		// Parse visibility
@@ -307,8 +377,7 @@ func printImagesTable(ctx context.Context, images []*registryv1beta.Image) error
 	}
 
 	cols := []tui.Column{
-		{Key: "repository", Title: "Repository", MinWidth: 20, MaxWidth: 40},
-		{Key: "digest", Title: "Digest", MinWidth: 15, MaxWidth: 30},
+		{Key: "reference", Title: "Image Reference", MinWidth: 30, MaxWidth: 80},
 		{Key: "size", Title: "Size", MinWidth: 10, MaxWidth: 15},
 		{Key: "created", Title: "Created", MinWidth: 20, MaxWidth: 30},
 	}
@@ -320,21 +389,21 @@ func printImagesTable(ctx context.Context, images []*registryv1beta.Image) error
 			created = img.CreatedAt.AsTime().Format(time.RFC3339)
 		}
 
-		digest := img.Digest
-		if len(digest) > 20 {
-			digest = digest[:20] + "..."
+		// Build complete image reference
+		imageRef := fmt.Sprintf("%s@%s", img.Repository, img.Digest)
+		if len(imageRef) > 77 {
+			imageRef = imageRef[:77] + "..."
 		}
 
 		size := "-"
 		if img.Sizes != nil && img.Sizes.Total > 0 {
-			size = fmt.Sprintf("%d MB", img.Sizes.Total/(1024*1024))
+			size = humanize.IBytes(uint64(img.Sizes.Total))
 		}
 
 		row := tui.Row{
-			"repository": img.Repository,
-			"digest":     digest,
-			"size":       size,
-			"created":    created,
+			"reference": imageRef,
+			"size":      size,
+			"created":   created,
 		}
 		rows = append(rows, row)
 	}
@@ -352,25 +421,28 @@ func printImageDetails(ctx context.Context, resp *registryv1beta.GetImageRespons
 
 	img := resp.Image
 
-	fmt.Fprintf(stdout, "Repository:  %s\n", img.Repository)
-	fmt.Fprintf(stdout, "Digest:      %s\n", img.Digest)
+	// Show complete image reference first
+	imageRef := fmt.Sprintf("%s@%s", img.Repository, img.Digest)
+	fmt.Fprintf(stdout, "Image Reference: %s\n", imageRef)
+	fmt.Fprintf(stdout, "Repository:      %s\n", img.Repository)
+	fmt.Fprintf(stdout, "Digest:          %s\n", img.Digest)
 
 	if img.Sizes != nil && img.Sizes.Total > 0 {
-		fmt.Fprintf(stdout, "Size:        %d bytes (%d MB)\n", img.Sizes.Total, img.Sizes.Total/(1024*1024))
+		fmt.Fprintf(stdout, "Size:            %s\n", humanize.IBytes(uint64(img.Sizes.Total)))
 		if len(img.Sizes.PerPlatform) > 0 {
 			fmt.Fprintf(stdout, "Sizes per platform:\n")
 			for platform, size := range img.Sizes.PerPlatform {
-				fmt.Fprintf(stdout, "  %s: %d bytes (%d MB)\n", platform, size, size/(1024*1024))
+				fmt.Fprintf(stdout, "  %s: %s\n", platform, humanize.IBytes(uint64(size)))
 			}
 		}
 	}
 
 	if img.CreatedAt != nil {
-		fmt.Fprintf(stdout, "Created At:  %s\n", img.CreatedAt.AsTime().Format(time.RFC3339))
+		fmt.Fprintf(stdout, "Created At:      %s\n", img.CreatedAt.AsTime().Format(time.RFC3339))
 	}
 
 	if img.ExpiresAt != nil {
-		fmt.Fprintf(stdout, "Expires At:  %s\n", img.ExpiresAt.AsTime().Format(time.RFC3339))
+		fmt.Fprintf(stdout, "Expires At:      %s\n", img.ExpiresAt.AsTime().Format(time.RFC3339))
 	}
 
 	if len(img.Labels) > 0 {
