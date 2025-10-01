@@ -10,12 +10,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"syscall"
 	"time"
 
 	registryv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/registry/v1beta"
 	"buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/stdlib"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -68,6 +71,32 @@ func formatImageReference(nscrBase, repository, digest string) string {
 		return fmt.Sprintf("%s/%s@%s", nscrBase, repository, digest)
 	}
 	return fmt.Sprintf("%s@%s", repository, digest)
+}
+
+// formatImageReferenceStyled formats an image reference with styling if terminal supports it.
+// The nscr base prefix is dimmed to emphasize the repository and digest.
+func formatImageReferenceStyled(nscrBase, repository, digest string) string {
+	ref := formatImageReference(nscrBase, repository, digest)
+
+	// Only apply styling if stdout is a terminal
+	if !term.IsTerminal(int(syscall.Stdout)) {
+		return ref
+	}
+
+	// If no nscr base, return unstyled
+	if nscrBase == "" {
+		return ref
+	}
+
+	// Use adaptive color that works in both light and dark modes
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
+		Light: "#999999", // Medium gray for light mode
+		Dark:  "#666666", // Darker gray for dark mode
+	})
+
+	// Split and style: dimmed base + normal rest
+	styledBase := dimStyle.Render(nscrBase + "/")
+	return styledBase + fmt.Sprintf("%s@%s", repository, digest)
 }
 
 // resolveImageReference resolves repository and reference from positional args and flags.
@@ -444,10 +473,15 @@ func printImagesTable(ctx context.Context, nscrBase string, images []*registryv1
 			created = img.CreatedAt.AsTime().Format(time.RFC3339)
 		}
 
-		// Build complete image reference
-		imageRef := formatImageReference(nscrBase, img.Repository, img.Digest)
-		if len(imageRef) > 77 {
-			imageRef = imageRef[:77] + "..."
+		// Build complete image reference with styling
+		imageRef := formatImageReferenceStyled(nscrBase, img.Repository, img.Digest)
+
+		// Check length of unstyled version for truncation
+		unstyledRef := formatImageReference(nscrBase, img.Repository, img.Digest)
+		if len(unstyledRef) > 77 {
+			// Truncate the unstyled version and re-apply styling
+			truncated := unstyledRef[:77] + "..."
+			imageRef = truncated // Fall back to unstyled if truncated
 		}
 
 		size := "-"
@@ -478,8 +512,8 @@ func printImageDetails(ctx context.Context, nscrBase string, resp *registryv1bet
 
 	img := resp.Image
 
-	// Show complete image reference first
-	imageRef := formatImageReference(nscrBase, img.Repository, img.Digest)
+	// Show complete image reference first with styling
+	imageRef := formatImageReferenceStyled(nscrBase, img.Repository, img.Digest)
 	fmt.Fprintf(stdout, "Image Reference: %s\n", imageRef)
 	fmt.Fprintf(stdout, "Repository:      %s\n", img.Repository)
 	fmt.Fprintf(stdout, "Digest:          %s\n", img.Digest)
