@@ -1,7 +1,7 @@
-buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250918100349-882e2f020c28.2 h1:RbilHWnn7um+RXAur2l2ornTn1QXGwCjPzQDygsqc80=
-buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250918100349-882e2f020c28.2/go.mod h1:g5vJqz0il7lnjsaNgTm3vUsKX0V355pz6j90smzTjdM=
-buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.9-20250918100349-882e2f020c28.1 h1:aIeNOkgfUiftbecy2qhvMRp1SHjVmH+N1EVg7beimAU=
-buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.9-20250918100349-882e2f020c28.1/go.mod h1:zLe6Um329KUJqAvDG0uXPD7gZ6q5df4rydQXVODzRkg=
+buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20251001125529-1bc0888670a5.2 h1:uzJReqrMh77z0ryZ6RnJO9W5RfduptbVrQ0VpRP/VHI=
+buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20251001125529-1bc0888670a5.2/go.mod h1:znVFbHJ2KWaYLtqwyqZO6XJs08qpDo6MbOSyM2SM/mI=
+buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.9-20251001125529-1bc0888670a5.1 h1:zANvsSVvcMqxsUn5yWQXDr1IxoUse21emzY4Hm5Ji2k=
+buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.9-20251001125529-1bc0888670a5.1/go.mod h1:zLe6Um329KUJqAvDG0uXPD7gZ6q5df4rydQXVODzRkg=
 c2sp.org/CCTV/age v0.0.0-20240306222714-3ec4d716e805 h1:u2qwJeEvnypw+OCPUHmoZE3IqwfuN5kgDfo5MLzpNM0=
 c2sp.org/CCTV/age v0.0.0-20240306222714-3ec4d716e805/go.mod h1:FomMrUJ2Lxt5jCLmZkG3FHa72zUprnhd3v/Z18Snm4w=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
@@ -1529,8 +1529,8 @@ namespacelabs.dev/go-filenotify v0.0.0-20220511192020-53ea11be7eaa h1:jj2kjs0Hvu
 namespacelabs.dev/go-filenotify v0.0.0-20220511192020-53ea11be7eaa/go.mod h1:e8NJRaInXRRm1+KPA6EkGEzdLJAgEvVSIKiLzpP97nI=
 namespacelabs.dev/go-ids v0.0.0-20221124082625-9fc72ee06af7 h1:8NlnfPlzDSJr8TYV/qarIWwhjLd1gOXf3Jme0M/oGBM=
 namespacelabs.dev/go-ids v0.0.0-20221124082625-9fc72ee06af7/go.mod h1:J+Sd+ngeffnCsaO/M7zgs2bR8Klq/ZBhS0+bbnDEH2M=
-namespacelabs.dev/integrations v0.0.9-0.20250918101040-0dbd4703b078 h1:bd6iOATG3nqSDdh33XuEpL1WYevPtLn/1Fyj2SZ/yZs=
-namespacelabs.dev/integrations v0.0.9-0.20250918101040-0dbd4703b078/go.mod h1:5SEJeSHfwziGvYtR88i6aZFfXq8i2Qw8958/njIzV/M=
+namespacelabs.dev/integrations v0.0.9-0.20251001125846-0c2c49d265dd h1:3TykVEIqMqi0lgkS2JyERAzoWrme4XJ6OjKE3v4d9X0=
+namespacelabs.dev/integrations v0.0.9-0.20251001125846-0c2c49d265dd/go.mod h1:/SJ8zgqZmLcQ7cdqI8LlPG9ZoMFYWVMW10v2qyoY4rQ=
 oras.land/oras-go/v2 v2.6.0 h1:X4ELRsiGkrbeox69+9tzTu492FMUu7zJQW6eJU+I2oc=
 oras.land/oras-go/v2 v2.6.0/go.mod h1:magiQDfG6H1O9APp+rOsvCPcW1GD2MM7vgnKY0Y+u1o=
 rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=

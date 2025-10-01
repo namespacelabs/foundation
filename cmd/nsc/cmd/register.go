@@ -70,6 +70,8 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(baseimage.NewBaseImageCmd())
 
 	root.AddCommand(vault.NewVaultCmd()) // nsc vault
+
+	root.AddCommand(cluster.NewRegistryCmd()) // nsc registry
 }
 
 func newGithub() *cobra.Command {
