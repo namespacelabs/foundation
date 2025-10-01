@@ -89,9 +89,10 @@ func formatImageReferenceStyled(nscrBase, repository, digest string) string {
 	}
 
 	// Use adaptive color that works in both light and dark modes
+	// Colors are just slightly dimmer than default text
 	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
-		Light: "#999999", // Medium gray for light mode
-		Dark:  "#666666", // Darker gray for dark mode
+		Light: "#555555", // Slightly dimmed for light mode
+		Dark:  "#AAAAAA", // Slightly dimmed for dark mode
 	})
 
 	// Split and style: dimmed base + normal rest
