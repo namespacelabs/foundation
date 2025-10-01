@@ -7,6 +7,7 @@ package cluster
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -150,6 +151,7 @@ func newRegistryListCmd() *cobra.Command {
 			if repository != "" {
 				req.MatchRepository = &stdlib.StringMatcher{
 					Values: []string{repository},
+					Op:     stdlib.StringMatcher_IS_ANY_OF,
 				}
 			}
 
@@ -160,24 +162,34 @@ func newRegistryListCmd() *cobra.Command {
 
 			switch *output {
 			case "json":
-				var b bytes.Buffer
-				fmt.Fprint(&b, "[")
-				for k, img := range resp.Images {
-					if k > 0 {
-						fmt.Fprint(&b, ",")
-					}
-
-					bb, err := protojson.MarshalOptions{UseProtoNames: true, Multiline: true}.Marshal(img)
+				// Convert to JSON and add image_ref field
+				var result []map[string]interface{}
+				for _, img := range resp.Images {
+					// Marshal to JSON first
+					bb, err := protojson.Marshal(img)
 					if err != nil {
 						return err
 					}
 
-					fmt.Fprintf(&b, "\n%s", bb)
+					var imgMap map[string]interface{}
+					if err := json.Unmarshal(bb, &imgMap); err != nil {
+						return err
+					}
+
+					// Add image_ref field at the beginning
+					imageRef := fmt.Sprintf("%s@%s", img.Repository, img.Digest)
+					imgMap["image_ref"] = imageRef
+
+					result = append(result, imgMap)
 				}
-				fmt.Fprint(&b, "\n]\n")
 
-				console.Stdout(ctx).Write(b.Bytes())
+				// Marshal back to JSON with indentation
+				bb, err := json.MarshalIndent(result, "", "  ")
+				if err != nil {
+					return err
+				}
 
+				fmt.Fprintln(console.Stdout(ctx), string(bb))
 				return nil
 			case "table":
 				return printImagesTable(ctx, resp.Images)
@@ -399,6 +411,8 @@ func printImagesTable(ctx context.Context, images []*registryv1beta.Image) error
 		if img.Sizes != nil && img.Sizes.Total > 0 {
 			size = humanize.IBytes(uint64(img.Sizes.Total))
 		}
+		// Right-align size within 10 characters
+		size = fmt.Sprintf("%10s", size)
 
 		row := tui.Row{
 			"reference": imageRef,
