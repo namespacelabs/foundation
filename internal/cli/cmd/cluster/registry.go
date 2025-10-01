@@ -7,20 +7,25 @@ package cluster
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
+	"syscall"
 	"time"
 
 	registryv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/registry/v1beta"
 	"buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/stdlib"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/integrations/api/builds"
 	registryapi "namespacelabs.dev/integrations/api/registry"
 	"namespacelabs.dev/integrations/auth"
 )
@@ -39,8 +44,13 @@ func NewRegistryCmd() *cobra.Command {
 }
 
 // parseImageReference parses an image reference in the format "repository:tag" or "repository@digest"
-// and returns the repository and reference parts.
-func parseImageReference(imageRef string) (repository, reference string, err error) {
+// and returns the repository and reference parts. If nscrBase is provided and matches, it is stripped.
+func parseImageReference(imageRef, nscrBase string) (repository, reference string, err error) {
+	// Strip nscr base if it matches
+	if nscrBase != "" && strings.HasPrefix(imageRef, nscrBase+"/") {
+		imageRef = strings.TrimPrefix(imageRef, nscrBase+"/")
+	}
+
 	// Check for digest format (repository@sha256:...)
 	if idx := strings.Index(imageRef, "@"); idx != -1 {
 		return imageRef[:idx], imageRef[idx+1:], nil
@@ -55,12 +65,47 @@ func parseImageReference(imageRef string) (repository, reference string, err err
 	return "", "", fmt.Errorf("invalid format, expected 'repository:tag' or 'repository@digest'")
 }
 
+// formatImageReference formats a complete image reference with nscr base prefix.
+func formatImageReference(nscrBase, repository, digest string) string {
+	if nscrBase != "" {
+		return fmt.Sprintf("%s/%s@%s", nscrBase, repository, digest)
+	}
+	return fmt.Sprintf("%s@%s", repository, digest)
+}
+
+// formatImageReferenceStyled formats an image reference with styling if terminal supports it.
+// The nscr base prefix is dimmed to emphasize the repository and digest.
+func formatImageReferenceStyled(nscrBase, repository, digest string) string {
+	ref := formatImageReference(nscrBase, repository, digest)
+
+	// Only apply styling if stdout is a terminal
+	if !term.IsTerminal(int(syscall.Stdout)) {
+		return ref
+	}
+
+	// If no nscr base, return unstyled
+	if nscrBase == "" {
+		return ref
+	}
+
+	// Use adaptive color that works in both light and dark modes
+	// Colors are just slightly dimmer than default text
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
+		Light: "#555555", // Slightly dimmed for light mode
+		Dark:  "#AAAAAA", // Slightly dimmed for dark mode
+	})
+
+	// Split and style: dimmed base + normal rest
+	styledBase := dimStyle.Render(nscrBase + "/")
+	return styledBase + fmt.Sprintf("%s@%s", repository, digest)
+}
+
 // resolveImageReference resolves repository and reference from positional args and flags.
 // Positional arg takes precedence unless overridden by explicit flags.
-func resolveImageReference(args []string, repositoryFlag, referenceFlag string) (repository, reference string, err error) {
+func resolveImageReference(args []string, repositoryFlag, referenceFlag, nscrBase string) (repository, reference string, err error) {
 	// Parse positional argument if provided
 	if len(args) > 0 {
-		repository, reference, err = parseImageReference(args[0])
+		repository, reference, err = parseImageReference(args[0], nscrBase)
 		if err != nil {
 			return "", "", err
 		}
@@ -95,6 +140,7 @@ func newRegistryListCmd() *cobra.Command {
 	repositories := cmd.Flags().Bool("repositories", false, "List repositories instead of images")
 	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
 	matchRepo := cmd.Flags().String("repository", "", "Filter images by repository name")
+	includeDeleted := cmd.Flags().Bool("include_deleted", false, "Include deleted images in results")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		// Use positional argument if provided, unless --repository flag is explicitly set
@@ -105,6 +151,11 @@ func newRegistryListCmd() *cobra.Command {
 		tokenSource, err := auth.LoadDefaults()
 		if err != nil {
 			return fnerrors.InvocationError("registry", "failed to get authentication token: %w", err)
+		}
+
+		nscrBase, err := builds.NSCRBase(ctx, tokenSource)
+		if err != nil {
+			return fnerrors.InvocationError("registry", "failed to get registry base: %w", err)
 		}
 
 		client, err := registryapi.NewClient(ctx, tokenSource)
@@ -150,6 +201,7 @@ func newRegistryListCmd() *cobra.Command {
 			if repository != "" {
 				req.MatchRepository = &stdlib.StringMatcher{
 					Values: []string{repository},
+					Op:     stdlib.StringMatcher_IS_ANY_OF,
 				}
 			}
 
@@ -158,29 +210,51 @@ func newRegistryListCmd() *cobra.Command {
 				return fnerrors.InvocationError("registry", "failed to list images: %w", err)
 			}
 
+			// Filter out deleted images unless include_deleted is set
+			images := resp.Images
+			if !*includeDeleted {
+				var filtered []*registryv1beta.Image
+				for _, img := range resp.Images {
+					if img.DeletedAt == nil {
+						filtered = append(filtered, img)
+					}
+				}
+				images = filtered
+			}
+
 			switch *output {
 			case "json":
-				var b bytes.Buffer
-				fmt.Fprint(&b, "[")
-				for k, img := range resp.Images {
-					if k > 0 {
-						fmt.Fprint(&b, ",")
-					}
-
-					bb, err := protojson.MarshalOptions{UseProtoNames: true, Multiline: true}.Marshal(img)
+				// Convert to JSON and add image_ref field
+				var result []map[string]interface{}
+				for _, img := range images {
+					// Marshal to JSON first
+					bb, err := protojson.Marshal(img)
 					if err != nil {
 						return err
 					}
 
-					fmt.Fprintf(&b, "\n%s", bb)
+					var imgMap map[string]interface{}
+					if err := json.Unmarshal(bb, &imgMap); err != nil {
+						return err
+					}
+
+					// Add image_ref field at the beginning
+					imageRef := formatImageReference(nscrBase, img.Repository, img.Digest)
+					imgMap["image_ref"] = imageRef
+
+					result = append(result, imgMap)
 				}
-				fmt.Fprint(&b, "\n]\n")
 
-				console.Stdout(ctx).Write(b.Bytes())
+				// Marshal back to JSON with indentation
+				bb, err := json.MarshalIndent(result, "", "  ")
+				if err != nil {
+					return err
+				}
 
+				fmt.Fprintln(console.Stdout(ctx), string(bb))
 				return nil
 			case "table":
-				return printImagesTable(ctx, resp.Images)
+				return printImagesTable(ctx, nscrBase, images)
 			default:
 				return fnerrors.BadInputError("invalid output format: %s", *output)
 			}
@@ -209,14 +283,19 @@ Alternatively, use --repository and --reference flags.`,
 	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		repository, reference, err := resolveImageReference(args, *repositoryFlag, *referenceFlag)
-		if err != nil {
-			return fnerrors.BadInputError("%w", err)
-		}
-
 		tokenSource, err := auth.LoadDefaults()
 		if err != nil {
 			return fnerrors.InvocationError("registry", "failed to get authentication token: %w", err)
+		}
+
+		nscrBase, err := builds.NSCRBase(ctx, tokenSource)
+		if err != nil {
+			return fnerrors.InvocationError("registry", "failed to get registry base: %w", err)
+		}
+
+		repository, reference, err := resolveImageReference(args, *repositoryFlag, *referenceFlag, nscrBase)
+		if err != nil {
+			return fnerrors.BadInputError("%w", err)
 		}
 
 		client, err := registryapi.NewClient(ctx, tokenSource)
@@ -246,7 +325,7 @@ Alternatively, use --repository and --reference flags.`,
 			return nil
 
 		case "table":
-			return printImageDetails(ctx, resp)
+			return printImageDetails(ctx, nscrBase, resp)
 
 		default:
 			return fnerrors.BadInputError("invalid output format: %s", *output)
@@ -277,13 +356,19 @@ Alternatively, use --repository and --digest flags.`,
 	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		repository, digest, err := resolveImageReference(args, *repositoryFlag, *digestFlag)
-		if err != nil {
-			return fnerrors.BadInputError("%w", err)
-		}
 		tokenSource, err := auth.LoadDefaults()
 		if err != nil {
 			return fnerrors.InvocationError("registry", "failed to get authentication token: %w", err)
+		}
+
+		nscrBase, err := builds.NSCRBase(ctx, tokenSource)
+		if err != nil {
+			return fnerrors.InvocationError("registry", "failed to get registry base: %w", err)
+		}
+
+		repository, digest, err := resolveImageReference(args, *repositoryFlag, *digestFlag, nscrBase)
+		if err != nil {
+			return fnerrors.BadInputError("%w", err)
 		}
 
 		client, err := registryapi.NewClient(ctx, tokenSource)
@@ -370,7 +455,7 @@ func printRepositoriesTable(ctx context.Context, repositories []*registryv1beta.
 	return tui.StaticTable(ctx, cols, rows)
 }
 
-func printImagesTable(ctx context.Context, images []*registryv1beta.Image) error {
+func printImagesTable(ctx context.Context, nscrBase string, images []*registryv1beta.Image) error {
 	if len(images) == 0 {
 		fmt.Fprintf(console.Stdout(ctx), "No images found.\n")
 		return nil
@@ -389,16 +474,23 @@ func printImagesTable(ctx context.Context, images []*registryv1beta.Image) error
 			created = img.CreatedAt.AsTime().Format(time.RFC3339)
 		}
 
-		// Build complete image reference
-		imageRef := fmt.Sprintf("%s@%s", img.Repository, img.Digest)
-		if len(imageRef) > 77 {
-			imageRef = imageRef[:77] + "..."
+		// Build complete image reference with styling
+		imageRef := formatImageReferenceStyled(nscrBase, img.Repository, img.Digest)
+
+		// Check length of unstyled version for truncation
+		unstyledRef := formatImageReference(nscrBase, img.Repository, img.Digest)
+		if len(unstyledRef) > 77 {
+			// Truncate the unstyled version and re-apply styling
+			truncated := unstyledRef[:77] + "..."
+			imageRef = truncated // Fall back to unstyled if truncated
 		}
 
 		size := "-"
 		if img.Sizes != nil && img.Sizes.Total > 0 {
 			size = humanize.IBytes(uint64(img.Sizes.Total))
 		}
+		// Right-align size within 10 characters
+		size = fmt.Sprintf("%10s", size)
 
 		row := tui.Row{
 			"reference": imageRef,
@@ -411,7 +503,7 @@ func printImagesTable(ctx context.Context, images []*registryv1beta.Image) error
 	return tui.StaticTable(ctx, cols, rows)
 }
 
-func printImageDetails(ctx context.Context, resp *registryv1beta.GetImageResponse) error {
+func printImageDetails(ctx context.Context, nscrBase string, resp *registryv1beta.GetImageResponse) error {
 	stdout := console.Stdout(ctx)
 
 	if resp.Image == nil {
@@ -421,8 +513,8 @@ func printImageDetails(ctx context.Context, resp *registryv1beta.GetImageRespons
 
 	img := resp.Image
 
-	// Show complete image reference first
-	imageRef := fmt.Sprintf("%s@%s", img.Repository, img.Digest)
+	// Show complete image reference first with styling
+	imageRef := formatImageReferenceStyled(nscrBase, img.Repository, img.Digest)
 	fmt.Fprintf(stdout, "Image Reference: %s\n", imageRef)
 	fmt.Fprintf(stdout, "Repository:      %s\n", img.Repository)
 	fmt.Fprintf(stdout, "Digest:          %s\n", img.Digest)
