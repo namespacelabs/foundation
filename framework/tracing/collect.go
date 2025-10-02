@@ -26,6 +26,14 @@ func Name(name string) Collected {
 	return Collected{name: name}
 }
 
+func StringWithCap(k, v string, cap int) attribute.KeyValue {
+	cappedV := v
+	if len(cappedV) > cap {
+		cappedV = string(cappedV[:cap])
+	}
+	return attribute.String(k, cappedV)
+}
+
 func (c Collected) Attribute(kv ...attribute.KeyValue) Collected {
 	copy := c
 	copy.attributes = append(c.attributes, kv...)

@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/framework/tracing"
 )
@@ -78,7 +79,8 @@ func doTxFunc[T any](ctx context.Context, db *DB, txoptions TxOptions, attempt i
 	}
 
 	if !txoptions.EnableTracing {
-		return do(ctx)
+		// Even if we don't trace the whole tx we want to retain error hints as span attributes.
+		return traceHints(ctx, do)
 	}
 
 	n := tracing.Name("pg.Transaction").Attribute(
@@ -88,7 +90,27 @@ func doTxFunc[T any](ctx context.Context, db *DB, txoptions TxOptions, attempt i
 		n = n.Attribute(attribute.Int64("db.tx_attempt", attempt))
 	}
 
-	return tracing.Collect1(ctx, db.t, n, do)
+	return tracing.Collect1(ctx, db.t, n, func(ctx context.Context) (T, error) {
+		return traceHints(ctx, do)
+	})
+}
+
+func traceHints[T any](ctx context.Context, f func(ctx context.Context) (T, error)) (T, error) {
+	res, err := f(ctx)
+	if err != nil {
+		var pgerr *pgconn.PgError
+		if errors.As(err, &pgerr) {
+			trace.SpanFromContext(ctx).SetAttributes(
+				tracing.StringWithCap("pg.error.hint", pgerr.Hint, 256),
+				tracing.StringWithCap("pg.error.detail", pgerr.Detail, 256),
+			)
+		}
+
+		var empty T
+		return empty, err
+	}
+
+	return res, nil
 }
 
 // Returns the error code (to be compared to pgerrcode.* constants).
