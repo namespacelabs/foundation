@@ -354,6 +354,7 @@ Alternatively, use --repository and --digest flags.`,
 	visibility := cmd.Flags().String("visibility", "public", "Visibility level: public, partner")
 	expiresAt := cmd.Flags().String("expires_at", "", "Expiration time in RFC3339 format (e.g., 2024-12-31T23:59:59Z)")
 	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
+	suffix := cmd.Flags().String("suffix", "", "An optional suffix to append to repository names")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		tokenSource, err := auth.LoadDefaults()
@@ -399,6 +400,10 @@ Alternatively, use --repository and --digest flags.`,
 				return fnerrors.BadInputError("invalid expires_at time format: %w", err)
 			}
 			req.ExpiresAt = timestamppb.New(t)
+		}
+
+		if *suffix != "" {
+			req.Suffix = *suffix
 		}
 
 		sharedImage, err := client.ContainerRegistry.ShareImage(ctx, req)
@@ -554,6 +559,10 @@ func printSharedImage(ctx context.Context, sharedImage *registryv1beta.SharedIma
 	fmt.Fprintf(stdout, "Repository:       %s\n", sharedImage.SharedRepository)
 	fmt.Fprintf(stdout, "Digest:           %s\n", sharedImage.SharedDigest)
 	fmt.Fprintf(stdout, "Visibility:       %s\n", sharedImage.Visibility.String())
+
+	if sharedImage.Suffix != "" {
+		fmt.Fprintf(stdout, "Suffix:           %s\n", sharedImage.Suffix)
+	}
 
 	if sharedImage.ExpiresAt != nil {
 		fmt.Fprintf(stdout, "Expires At:       %s\n", sharedImage.ExpiresAt.AsTime().Format(time.RFC3339))
