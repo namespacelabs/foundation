@@ -16,10 +16,12 @@ import (
 )
 
 type Error struct {
-	Err    error
-	s      *status.Status
-	stack  []uintptr
-	frames []errors.StackFrame
+	SafeMsg       string
+	Err           error
+	Code          codes.Code
+	stack         []uintptr
+	stkframecache []errors.StackFrame
+	Details       []proto.Message
 }
 
 func Wrap(code codes.Code, err error) *Error {
@@ -32,23 +34,37 @@ func WrapWithSkip(code codes.Code, err error, skip int) *Error {
 
 	return &Error{
 		Err:   err,
-		s:     status.New(code, err.Error()),
 		stack: stack[:length],
 	}
 }
 
-func Errorf(code codes.Code, format string, args ...interface{}) *Error {
+func Errorf(code codes.Code, format string, args ...any) *Error {
 	stack := make([]uintptr, errors.MaxStackDepth)
 	length := runtime.Callers(2, stack[:])
 	err := fmt.Errorf(format, args...)
 	return &Error{
 		Err:   err,
-		s:     status.New(code, err.Error()),
+		Code:  code,
 		stack: stack[:length],
 	}
 }
 
+func Safef(code codes.Code, original error, format string, args ...any) *Error {
+	stack := make([]uintptr, errors.MaxStackDepth)
+	length := runtime.Callers(2, stack[:])
+	return &Error{
+		SafeMsg: fmt.Sprintf(format, args...),
+		Err:     original,
+		Code:    code,
+		stack:   stack[:length],
+	}
+}
+
 func (e *Error) Error() string {
+	if e.SafeMsg != "" {
+		return fmt.Sprintf("%s: %v", e.SafeMsg, e.Err)
+	}
+
 	return e.Err.Error()
 }
 
@@ -57,37 +73,43 @@ func (e *Error) Unwrap() error {
 }
 
 func (e *Error) GRPCStatus() *status.Status {
-	return e.s
-}
-
-func (e *Error) WithDetails(details ...proto.Message) *Error {
-	if e.s.Code() == codes.OK {
-		return e
+	if len(e.Details) == 0 {
+		return status.New(e.Code, e.Error())
 	}
 
-	p := e.s.Proto()
-	for _, detail := range details {
+	p := status.New(e.Code, e.Error()).Proto()
+	for _, detail := range e.Details {
 		any, _ := anypb.New(detail)
 		if any != nil {
 			p.Details = append(p.Details, any)
 		}
 	}
 
+	return status.FromProto(p)
+}
+
+func (e *Error) WithDetails(details ...proto.Message) *Error {
+	if e.Code == codes.OK {
+		return e
+	}
+
 	return &Error{
-		Err:   e.Err,
-		s:     status.FromProto(p),
-		stack: e.stack,
+		SafeMsg: e.SafeMsg,
+		Err:     e.Err,
+		Code:    e.Code,
+		Details: append(e.Details, details...),
+		stack:   e.stack,
 	}
 }
 
 func (err *Error) StackFrames() []errors.StackFrame {
-	if err.frames == nil {
-		err.frames = make([]errors.StackFrame, len(err.stack))
+	if err.stkframecache == nil {
+		err.stkframecache = make([]errors.StackFrame, len(err.stack))
 
 		for i, pc := range err.stack {
-			err.frames[i] = errors.NewStackFrame(pc)
+			err.stkframecache[i] = errors.NewStackFrame(pc)
 		}
 	}
 
-	return err.frames
+	return err.stkframecache
 }
