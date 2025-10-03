@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/mod/semver"
 	"namespacelabs.dev/foundation/internal/artifacts"
+	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/unpack"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
@@ -25,8 +27,10 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
+	"sigs.k8s.io/yaml"
 )
 
 const version = "5.2.2"
@@ -190,9 +194,58 @@ func (k3d K3D) ListClusters(ctx context.Context) ([]Cluster, error) {
 func (k3d K3D) CreateCluster(ctx context.Context, name, registry, image string, updateDefault bool) error {
 	fmt.Fprintf(console.Stdout(ctx), "Creating a Kubernetes cluster, this may take up to a minute (image=%s).\n", image)
 
+	args := []string{
+		"cluster", "create",
+		"--registry-use", registry,
+		"--image", image,
+		fmt.Sprintf("--kubeconfig-update-default=%v", updateDefault),
+		"--k3s-arg", "--disable=traefik@server:0",
+		"--wait", name,
+	}
+
+	if mirror := oci.DockerHubMirror(); mirror != "" {
+		mirrors := map[string]any{}
+
+		for _, addr := range []string{"docker.io", "registry-1.docker.io", "registry.docker.com", "registry.hub.docker.com"} {
+			mirrors[addr] = map[string]string{
+				"endpoint": mirror,
+			}
+		}
+
+		k3sregs := map[string]any{
+			"mirrors": mirrors,
+		}
+
+		data, err := yaml.Marshal(k3sregs)
+		if err != nil {
+			return fnerrors.Newf("failed to marshal yaml: %w", err)
+		}
+
+		cfgDir, err := dirs.Ensure(cfgDir())
+		if err != nil {
+			return fnerrors.Newf("failed to ensure config dir: %w", err)
+		}
+
+		regFile := filepath.Join(cfgDir, "registries.yaml")
+		if err := os.WriteFile(regFile, []byte(data), 0644); err != nil {
+			fmt.Fprintf(console.Warnings(ctx), "Failed to write token cache: %v\n", err)
+		}
+
+		args = append(args, "--registry-config", regFile)
+	}
+
 	return tasks.Action("k3d.create-cluster").Arg("image", image).Run(ctx, func(ctx context.Context) error {
-		return k3d.do(ctx, "cluster", "create", "--registry-use", registry, "--image", image, fmt.Sprintf("--kubeconfig-update-default=%v", updateDefault), "--k3s-arg", "--disable=traefik@server:0", "--wait", name)
+		return k3d.do(ctx, args...)
 	})
+}
+
+func cfgDir() (string, error) {
+	c, err := dirs.Config()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(c, "k3d"), nil
 }
 
 func (k3d K3D) DeleteCluster(ctx context.Context, name string) error {
