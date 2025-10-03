@@ -62,6 +62,10 @@ func Safef(code codes.Code, original error, format string, args ...any) *Error {
 
 func (e *Error) Error() string {
 	if e.SafeMsg != "" {
+		if e.Err == nil {
+			return e.SafeMsg
+		}
+
 		return fmt.Sprintf("%s: %v", e.SafeMsg, e.Err)
 	}
 
