@@ -207,8 +207,8 @@ func (k3d K3D) CreateCluster(ctx context.Context, name, registry, image string, 
 		mirrors := map[string]any{}
 
 		for _, addr := range []string{"docker.io", "registry-1.docker.io", "registry.docker.com", "registry.hub.docker.com"} {
-			mirrors[addr] = map[string]string{
-				"endpoint": mirror,
+			mirrors[addr] = map[string][]string{
+				"endpoint": {mirror},
 			}
 		}
 
