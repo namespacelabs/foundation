@@ -4,7 +4,7 @@ go 1.24.4
 
 require (
 	buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20251003075009-7b6c864adf76.2
-	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.10-20251003075009-7b6c864adf76.1
+	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.10-20251004232704-dc0ca666d48a.1
 	cloud.google.com/go/artifactregistry v1.14.7
 	cloud.google.com/go/container v1.31.0
 	cuelang.org/go v0.10.0
