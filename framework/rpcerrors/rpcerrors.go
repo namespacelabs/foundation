@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"runtime"
 
-	"buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/stdlib"
 	"github.com/go-errors/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	nsclouderrors "namespacelabs.dev/foundation/public/nscloud/proto/v1"
 )
 
 type Error struct {
@@ -60,8 +60,8 @@ func Safef(code codes.Code, original error, format string, args ...any) *Error {
 		Code:    code,
 		stack:   stack[:length],
 		Details: []proto.Message{
-			&stdlib.UserMessage{
-				Messages: []string{safeMsg},
+			&nsclouderrors.UserMessage{
+				Message: safeMsg,
 			},
 		},
 	}
