@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"runtime"
 
-	"buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/stdlib"
 	"github.com/go-errors/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -53,17 +52,11 @@ func Errorf(code codes.Code, format string, args ...any) *Error {
 func Safef(code codes.Code, original error, format string, args ...any) *Error {
 	stack := make([]uintptr, errors.MaxStackDepth)
 	length := runtime.Callers(2, stack[:])
-	safeMsg := fmt.Sprintf(format, args...)
 	return &Error{
-		SafeMsg: safeMsg,
+		SafeMsg: fmt.Sprintf(format, args...),
 		Err:     original,
 		Code:    code,
 		stack:   stack[:length],
-		Details: []proto.Message{
-			&stdlib.UserMessage{
-				Messages: []string{safeMsg},
-			},
-		},
 	}
 }
 
