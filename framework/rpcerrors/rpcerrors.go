@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	nsclouderrors "namespacelabs.dev/foundation/public/nscloud/proto/v1"
 )
 
 type Error struct {
@@ -52,11 +53,17 @@ func Errorf(code codes.Code, format string, args ...any) *Error {
 func Safef(code codes.Code, original error, format string, args ...any) *Error {
 	stack := make([]uintptr, errors.MaxStackDepth)
 	length := runtime.Callers(2, stack[:])
+	safeMsg := fmt.Sprintf(format, args...)
 	return &Error{
-		SafeMsg: fmt.Sprintf(format, args...),
+		SafeMsg: safeMsg,
 		Err:     original,
 		Code:    code,
 		stack:   stack[:length],
+		Details: []proto.Message{
+			&nsclouderrors.UserMessage{
+				Message: safeMsg,
+			},
+		},
 	}
 }
 
