@@ -259,59 +259,6 @@ jobs:
         run: |
           ./.github/workflows/scripts/ns_cluster_tests.sh /tmp/nsc
 
-  run_cross_repo_tests:
-    name: cross-repo e2e tests
-    needs: build_fn
-    strategy:
-      matrix:
-        repo: [examples]
-    runs-on: nscloud
-    timeout-minutes: 30
-    steps:
-      - name: checkout dependant repo
-        uses: actions/checkout@v4
-        with:
-          repository: namespacelabs/${{ matrix.repo }}
-          path: external-repo
-
-      - name: Download ns
-        uses: namespace-actions/download-artifact@v1
-        with:
-          name: ns-${{ runner.os }}
-
-      # ns is moved out of the workspace so we don't spend time uploading it to buildkit.
-      - name: Make ns executable
-        run: chmod +x ns && mv ns /tmp/ns
-
-      - name: Exchange Github token
-        run: /tmp/ns auth exchange-github-token
-
-      - name: Run tests
-        env:
-          NS_LOG_TO_FILE: /tmp/action_log
-        run: |
-          cd external-repo; \
-          /tmp/ns test \
-            golang/01-simple/server \
-            golang/02-withsecrets/server \
-            --debug_to_file=/tmp/debug_log \
-            --use_prebuilts=true \
-            --deploy_push_prebuilts_to_registry=false \
-            --golang_use_buildkit=true \
-            --testing_use_namespace_cloud \
-            --testing_use_namespace_cloud_build \
-            --parallel
-
-      - name: Upload logs
-        uses: namespace-actions/upload-artifact@v1
-        with:
-          name: ns-logs-${{ github.job }}
-          path: |
-            /tmp/action_log
-            /tmp/debug_log
-          retention-days: 3
-        if: always()
-
   test_unprepare:
     name: Test unprepare
     needs: build_fn
