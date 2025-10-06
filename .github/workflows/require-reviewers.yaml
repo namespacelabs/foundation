@@ -18,6 +18,7 @@ on:
 
 jobs:
   require-reviewer:
+    if: github.event.pull_request.draft == false
     runs-on: nscloud
 
     permissions:
