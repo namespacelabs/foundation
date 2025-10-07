@@ -100,10 +100,15 @@ func traceHints[T any](ctx context.Context, f func(ctx context.Context) (T, erro
 	if err != nil {
 		var pgerr *pgconn.PgError
 		if errors.As(err, &pgerr) {
-			trace.SpanFromContext(ctx).SetAttributes(
-				tracing.StringWithCap("pg.error.hint", pgerr.Hint, 256),
-				tracing.StringWithCap("pg.error.detail", pgerr.Detail, 256),
-			)
+			span := trace.SpanFromContext(ctx)
+
+			if len(pgerr.Hint) > 0 {
+				span.SetAttributes(tracing.StringWithCap("pg.error.hint", pgerr.Hint, 256))
+			}
+
+			if len(pgerr.Detail) > 0 {
+				span.SetAttributes(tracing.StringWithCap("pg.error.detail", pgerr.Detail, 256))
+			}
 		}
 
 		var empty T
