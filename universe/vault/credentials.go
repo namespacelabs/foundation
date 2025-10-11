@@ -260,14 +260,14 @@ type cachedOidcToken struct {
 }
 
 func oidcCachePath(vaultAddress, authMount string) (string, error) {
-	cacheDir, err := dirs.Ensure(dirs.Subdir("vault"))
+	configDir, err := dirs.Ensure(dirs.Config())
 	if err != nil {
 		return "", err
 	}
 
 	// Create a safe filename from vault address and auth mount
 	filename := fmt.Sprintf("oidc_%s_%s.json", filepath.Base(vaultAddress), authMount)
-	return filepath.Join(cacheDir, filename), nil
+	return filepath.Join(configDir, filename), nil
 }
 
 func loadCachedOidcToken(ctx context.Context, vaultAddress, authMount string) (*vault.ResponseAuth, error) {
