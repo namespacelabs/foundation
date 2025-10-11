@@ -35,6 +35,7 @@ func WrapWithSkip(code codes.Code, err error, skip int) *Error {
 
 	return &Error{
 		Err:   err,
+		Code:  code,
 		stack: stack[:length],
 	}
 }
