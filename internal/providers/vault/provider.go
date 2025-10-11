@@ -75,7 +75,7 @@ func login(ctx context.Context, vaultCfg *vault.VaultProvider) (*vaultclient.Cli
 
 					authResp = resp
 				case "oidc":
-					resp, err := vault.OidcLogin(ctx, client, vaultCfg.GetAuthMount())
+					resp, err := vault.OidcLogin(ctx, client, vaultCfg.GetAddress(), vaultCfg.GetAuthMount())
 					if err != nil {
 						return nil, fnerrors.InvocationError("vault", "failed to login with OIDC method: %w", err)
 					}

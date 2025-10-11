@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/go-ids"
 )
 
@@ -36,6 +38,9 @@ const (
 
 	// Force re-authentication if the token expires in less than this much time.
 	ttlBuffer = time.Minute
+
+	// Minimum validity duration for cached OIDC credentials before triggering re-auth.
+	oidcMinValidityBuffer = 5 * time.Minute
 
 	oidcCallbackPort = 8250
 	oidcLoginTimeout = 5 * time.Minute
@@ -135,7 +140,7 @@ func (h *ClientHandle) authenticate(ctx context.Context) error {
 
 		vaultAuth = resp
 	case OidcAuthMethod:
-		resp, err := OidcLogin(ctx, h.client, h.creds.AuthMount)
+		resp, err := OidcLogin(ctx, h.client, h.creds.VaultAddress, h.creds.AuthMount)
 		if err != nil {
 			return err
 		}
@@ -249,7 +254,92 @@ func ParseCredentialsFromEnv(key string) (*Credentials, error) {
 	return ParseCredentials([]byte(os.Getenv(key)))
 }
 
-func OidcLogin(ctx context.Context, client *vault.Client, authMount string) (*vault.ResponseAuth, error) {
+type cachedOidcToken struct {
+	Auth      *vault.ResponseAuth `json:"auth"`
+	ExpiresAt time.Time           `json:"expires_at"`
+}
+
+func oidcCachePath(vaultAddress, authMount string) (string, error) {
+	configDir, err := dirs.Ensure(dirs.Config())
+	if err != nil {
+		return "", err
+	}
+
+	// Create a safe filename from vault address and auth mount
+	filename := fmt.Sprintf("oidc_%s_%s.json", filepath.Base(vaultAddress), authMount)
+	return filepath.Join(configDir, filename), nil
+}
+
+func loadCachedOidcToken(ctx context.Context, vaultAddress, authMount string) (*vault.ResponseAuth, error) {
+	cachePath, err := oidcCachePath(vaultAddress, authMount)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := os.ReadFile(cachePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var cached cachedOidcToken
+	if err := json.Unmarshal(data, &cached); err != nil {
+		zerolog.Ctx(ctx).Debug().Err(err).Msg("failed to unmarshal cached OIDC token")
+		return nil, nil
+	}
+
+	// Check if token is still valid for at least oidcMinValidityBuffer
+	if time.Until(cached.ExpiresAt) < oidcMinValidityBuffer {
+		zerolog.Ctx(ctx).Debug().
+			Time("expires_at", cached.ExpiresAt).
+			Msg("cached OIDC token expired or expiring soon")
+		return nil, nil
+	}
+
+	zerolog.Ctx(ctx).Debug().
+		Time("expires_at", cached.ExpiresAt).
+		Msg("using cached OIDC token")
+	return cached.Auth, nil
+}
+
+func storeCachedOidcToken(ctx context.Context, vaultAddress, authMount string, auth *vault.ResponseAuth) error {
+	cachePath, err := oidcCachePath(vaultAddress, authMount)
+	if err != nil {
+		return err
+	}
+
+	expiresAt := time.Now().Add(time.Duration(auth.LeaseDuration) * time.Second)
+	cached := cachedOidcToken{
+		Auth:      auth,
+		ExpiresAt: expiresAt,
+	}
+
+	data, err := json.Marshal(cached)
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(cachePath, data, 0600); err != nil {
+		zerolog.Ctx(ctx).Warn().Err(err).Msg("failed to cache OIDC token")
+		return err
+	}
+
+	zerolog.Ctx(ctx).Debug().
+		Time("expires_at", expiresAt).
+		Msg("cached OIDC token")
+	return nil
+}
+
+func OidcLogin(ctx context.Context, client *vault.Client, vaultAddress, authMount string) (*vault.ResponseAuth, error) {
+	// Check if we have cached credentials that are still valid, unless cache is disabled
+	if os.Getenv("VAULT_SKIP_OIDC_CACHE") == "" {
+		if cachedAuth, err := loadCachedOidcToken(ctx, vaultAddress, authMount); err == nil && cachedAuth != nil {
+			return cachedAuth, nil
+		}
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, oidcLoginTimeout)
 	defer cancel()
 
@@ -308,6 +398,12 @@ func OidcLogin(ctx context.Context, client *vault.Client, authMount string) (*va
 			r, err = client.Auth.JwtOidcCallback(ctx, clientNonce, resp.code, resp.state, opts...)
 			if err != nil {
 				return nil, fmt.Errorf("failed to login using OIDC provider: %w", err)
+			}
+
+			// Cache the newly acquired token
+			if err := storeCachedOidcToken(ctx, vaultAddress, authMount, r.Auth); err != nil {
+				// Log error but don't fail the login
+				zerolog.Ctx(ctx).Warn().Err(err).Msg("failed to cache OIDC token")
 			}
 
 			return r.Auth, nil
