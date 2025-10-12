@@ -191,11 +191,7 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 			rootCmd.PersistentFlags().BoolVar(&runtime.WorkInProgressUseShortAlias, "runtime_wip_use_short_alias", runtime.WorkInProgressUseShortAlias,
 				"If set to true, uses the new ingress name allocator.")
 			rootCmd.PersistentFlags().BoolVar(&client.UseOrchestrator, "use_orchestrator", client.UseOrchestrator,
-				"If set to true, enables the incluster Namespace orchestrator (used for deployments, resource management and service readiness probing).")
-			rootCmd.PersistentFlags().BoolVar(&orchestration.DeployWithOrchestrator, "deploy_with_orchestrator", orchestration.DeployWithOrchestrator,
-				"If set to true, ns uses the incluster orchestrator for deployment.")
-			rootCmd.PersistentFlags().BoolVar(&orchestration.RenderOrchestratorDeployment, "render_orchestrator_deployment", orchestration.RenderOrchestratorDeployment,
-				"If set to true, we print a render wait block while deploying the orchestrator itself.")
+				"If set to true, enables the incluster Namespace orchestrator (used for service readiness probing).")
 			rootCmd.PersistentFlags().StringVar(&orchestration.SlackToken, "slack_token", "",
 				"Token used to call Slack.")
 			rootCmd.PersistentFlags().StringVar(&orchestration.DeployUpdateSlackChannel, "deploy_update_slack_channel", "",

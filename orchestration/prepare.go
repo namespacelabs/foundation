@@ -21,16 +21,12 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-var (
-	RenderOrchestratorDeployment = false
-
-	stateless = &runtimepb.Deployable{
-		PackageRef:      schema.MakePackageSingleRef(constants.ServerPkg),
-		Id:              constants.ServerId,
-		Name:            constants.ServerName,
-		DeployableClass: string(schema.DeployableClass_STATELESS),
-	}
-)
+var stateless = &runtimepb.Deployable{
+	PackageRef:      schema.MakePackageSingleRef(constants.ServerPkg),
+	Id:              constants.ServerId,
+	Name:            constants.ServerName,
+	DeployableClass: string(schema.DeployableClass_STATELESS),
+}
 
 func RegisterPrepare() {
 	client.RegisterOrchestrator(func(ctx context.Context, target cfg.Configuration, cluster runtime.Cluster) (any, error) {
@@ -96,7 +92,7 @@ func deployOrchestrator(ctx context.Context, env cfg.Context, boundCluster runti
 func execute(ctx context.Context, env cfg.Context, boundCluster runtime.ClusterNamespace, plan *execution.Plan, wait bool) error {
 	if wait {
 		return execution.Execute(ctx, "orchestrator.deploy", plan,
-			deploy.MaybeRenderBlock(env, boundCluster, RenderOrchestratorDeployment),
+			deploy.MaybeRenderBlock(env, boundCluster, false),
 			execution.FromContext(env), runtime.InjectCluster(boundCluster))
 	}
 
