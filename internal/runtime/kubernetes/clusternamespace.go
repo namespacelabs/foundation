@@ -12,8 +12,6 @@ import (
 	"net"
 	"time"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/anypb"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,7 +25,6 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
-	orchclient "namespacelabs.dev/foundation/orchestration/client"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/schema/storage"
@@ -214,31 +211,8 @@ func (r *ClusterNamespace) isDeployableReady(ctx context.Context, srv runtime.De
 }
 
 func (r *ClusterNamespace) areServicesReady(ctx context.Context, srv runtime.Deployable) (ServiceReadiness, error) {
-	if client.IsInclusterClient(r.underlying.cli) {
-		return AreServicesReady(ctx, r.underlying.cli, r.target.namespace, srv)
-	}
-
-	if !orchclient.UseOrchestrator {
-		fmt.Fprintf(console.Debug(ctx), "will not wait for services of server %s...\n", srv.GetName())
-		return ServiceReadiness{Ready: true}, nil
-	}
-
-	conn, err := orchclient.ConnectToOrchestrator(ctx, r.parent)
-	if err != nil {
-		return ServiceReadiness{}, err
-	}
-
-	res, err := orchclient.CallAreServicesReady(ctx, conn, srv, r.target.namespace)
-	if err != nil {
-		if status.Code(err) == codes.Unimplemented {
-			fmt.Fprintf(console.Debug(ctx), "old orchestrator version, will not wait for services of server %s...\n", srv.GetName())
-			return ServiceReadiness{Ready: true}, nil
-		}
-
-		return ServiceReadiness{}, err
-	}
-
-	return ServiceReadiness{Ready: res.Ready, Message: res.Message}, nil
+	// Use the port-forward based implementation which works for both in-cluster and remote clusters
+	return AreServicesReady(ctx, r.underlying, r.target.namespace, srv)
 }
 
 func (r *ClusterNamespace) isPodReady(ctx context.Context, srv runtime.Deployable) (bool, error) {
