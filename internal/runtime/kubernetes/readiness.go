@@ -53,20 +53,20 @@ func AreServicesReady(ctx context.Context, cluster *Cluster, namespace string, s
 				continue
 			}
 
-			// Try to connect every 500ms for up to 30 seconds (60 attempts)
+			// Try to connect every 500ms for up to 2 minutes (240 attempts)
 			// Use nc (netcat) for TCP connectivity test - available in busybox
 			serviceDNS := fmt.Sprintf("%s.%s.svc.cluster.local", s.Name, s.Namespace)
 			script += fmt.Sprintf(`
 echo "Checking %s:%d..."
 i=0
-while [ $i -lt 60 ]; do
-  if timeout 0.1 nc -z %s %d 2>/dev/null; then
+while [ $i -lt 240 ]; do
+  if nc -z -w 1 %s %d 2>/dev/null; then
     echo "  ✓ %s:%d is ready"
     break
   fi
   i=$((i + 1))
-  if [ $i -eq 60 ]; then
-    echo "  ✗ %s:%d failed after 30s"
+  if [ $i -eq 240 ]; then
+    echo "  ✗ %s:%d failed after 2 minutes"
     exit 1
   fi
   sleep 0.5
@@ -161,8 +161,8 @@ func CheckServiceConnectivity(ctx context.Context, cluster *Cluster, namespace, 
 
 	script := fmt.Sprintf(`#!/bin/sh
 i=0
-while [ $i -lt 60 ]; do
-  if timeout 0.1 nc -z %s %d 2>/dev/null; then
+while [ $i -lt 240 ]; do
+  if nc -z -w 1 %s %d 2>/dev/null; then
     exit 0
   fi
   i=$((i + 1))
