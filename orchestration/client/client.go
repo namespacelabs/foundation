@@ -75,7 +75,6 @@ func ConnectToOrchestrator(ctx context.Context, cluster runtime.Cluster) (*grpc.
 	return raw.(*remoteOrchestrator).Connect(ctx)
 }
 
-
 func CallAreServicesReady(ctx context.Context, conn *grpc.ClientConn, srv runtime.Deployable, ns string) (*proto.AreServicesReadyResponse, error) {
 	req := &proto.AreServicesReadyRequest{
 		Deployable: runtime.DeployableToProto(srv),
