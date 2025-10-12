@@ -19,11 +19,16 @@ import (
 	"namespacelabs.dev/foundation/std/execution"
 )
 
+// Execution version for feature compatibility checks.
+// This is not related to the orchestrator service version.
+const executionVersion = 25
+
 var DeployUpdateSlackChannel, SlackToken string
 
 func ExecuteOpts() execution.ExecuteOpts {
 	return execution.ExecuteOpts{
-		ContinueOnErrors: false,
+		ContinueOnErrors:    false,
+		OrchestratorVersion: executionVersion,
 	}
 }
 
