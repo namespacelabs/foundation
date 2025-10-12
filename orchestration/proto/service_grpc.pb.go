@@ -22,9 +22,6 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type OrchestrationServiceClient interface {
-	Deploy(ctx context.Context, in *DeployRequest, opts ...grpc.CallOption) (*DeployResponse, error)
-	DeploymentStatus(ctx context.Context, in *DeploymentStatusRequest, opts ...grpc.CallOption) (OrchestrationService_DeploymentStatusClient, error)
-	GetOrchestratorVersion(ctx context.Context, in *GetOrchestratorVersionRequest, opts ...grpc.CallOption) (*GetOrchestratorVersionResponse, error)
 	AreServicesReady(ctx context.Context, in *AreServicesReadyRequest, opts ...grpc.CallOption) (*AreServicesReadyResponse, error)
 }
 
@@ -34,56 +31,6 @@ type orchestrationServiceClient struct {
 
 func NewOrchestrationServiceClient(cc grpc.ClientConnInterface) OrchestrationServiceClient {
 	return &orchestrationServiceClient{cc}
-}
-
-func (c *orchestrationServiceClient) Deploy(ctx context.Context, in *DeployRequest, opts ...grpc.CallOption) (*DeployResponse, error) {
-	out := new(DeployResponse)
-	err := c.cc.Invoke(ctx, "/nsl.orchestration.OrchestrationService/Deploy", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *orchestrationServiceClient) DeploymentStatus(ctx context.Context, in *DeploymentStatusRequest, opts ...grpc.CallOption) (OrchestrationService_DeploymentStatusClient, error) {
-	stream, err := c.cc.NewStream(ctx, &OrchestrationService_ServiceDesc.Streams[0], "/nsl.orchestration.OrchestrationService/DeploymentStatus", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &orchestrationServiceDeploymentStatusClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type OrchestrationService_DeploymentStatusClient interface {
-	Recv() (*DeploymentStatusResponse, error)
-	grpc.ClientStream
-}
-
-type orchestrationServiceDeploymentStatusClient struct {
-	grpc.ClientStream
-}
-
-func (x *orchestrationServiceDeploymentStatusClient) Recv() (*DeploymentStatusResponse, error) {
-	m := new(DeploymentStatusResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-func (c *orchestrationServiceClient) GetOrchestratorVersion(ctx context.Context, in *GetOrchestratorVersionRequest, opts ...grpc.CallOption) (*GetOrchestratorVersionResponse, error) {
-	out := new(GetOrchestratorVersionResponse)
-	err := c.cc.Invoke(ctx, "/nsl.orchestration.OrchestrationService/GetOrchestratorVersion", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *orchestrationServiceClient) AreServicesReady(ctx context.Context, in *AreServicesReadyRequest, opts ...grpc.CallOption) (*AreServicesReadyResponse, error) {
@@ -99,9 +46,6 @@ func (c *orchestrationServiceClient) AreServicesReady(ctx context.Context, in *A
 // All implementations should embed UnimplementedOrchestrationServiceServer
 // for forward compatibility
 type OrchestrationServiceServer interface {
-	Deploy(context.Context, *DeployRequest) (*DeployResponse, error)
-	DeploymentStatus(*DeploymentStatusRequest, OrchestrationService_DeploymentStatusServer) error
-	GetOrchestratorVersion(context.Context, *GetOrchestratorVersionRequest) (*GetOrchestratorVersionResponse, error)
 	AreServicesReady(context.Context, *AreServicesReadyRequest) (*AreServicesReadyResponse, error)
 }
 
@@ -109,15 +53,6 @@ type OrchestrationServiceServer interface {
 type UnimplementedOrchestrationServiceServer struct {
 }
 
-func (UnimplementedOrchestrationServiceServer) Deploy(context.Context, *DeployRequest) (*DeployResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Deploy not implemented")
-}
-func (UnimplementedOrchestrationServiceServer) DeploymentStatus(*DeploymentStatusRequest, OrchestrationService_DeploymentStatusServer) error {
-	return status.Errorf(codes.Unimplemented, "method DeploymentStatus not implemented")
-}
-func (UnimplementedOrchestrationServiceServer) GetOrchestratorVersion(context.Context, *GetOrchestratorVersionRequest) (*GetOrchestratorVersionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetOrchestratorVersion not implemented")
-}
 func (UnimplementedOrchestrationServiceServer) AreServicesReady(context.Context, *AreServicesReadyRequest) (*AreServicesReadyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AreServicesReady not implemented")
 }
@@ -131,63 +66,6 @@ type UnsafeOrchestrationServiceServer interface {
 
 func RegisterOrchestrationServiceServer(s grpc.ServiceRegistrar, srv OrchestrationServiceServer) {
 	s.RegisterService(&OrchestrationService_ServiceDesc, srv)
-}
-
-func _OrchestrationService_Deploy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeployRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OrchestrationServiceServer).Deploy(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/nsl.orchestration.OrchestrationService/Deploy",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrchestrationServiceServer).Deploy(ctx, req.(*DeployRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _OrchestrationService_DeploymentStatus_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(DeploymentStatusRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(OrchestrationServiceServer).DeploymentStatus(m, &orchestrationServiceDeploymentStatusServer{stream})
-}
-
-type OrchestrationService_DeploymentStatusServer interface {
-	Send(*DeploymentStatusResponse) error
-	grpc.ServerStream
-}
-
-type orchestrationServiceDeploymentStatusServer struct {
-	grpc.ServerStream
-}
-
-func (x *orchestrationServiceDeploymentStatusServer) Send(m *DeploymentStatusResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func _OrchestrationService_GetOrchestratorVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetOrchestratorVersionRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OrchestrationServiceServer).GetOrchestratorVersion(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/nsl.orchestration.OrchestrationService/GetOrchestratorVersion",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrchestrationServiceServer).GetOrchestratorVersion(ctx, req.(*GetOrchestratorVersionRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _OrchestrationService_AreServicesReady_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -216,24 +94,10 @@ var OrchestrationService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*OrchestrationServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Deploy",
-			Handler:    _OrchestrationService_Deploy_Handler,
-		},
-		{
-			MethodName: "GetOrchestratorVersion",
-			Handler:    _OrchestrationService_GetOrchestratorVersion_Handler,
-		},
-		{
 			MethodName: "AreServicesReady",
 			Handler:    _OrchestrationService_AreServicesReady_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "DeploymentStatus",
-			Handler:       _OrchestrationService_DeploymentStatus_Handler,
-			ServerStreams: true,
-		},
-	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "orchestration/proto/service.proto",
 }
