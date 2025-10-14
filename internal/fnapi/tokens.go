@@ -22,6 +22,7 @@ import (
 
 type Token interface {
 	IsSessionToken() bool
+	ExpiresAt(context.Context) (time.Time, bool, error)
 	Claims(context.Context) (*auth.TokenClaims, error)
 	PreferredRegion(context.Context) (string, error)
 	IssueToken(context.Context, time.Duration, bool) (string, error)

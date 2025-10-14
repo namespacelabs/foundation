@@ -33,7 +33,7 @@ func NewCheckCmd() *cobra.Command {
 
 		m := map[string]any{}
 		if err == nil {
-			claims, err := t.Claims(ctx)
+			expiry, ok, err := t.ExpiresAt(ctx)
 			if err != nil {
 				return err
 			}
@@ -61,8 +61,8 @@ func NewCheckCmd() *cobra.Command {
 				}
 			}
 
-			if valid {
-				m["expires_at"] = claims.ExpiresAt.Format(time.RFC3339)
+			if valid && ok {
+				m["expires_at"] = expiry.Format(time.RFC3339)
 			}
 		} else {
 			if errors.As(err, &x) {

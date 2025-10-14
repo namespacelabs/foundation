@@ -59,6 +59,19 @@ type Token struct {
 
 func (t *Token) IsSessionToken() bool { return t.SessionToken != "" }
 
+func (t *Token) ExpiresAt(ctx context.Context) (time.Time, bool, error) {
+	if t.revokable {
+		return time.Time{}, false, nil
+	}
+
+	claims, err := t.Claims(ctx)
+	if err != nil {
+		return time.Time{}, false, err
+	}
+
+	return claims.ExpiresAt.Time, true, nil
+}
+
 func (t *Token) Claims(ctx context.Context) (*auth.TokenClaims, error) {
 	if t.SessionToken != "" {
 		return extractClaims(t.SessionToken)

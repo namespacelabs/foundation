@@ -31,18 +31,22 @@ func NewCheckLoginCmd() *cobra.Command {
 			return err
 		}
 
-		claims, err := tok.Claims(ctx)
+		expiry, ok, err := tok.ExpiresAt(ctx)
 		if err != nil {
 			return err
 		}
 
+		if !ok {
+			return fmt.Errorf("no expiry retained in the token")
+		}
+
 		// Do an expiry check for non-session tokens only.
-		if expires := time.Until(claims.ExpiresAt.Time); expires < dur && !tok.IsSessionToken() {
+		if expires := time.Until(expiry); expires < dur && !tok.IsSessionToken() {
 			if expires < 0 {
-				return fmt.Errorf("token expired %s", humanize.Time(claims.ExpiresAt.Time))
+				return fmt.Errorf("token expired %s", humanize.Time(expiry))
 			}
 
-			return fmt.Errorf("token expires %s", humanize.Time(claims.ExpiresAt.Time))
+			return fmt.Errorf("token expires %s", humanize.Time(expiry))
 		}
 
 		// For session tokens we need to try issuing a tenant token
