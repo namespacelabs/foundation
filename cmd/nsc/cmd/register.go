@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/private"
 	"namespacelabs.dev/foundation/internal/cli/cmd/gcp"
 	"namespacelabs.dev/foundation/internal/cli/cmd/sdk"
+	"namespacelabs.dev/foundation/internal/cli/cmd/token"
 	"namespacelabs.dev/foundation/internal/cli/cmd/vault"
 	"namespacelabs.dev/foundation/internal/cli/cmd/version"
 	"namespacelabs.dev/foundation/internal/cli/cmd/workspace"
@@ -69,6 +70,8 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(baseimage.NewBaseImageCmd())
 
 	root.AddCommand(vault.NewVaultCmd()) // nsc vault
+
+	root.AddCommand(token.NewTokenCmd()) // nsc token
 
 	root.AddCommand(cluster.NewRegistryCmd()) // nsc registry
 }

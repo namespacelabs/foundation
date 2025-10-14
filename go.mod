@@ -3,8 +3,8 @@ module namespacelabs.dev/foundation
 go 1.24.4
 
 require (
-	buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20251003075009-7b6c864adf76.2
-	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.10-20251003075009-7b6c864adf76.1
+	buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20251014083539-aa0729ced7c3.2
+	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.10-20251014083539-aa0729ced7c3.1
 	cloud.google.com/go/artifactregistry v1.14.7
 	cloud.google.com/go/container v1.31.0
 	cuelang.org/go v0.10.0
@@ -142,7 +142,7 @@ require (
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738
 	namespacelabs.dev/go-filenotify v0.0.0-20220511192020-53ea11be7eaa
 	namespacelabs.dev/go-ids v0.0.0-20221124082625-9fc72ee06af7
-	namespacelabs.dev/integrations v0.0.9-0.20251001125846-0c2c49d265dd
+	namespacelabs.dev/integrations v0.0.9-0.20251014083812-d336d2841f96
 	sigs.k8s.io/controller-runtime v0.21.0
 	sigs.k8s.io/yaml v1.4.0
 )
