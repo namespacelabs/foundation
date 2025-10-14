@@ -53,6 +53,8 @@ type Token struct {
 	ReIssue IssueShortTermFunc
 
 	StoredToken
+
+	revokable bool // Set for revokable tokens that are validated server-side
 }
 
 func (t *Token) IsSessionToken() bool { return t.SessionToken != "" }
@@ -66,6 +68,10 @@ func (t *Token) Claims(ctx context.Context) (*auth.TokenClaims, error) {
 }
 
 func (t *Token) PreferredRegion(ctx context.Context) (string, error) {
+	if t.revokable {
+		return "", nil
+	}
+
 	claims, err := t.Claims(ctx)
 	if err != nil {
 		return "", err
@@ -96,6 +102,12 @@ func extractClaims(token string) (*auth.TokenClaims, error) {
 }
 
 func (t *Token) IssueToken(ctx context.Context, minDur time.Duration, skipCache bool) (string, error) {
+	// Revokable tokens are validated server-side, just return them
+	if t.revokable {
+		fmt.Fprintf(console.Debug(ctx), "Re-using revokable token (server-side validation)...\n")
+		return t.TenantToken, nil
+	}
+
 	if t.TenantToken != "" && !skipCache {
 		claims, err := extractClaims(t.TenantToken)
 		if err != nil {
@@ -265,6 +277,13 @@ func LoadTokenFromPath(ctx context.Context, issue IssueShortTermFunc, path strin
 	if err := json.Unmarshal(data, &token.StoredToken); err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to unmarshal cached tenant token: %v\n", err)
 		return nil, fnerrors.ReauthError("not logged in")
+	}
+
+	// Revokable tokens (nsrt_ prefix) are validated server-side, skip local checks
+	if strings.HasPrefix(token.TenantToken, "nsrt_") {
+		fmt.Fprintf(console.Debug(ctx), "Using revokable token (server-side validation)\n")
+		token.revokable = true
+		return token, nil
 	}
 
 	claims, err := token.Claims(ctx)
