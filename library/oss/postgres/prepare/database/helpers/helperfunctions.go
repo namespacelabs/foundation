@@ -38,6 +38,7 @@ func allHelperFunctions() []helperFunction {
 		// fn_ensure_table is a lock-friendly replacement for 'CREATE TABLE IF NOT EXISTS'.
 		// WARNING: This function translates all names into lowercase (as plain postgres would).
 		// If you want to use lowercase characters, (e.g. through quotation) do not use this function.
+		// NOTE: This function assumes you're working with the 'public' schema.
 		//
 		// Example usage:
 		//
@@ -62,9 +63,101 @@ END
 $func$;
 `},
 
+		// fn_ensure_partitioned_table is a lock-friendly replacement for 'CREATE TABLE IF NOT EXISTS PARTITION BY'.
+		// WARNING: This function translates all names into lowercase (as plain postgres would).
+		// If you want to use lowercase characters, (e.g. through quotation) do not use this function.
+		// NOTE: This function assumes you're working with the 'public' schema.
+		// NOTE: Your partition key must be part of the primary key!
+		//
+		// Example usage:
+		//
+		// SELECT fn_ensure_partitioned_table('testtable', 'RANGE (CreatedAt)', $$
+		//   UserID TEXT NOT NULL,
+		//   CreatedAt TIMESTAMP NOT NULL,
+		//   PRIMARY KEY(CreatedAt, UserID)
+		// $$);
+		{
+			provisionSql: `
+CREATE OR REPLACE FUNCTION fn_ensure_partitioned_table(tname TEXT, part TEXT, def TEXT)
+  RETURNS void
+  LANGUAGE plpgsql AS
+$func$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_tables
+    WHERE schemaname = 'public' AND tablename = LOWER(tname)
+  ) THEN
+    EXECUTE 'CREATE TABLE IF NOT EXISTS ' || tname || ' (' || def || ') PARTITION BY ' || part || ';';
+  END IF;
+END
+$func$;
+`},
+
+		// fn_ensure_daily_partitions makes sure that we have partitions for today and tomorrow for a table
+		// that is partitioned by timestamp, if the table currently does not have any partitions.
+		// WARNING: This function translates all names into lowercase (as plain postgres would).
+		// If you want to use lowercase characters, (e.g. through quotation) do not use this function.
+		// NOTE: This function assumes you're working with the 'public' schema.
+		//
+		// Example usage:
+		//
+		// SELECT fn_ensure_partitions('event_log_v2', 'event_log_p_')
+		// makes sure that for the partitioned table event_log_v2 we have event_log_p_{today} and event_log_p_{tomorrow}
+		{
+			provisionSql: `
+CREATE OR REPLACE FUNCTION fn_ensure_daily_partitions(base_name TEXT, partition_prefix TEXT)
+  RETURNS void
+  LANGUAGE plpgsql AS
+$func$
+DECLARE
+    partitions_count int;
+    start_today timestamp;
+    start_tomorrow timestamp;
+    start_day_after timestamp;
+    part1_name text;
+    part2_name text;
+BEGIN
+    -- Proceed only if the parent partitioned table exists
+    IF EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = base_name AND n.nspname = 'public'
+    ) THEN
+        SELECT COUNT(*) INTO partitions_count
+        FROM pg_inherits i
+        JOIN pg_class c_parent ON c_parent.oid = i.inhparent
+        JOIN pg_namespace n_parent ON n_parent.oid = c_parent.relnamespace
+        WHERE c_parent.relname = base_name AND n_parent.nspname = 'public';
+
+        IF partitions_count = 0 THEN
+            start_today := date_trunc('day', now());
+            start_tomorrow := start_today + interval '1 day';
+            start_day_after := start_today + interval '2 day';
+
+            part1_name := partition_prefix || to_char(start_today, 'YYYYMMDD');
+            part2_name := partition_prefix || to_char(start_tomorrow, 'YYYYMMDD');
+
+            -- Create partition for today [today, tomorrow)
+            EXECUTE format(
+                'CREATE TABLE IF NOT EXISTS %I PARTITION OF %I FOR VALUES FROM (%L) TO (%L)',
+                part1_name, base_name, start_today, start_tomorrow
+            );
+
+            -- Create partition for tomorrow [tomorrow, day-after)
+            EXECUTE format(
+                'CREATE TABLE IF NOT EXISTS %I PARTITION OF %I FOR VALUES FROM (%L) TO (%L)',
+                part2_name, base_name, start_tomorrow, start_day_after
+            );
+        END IF;
+    END IF;
+END
+$func$;
+`},
+
 		// fn_ensure_column is a lock-friendly replacement for `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`.
 		// WARNING: This function translates all names into lowercase (as plain postgres would).
 		// If you want to use lowercase characters, (e.g. through quotation) do not use this function.
+		// NOTE: This function assumes that the table and column name combination is unique across all schemas!
 		//
 		// Example usage:
 		//
@@ -88,6 +181,7 @@ $func$;
 		// fn_ensure_column_not_exists is a lock-friendly replacement for `ALTER TABLE ... DROP COLUMN IF EXISTS`.
 		// WARNING: This function translates all names into lowercase (as plain postgres would).
 		// If you want to use lowercase characters, (e.g. through quotation) do not use this function.
+		// NOTE: This function assumes that the table and column name combination is unique across all schemas!
 		//
 		// Example usage:
 		//
@@ -112,6 +206,7 @@ $func$;
 		// fn_ensure_column_not_null is a lock-friendly replacement for `ALTER TABLE ... ALTER COLUMN ... SET NOT NULL`.
 		// WARNING: This function translates all names into lowercase (as plain postgres would).
 		// If you want to use lowercase characters, (e.g. through quotation) do not use this function.
+		// NOTE: This function assumes that the table and column name combination is unique across all schemas!
 		//
 		// Example usage:
 		//
@@ -136,6 +231,7 @@ $func$;
 		// fn_ensure_column_nullable is a lock-friendly replacement for `ALTER TABLE ... ALTER COLUMN ... DROP NOT NULL`.
 		// WARNING: This function translates all names into lowercase (as plain postgres would).
 		// If you want to use lowercase characters, (e.g. through quotation) do not use this function.
+		// NOTE: This function assumes that the table and column name combination is unique across all schemas!
 		//
 		// Example usage:
 		//
@@ -160,7 +256,7 @@ $func$;
 		// fn_ensure_replica_identity is a lock-friendly replacement for `ALTER TABLE ... REPLICA IDENTITY ...`.
 		// WARNING: This function translates all names into lowercase (as plain postgres would).
 		// If you want to use lowercase characters, (e.g. through quotation) do not use this function.
-		// Does not support index identities.
+		// NOTE: Does not support index identities.
 		//
 		// Example usage:
 		//
