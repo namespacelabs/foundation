@@ -15,7 +15,6 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/runtime"
-	"namespacelabs.dev/foundation/orchestration/proto"
 	"namespacelabs.dev/foundation/orchestration/server/constants"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -27,7 +26,10 @@ const (
 	ConnTimeout          = time.Minute // TODO reduce - we've seen slow connections in CI
 )
 
-var UseOrchestrator = true
+// UseOrchestrator controls whether to deploy the orchestrator.
+// Historically this was used for service readiness checks, but that functionality has been removed.
+// The orchestrator still provides Kubernetes controllers for runtime config management.
+var UseOrchestrator = false
 
 type remoteOrchestrator struct {
 	cluster runtime.ClusterNamespace
@@ -73,16 +75,4 @@ func ConnectToOrchestrator(ctx context.Context, cluster runtime.Cluster) (*grpc.
 	}
 
 	return raw.(*remoteOrchestrator).Connect(ctx)
-}
-
-func CallAreServicesReady(ctx context.Context, conn *grpc.ClientConn, srv runtime.Deployable, ns string) (*proto.AreServicesReadyResponse, error) {
-	req := &proto.AreServicesReadyRequest{
-		Deployable: runtime.DeployableToProto(srv),
-		Namespace:  ns,
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, ConnTimeout)
-	defer cancel()
-
-	return proto.NewOrchestrationServiceClient(conn).AreServicesReady(ctx, req)
 }
