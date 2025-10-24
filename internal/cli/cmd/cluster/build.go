@@ -73,13 +73,14 @@ func NewBuildCmd() *cobra.Command {
 	buildArg := cmd.Flags().StringSlice("build-arg", nil, "Pass build arguments to the build.")
 	names := cmd.Flags().StringSliceP("name", "n", nil, "Provide a list of name tags for the image in nscr.io Workspace registry")
 	secrets := cmd.Flags().StringArray("secret", nil, `Secret to expose to the build (format: "id=mysecret[,src=/local/secret]")`)
+	outputLocal := cmd.Flags().String("output-local", "", "If set, outputs the build results to the specified directory.")
+
 	useServerSideProxy := cmd.Flags().Bool("use_server_side_proxy", true, "If set, client is setup to use transparent mTLS server-side proxy instead of websockets.")
 	_ = cmd.Flags().MarkHidden("use_server_side_proxy")
-
+	waitUntilReady := cmd.Flags().Bool("wait_until_ready", true, "If set, wait for build cluster readiness before dialing build connections.")
+	_ = cmd.Flags().MarkHidden("wait_until_ready")
 	builderExperimental := cmd.Flags().String("builder_experimental", "", "If set, passes a set of experimental options to the builder infrastructure.")
 	_ = cmd.Flags().MarkHidden("builder_experimental")
-
-	outputLocal := cmd.Flags().String("output-local", "", "If set, outputs the build results to the specified directory.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
 		if len(*tags) > 0 && len(*names) > 0 {
@@ -254,7 +255,7 @@ func NewBuildCmd() *cobra.Command {
 			fragments = append(fragments, bf)
 		}
 
-		results, err := StartBuilds(ctx, fragments, MakeWireBuilder(*useServerSideProxy, *builderExperimental))
+		results, err := StartBuilds(ctx, fragments, MakeWireBuilder(*useServerSideProxy, *builderExperimental, *waitUntilReady))
 		if err != nil {
 			return err
 		}
@@ -523,11 +524,11 @@ func makeDockerfileState(contents []byte) llb.State {
 		File(llb.Mkfile("/Dockerfile", 0644, contents))
 }
 
-func MakeWireBuilder(useServerSideProxy bool, experimental string) func(context.Context, specs.Platform) (*client.Client, error) {
+func MakeWireBuilder(useServerSideProxy bool, experimental string, waitUntilReady bool) func(context.Context, specs.Platform) (*client.Client, error) {
 	return func(ctx context.Context, p specs.Platform) (*client.Client, error) {
 		sink := tasks.SinkFrom(ctx)
 
-		bp, err := NewBuildCluster(ctx, platform.FormatPlatform(p), "")
+		bp, err := NewBuildCluster(ctx, platform.FormatPlatform(p), "", waitUntilReady)
 		if err != nil {
 			return nil, err
 		}

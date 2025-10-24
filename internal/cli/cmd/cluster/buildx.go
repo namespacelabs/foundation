@@ -194,7 +194,7 @@ func newSetupBuildxCmd() *cobra.Command {
 		var instances []BuildCluster
 		for i, p := range md.Instances {
 			// Always create one, in case it's needed below. This instance has a zero-ish cost if we never call NewConn.
-			instance, err := NewBuildCluster(ctx, string(p.Platform), *buildkitSockPath)
+			instance, err := NewBuildCluster(ctx, string(p.Platform), *buildkitSockPath, *createAtStartup)
 			if err != nil {
 				return fnerrors.Newf("failed to create builder: %w", err)
 			}

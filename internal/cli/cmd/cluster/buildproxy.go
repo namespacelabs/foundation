@@ -50,7 +50,7 @@ type BuildCluster interface {
 	RunBuildProxy(ctx context.Context, socketPath, controlSocketPath string, useGrpcProxy, annotateBuild bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error)
 }
 
-func NewBuildCluster(ctx context.Context, platformStr, buildkitSockPath string) (BuildCluster, error) {
+func NewBuildCluster(ctx context.Context, platformStr, buildkitSockPath string, waitUntilReady bool) (BuildCluster, error) {
 	if buildkitSockPath == "" {
 		clusterProfiles, err := api.GetProfile(ctx, api.Methods)
 		if err != nil {
@@ -59,7 +59,7 @@ func NewBuildCluster(ctx context.Context, platformStr, buildkitSockPath string) 
 
 		platform := determineBuildClusterPlatform(clusterProfiles.ClusterPlatform, platformStr)
 
-		return NewRemoteBuildClusterInstance0(platform), nil
+		return NewRemoteBuildClusterInstance(platform, waitUntilReady), nil
 	} else {
 		return NewLocalBuilderInstance(buildkitSockPath)
 	}
@@ -89,11 +89,12 @@ func (l *LocalBuilderInstance) GetPlatform() string {
 }
 
 type RemoteBuildClusterInstance struct {
-	platform api.BuildPlatform
+	platform       api.BuildPlatform
+	waitUntilReady bool
 }
 
-func NewRemoteBuildClusterInstance0(p api.BuildPlatform) *RemoteBuildClusterInstance {
-	return &RemoteBuildClusterInstance{platform: p}
+func NewRemoteBuildClusterInstance(p api.BuildPlatform, waitUntilReady bool) *RemoteBuildClusterInstance {
+	return &RemoteBuildClusterInstance{platform: p, waitUntilReady: waitUntilReady}
 }
 
 func (bp *RemoteBuildClusterInstance) NewConn(parentCtx context.Context) (net.Conn, string, error) {
@@ -104,6 +105,12 @@ func (bp *RemoteBuildClusterInstance) NewConn(parentCtx context.Context) (net.Co
 	response, err := api.EnsureBuildCluster(ctx, bp.platform)
 	if err != nil {
 		return nil, "", err
+	}
+
+	if bp.waitUntilReady {
+		if err := waitUntilReady(ctx, response); err != nil {
+			return nil, "", err
+		}
 	}
 
 	conn, err := api.DialEndpoint(ctx, response.Endpoint)
@@ -221,7 +228,7 @@ func (p *proxyStatusDesc) incRequest() {
 }
 
 func runBuildProxy(ctx context.Context, requestedPlatform api.BuildPlatform, socketPath, controlSocketPath, buildkitSockPath string, connectAtStart, useGrpcProxy, annotateBuild bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error) {
-	bp, err := NewBuildCluster(ctx, fmt.Sprintf("linux/%s", requestedPlatform), buildkitSockPath)
+	bp, err := NewBuildCluster(ctx, fmt.Sprintf("linux/%s", requestedPlatform), buildkitSockPath, connectAtStart)
 	if err != nil {
 		return nil, err
 	}
