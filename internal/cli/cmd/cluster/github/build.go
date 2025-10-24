@@ -30,6 +30,8 @@ func NewBaseImageBuildCmd(use string) *cobra.Command {
 	osLabel := cmd.Flags().StringP("os-label", "l", "ubuntu-22.04", "Specifies the OS version of the base image.")
 	platforms := cmd.Flags().StringSliceP("platform", "p", []string{"linux/amd64", "linux/arm64"}, "Which platforms to build for (linux/amd64 or linux/arm64)")
 
+	useServerSideProxy := cmd.Flags().Bool("use_server_side_proxy", true, "If set, client is setup to use transparent mTLS server-side proxy instead of websockets.")
+	_ = cmd.Flags().MarkHidden("use_server_side_proxy")
 	waitUntilReady := cmd.Flags().Bool("wait_until_ready", true, "If set, wait for build cluster readiness before dialing build connections.")
 	_ = cmd.Flags().MarkHidden("wait_until_ready")
 
@@ -77,7 +79,7 @@ func NewBaseImageBuildCmd(use string) *cobra.Command {
 			fragments = append(fragments, bf)
 		}
 
-		if _, err := cluster.StartBuilds(ctx, fragments, cluster.MakeWireBuilder(false, "", *waitUntilReady)); err != nil {
+		if _, err := cluster.StartBuilds(ctx, fragments, cluster.MakeWireBuilder(*useServerSideProxy, "", *waitUntilReady)); err != nil {
 			return err
 		}
 
