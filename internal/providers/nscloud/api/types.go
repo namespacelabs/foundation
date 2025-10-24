@@ -106,11 +106,13 @@ type CreateInstanceResponse struct {
 	InstanceUrl string                                      `json:"instanceUrl,omitempty"`
 	Region      string                                      `json:"region,omitempty"`
 	ApiEndpoint string                                      `json:"apiEndpoint,omitempty"`
-	Containers  []CreateInstanceResponse_ContainerReference `json:"containers,omitempty"`
+	Containers  []CreateInstanceResponse_Container `json:"containers,omitempty"`
 }
 
-type CreateInstanceResponse_ContainerReference struct {
-	ContainerId string `json:"containerId"`
+type CreateInstanceResponse_Container struct {
+	ContainerId   string                             `json:"containerId"`
+	ContainerName string                             `json:"containerName,omitempty"`
+	ExportedPorts []*Container_ExportedContainerPort `json:"exportedPorts,omitempty"`
 }
 
 type CreateContainersRequest struct {
