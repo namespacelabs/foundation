@@ -30,6 +30,9 @@ func NewBaseImageBuildCmd(use string) *cobra.Command {
 	osLabel := cmd.Flags().StringP("os-label", "l", "ubuntu-22.04", "Specifies the OS version of the base image.")
 	platforms := cmd.Flags().StringSliceP("platform", "p", []string{"linux/amd64", "linux/arm64"}, "Which platforms to build for (linux/amd64 or linux/arm64)")
 
+	waitUntilReady := cmd.Flags().Bool("wait_until_ready", true, "If set, wait for build cluster readiness before dialing build connections.")
+	_ = cmd.Flags().MarkHidden("wait_until_ready")
+
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
 		if *dockerFile == "" {
 			return fmt.Errorf("-f is required.")
@@ -74,7 +77,7 @@ func NewBaseImageBuildCmd(use string) *cobra.Command {
 			fragments = append(fragments, bf)
 		}
 
-		if _, err := cluster.StartBuilds(ctx, fragments, cluster.MakeWireBuilder(false, "")); err != nil {
+		if _, err := cluster.StartBuilds(ctx, fragments, cluster.MakeWireBuilder(false, "", *waitUntilReady)); err != nil {
 			return err
 		}
 
