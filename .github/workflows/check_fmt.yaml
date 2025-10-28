@@ -5,12 +5,11 @@ on:
   pull_request:
     branches:
       - "*"
+  merge_group:
+    types: [checks_requested]
 name: Check Formatting
 jobs:
   test:
-    strategy:
-      matrix:
-        go-version: [1.24.x]
     runs-on:
       - nscloud-ubuntu-22.04-amd64-2x8-with-cache
       - nscloud-cache-size-10gb
@@ -19,7 +18,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v6
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: 1.24.x
           cache: false
       - name: Checkout code
         uses: actions/checkout@v4
