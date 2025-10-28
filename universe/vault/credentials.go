@@ -385,13 +385,13 @@ func OidcLogin(ctx context.Context, client *vault.Client, vaultAddress, authMoun
 		return nil, errors.New("returned invalid OIDC authorization URL")
 	}
 
-	fmt.Fprintf(console.Stdout(ctx), "Complete the login via your OIDC provider. Launching browser to:\n\n")
-	fmt.Fprintf(console.Stdout(ctx), "\t%s\n\n", authUrl)
+	fmt.Fprintf(console.Stderr(ctx), "Complete the login via your OIDC provider. Launching browser to:\n\n")
+	fmt.Fprintf(console.Stderr(ctx), "\t%s\n\n", authUrl)
 	if err := browser.OpenURL(authUrl); err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to open browser: %v\n", err)
 	}
 
-	fmt.Fprintf(console.Stdout(ctx), "Waiting for OIDC authentication to complete...\n")
+	fmt.Fprintf(console.Stderr(ctx), "Waiting for OIDC authentication to complete...\n")
 	for {
 		select {
 		case resp := <-callbackCh:
