@@ -9,6 +9,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/admin"
 	"namespacelabs.dev/foundation/internal/cli/cmd/auth"
 	"namespacelabs.dev/foundation/internal/cli/cmd/aws"
+	"namespacelabs.dev/foundation/internal/cli/cmd/cache"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/baseimage"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/github"
@@ -29,6 +30,8 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(gcp.NewGcpCmd())
 
 	root.AddCommand(version.NewVersionCmd())
+
+	root.AddCommand(cache.NewCacheCmd()) // nsc cache
 
 	root.AddCommand(cluster.NewBareClusterCmd("instance", false))
 	root.AddCommand(cluster.NewBareClusterCmd("cluster", true)) // backwards compatibility
