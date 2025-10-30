@@ -29,6 +29,10 @@ type DB struct {
 	cancel func()
 }
 
+func (db DB) GetClusterAddress() string { return db.opts.clusterAddr }
+func (db DB) GetName() string           { return db.opts.databaseName }
+func (db DB) GetEnableTracing() bool    { return db.opts.enableTracing }
+
 type DBInstance interface {
 	GetClusterAddress() string
 	GetName() string
@@ -36,8 +40,9 @@ type DBInstance interface {
 }
 
 type commonOpts struct {
-	clusterAddr  string
-	databaseName string
+	clusterAddr   string
+	databaseName  string
+	enableTracing bool
 }
 
 var (
@@ -70,8 +75,12 @@ func newDatabase(instance DBInstance, conn *pgxpool.Pool, tracer trace.Tracer, c
 	db := &DB{base: conn, t: tracer}
 
 	if instance != nil {
-		db.opts.clusterAddr = instance.GetClusterAddress()
-		db.opts.databaseName = instance.GetName()
+		db.opts = commonOpts{
+			clusterAddr:   instance.GetClusterAddress(),
+			databaseName:  instance.GetName(),
+			enableTracing: instance.GetEnableTracing(),
+		}
+
 	}
 
 	if cfg := conn.Config().ConnConfig; cfg != nil {

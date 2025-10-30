@@ -172,9 +172,11 @@ func consoleOutputFromCtx(ctx context.Context, stderr bool, name string, cat idt
 	}
 
 	// If there's no console sink in context, pass along the original Stdout or Stderr.
-	if name == idtypes.KnownStdout {
+	switch name {
+	case idtypes.KnownStdout:
 		return os.Stdout
-	} else if name == idtypes.KnownStderr {
+
+	case idtypes.KnownStderr:
 		return os.Stderr
 	}
 
