@@ -2,11 +2,16 @@ package cache
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
+	"namespacelabs.dev/foundation/internal/cache/mode"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 func newModeCmd() *cobra.Command {
@@ -16,7 +21,7 @@ func newModeCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(
-		newModesSupported(),
+		newModeList(),
 		newModeOutput(),
 		newModeDetect(),
 	)
@@ -24,7 +29,7 @@ func newModeCmd() *cobra.Command {
 	return cmd
 }
 
-func newModesSupported() *cobra.Command {
+func newModeList() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List all supported cache modes.",
@@ -33,7 +38,20 @@ func newModesSupported() *cobra.Command {
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		fmt.Printf("output: %s\n", *output)
+		modes := mode.DefaultProviders().List()
+
+		switch *output {
+		case "plain":
+			fmt.Fprintf(console.Stdout(ctx), "%s\n", strings.Join(modes, "\n"))
+
+		case "json":
+			enc := json.NewEncoder(console.Stdout(ctx))
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(modes); err != nil {
+				return fnerrors.InternalError("failed to encode as JSON output: %w", err)
+			}
+		}
+
 		return nil
 	})
 
@@ -50,8 +68,27 @@ func newModeOutput() *cobra.Command {
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		fmt.Printf("filter: (%d) %v\n", len(*filter), *filter)
-		fmt.Printf("output: %s\n", *output)
+		results, err := mode.DefaultProviders().Mode(ctx, *filter...)
+		if err != nil {
+			return err
+		}
+
+		switch *output {
+		case "plain":
+			paths := make([]string, 0, len(results)*2)
+			for _, result := range results {
+				paths = append(paths, result.Paths...)
+			}
+			fmt.Fprintf(console.Stdout(ctx), "%s\n", strings.Join(paths, "\n"))
+
+		case "json":
+			enc := json.NewEncoder(console.Stdout(ctx))
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(results); err != nil {
+				return fnerrors.InternalError("failed to encode as JSON output: %w", err)
+			}
+		}
+
 		return nil
 	})
 
@@ -68,8 +105,28 @@ func newModeDetect() *cobra.Command {
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		fmt.Printf("filter: (%d) %v\n", len(*filter), *filter)
-		fmt.Printf("output: %s\n", *output)
+		// TODO: provide working directory flag.
+		results, err := mode.DefaultProviders().Detect(ctx, "./", *filter...)
+		if err != nil {
+			return err
+		}
+
+		switch *output {
+		case "plain":
+			paths := make([]string, 0, len(results)*2)
+			for _, result := range results {
+				paths = append(paths, result.Paths...)
+			}
+			fmt.Fprintf(console.Stdout(ctx), "%s\n", strings.Join(paths, "\n"))
+
+		case "json":
+			enc := json.NewEncoder(console.Stdout(ctx))
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(results); err != nil {
+				return fnerrors.InternalError("failed to encode as JSON output: %w", err)
+			}
+		}
+
 		return nil
 	})
 

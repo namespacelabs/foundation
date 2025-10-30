@@ -95,6 +95,7 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.7
 	github.com/spf13/viper v1.14.0
+	github.com/stretchr/testify v1.11.0
 	github.com/tailscale/hujson v0.0.0-20221223112325-20486734a56a
 	github.com/tonistiigi/fsutil v0.0.0-20250605211040-586307ad452f
 	go.lsp.dev/jsonrpc2 v0.10.0
