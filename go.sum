@@ -1,7 +1,9 @@
-buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20251014083539-aa0729ced7c3.2 h1:Ob6gUQMu3ITGsG4HD7FIJofkuXNpnMP+ISipL/zNo0s=
-buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20251014083539-aa0729ced7c3.2/go.mod h1:5t52ImAACCsjFrnMsE6ltXetfaXH46ZWuNhaIPR3Nic=
-buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.10-20251014083539-aa0729ced7c3.1 h1:BYRUAcDN/cQ17/8EgoWPgYdVp+z8Ky/Zvp5xMohuOhw=
-buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.10-20251014083539-aa0729ced7c3.1/go.mod h1:6s048eton1DZG10lY5nhzZWbTdiBNuM8fgKBHKFCjZE=
+buf.build/gen/go/namespace/cloud/connectrpc/go v1.19.1-20251031013903-d104b6e826b6.2 h1:u+giaK0ov4kydYc7lQX/YRE80kQZjxHlWbAWhQyl+X4=
+buf.build/gen/go/namespace/cloud/connectrpc/go v1.19.1-20251031013903-d104b6e826b6.2/go.mod h1:c1AdQB2Lq3UVgllS+fOJqV+gex99Hgiw6X83UwfYD4k=
+buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20251031013903-d104b6e826b6.2 h1:Cgdybj5lzDf4OeJRTdJm73yPdo06EOybpmLA5nuiwEc=
+buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20251031013903-d104b6e826b6.2/go.mod h1:yFEXBUXkxvR04THjwK7TU0TXQboO6iseQcUu0yIR4U0=
+buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.10-20251031013903-d104b6e826b6.1 h1:Mo1WX90XMY5MMn4DZgirJkpmC0rRRLp6clpXkIPXQwg=
+buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.10-20251031013903-d104b6e826b6.1/go.mod h1:6s048eton1DZG10lY5nhzZWbTdiBNuM8fgKBHKFCjZE=
 c2sp.org/CCTV/age v0.0.0-20240306222714-3ec4d716e805 h1:u2qwJeEvnypw+OCPUHmoZE3IqwfuN5kgDfo5MLzpNM0=
 c2sp.org/CCTV/age v0.0.0-20240306222714-3ec4d716e805/go.mod h1:FomMrUJ2Lxt5jCLmZkG3FHa72zUprnhd3v/Z18Snm4w=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
@@ -54,6 +56,8 @@ cloud.google.com/go/storage v1.6.0/go.mod h1:N7U0C8pVQ/+NIKOBQyamJIeKQKkZ+mxpohl
 cloud.google.com/go/storage v1.8.0/go.mod h1:Wv1Oy7z6Yz3DshWRJFhqM/UCfaWIRTdp0RXyy7KQOVs=
 cloud.google.com/go/storage v1.10.0/go.mod h1:FLPqc6j+Ki4BU591ie1oL6qBQGu2Bl/tZ9ullr3+Kg0=
 cloud.google.com/go/storage v1.14.0/go.mod h1:GrKmX003DSIwi9o29oFT7YDnHYwZoctc3fOKtUw0Xmo=
+connectrpc.com/connect v1.19.1 h1:R5M57z05+90EfEvCY1b7hBxDVOUl45PrtXtAV2fOC14=
+connectrpc.com/connect v1.19.1/go.mod h1:tN20fjdGlewnSFeZxLKb0xwIZ6ozc3OQs2hTXy4du9w=
 cuelabs.dev/go/oci/ociregistry v0.0.0-20240807094312-a32ad29eed79 h1:EceZITBGET3qHneD5xowSTY/YHbNybvMWGh62K2fG/M=
 cuelabs.dev/go/oci/ociregistry v0.0.0-20240807094312-a32ad29eed79/go.mod h1:5A4xfTzHTXfeVJBU6RAUf+QrlfTCW+017q/QiW+sMLg=
 cuelang.org/go v0.10.0 h1:Y1Pu4wwga5HkXfLFK1sWAYaSWIBdcsr5Cb5AWj2pOuE=
