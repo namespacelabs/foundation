@@ -52,7 +52,7 @@ func newProfileCreateCmd() *cobra.Command {
 	vcpu := cmd.Flags().Int32("vcpu", 4, "Number of virtual CPUs.")
 	memoryMB := cmd.Flags().Int32("memory_mb", 16384, "Memory in megabytes.")
 	machineArch := cmd.Flags().String("machine_arch", "amd64", "Machine architecture (amd64 or arm64).")
-	builderMode := cmd.Flags().String("builder_mode", "BUILDER_MODE_AUTO", "Builder mode (BUILDER_MODE_AUTO, BUILDER_MODE_DISABLED, BUILDER_MODE_FORCED).")
+	builderMode := cmd.Flags().String("builder_mode", "USE_REMOTE_BUILDER", "Builder mode (USE_REMOTE_BUILDER, USE_LOCAL_CACHE, NO_CACHING).")
 	emoji := cmd.Flags().String("emoji", "", "Optional emoji to visually identify the profile.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
@@ -310,7 +310,7 @@ func newProfileUpdateCmd() *cobra.Command {
 	vcpu := cmd.Flags().Int32("vcpu", 0, "Number of virtual CPUs.")
 	memoryMB := cmd.Flags().Int32("memory_mb", 0, "Memory in megabytes.")
 	machineArch := cmd.Flags().String("machine_arch", "", "Machine architecture (amd64 or arm64).")
-	builderMode := cmd.Flags().String("builder_mode", "", "Builder mode (BUILDER_MODE_AUTO, BUILDER_MODE_DISABLED, BUILDER_MODE_FORCED).")
+	builderMode := cmd.Flags().String("builder_mode", "", "Builder mode (USE_REMOTE_BUILDER, USE_LOCAL_CACHE, NO_CACHING).")
 	emoji := cmd.Flags().String("emoji", "", "Optional emoji to visually identify the profile.")
 	version := cmd.Flags().Int64("version", 0, "Current version of the profile for optimistic concurrency control (required).")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
