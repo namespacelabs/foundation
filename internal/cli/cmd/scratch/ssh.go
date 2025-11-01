@@ -28,6 +28,7 @@ func NewSshCmd() *cobra.Command {
 	sshAgent := cmd.Flags().BoolP("ssh_agent", "A", false, "If specified, forwards the local SSH agent.")
 	forcePty := cmd.Flags().BoolP("force-pty", "t", false, "Force pseudo-terminal allocation.")
 	disablePty := cmd.Flags().BoolP("disable-pty", "T", false, "Disable pseudo-terminal allocation.")
+	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type.")
 	waitTimeout := cmd.Flags().Duration("wait_timeout", 2*time.Minute, "For how long to wait until the instance becomes ready.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
@@ -45,8 +46,9 @@ func NewSshCmd() *cobra.Command {
 
 		// Create a temporary instance for SSH
 		opts := api.CreateClusterOpts{
-			KeepAtExit: false, // Destroy on exit
-			Purpose:    "Temporary scratch instance for SSH",
+			MachineType: *machineType,
+			KeepAtExit:  false, // Destroy on exit
+			Purpose:     "Temporary scratch instance for SSH",
 			WaitClusterOpts: api.WaitClusterOpts{
 				WaitForService: "ssh",
 				WaitKind:       "kubernetes",
