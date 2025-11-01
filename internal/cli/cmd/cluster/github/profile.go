@@ -14,6 +14,7 @@ import (
 	v1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/github/v1beta"
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -312,18 +313,16 @@ func newProfileUpdateCmd() *cobra.Command {
 	machineArch := cmd.Flags().String("machine_arch", "", "Machine architecture (amd64 or arm64).")
 	builderMode := cmd.Flags().String("builder_mode", "", "Builder mode (USE_REMOTE_BUILDER, USE_LOCAL_CACHE, NO_CACHING).")
 	emoji := cmd.Flags().String("emoji", "", "Optional emoji to visually identify the profile.")
-	version := cmd.Flags().Int64("version", 0, "Current version of the profile for optimistic concurrency control (required).")
+	version := cmd.Flags().Int64("version", 0, "Current version of the profile for optimistic concurrency control. If not provided, it will be fetched from the backend.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *profileId == "" {
 			return fnerrors.New("--profile_id is required")
 		}
-		if *version == 0 {
-			return fnerrors.New("--version is required")
-		}
 
 		var spec *v1beta.RunnerProfileSpec
+		var updateVersion int64
 
 		// If spec file is provided, read the entire spec from the file
 		if *specFile != "" {
@@ -331,6 +330,12 @@ func newProfileUpdateCmd() *cobra.Command {
 			if err := files.ReadJson(*specFile, spec); err != nil {
 				return fnerrors.Newf("failed to read spec file: %w", err)
 			}
+
+			// When using spec_file, version is required since we don't fetch the current profile
+			if *version == 0 {
+				return fnerrors.New("--version is required when using --spec_file")
+			}
+			updateVersion = *version
 		} else {
 			// Otherwise, get the current profile and apply individual flag updates
 			profiles, err := listProfiles(ctx)
@@ -350,8 +355,27 @@ func newProfileUpdateCmd() *cobra.Command {
 				return fnerrors.Newf("profile not found: %s", *profileId)
 			}
 
-			// Start with the current spec
-			spec = currentProfile.Spec
+			// Use the version from the backend if not explicitly provided
+			if *version == 0 {
+				updateVersion = currentProfile.Version
+			} else {
+				updateVersion = *version
+			}
+
+			// Store the original spec for comparison
+			originalSpec := currentProfile.Spec
+
+			// Start with a copy of the current spec
+			spec = &v1beta.RunnerProfileSpec{
+				Tag:                  originalSpec.Tag,
+				Description:          originalSpec.Description,
+				Os:                   originalSpec.Os,
+				InstanceShape:        originalSpec.InstanceShape,
+				BuilderMode:          originalSpec.BuilderMode,
+				Emoji:                originalSpec.Emoji,
+				CacheVolumeSettings:  originalSpec.CacheVolumeSettings,
+				ExperimentalFeatures: originalSpec.ExperimentalFeatures,
+			}
 
 			// Update only the fields that were provided
 			if *tag != "" {
@@ -378,6 +402,14 @@ func newProfileUpdateCmd() *cobra.Command {
 			if *vcpu != 0 || *memoryMB != 0 || *machineArch != "" {
 				if spec.InstanceShape == nil {
 					spec.InstanceShape = &computev1beta.InstanceShape{}
+				} else {
+					// Make a copy of the instance shape
+					spec.InstanceShape = &computev1beta.InstanceShape{
+						VirtualCpu:      spec.InstanceShape.VirtualCpu,
+						MemoryMegabytes: spec.InstanceShape.MemoryMegabytes,
+						MachineArch:     spec.InstanceShape.MachineArch,
+						Os:              spec.InstanceShape.Os,
+					}
 				}
 				if *vcpu != 0 {
 					spec.InstanceShape.VirtualCpu = *vcpu
@@ -389,9 +421,16 @@ func newProfileUpdateCmd() *cobra.Command {
 					spec.InstanceShape.MachineArch = *machineArch
 				}
 			}
+
+			// Check if the spec has actually changed
+			if proto.Equal(originalSpec, spec) {
+				stdout := console.Stdout(ctx)
+				fmt.Fprintf(stdout, "Skipping update, no changes applied.\n")
+				return nil
+			}
 		}
 
-		profile, err := updateProfile(ctx, *profileId, spec, *version)
+		profile, err := updateProfile(ctx, *profileId, spec, updateVersion)
 		if err != nil {
 			return err
 		}
