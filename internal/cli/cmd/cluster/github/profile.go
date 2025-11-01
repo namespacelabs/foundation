@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
@@ -50,8 +51,7 @@ func newProfileCreateCmd() *cobra.Command {
 	tag := cmd.Flags().String("tag", "", "Stable user-configurable alias for the profile (required unless --spec_file is used).")
 	description := cmd.Flags().String("description", "", "Human-friendly description of the profile.")
 	os := cmd.Flags().String("os", "ubuntu-24.10", "Operating system label (e.g., 'ubuntu-24.10').")
-	vcpu := cmd.Flags().Int32("vcpu", 4, "Number of virtual CPUs.")
-	memoryMB := cmd.Flags().Int32("memory_mb", 16384, "Memory in megabytes.")
+	machineType := cmd.Flags().String("machine_type", "4x8", "Machine type in the format 'CPUxMemoryGB' (e.g., '4x8' for 4 vCPU and 8GB memory).")
 	machineArch := cmd.Flags().String("machine_arch", "amd64", "Machine architecture (amd64 or arm64).")
 	builderMode := cmd.Flags().String("builder_mode", "USE_REMOTE_BUILDER", "Builder mode (USE_REMOTE_BUILDER, USE_LOCAL_CACHE, NO_CACHING).")
 	emoji := cmd.Flags().String("emoji", "", "Optional emoji to visually identify the profile.")
@@ -72,6 +72,12 @@ func newProfileCreateCmd() *cobra.Command {
 				return fnerrors.New("--tag is required")
 			}
 
+			// Parse machine type
+			vcpu, memoryMB, err := cluster.ParseMachineType(*machineType)
+			if err != nil {
+				return err
+			}
+
 			// Parse builder mode
 			builderModeValue, ok := v1beta.BuilderMode_value[*builderMode]
 			if !ok {
@@ -83,8 +89,8 @@ func newProfileCreateCmd() *cobra.Command {
 				Description: *description,
 				Os:          *os,
 				InstanceShape: &computev1beta.InstanceShape{
-					VirtualCpu:      *vcpu,
-					MemoryMegabytes: *memoryMB,
+					VirtualCpu:      vcpu,
+					MemoryMegabytes: memoryMB,
 					MachineArch:     *machineArch,
 					Os:              "linux",
 				},
@@ -308,8 +314,7 @@ func newProfileUpdateCmd() *cobra.Command {
 	tag := cmd.Flags().String("tag", "", "Stable user-configurable alias for the profile.")
 	description := cmd.Flags().String("description", "", "Human-friendly description of the profile.")
 	os := cmd.Flags().String("os", "", "Operating system label (e.g., 'ubuntu-24.10').")
-	vcpu := cmd.Flags().Int32("vcpu", 0, "Number of virtual CPUs.")
-	memoryMB := cmd.Flags().Int32("memory_mb", 0, "Memory in megabytes.")
+	machineType := cmd.Flags().String("machine_type", "", "Machine type in the format 'CPUxMemoryGB' (e.g., '4x8' for 4 vCPU and 8GB memory).")
 	machineArch := cmd.Flags().String("machine_arch", "", "Machine architecture (amd64 or arm64).")
 	builderMode := cmd.Flags().String("builder_mode", "", "Builder mode (USE_REMOTE_BUILDER, USE_LOCAL_CACHE, NO_CACHING).")
 	emoji := cmd.Flags().String("emoji", "", "Optional emoji to visually identify the profile.")
@@ -399,7 +404,7 @@ func newProfileUpdateCmd() *cobra.Command {
 			}
 
 			// Update instance shape fields if provided
-			if *vcpu != 0 || *memoryMB != 0 || *machineArch != "" {
+			if *machineType != "" || *machineArch != "" {
 				if spec.InstanceShape == nil {
 					spec.InstanceShape = &computev1beta.InstanceShape{}
 				} else {
@@ -411,11 +416,13 @@ func newProfileUpdateCmd() *cobra.Command {
 						Os:              spec.InstanceShape.Os,
 					}
 				}
-				if *vcpu != 0 {
-					spec.InstanceShape.VirtualCpu = *vcpu
-				}
-				if *memoryMB != 0 {
-					spec.InstanceShape.MemoryMegabytes = *memoryMB
+				if *machineType != "" {
+					vcpu, memoryMB, err := cluster.ParseMachineType(*machineType)
+					if err != nil {
+						return err
+					}
+					spec.InstanceShape.VirtualCpu = vcpu
+					spec.InstanceShape.MemoryMegabytes = memoryMB
 				}
 				if *machineArch != "" {
 					spec.InstanceShape.MachineArch = *machineArch
