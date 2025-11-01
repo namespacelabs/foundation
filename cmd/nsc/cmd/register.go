@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/github"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/private"
 	"namespacelabs.dev/foundation/internal/cli/cmd/gcp"
+	"namespacelabs.dev/foundation/internal/cli/cmd/scratch"
 	"namespacelabs.dev/foundation/internal/cli/cmd/sdk"
 	"namespacelabs.dev/foundation/internal/cli/cmd/token"
 	"namespacelabs.dev/foundation/internal/cli/cmd/vault"
@@ -74,6 +75,8 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(token.NewTokenCmd()) // nsc token
 
 	root.AddCommand(cluster.NewRegistryCmd()) // nsc registry
+
+	root.AddCommand(scratch.NewScratchCmd()) // nsc scratch
 }
 
 func newGithub() *cobra.Command {
