@@ -49,12 +49,16 @@ func SetupFlags(flags *pflag.FlagSet) {
 	_ = flags.MarkHidden("fnapi_admin")
 }
 
-func ResolveGlobalEndpoint(ctx context.Context, tok ResolvedToken) (string, error) {
+func GlobalEndpoint() string {
 	if globalEndpointOverride != "" {
-		return globalEndpointOverride, nil
+		return globalEndpointOverride
 	}
 
-	return apienv.GlobalEndpoint(), nil
+	return apienv.GlobalEndpoint()
+}
+
+func ResolveGlobalEndpoint(ctx context.Context, tok ResolvedToken) (string, error) {
+	return GlobalEndpoint(), nil
 }
 
 func ResolveIAMEndpoint(ctx context.Context, tok ResolvedToken) (string, error) {
@@ -145,14 +149,18 @@ func DecodeJSONResponse(resp any) func(io.Reader) error {
 	}
 }
 
-func AddNamespaceHeaders(ctx context.Context, headers *http.Header) {
+func AddNamespaceHeaders(headers http.Header) {
 	headers.Add("NS-Internal-Version", fmt.Sprintf("%d", versions.Builtin().APIVersion))
 	headers.Add("User-Agent", UserAgent)
-	headers.Add("Content-Type", "application/json")
 
 	if AdminMode {
 		headers.Add("NS-API-Mode", "admin")
 	}
+}
+
+func AddJsonNamespaceHeaders(ctx context.Context, headers http.Header) {
+	AddNamespaceHeaders(headers)
+	headers.Add("Content-Type", "application/json")
 }
 
 type ResolveFunc func(context.Context, ResolvedToken) (string, error)
@@ -172,7 +180,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 		headers.Add("Authorization", "Bearer "+tok.BearerToken)
 	}
 
-	AddNamespaceHeaders(ctx, &headers)
+	AddJsonNamespaceHeaders(ctx, headers)
 
 	reqBytes, err := json.Marshal(request)
 	if err != nil {

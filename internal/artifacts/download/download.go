@@ -72,7 +72,7 @@ func (dl *downloadUrl) Compute(ctx context.Context, _ compute.Resolved) (bytestr
 	}
 
 	if dl.useNamespaceHeaders {
-		fnapi.AddNamespaceHeaders(ctx, &req.Header)
+		fnapi.AddJsonNamespaceHeaders(ctx, req.Header)
 	}
 
 	resp, err := http.DefaultClient.Do(req)

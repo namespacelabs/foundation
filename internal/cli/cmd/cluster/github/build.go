@@ -45,47 +45,7 @@ func NewBaseImageBuildCmd(use string) *cobra.Command {
 			return err
 		}
 
-		imgRef, err := getBaseImageRef(ctx, *osLabel)
-		if err != nil {
-			return err
-		}
-
-		buildArgs := map[string]string{
-			"NAMESPACE_BASE_IMAGE_REF": imgRef,
-		}
-
-		supportedPlatforms := []string{
-			"linux/amd64",
-			"linux/arm64",
-		}
-
-		var fragments []cluster.BuildFragment
-		for _, p := range *platforms {
-			if !slices.Contains(supportedPlatforms, p) {
-				return fmt.Errorf("platform %s not supported", p)
-			}
-
-			platformSpec, err := platform.ParsePlatform(p)
-			if err != nil {
-				return err
-			}
-
-			bf := cluster.BuildFragment{
-				DockerfileContents: dockerFileContents,
-				Platform:           platformSpec,
-				BuildArgs:          buildArgs,
-			}
-
-			fragments = append(fragments, bf)
-		}
-
-		if _, err := cluster.StartBuilds(ctx, fragments, cluster.MakeWireBuilder(*useServerSideProxy, "", *waitUntilReady)); err != nil {
-			return err
-		}
-
-		fmt.Fprintf(console.Stdout(ctx), "\nBuilt %d %s (platforms %s).\n", len(fragments), plural(len(fragments), "image", "images"), strings.Join(*platforms, ","))
-
-		return nil
+		return buildBaseImage(ctx, dockerFileContents, *osLabel, *platforms, *useServerSideProxy, *waitUntilReady)
 	})
 
 	return cmd
@@ -114,4 +74,48 @@ func plural(n int, singular, plural string) string {
 	}
 
 	return plural
+}
+
+func buildBaseImage(ctx context.Context, dockerfileContents []byte, osLabel string, platforms []string, useServerSideProxy bool, waitUntilReady bool) error {
+	imgRef, err := getBaseImageRef(ctx, osLabel)
+	if err != nil {
+		return err
+	}
+
+	buildArgs := map[string]string{
+		"NAMESPACE_BASE_IMAGE_REF": imgRef,
+	}
+
+	supportedPlatforms := []string{
+		"linux/amd64",
+		"linux/arm64",
+	}
+
+	var fragments []cluster.BuildFragment
+	for _, p := range platforms {
+		if !slices.Contains(supportedPlatforms, p) {
+			return fmt.Errorf("platform %s not supported", p)
+		}
+
+		platformSpec, err := platform.ParsePlatform(p)
+		if err != nil {
+			return err
+		}
+
+		bf := cluster.BuildFragment{
+			DockerfileContents: dockerfileContents,
+			Platform:           platformSpec,
+			BuildArgs:          buildArgs,
+		}
+
+		fragments = append(fragments, bf)
+	}
+
+	if _, err := cluster.StartBuilds(ctx, fragments, cluster.MakeWireBuilder(useServerSideProxy, "", waitUntilReady)); err != nil {
+		return err
+	}
+
+	fmt.Fprintf(console.Stdout(ctx), "\nBuilt %d %s (platforms %s).\n", len(fragments), plural(len(fragments), "image", "images"), strings.Join(platforms, ","))
+
+	return nil
 }

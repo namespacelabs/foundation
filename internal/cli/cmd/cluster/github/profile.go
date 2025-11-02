@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	oslib "os"
 	"time"
 
 	computev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/compute/v1beta"
@@ -36,6 +37,7 @@ func NewProfileCmd() *cobra.Command {
 	cmd.AddCommand(newProfileDescribeCmd())
 	cmd.AddCommand(newProfileUpdateCmd())
 	cmd.AddCommand(newProfileDeleteCmd())
+	cmd.AddCommand(newProfileBuildBaseImageCmd())
 
 	return cmd
 }
@@ -318,6 +320,7 @@ func newProfileUpdateCmd() *cobra.Command {
 	machineArch := cmd.Flags().String("machine_arch", "", "Machine architecture (amd64 or arm64).")
 	builderMode := cmd.Flags().String("builder_mode", "", "Builder mode (USE_REMOTE_BUILDER, USE_LOCAL_CACHE, NO_CACHING).")
 	emoji := cmd.Flags().String("emoji", "", "Optional emoji to visually identify the profile.")
+	dockerfile := cmd.Flags().String("dockerfile", "", "Path to Dockerfile for custom runner image.")
 	version := cmd.Flags().Int64("version", 0, "Current version of the profile for optimistic concurrency control. If not provided, it will be fetched from the backend.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
@@ -372,14 +375,15 @@ func newProfileUpdateCmd() *cobra.Command {
 
 			// Start with a copy of the current spec
 			spec = &v1beta.RunnerProfileSpec{
-				Tag:                  originalSpec.Tag,
-				Description:          originalSpec.Description,
-				Os:                   originalSpec.Os,
-				InstanceShape:        originalSpec.InstanceShape,
-				BuilderMode:          originalSpec.BuilderMode,
-				Emoji:                originalSpec.Emoji,
-				CacheVolumeSettings:  originalSpec.CacheVolumeSettings,
-				ExperimentalFeatures: originalSpec.ExperimentalFeatures,
+				Tag:                   originalSpec.Tag,
+				Description:           originalSpec.Description,
+				Os:                    originalSpec.Os,
+				InstanceShape:         originalSpec.InstanceShape,
+				BuilderMode:           originalSpec.BuilderMode,
+				Emoji:                 originalSpec.Emoji,
+				CacheVolumeSettings:   originalSpec.CacheVolumeSettings,
+				ExperimentalFeatures:  originalSpec.ExperimentalFeatures,
+				CustomRunnerImageSpec: originalSpec.CustomRunnerImageSpec,
 			}
 
 			// Update only the fields that were provided
@@ -426,6 +430,20 @@ func newProfileUpdateCmd() *cobra.Command {
 				}
 				if *machineArch != "" {
 					spec.InstanceShape.MachineArch = *machineArch
+				}
+			}
+
+			// Update custom runner image spec if dockerfile is provided
+			if *dockerfile != "" {
+				dockerfileBytes, err := oslib.ReadFile(*dockerfile)
+				if err != nil {
+					return fnerrors.Newf("failed to read dockerfile: %w", err)
+				}
+
+				spec.CustomRunnerImageSpec = &v1beta.CustomRunnerImageSpec{
+					DockerSpec: &v1beta.DockerBaseImageSpec{
+						DockerfileContent: string(dockerfileBytes),
+					},
 				}
 			}
 
@@ -487,6 +505,59 @@ func newProfileDeleteCmd() *cobra.Command {
 		fmt.Fprintf(stdout, "Profile %s deleted successfully.\n", *profileId)
 
 		return nil
+	})
+
+	return cmd
+}
+
+func newProfileBuildBaseImageCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "test-build-base-image",
+		Short: "Build the base image from a GitHub runner profile's Dockerfile.",
+		Args:  cobra.NoArgs,
+	}
+
+	profileId := cmd.Flags().String("profile_id", "", "Profile ID to build from (required).")
+	osLabel := cmd.Flags().StringP("os-label", "l", "ubuntu-22.04", "Specifies the OS version of the base image.")
+	platforms := cmd.Flags().StringSliceP("platform", "p", []string{"linux/amd64", "linux/arm64"}, "Which platforms to build for (linux/amd64 or linux/arm64)")
+
+	useServerSideProxy := cmd.Flags().Bool("use_server_side_proxy", true, "If set, client is setup to use transparent mTLS server-side proxy instead of websockets.")
+	_ = cmd.Flags().MarkHidden("use_server_side_proxy")
+	waitUntilReady := cmd.Flags().Bool("wait_until_ready", true, "If set, wait for build cluster readiness before dialing build connections.")
+	_ = cmd.Flags().MarkHidden("wait_until_ready")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if *profileId == "" {
+			return fnerrors.New("--profile_id is required")
+		}
+
+		profiles, err := listProfiles(ctx)
+		if err != nil {
+			return err
+		}
+
+		var profile *v1beta.RunnerProfileWithStatus
+		for _, p := range profiles {
+			if p.ProfileId == *profileId {
+				profile = p
+				break
+			}
+		}
+
+		if profile == nil {
+			return fnerrors.Newf("profile not found: %s", *profileId)
+		}
+
+		if profile.Spec.CustomRunnerImageSpec == nil || profile.Spec.CustomRunnerImageSpec.DockerSpec == nil {
+			return fnerrors.New("profile does not have a custom Dockerfile specified")
+		}
+
+		dockerfileContent := profile.Spec.CustomRunnerImageSpec.DockerSpec.DockerfileContent
+		if dockerfileContent == "" {
+			return fnerrors.New("profile Dockerfile content is empty")
+		}
+
+		return buildBaseImage(ctx, []byte(dockerfileContent), *osLabel, *platforms, *useServerSideProxy, *waitUntilReady)
 	})
 
 	return cmd
