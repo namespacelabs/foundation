@@ -44,7 +44,7 @@ func newSetupPantsCacheCmd() *cobra.Command {
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		flags.StringVar(&pantsTomlPath, "pants-toml", "", "If specified, write the toml to this path.")
 	}).Do(func(ctx context.Context) error {
-		response, err := api.EnsureBazelCache(ctx, api.Methods, "")
+		response, err := api.EnsureBazelCache(ctx, api.Methods, "", 1)
 		if err != nil {
 			return err
 		}
