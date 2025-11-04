@@ -468,7 +468,8 @@ type GetKubernetesConfigResponse struct {
 }
 
 type EnsureBazelCacheRequest struct {
-	Key string `json:"key,omitempty"`
+	Key     string `json:"key,omitempty"`
+	Version int64  `json:"version,omitempty"`
 }
 
 type MakeImagePublicRequest struct {

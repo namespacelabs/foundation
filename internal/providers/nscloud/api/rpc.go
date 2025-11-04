@@ -430,10 +430,10 @@ func EnsureBuildCluster(ctx context.Context, platform BuildPlatform) (*builderv1
 		})
 }
 
-func EnsureBazelCache(ctx context.Context, api API, key string) (*EnsureBazelCacheResponse, error) {
+func EnsureBazelCache(ctx context.Context, api API, key string, version int64) (*EnsureBazelCacheResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nsc.ensure-bazel-cache"), func(ctx context.Context) (*EnsureBazelCacheResponse, error) {
 		var response EnsureBazelCacheResponse
-		if err := api.EnsureBazelCache.Do(ctx, EnsureBazelCacheRequest{Key: key}, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.EnsureBazelCache.Do(ctx, EnsureBazelCacheRequest{Key: key, Version: version}, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil

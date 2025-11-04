@@ -44,6 +44,7 @@ func NewBazelCmd() *cobra.Command {
 func newSetupCacheCmd() *cobra.Command {
 	var bazelRcPath, output, certPath string
 	var sendBuildEvents bool
+	var version int64
 
 	return fncobra.Cmd(&cobra.Command{
 		Use:   "setup",
@@ -51,13 +52,15 @@ func newSetupCacheCmd() *cobra.Command {
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		flags.StringVar(&bazelRcPath, "bazelrc", "", "If specified, write the bazelrc to this path.")
 		flags.StringVarP(&output, "output", "o", "plain", "One of plain or json.")
-
 		flags.StringVar(&certPath, "cred_path", "", "If specified, write credentials to this directory. Using this flag also ensures stable file names for all emitted credentials.")
 		flags.BoolVar(&sendBuildEvents, "send_build_events", false, "If specified, send build events to the build event service.")
+		flags.Int64Var(&version, "version", 1, "Which bazel version to use.")
+
 		flags.MarkHidden("cred_path")
 		flags.MarkHidden("send_build_events")
+		flags.MarkHidden("version")
 	}).Do(func(ctx context.Context) error {
-		response, err := api.EnsureBazelCache(ctx, api.Methods, "")
+		response, err := api.EnsureBazelCache(ctx, api.Methods, "", version)
 		if err != nil {
 			return err
 		}
