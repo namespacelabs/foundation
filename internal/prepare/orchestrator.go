@@ -9,6 +9,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/orchestration"
+	orchclient "namespacelabs.dev/foundation/orchestration/client"
 	"namespacelabs.dev/foundation/schema"
 	orchpb "namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -18,6 +19,10 @@ import (
 func Orchestrator() ClusterStage {
 	return ClusterStage{
 		Pre: func(ch chan *orchpb.Event) {
+			if !orchclient.UseOrchestrator {
+				// Skip orchestrator preparation if disabled
+				return
+			}
 			ch <- &orchpb.Event{
 				ResourceId:    "orchestrator",
 				ResourceLabel: "Deploy Namespace Orchestrator",
@@ -27,6 +32,9 @@ func Orchestrator() ClusterStage {
 			}
 		},
 		Post: func(ch chan *orchpb.Event) {
+			if !orchclient.UseOrchestrator {
+				return
+			}
 			ch <- &orchpb.Event{
 				ResourceId: "orchestrator",
 				Ready:      orchpb.Event_READY,
@@ -34,6 +42,10 @@ func Orchestrator() ClusterStage {
 			}
 		},
 		Run: func(ctx context.Context, env cfg.Context, devhost *schema.DevHost_ConfigureEnvironment, kube *kubernetes.Cluster, ch chan *orchpb.Event) error {
+			if !orchclient.UseOrchestrator {
+				// Skip orchestrator preparation if disabled
+				return nil
+			}
 			return PrepareOrchestratorInKube(ctx, env, devhost, kube)
 		},
 	}
