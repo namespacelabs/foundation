@@ -10,6 +10,20 @@ import (
 	"strings"
 )
 
+const (
+	K8sServerId = "k8s.namespacelabs.dev/server-id"
+)
+
+type IDGetter interface {
+	GetId() string
+}
+
+func SelectById(srv IDGetter) map[string]string {
+	return map[string]string{
+		K8sServerId: srv.GetId(),
+	}
+}
+
 func SerializeSelector(selector map[string]string) string {
 	var sels []string
 	for k, v := range selector {

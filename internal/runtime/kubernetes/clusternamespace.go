@@ -27,6 +27,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/readiness"
 	orchclient "namespacelabs.dev/foundation/orchestration/client"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
@@ -213,32 +214,32 @@ func (r *ClusterNamespace) isDeployableReady(ctx context.Context, srv runtime.De
 	}
 }
 
-func (r *ClusterNamespace) areServicesReady(ctx context.Context, srv runtime.Deployable) (ServiceReadiness, error) {
+func (r *ClusterNamespace) areServicesReady(ctx context.Context, srv runtime.Deployable) (readiness.ServiceReadiness, error) {
 	if client.IsInclusterClient(r.underlying.cli) {
-		return AreServicesReady(ctx, r.underlying.cli, r.target.namespace, srv)
+		return readiness.AreServicesReady(ctx, r.underlying.cli, r.target.namespace, srv)
 	}
 
 	if !orchclient.UseOrchestrator {
 		fmt.Fprintf(console.Debug(ctx), "will not wait for services of server %s...\n", srv.GetName())
-		return ServiceReadiness{Ready: true}, nil
+		return readiness.ServiceReadiness{Ready: true}, nil
 	}
 
 	conn, err := orchclient.ConnectToOrchestrator(ctx, r.parent)
 	if err != nil {
-		return ServiceReadiness{}, err
+		return readiness.ServiceReadiness{}, err
 	}
 
 	res, err := orchclient.CallAreServicesReady(ctx, conn, srv, r.target.namespace)
 	if err != nil {
 		if status.Code(err) == codes.Unimplemented {
 			fmt.Fprintf(console.Debug(ctx), "old orchestrator version, will not wait for services of server %s...\n", srv.GetName())
-			return ServiceReadiness{Ready: true}, nil
+			return readiness.ServiceReadiness{Ready: true}, nil
 		}
 
-		return ServiceReadiness{}, err
+		return readiness.ServiceReadiness{}, err
 	}
 
-	return ServiceReadiness{Ready: res.Ready, Message: res.Message}, nil
+	return readiness.ServiceReadiness{Ready: res.Ready, Message: res.Message}, nil
 }
 
 func (r *ClusterNamespace) isPodReady(ctx context.Context, srv runtime.Deployable) (bool, error) {
