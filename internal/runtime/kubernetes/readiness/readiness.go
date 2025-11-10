@@ -2,22 +2,21 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package kubernetes
+package readiness
 
 import (
 	"context"
 	"fmt"
 	"net"
+	"net/url"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/runtime"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 )
 
 type ServiceReadiness struct {
@@ -25,14 +24,33 @@ type ServiceReadiness struct {
 	Message string
 }
 
-func AreServicesReady(ctx context.Context, cli *kubernetes.Clientset, namespace string, srv runtime.Deployable) (ServiceReadiness, error) {
-	if !client.IsInclusterClient(cli) {
+type Deployable interface {
+	GetId() string
+	GetName() string
+}
+
+func isInclusterClient(c *kubernetes.Clientset) bool {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return false
+	}
+
+	u, err := url.Parse(config.Host)
+	if err != nil {
+		return false
+	}
+
+	return u.Host == c.RESTClient().Get().URL().Host
+}
+
+func AreServicesReady(ctx context.Context, cli *kubernetes.Clientset, namespace string, srv Deployable) (ServiceReadiness, error) {
+	if !isInclusterClient(cli) {
 		return ServiceReadiness{}, fnerrors.InternalError("cannot check service readiness for remote kubernetes cluster")
 	}
 
 	// TODO only check services that are required
 	services, err := cli.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: kubeobj.SerializeSelector(kubedef.SelectById(srv)),
+		LabelSelector: kubeobj.SerializeSelector(kubeobj.SelectById(srv)),
 	})
 	if err != nil {
 		return ServiceReadiness{}, err
