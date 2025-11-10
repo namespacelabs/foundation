@@ -8,17 +8,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"time"
 
+	storagev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/storage/v1beta"
 	"github.com/aws/smithy-go/ptr"
 	"github.com/cenkalti/backoff"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"namespacelabs.dev/foundation/framework/io/downloader"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -99,6 +100,7 @@ func newArtifactUploadCmd() *cobra.Command {
 
 func newArtifactDownloadCmd() *cobra.Command {
 	var namespace string
+	var resume bool
 
 	return fncobra.Cmd(&cobra.Command{
 		Use:   "download [src] [dest]",
@@ -107,6 +109,7 @@ func newArtifactDownloadCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(2),
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		flags.StringVar(&namespace, "namespace", mainArtifactNamespace, "Namespace of the artifact.")
+		flags.BoolVar(&resume, "resume", false, "Enable resumable downloads with persistent state file.")
 	}).DoWithArgs(func(ctx context.Context, args []string) error {
 		if len(args) != 2 {
 			return fnerrors.Newf("expected exactly two arguments: a remote source and a local destination")
@@ -124,7 +127,7 @@ func newArtifactDownloadCmd() *cobra.Command {
 		}
 		defer cli.Close()
 
-		if err := writeArtifact(ctx, cli, namespace, src, dest); err != nil {
+		if err := writeArtifactWithResume(ctx, cli, namespace, src, dest, resume); err != nil {
 			return err
 		}
 
@@ -217,21 +220,20 @@ The content at the URL is assumed to be immutable.`,
 	})
 }
 
-func writeArtifact(ctx context.Context, cli storage.Client, namespace, path string, dest string) error {
-	reader, err := storage.ResolveArtifactStream(ctx, cli, namespace, path)
-	if err != nil {
-		return err
+func writeArtifactWithResume(ctx context.Context, cli storage.Client, namespace, path string, dest string, resume bool) error {
+	opts := downloader.Options{
+		Resume: resume,
+		ResolveURL: func(ctx context.Context) (string, error) {
+			res, err := cli.Artifacts.ResolveArtifact(ctx, &storagev1beta.ResolveArtifactRequest{
+				Path:      path,
+				Namespace: namespace,
+			})
+			if err != nil {
+				return "", err
+			}
+			return res.SignedDownloadUrl, nil
+		},
 	}
-	defer reader.Close()
 
-	w, err := os.Create(dest)
-	if err != nil {
-		return fnerrors.Newf("failed to open %q: %w", dest, err)
-	}
-	defer w.Close()
-
-	if _, err := io.Copy(w, reader); err != nil {
-		return fnerrors.Newf("failed to write %q: %w", dest, err)
-	}
-	return nil
+	return downloader.Download(ctx, dest, opts)
 }
