@@ -906,6 +906,10 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 		spec = spec.WithHostNetwork(true).WithDNSPolicy(corev1.DNSClusterFirstWithHostNet)
 	}
 
+	if deployable.MainContainer.HostPID {
+		spec = spec.WithHostPID(true)
+	}
+
 	spec = spec.
 		WithSecurityContext(podSecCtx).
 		WithContainers(mainContainer).

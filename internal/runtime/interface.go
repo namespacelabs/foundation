@@ -321,6 +321,7 @@ type ContainerRunOpts struct {
 	ReadOnlyFilesystem            bool
 	Privileged                    bool
 	HostNetwork                   bool
+	HostPID                       bool
 	Capabilities                  []string
 	Mounts                        []*schema.Mount
 	ContainerPorts                []*schema.Endpoint_Port

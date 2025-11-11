@@ -38,6 +38,7 @@ message Container {
     message Security {
         bool privileged   = 1;
         bool host_network = 2;
+        bool host_pid     = 4;
         repeated string capabilities = 3;
     }
 
