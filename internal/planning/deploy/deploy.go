@@ -938,6 +938,7 @@ func PrepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Pla
 	out.MainContainer.Args = append(out.MainContainer.Args, main.Args...)
 	out.MainContainer.Privileged = main.GetSecurity().GetPrivileged()
 	out.MainContainer.HostNetwork = main.GetSecurity().GetHostNetwork()
+	out.MainContainer.HostPID = main.GetSecurity().GetHostPid()
 	out.MainContainer.Capabilities = main.GetSecurity().GetCapabilities()
 	out.MainContainer.ResourceLimits = main.Limits
 	out.MainContainer.ResourceRequests = main.Requests

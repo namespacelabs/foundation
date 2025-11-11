@@ -84,6 +84,7 @@ type cuePermissions struct {
 type cueServerSecurity struct {
 	Privileged   bool     `json:"privileged"`
 	HostNetwork  bool     `json:"hostNetwork"`
+	HostPID      bool     `json:"hostPID"`
 	Capabilities []string `json:"capabilities"`
 }
 
@@ -350,6 +351,7 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 		out.MainContainer.Security = &schema.Container_Security{
 			Privileged:   bits.Security.Privileged,
 			HostNetwork:  bits.Security.HostNetwork,
+			HostPid:      bits.Security.HostPID,
 			Capabilities: bits.Security.Capabilities,
 		}
 	}
