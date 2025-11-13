@@ -115,7 +115,8 @@ func fetchHeaders(ctx context.Context, url *url.URL) (http.Header, *time.Time, e
 	expires := time.Now().Add(bazelBearerRefetchFrequency)
 
 	return http.Header{
-		"Authorization": []string{"Bearer " + token},
+		"Authorization":      []string{"Bearer " + token},
+		"x-nsc-ingress-auth": []string{"Bearer " + token},
 	}, &expires, nil
 }
 
