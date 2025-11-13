@@ -1525,8 +1525,8 @@ namespacelabs.dev/go-filenotify v0.0.0-20220511192020-53ea11be7eaa h1:jj2kjs0Hvu
 namespacelabs.dev/go-filenotify v0.0.0-20220511192020-53ea11be7eaa/go.mod h1:e8NJRaInXRRm1+KPA6EkGEzdLJAgEvVSIKiLzpP97nI=
 namespacelabs.dev/go-ids v0.0.0-20221124082625-9fc72ee06af7 h1:8NlnfPlzDSJr8TYV/qarIWwhjLd1gOXf3Jme0M/oGBM=
 namespacelabs.dev/go-ids v0.0.0-20221124082625-9fc72ee06af7/go.mod h1:J+Sd+ngeffnCsaO/M7zgs2bR8Klq/ZBhS0+bbnDEH2M=
-namespacelabs.dev/integrations v0.0.9-0.20251014083812-d336d2841f96 h1:RQ608dIPNZVcedqRMwWmeA1xv7fdrt6XmRuj86xWbP0=
-namespacelabs.dev/integrations v0.0.9-0.20251014083812-d336d2841f96/go.mod h1:1o9uf+ZRXzFF0p2Z8F7w0Myof8hMAiFH+bfp4p21vtI=
+namespacelabs.dev/integrations v0.0.9-0.20251113161623-efbb64f49b3e h1:Hvll0jTP56lHZS3db14j3exSZ71RYMDneIo3oi+gdkE=
+namespacelabs.dev/integrations v0.0.9-0.20251113161623-efbb64f49b3e/go.mod h1:1o9uf+ZRXzFF0p2Z8F7w0Myof8hMAiFH+bfp4p21vtI=
 oras.land/oras-go/v2 v2.6.0 h1:X4ELRsiGkrbeox69+9tzTu492FMUu7zJQW6eJU+I2oc=
 oras.land/oras-go/v2 v2.6.0/go.mod h1:magiQDfG6H1O9APp+rOsvCPcW1GD2MM7vgnKY0Y+u1o=
 rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=

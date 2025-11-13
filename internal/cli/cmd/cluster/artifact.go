@@ -41,6 +41,7 @@ func NewArtifactCmd() *cobra.Command {
 	cmd.AddCommand(newArtifactUploadCmd())
 	cmd.AddCommand(newArtifactDownloadCmd())
 	cmd.AddCommand(newArtifactCacheURLCmd())
+	cmd.AddCommand(newArtifactExpireCmd())
 
 	return cmd
 }
@@ -93,6 +94,41 @@ func newArtifactUploadCmd() *cobra.Command {
 		}
 
 		fmt.Fprintf(console.Stdout(ctx), "Uploaded %s to %s (namespace %s)\n", src, dest, namespace)
+
+		return nil
+	})
+}
+
+func newArtifactExpireCmd() *cobra.Command {
+	var namespace string
+
+	return fncobra.Cmd(&cobra.Command{
+		Use:   "expire [path]",
+		Short: "Expire an artifact.",
+		Args:  cobra.ExactArgs(1),
+	}).WithFlags(func(flags *pflag.FlagSet) {
+		flags.StringVar(&namespace, "namespace", mainArtifactNamespace, "Namespace of the artifact.")
+	}).DoWithArgs(func(ctx context.Context, args []string) error {
+		if len(args) != 1 {
+			return fnerrors.Newf("expected exactly one arguments: the path of the artifact to expire")
+		}
+		path := args[0]
+
+		token, err := auth.LoadDefaults()
+		if err != nil {
+			return err
+		}
+
+		cli, err := storage.NewClient(ctx, token)
+		if err != nil {
+			return err
+		}
+		defer cli.Close()
+
+		if err := storage.ExpireArtifact(ctx, cli, namespace, path); err != nil {
+			return err
+		}
+		fmt.Fprintf(console.Stdout(ctx), "Expired %s (namespace %s)\n", path, namespace)
 
 		return nil
 	})
