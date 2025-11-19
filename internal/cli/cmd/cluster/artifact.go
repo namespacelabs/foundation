@@ -5,16 +5,22 @@
 package cluster
 
 import (
+	"archive/zip"
+	"compress/flate"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	storagev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/storage/v1beta"
 	"github.com/aws/smithy-go/ptr"
 	"github.com/cenkalti/backoff"
+	"github.com/mattn/go-zglob"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc/codes"
@@ -49,24 +55,60 @@ func NewArtifactCmd() *cobra.Command {
 func newArtifactUploadCmd() *cobra.Command {
 	var namespace string
 	var expirationDur time.Duration
+	var files string
 
 	return fncobra.Cmd(&cobra.Command{
 		Use:   "upload [src] [dest]",
 		Short: "Upload an artifact.",
 		Long:  "Upload an artifact. Currently, only single file uploads are supported.",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.RangeArgs(1, 2),
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		flags.StringVar(&namespace, "namespace", mainArtifactNamespace, "Target namespace of the artifact.")
 		flags.DurationVar(&expirationDur, "expires_in", 0, "If set, sets the artifact's expiration into the specified future.")
+		flags.StringVar(&files, "files", "", "A glob pattern to select files to zip and upload.")
 	}).DoWithArgs(func(ctx context.Context, args []string) error {
-		if len(args) != 2 {
-			return fnerrors.Newf("expected exactly two arguments: a local source and a remote destination")
-		}
-		src, dest := args[0], args[1]
+		var src, dest string
+		var uploadFile io.ReadSeekCloser
 
-		uploadFile, err := os.Open(src)
-		if err != nil {
-			return fnerrors.Newf("failed to open file %s: %w", src, err)
+		if files != "" {
+			if len(args) != 1 {
+				return fnerrors.Newf("expected exactly one argument (destination) when --files is provided")
+			}
+			dest = args[0]
+
+			tmpFile, err := os.CreateTemp("", "artifact-upload-*.zip")
+			if err != nil {
+				return fnerrors.Newf("failed to create temporary file: %w", err)
+			}
+			defer os.Remove(tmpFile.Name())
+
+			start := time.Now()
+			count, err := zipFiles(ctx, files, tmpFile)
+			if err != nil {
+				tmpFile.Close()
+				return err
+			}
+
+			fmt.Fprintf(console.Stdout(ctx), "Created archive with %d entries. Took %v.\n", count, time.Since(start))
+
+			if _, err := tmpFile.Seek(0, 0); err != nil {
+				tmpFile.Close()
+				return err
+			}
+
+			uploadFile = tmpFile
+			src = "zip-archive"
+		} else {
+			if len(args) != 2 {
+				return fnerrors.Newf("expected exactly two arguments: a local source and a remote destination")
+			}
+			src, dest = args[0], args[1]
+
+			f, err := os.Open(src)
+			if err != nil {
+				return fnerrors.Newf("failed to open file %s: %w", src, err)
+			}
+			uploadFile = f
 		}
 		defer uploadFile.Close()
 
@@ -89,14 +131,73 @@ func newArtifactUploadCmd() *cobra.Command {
 			return fnerrors.BadInputError("expiration can't be negative")
 		}
 
+		start := time.Now()
 		if _, err := storage.UploadArtifactWithOpts(ctx, cli, namespace, dest, uploadFile, opts); err != nil {
 			return err
 		}
 
-		fmt.Fprintf(console.Stdout(ctx), "Uploaded %s to %s (namespace %s)\n", src, dest, namespace)
+		fmt.Fprintf(console.Stdout(ctx), "Uploaded %s to %s (namespace %s). Took %v.\n", src, dest, namespace, time.Since(start))
 
 		return nil
 	})
+}
+
+func zipFiles(ctx context.Context, pattern string, w io.Writer) (int, error) {
+	matches, err := zglob.Glob(pattern)
+	if err != nil {
+		return 0, fnerrors.Newf("failed to glob files: %w", err)
+	}
+
+	if len(matches) == 0 {
+		return 0, fnerrors.Newf("no files matched pattern %q", pattern)
+	}
+
+	zw := zip.NewWriter(w)
+	zw.RegisterCompressor(zip.Deflate, func(out io.Writer) (io.WriteCloser, error) {
+		return flate.NewWriter(out, flate.BestSpeed)
+	})
+	defer zw.Close()
+
+	count := 0
+	for _, match := range matches {
+		info, err := os.Stat(match)
+		if err != nil {
+			return 0, fnerrors.Newf("failed to stat file %q: %w", match, err)
+		}
+		if info.IsDir() {
+			continue
+		}
+
+		if err := func() error {
+			f, err := os.Open(match)
+			if err != nil {
+				return fnerrors.Newf("failed to open file %q: %w", match, err)
+			}
+			defer f.Close()
+
+			header, err := zip.FileInfoHeader(info)
+			if err != nil {
+				return fnerrors.Newf("failed to create zip header for %q: %w", match, err)
+			}
+			header.Name = match
+			header.Method = zip.Deflate
+
+			writer, err := zw.CreateHeader(header)
+			if err != nil {
+				return fnerrors.Newf("failed to create zip writer for %q: %w", match, err)
+			}
+
+			if _, err := io.Copy(writer, f); err != nil {
+				return fnerrors.Newf("failed to copy file %q to zip: %w", match, err)
+			}
+			return nil
+		}(); err != nil {
+			return 0, err
+		}
+		count++
+	}
+
+	return count, nil
 }
 
 func newArtifactExpireCmd() *cobra.Command {
@@ -136,7 +237,7 @@ func newArtifactExpireCmd() *cobra.Command {
 
 func newArtifactDownloadCmd() *cobra.Command {
 	var namespace string
-	var resume bool
+	var resume, unpack bool
 
 	return fncobra.Cmd(&cobra.Command{
 		Use:   "download [src] [dest]",
@@ -146,6 +247,7 @@ func newArtifactDownloadCmd() *cobra.Command {
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		flags.StringVar(&namespace, "namespace", mainArtifactNamespace, "Namespace of the artifact.")
 		flags.BoolVar(&resume, "resume", false, "Enable resumable downloads with persistent state file.")
+		flags.BoolVar(&unpack, "unpack", false, "Unpack the downloaded artifact (assumed to be a zip) into the destination directory.")
 	}).DoWithArgs(func(ctx context.Context, args []string) error {
 		if len(args) != 2 {
 			return fnerrors.Newf("expected exactly two arguments: a remote source and a local destination")
@@ -163,14 +265,91 @@ func newArtifactDownloadCmd() *cobra.Command {
 		}
 		defer cli.Close()
 
-		if err := writeArtifactWithResume(ctx, cli, namespace, src, dest, resume); err != nil {
+		downloadTo := dest
+		if unpack {
+			tmpFile, err := os.CreateTemp("", "artifact-download-*.zip")
+			if err != nil {
+				return fnerrors.Newf("failed to create temporary file: %w", err)
+			}
+			defer os.Remove(tmpFile.Name())
+			tmpFile.Close() // downloader will open it
+			downloadTo = tmpFile.Name()
+		}
+
+		start := time.Now()
+		if err := writeArtifactWithResume(ctx, cli, namespace, src, downloadTo, resume); err != nil {
 			return err
 		}
 
-		fmt.Fprintf(console.Stdout(ctx), "Downloaded %s (namespace %s) to %s\n", src, namespace, dest)
+		fmt.Fprintf(console.Stdout(ctx), "Downloaded %s (namespace %s). Took %v.\n", src, namespace, time.Since(start))
+
+		if unpack {
+			start := time.Now()
+			if err := unzipArtifact(ctx, downloadTo, dest); err != nil {
+				return err
+			}
+			fmt.Fprintf(console.Stdout(ctx), "Unpacking took %v.\n", time.Since(start))
+		} else {
+			fmt.Fprintf(console.Stdout(ctx), "Downloaded to %s.\n", dest)
+		}
 
 		return nil
 	})
+}
+
+func unzipArtifact(ctx context.Context, src, dest string) error {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return fnerrors.Newf("failed to open zip file %q: %w", src, err)
+	}
+	defer r.Close()
+
+	if err := os.MkdirAll(dest, 0755); err != nil {
+		return fnerrors.Newf("failed to create destination directory %q: %w", dest, err)
+	}
+
+	for _, f := range r.File {
+		fpath := filepath.Join(dest, f.Name)
+
+		// Check for Zip Slip
+		if !strings.HasPrefix(fpath, filepath.Clean(dest)+string(os.PathSeparator)) {
+			return fnerrors.Newf("illegal file path: %s", fpath)
+		}
+
+		if f.FileInfo().IsDir() {
+			if err := os.MkdirAll(fpath, os.ModePerm); err != nil {
+				return fnerrors.Newf("failed to create directory %q: %w", fpath, err)
+			}
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
+			return fnerrors.Newf("failed to create directory %q: %w", filepath.Dir(fpath), err)
+		}
+
+		outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err != nil {
+			return fnerrors.Newf("failed to open output file %q: %w", fpath, err)
+		}
+
+		rc, err := f.Open()
+		if err != nil {
+			outFile.Close()
+			return fnerrors.Newf("failed to open zip file content %q: %w", f.Name, err)
+		}
+
+		_, err = io.Copy(outFile, rc)
+		outFile.Close()
+		rc.Close()
+
+		if err != nil {
+			return fnerrors.Newf("failed to copy file content to %q: %w", fpath, err)
+		}
+
+		fmt.Fprintf(console.Stdout(ctx), "Created %s\n", fpath)
+	}
+
+	return nil
 }
 
 func newArtifactCacheURLCmd() *cobra.Command {
