@@ -38,6 +38,7 @@ var (
 	globalEndpointOverride string
 	AdminMode              = false
 	DebugApiResponse       = false
+	RelaxedResponseParsing = true // TODO: we should remove this.
 
 	UserAgent = "ns/unknown"
 )
@@ -259,8 +260,8 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 
 		st := &spb.Status{}
 		if err := json.Unmarshal(respBody, st); err == nil {
-			return handleGrpcStatus(url, st)
-		} else {
+			return handleGrpcStatus(ctx, tid, url, st)
+		} else if RelaxedResponseParsing {
 			// Retry status parsing with a more forgiving type.
 			st := struct {
 				*spb.Status
@@ -269,11 +270,14 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 				// Details might contain invalid Base64 values, just ignore it.
 				Details json.RawMessage `json:"details"`
 			}{}
+
 			if json.Unmarshal(respBody, &st) == nil {
 				var code codes.Code
 				if json.Unmarshal(bytes.ToUpper(st.Code), &code) == nil {
 					st.Status.Code = int32(code)
-					return handleGrpcStatus(url, st.Status)
+
+					fmt.Fprintf(console.Debug(ctx), "[%s] Ignoring GRPC details: %s\n", tid, st.Details)
+					return handleGrpcStatus(ctx, tid, url, st.Status)
 				}
 			}
 
@@ -292,7 +296,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 				return fnerrors.InternalError("failed to unmarshal grpc details: %w", err)
 			}
 
-			return handleGrpcStatus(url, st)
+			return handleGrpcStatus(ctx, tid, url, st)
 		}
 
 		grpcMessage := response.Header[http.CanonicalHeaderKey("grpc-message")]
@@ -304,7 +308,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 				st.Code = int32(intVar)
 				st.Message = grpcMessage[0]
 
-				return handleGrpcStatus(url, st)
+				return handleGrpcStatus(ctx, tid, url, st)
 			}
 		}
 
@@ -366,7 +370,13 @@ func callSideEffectFree(ctx context.Context, retryable bool, method func(context
 	}, backoff.WithContext(b, ctx))
 }
 
-func handleGrpcStatus(url string, st *spb.Status) error {
+func handleGrpcStatus(ctx context.Context, tid string, url string, st *spb.Status) error {
+	if DebugApiResponse {
+		if data, err := json.Marshal(st); err == nil {
+			fmt.Fprintf(console.Debug(ctx), "[%s] Response status: %s\n", tid, data)
+		}
+	}
+
 	switch st.Code {
 	case int32(codes.Unauthenticated):
 		return fnerrors.ReauthError("%s requires authentication: %w", url, status.ErrorProto(st))
