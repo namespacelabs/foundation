@@ -20,6 +20,7 @@ import (
 	storagev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/storage/v1beta"
 	"github.com/aws/smithy-go/ptr"
 	"github.com/cenkalti/backoff"
+	"github.com/dustin/go-humanize"
 	"github.com/mattn/go-zglob"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -55,7 +56,7 @@ func NewArtifactCmd() *cobra.Command {
 func newArtifactUploadCmd() *cobra.Command {
 	var namespace string
 	var expirationDur time.Duration
-	var files string
+	var pack string
 
 	return fncobra.Cmd(&cobra.Command{
 		Use:   "upload [src] [dest]",
@@ -65,14 +66,14 @@ func newArtifactUploadCmd() *cobra.Command {
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		flags.StringVar(&namespace, "namespace", mainArtifactNamespace, "Target namespace of the artifact.")
 		flags.DurationVar(&expirationDur, "expires_in", 0, "If set, sets the artifact's expiration into the specified future.")
-		flags.StringVar(&files, "files", "", "A glob pattern to select files to zip and upload.")
+		flags.StringVar(&pack, "pack", "", "A glob pattern to select files to zip and upload.")
 	}).DoWithArgs(func(ctx context.Context, args []string) error {
 		var src, dest string
 		var uploadFile io.ReadSeekCloser
 
-		if files != "" {
+		if pack != "" {
 			if len(args) != 1 {
-				return fnerrors.Newf("expected exactly one argument (destination) when --files is provided")
+				return fnerrors.Newf("expected exactly one argument (destination) when --pack is provided")
 			}
 			dest = args[0]
 
@@ -83,7 +84,7 @@ func newArtifactUploadCmd() *cobra.Command {
 			defer os.Remove(tmpFile.Name())
 
 			start := time.Now()
-			count, err := zipFiles(ctx, files, tmpFile)
+			count, err := zipFiles(ctx, pack, tmpFile)
 			if err != nil {
 				tmpFile.Close()
 				return err
@@ -97,7 +98,7 @@ func newArtifactUploadCmd() *cobra.Command {
 			}
 
 			uploadFile = tmpFile
-			src = "zip-archive"
+			src = "archive"
 		} else {
 			if len(args) != 2 {
 				return fnerrors.Newf("expected exactly two arguments: a local source and a remote destination")
@@ -136,7 +137,14 @@ func newArtifactUploadCmd() *cobra.Command {
 			return err
 		}
 
-		fmt.Fprintf(console.Stdout(ctx), "Uploaded %s to %s (namespace %s). Took %v.\n", src, dest, namespace, time.Since(start))
+		stat, err := uploadFile.Seek(0, 1)
+		if err != nil {
+			// ignore, just don't print the size
+			stat = 0
+		}
+
+		fmt.Fprintf(console.Stdout(ctx), "Uploaded %s (%s) to %s (namespace %s). Took %v.\n",
+			src, humanize.Bytes(uint64(stat)), dest, namespace, time.Since(start))
 
 		return nil
 	})
@@ -281,7 +289,13 @@ func newArtifactDownloadCmd() *cobra.Command {
 			return err
 		}
 
-		fmt.Fprintf(console.Stdout(ctx), "Downloaded %s (namespace %s). Took %v.\n", src, namespace, time.Since(start))
+		stat, err := os.Stat(downloadTo)
+		if err != nil {
+			return fnerrors.Newf("failed to stat downloaded file: %w", err)
+		}
+
+		fmt.Fprintf(console.Stdout(ctx), "Downloaded %s (namespace %s) (%s). Took %v.\n",
+			src, namespace, humanize.Bytes(uint64(stat.Size())), time.Since(start))
 
 		if unpack {
 			start := time.Now()
