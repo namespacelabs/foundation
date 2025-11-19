@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
-	v1 "namespacelabs.dev/foundation/public/nscloud/proto/v1"
+	nsclouderrors "namespacelabs.dev/foundation/public/nscloud/proto/v1"
 )
 
 type Error struct {
@@ -86,7 +86,7 @@ func (e *Error) GRPCStatus() *status.Status {
 
 	p := status.New(e.Code, e.Error()).Proto()
 	if e.SafeMsg != "" {
-		any, _ := anypb.New(&v1.UserMessage{
+		any, _ := anypb.New(&nsclouderrors.UserMessage{
 			Message: e.SafeMsg,
 		})
 		if any != nil {
