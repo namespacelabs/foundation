@@ -184,6 +184,8 @@ func doMain(opts MainOpts) (colors.Style, error) {
 		"If set to true, outputs debug messages to the specified file.")
 	rootCmd.PersistentFlags().BoolVar(&fnapi.DebugApiResponse, "debug_api_response", fnapi.DebugApiResponse,
 		"If set to true, we also output debug log messages for API responses.")
+	rootCmd.PersistentFlags().BoolVar(&fnapi.RelaxedResponseParsing, "relaxed_response_parsing", fnapi.RelaxedResponseParsing,
+		"If set to true, employ relaxed parsing for GRPC API responses.")
 	rootCmd.PersistentFlags().BoolVar(&enableErrorTracing, "error_tracing", enableErrorTracing,
 		"If set to true, prints a trace of foundation errors leading to the root cause with source info.")
 	rootCmd.PersistentFlags().StringVar(&dirs.CacheDir, "cache_dir", dirs.CacheDir,
@@ -200,6 +202,7 @@ func doMain(opts MainOpts) (colors.Style, error) {
 		"debug_to_console",
 		"debug_to_file",
 		"debug_api_response",
+		"relaxed_response_parsing",
 		"cache_dir",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
