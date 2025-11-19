@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
-	nsclouderrors "namespacelabs.dev/foundation/public/nscloud/proto/v1"
+	v1 "namespacelabs.dev/foundation/public/nscloud/proto/v1"
 )
 
 type Error struct {
@@ -60,11 +60,6 @@ func Safef(code codes.Code, original error, format string, args ...any) *Error {
 		Err:     original,
 		Code:    code,
 		stack:   stack[:length],
-		Details: []proto.Message{
-			&nsclouderrors.UserMessage{
-				Message: safeMsg,
-			},
-		},
 	}
 }
 
@@ -85,11 +80,20 @@ func (e *Error) Unwrap() error {
 }
 
 func (e *Error) GRPCStatus() *status.Status {
-	if len(e.Details) == 0 {
+	if len(e.Details) == 0 && e.SafeMsg == "" {
 		return status.New(e.Code, e.Error())
 	}
 
 	p := status.New(e.Code, e.Error()).Proto()
+	if e.SafeMsg != "" {
+		any, _ := anypb.New(&v1.UserMessage{
+			Message: e.SafeMsg,
+		})
+		if any != nil {
+			p.Details = append(p.Details, any)
+		}
+	}
+
 	for _, detail := range e.Details {
 		any, _ := anypb.New(detail)
 		if any != nil {
