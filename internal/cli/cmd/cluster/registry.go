@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -39,6 +40,7 @@ func NewRegistryCmd() *cobra.Command {
 	cmd.AddCommand(newRegistryListCmd())
 	cmd.AddCommand(newRegistryDescribeCmd())
 	cmd.AddCommand(newRegistryShareCmd())
+	cmd.AddCommand(newRegistryExpireCmd())
 
 	return cmd
 }
@@ -575,4 +577,121 @@ func printSharedImage(ctx context.Context, sharedImage *registryv1beta.SharedIma
 	}
 
 	return nil
+}
+
+func newRegistryExpireCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "expire [repository] [digest]",
+		Short: "Update the expiration time of an image.",
+		Args:  cobra.MaximumNArgs(1),
+		Long: `Get detailed information about a specific image.
+
+The image reference can be provided as a positional argument in the format repository@digest (e.g., myrepo@sha256:abc123...)
+
+Alternatively, use --repository and --digest flags.`,
+	}
+
+	repositoryFlag := cmd.Flags().String("repository", "", "Repository name")
+	digestFlag := cmd.Flags().String("digest", "", "Image digest")
+	expiresAt := cmd.Flags().String("expires-at", "", "Set new absolute expiry time in RFC3339 format (e.g., 2024-12-31T23:59:59Z)")
+	extendBy := cmd.Flags().Duration("extend-by", 0, "Extend current expiry by this duration (e.g., 720h for 30 days)")
+	ensureMinimum := cmd.Flags().Duration("ensure-minimum", 0, "Ensure at least this much time remains before expiry (e.g., 168h for 7 days)")
+	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		repository := args[0]
+		digest := args[1]
+
+		// Validate mutually exclusive flags
+		flagCount := 0
+		if *expiresAt != "" {
+			flagCount++
+		}
+		if *extendBy > 0 {
+			flagCount++
+		}
+		if *ensureMinimum > 0 {
+			flagCount++
+		}
+
+		if flagCount == 0 {
+			return fnerrors.BadInputError("must specify one of --expires-at, --extend-by, or --ensure-minimum")
+		}
+
+		if flagCount > 1 {
+			return fnerrors.BadInputError("only one of --expires-at, --extend-by, or --ensure-minimum can be specified")
+		}
+
+		tokenSource, err := auth.LoadDefaults()
+		if err != nil {
+			return fnerrors.InvocationError("registry", "failed to get authentication token: %w", err)
+		}
+
+		nscrBase, err := builds.NSCRBase(ctx, tokenSource)
+		if err != nil {
+			return fnerrors.InvocationError("registry", "failed to get registry base: %w", err)
+		}
+
+		repository, reference, err := resolveImageReference(args, *repositoryFlag, *digestFlag, nscrBase)
+		if err != nil {
+			return fnerrors.BadInputError("%w", err)
+		}
+
+		client, err := registryapi.NewClient(ctx, tokenSource)
+		if err != nil {
+			return fnerrors.InvocationError("registry", "failed to create registry client: %w", err)
+		}
+		defer client.Close()
+
+		req := &registryv1beta.UpdateImageLifetimeRequest{
+			Repository: repository,
+			Digest:     reference,
+		}
+
+		// Set the appropriate field based on flags
+		if *expiresAt != "" {
+			t, err := time.Parse(time.RFC3339, *expiresAt)
+			if err != nil {
+				return fnerrors.BadInputError("invalid expires-at time format: %w", err)
+			}
+			req.NewExpiry = timestamppb.New(t)
+		} else if *extendBy > 0 {
+			req.ExtendBy = durationpb.New(*extendBy)
+		} else if *ensureMinimum > 0 {
+			req.EnsureMinimumRemaining = durationpb.New(*ensureMinimum)
+		}
+
+		resp, err := client.ContainerRegistry.UpdateImageLifetime(ctx, req)
+		if err != nil {
+			return fnerrors.InvocationError("registry", "failed to update image expiry: %w", err)
+		}
+
+		switch *output {
+		case "json":
+			bb, err := protojson.MarshalOptions{UseProtoNames: true, Multiline: true}.Marshal(resp)
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintln(console.Stdout(ctx), string(bb))
+			return nil
+
+		case "table":
+			stdout := console.Stdout(ctx)
+			fmt.Fprintf(stdout, "Image expiry updated successfully.\n")
+			fmt.Fprintf(stdout, "Repository:   %s\n", repository)
+			fmt.Fprintf(stdout, "Digest:       %s\n", digest)
+			if resp.NewExpiry != nil {
+				fmt.Fprintf(stdout, "New Expiry:   %s\n", resp.NewExpiry.AsTime().Format(time.RFC3339))
+			} else {
+				fmt.Fprintf(stdout, "New Expiry:   Never\n")
+			}
+			return nil
+
+		default:
+			return fnerrors.BadInputError("invalid output format: %s", *output)
+		}
+	})
+
+	return cmd
 }
