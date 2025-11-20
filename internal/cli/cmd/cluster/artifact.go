@@ -167,42 +167,62 @@ func zipFiles(ctx context.Context, pattern string, w io.Writer) (int, error) {
 	defer zw.Close()
 
 	count := 0
+	seen := map[string]bool{}
+
+	addFile := func(match string, info os.FileInfo) error {
+		if seen[match] {
+			return nil
+		}
+		seen[match] = true
+
+		f, err := os.Open(match)
+		if err != nil {
+			return fnerrors.Newf("failed to open file %q: %w", match, err)
+		}
+		defer f.Close()
+
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return fnerrors.Newf("failed to create zip header for %q: %w", match, err)
+		}
+		header.Name = match
+		header.Method = zip.Deflate
+
+		writer, err := zw.CreateHeader(header)
+		if err != nil {
+			return fnerrors.Newf("failed to create zip writer for %q: %w", match, err)
+		}
+
+		if _, err := io.Copy(writer, f); err != nil {
+			return fnerrors.Newf("failed to copy file %q to zip: %w", match, err)
+		}
+		count++
+		return nil
+	}
+
 	for _, match := range matches {
 		info, err := os.Stat(match)
 		if err != nil {
 			return 0, fnerrors.Newf("failed to stat file %q: %w", match, err)
 		}
 		if info.IsDir() {
+			if err := filepath.Walk(match, func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+				if info.IsDir() {
+					return nil
+				}
+				return addFile(path, info)
+			}); err != nil {
+				return 0, fnerrors.Newf("failed to walk directory %q: %w", match, err)
+			}
 			continue
 		}
 
-		if err := func() error {
-			f, err := os.Open(match)
-			if err != nil {
-				return fnerrors.Newf("failed to open file %q: %w", match, err)
-			}
-			defer f.Close()
-
-			header, err := zip.FileInfoHeader(info)
-			if err != nil {
-				return fnerrors.Newf("failed to create zip header for %q: %w", match, err)
-			}
-			header.Name = match
-			header.Method = zip.Deflate
-
-			writer, err := zw.CreateHeader(header)
-			if err != nil {
-				return fnerrors.Newf("failed to create zip writer for %q: %w", match, err)
-			}
-
-			if _, err := io.Copy(writer, f); err != nil {
-				return fnerrors.Newf("failed to copy file %q to zip: %w", match, err)
-			}
-			return nil
-		}(); err != nil {
+		if err := addFile(match, info); err != nil {
 			return 0, err
 		}
-		count++
 	}
 
 	return count, nil
