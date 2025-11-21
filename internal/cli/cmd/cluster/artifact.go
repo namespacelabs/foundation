@@ -342,11 +342,21 @@ func unzipArtifact(ctx context.Context, src, dest string) error {
 		return fnerrors.Newf("failed to create destination directory %q: %w", dest, err)
 	}
 
+	absDest, err := filepath.Abs(filepath.Clean(dest))
+	if err != nil {
+		return fnerrors.Newf("failed to resolve destination path: %w", err)
+	}
+
 	for _, f := range r.File {
 		fpath := filepath.Join(dest, f.Name)
 
 		// Check for Zip Slip
-		if !strings.HasPrefix(fpath, filepath.Clean(dest)+string(os.PathSeparator)) {
+		absPath, err := filepath.Abs(filepath.Clean(fpath))
+		if err != nil {
+			return fnerrors.Newf("failed to resolve file path: %w", err)
+		}
+
+		if !strings.HasPrefix(absPath, absDest+string(os.PathSeparator)) {
 			return fnerrors.Newf("illegal file path: %s", fpath)
 		}
 
