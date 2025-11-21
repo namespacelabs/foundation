@@ -42,6 +42,16 @@ func NewRegistryCmd() *cobra.Command {
 	cmd.AddCommand(newRegistryShareCmd())
 	cmd.AddCommand(newRegistryUpdateImageExpirationCmd())
 
+	defaultExpiryCommand := &cobra.Command{
+		Use:   "default-expiration",
+		Short: "Manage the default expiration of all registry images.",
+	}
+
+	defaultExpiryCommand.AddCommand(newRegistryGetDefaultExpirationCmd())
+	defaultExpiryCommand.AddCommand(newRegistrySetDefaultExpirationCmd())
+
+	cmd.AddCommand(defaultExpiryCommand)
+
 	return cmd
 }
 
@@ -684,6 +694,126 @@ Alternatively, use --repository and --digest flags.`,
 		default:
 			return fnerrors.BadInputError("invalid output format: %s", *output)
 		}
+	})
+
+	return cmd
+}
+
+func newRegistryGetDefaultExpirationCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "get",
+		Short: "Gets the default expiration setting.",
+		Args:  cobra.NoArgs,
+		Long:  `Gets the default expiration setting that is currently configured.`,
+	}
+
+	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		tokenSource, err := auth.LoadDefaults()
+		if err != nil {
+			return fnerrors.InvocationError("registry", "failed to get authentication token: %w", err)
+		}
+
+		client, err := registryapi.NewClient(ctx, tokenSource)
+		if err != nil {
+			return fnerrors.InvocationError("registry", "failed to create registry client: %w", err)
+		}
+		defer client.Close()
+
+		res, err := client.ContainerRegistry.GetDefaultPolicy(ctx, nil)
+		if err != nil {
+			return err
+		}
+
+		switch *output {
+		case "json":
+			bb, err := protojson.MarshalOptions{UseProtoNames: true, Multiline: true}.Marshal(res)
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintln(console.Stdout(ctx), string(bb))
+			return nil
+
+		case "table":
+			stdout := console.Stdout(ctx)
+			fmt.Fprintf(stdout, "Revision:             %d\n", res.Revision)
+
+			expiration := "Never"
+			if res.DefaultExpiration != nil {
+				expiration = res.DefaultExpiration.AsDuration().String()
+			}
+
+			fmt.Fprintf(stdout, "Default Expiration:   %s\n", expiration)
+			return nil
+
+		default:
+			return fnerrors.BadInputError("invalid output format: %s", *output)
+		}
+	})
+
+	return cmd
+}
+
+func newRegistrySetDefaultExpirationCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "set",
+		Short: "Sets the default expiration setting.",
+		Args:  cobra.NoArgs,
+		Long:  `Sets the default expiration setting that is applied to new images.`,
+	}
+
+	expiration := cmd.Flags().Duration("expiration", 0, "The default expiration duration that is applied to new container images (e.g., 168h for 7 days). Needs to be at least 4h.")
+	noExpiration := cmd.Flags().Bool("no-expiration", false, "Set the default for new images to never expire.")
+
+	cmd.MarkFlagsOneRequired("expiration", "no-expiration")
+	cmd.MarkFlagsMutuallyExclusive("expiration", "no-expiration")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		tokenSource, err := auth.LoadDefaults()
+		if err != nil {
+			return fnerrors.InvocationError("registry", "failed to get authentication token: %w", err)
+		}
+
+		client, err := registryapi.NewClient(ctx, tokenSource)
+		if err != nil {
+			return fnerrors.InvocationError("registry", "failed to create registry client: %w", err)
+		}
+		defer client.Close()
+
+		res, err := client.ContainerRegistry.GetDefaultPolicy(ctx, nil)
+		if err != nil {
+			return err
+		}
+
+		var newExpiry *durationpb.Duration
+
+		if !*noExpiration {
+			if expiration != nil {
+				newExpiry = durationpb.New(*expiration)
+			}
+
+			if newExpiry.AsDuration() == 0 {
+				return fnerrors.InvocationError("registry", "Provided expiration is 0. Use --no-expiration instead.")
+			}
+		}
+
+		if _, err := client.ContainerRegistry.UpdateDefaultPolicy(ctx, &registryv1beta.UpdateDefaultPolicyRequest{
+			Revision:          res.Revision,
+			DefaultExpiration: newExpiry,
+		}); err != nil {
+			return err
+		}
+
+		stdout := console.Stdout(ctx)
+		if newExpiry == nil {
+			fmt.Fprintf(stdout, "Default configuration has been updated to never expire images.\n")
+		} else {
+			fmt.Fprintf(stdout, "Default configuration has been updated to expire images after %s.\n", newExpiry.AsDuration().String())
+		}
+
+		return nil
 	})
 
 	return cmd
