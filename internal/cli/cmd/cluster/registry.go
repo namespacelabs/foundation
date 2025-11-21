@@ -40,7 +40,7 @@ func NewRegistryCmd() *cobra.Command {
 	cmd.AddCommand(newRegistryListCmd())
 	cmd.AddCommand(newRegistryDescribeCmd())
 	cmd.AddCommand(newRegistryShareCmd())
-	cmd.AddCommand(newRegistryExpireCmd())
+	cmd.AddCommand(newRegistryUpdateImageExpirationCmd())
 
 	return cmd
 }
@@ -579,12 +579,12 @@ func printSharedImage(ctx context.Context, sharedImage *registryv1beta.SharedIma
 	return nil
 }
 
-func newRegistryExpireCmd() *cobra.Command {
+func newRegistryUpdateImageExpirationCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "expire [repository] [digest]",
+		Use:   "update-image-expiration [image-reference]",
 		Short: "Update the expiration time of an image.",
 		Args:  cobra.MaximumNArgs(1),
-		Long: `Get detailed information about a specific image.
+		Long: `Update the image expiration of the specified image.
 
 The image reference can be provided as a positional argument in the format repository@digest (e.g., myrepo@sha256:abc123...)
 
@@ -593,35 +593,16 @@ Alternatively, use --repository and --digest flags.`,
 
 	repositoryFlag := cmd.Flags().String("repository", "", "Repository name")
 	digestFlag := cmd.Flags().String("digest", "", "Image digest")
-	expiresAt := cmd.Flags().String("expires-at", "", "Set new absolute expiry time in RFC3339 format (e.g., 2024-12-31T23:59:59Z)")
-	extendBy := cmd.Flags().Duration("extend-by", 0, "Extend current expiry by this duration (e.g., 720h for 30 days)")
+
+	expireAt := cmd.Flags().String("expire-at", "", "Set new absolute expiry time in RFC3339 format (e.g., 2024-12-31T23:59:59Z)")
 	ensureMinimum := cmd.Flags().Duration("ensure-minimum", 0, "Ensure at least this much time remains before expiry (e.g., 168h for 7 days)")
+
+	cmd.MarkFlagsOneRequired("expire-at", "ensure-minimum")
+	cmd.MarkFlagsMutuallyExclusive("expire-at", "ensure-minimum")
+
 	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		repository := args[0]
-		digest := args[1]
-
-		// Validate mutually exclusive flags
-		flagCount := 0
-		if *expiresAt != "" {
-			flagCount++
-		}
-		if *extendBy > 0 {
-			flagCount++
-		}
-		if *ensureMinimum > 0 {
-			flagCount++
-		}
-
-		if flagCount == 0 {
-			return fnerrors.BadInputError("must specify one of --expires-at, --extend-by, or --ensure-minimum")
-		}
-
-		if flagCount > 1 {
-			return fnerrors.BadInputError("only one of --expires-at, --extend-by, or --ensure-minimum can be specified")
-		}
-
 		tokenSource, err := auth.LoadDefaults()
 		if err != nil {
 			return fnerrors.InvocationError("registry", "failed to get authentication token: %w", err)
@@ -632,7 +613,7 @@ Alternatively, use --repository and --digest flags.`,
 			return fnerrors.InvocationError("registry", "failed to get registry base: %w", err)
 		}
 
-		repository, reference, err := resolveImageReference(args, *repositoryFlag, *digestFlag, nscrBase)
+		repository, digest, err := resolveImageReference(args, *repositoryFlag, *digestFlag, nscrBase)
 		if err != nil {
 			return fnerrors.BadInputError("%w", err)
 		}
@@ -645,20 +626,31 @@ Alternatively, use --repository and --digest flags.`,
 
 		req := &registryv1beta.UpdateImageLifetimeRequest{
 			Repository: repository,
-			Digest:     reference,
+			Digest:     digest,
 		}
 
 		// Set the appropriate field based on flags
-		if *expiresAt != "" {
-			t, err := time.Parse(time.RFC3339, *expiresAt)
+		if *expireAt != "" {
+			t, err := time.Parse(time.RFC3339, *expireAt)
 			if err != nil {
-				return fnerrors.BadInputError("invalid expires-at time format: %w", err)
+				return fnerrors.BadInputError("invalid expire-at time format: %w", err)
 			}
 			req.NewExpiry = timestamppb.New(t)
-		} else if *extendBy > 0 {
-			req.ExtendBy = durationpb.New(*extendBy)
-		} else if *ensureMinimum > 0 {
+		}
+
+		if *ensureMinimum > 0 {
 			req.EnsureMinimumRemaining = durationpb.New(*ensureMinimum)
+		}
+
+		if *output == "table" {
+			stdout := console.Stdout(ctx)
+			if req.NewExpiry != nil {
+				fmt.Fprintf(stdout, "Setting expiry to: %s\n", req.NewExpiry.AsTime().Format(time.RFC3339))
+			} else if req.EnsureMinimumRemaining != nil {
+				fmt.Fprintf(stdout, "Ensuring expiry is at least: %s\n", req.EnsureMinimumRemaining.AsDuration().String())
+			}
+
+			fmt.Fprintln(stdout)
 		}
 
 		resp, err := client.ContainerRegistry.UpdateImageLifetime(ctx, req)
@@ -678,7 +670,6 @@ Alternatively, use --repository and --digest flags.`,
 
 		case "table":
 			stdout := console.Stdout(ctx)
-			fmt.Fprintf(stdout, "Image expiry updated successfully.\n")
 			fmt.Fprintf(stdout, "Repository:   %s\n", repository)
 			fmt.Fprintf(stdout, "Digest:       %s\n", digest)
 			if resp.NewExpiry != nil {
@@ -686,6 +677,8 @@ Alternatively, use --repository and --digest flags.`,
 			} else {
 				fmt.Fprintf(stdout, "New Expiry:   Never\n")
 			}
+			fmt.Fprintln(stdout)
+			fmt.Fprintf(stdout, "Image expiry updated successfully.\n")
 			return nil
 
 		default:
