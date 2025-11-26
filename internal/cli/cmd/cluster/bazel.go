@@ -43,7 +43,7 @@ func NewBazelCmd() *cobra.Command {
 
 func newSetupCacheCmd() *cobra.Command {
 	var bazelRcPath, output, certPath string
-	var sendBuildEvents bool
+	var sendBuildEvents, useAbsoluteCredHelperPath bool
 	var version int64
 
 	return fncobra.Cmd(&cobra.Command{
@@ -54,9 +54,11 @@ func newSetupCacheCmd() *cobra.Command {
 		flags.StringVarP(&output, "output", "o", "plain", "One of plain or json.")
 		flags.StringVar(&certPath, "cred_path", "", "If specified, write credentials to this directory. Using this flag also ensures stable file names for all emitted credentials.")
 		flags.BoolVar(&sendBuildEvents, "send_build_events", false, "If specified, send build events to the build event service.")
+		flags.BoolVar(&useAbsoluteCredHelperPath, "use_absolute_credentialhelper_path", false, "If specified, use an absolute path to the credential helper binary.")
 		flags.Int64Var(&version, "version", 1, "Which bazel version to use.")
 
 		flags.MarkHidden("cred_path")
+		flags.MarkHidden("use_absolute_credentialhelper_path")
 		flags.MarkHidden("send_build_events")
 		flags.MarkHidden("version")
 	}).Do(func(ctx context.Context) error {
@@ -153,7 +155,7 @@ func newSetupCacheCmd() *cobra.Command {
 
 		// If set, we always generate a bazelrc file.
 		if bazelRcPath != "" {
-			data, err := toBazelConfig(ctx, out)
+			data, err := toBazelConfig(ctx, out, useAbsoluteCredHelperPath)
 			if err != nil {
 				return err
 			}
@@ -178,7 +180,7 @@ func newSetupCacheCmd() *cobra.Command {
 
 			// For plain output, flush the state to a temp bazelrc if none is written yet.
 			if bazelRcPath == "" {
-				data, err := toBazelConfig(ctx, out)
+				data, err := toBazelConfig(ctx, out, useAbsoluteCredHelperPath)
 				if err != nil {
 					return err
 				}
@@ -227,7 +229,7 @@ func writeFile(path string, content []byte) error {
 	return nil
 }
 
-func toBazelConfig(ctx context.Context, out bazelSetup) ([]byte, error) {
+func toBazelConfig(ctx context.Context, out bazelSetup, useAbsoluteCredHelperPath bool) ([]byte, error) {
 	var buffer bytes.Buffer
 	if _, err := buffer.WriteString(fmt.Sprintf("build --remote_cache=%s\n", out.Endpoint)); err != nil {
 		return nil, fnerrors.Newf("failed to append cache endpoint: %w", err)
@@ -258,13 +260,8 @@ func toBazelConfig(ctx context.Context, out bazelSetup) ([]byte, error) {
 	}
 
 	if len(out.CredentialHelperDomains) > 0 {
-		for _, domain := range out.CredentialHelperDomains {
-			if _, err := buffer.WriteString(fmt.Sprintf("build --credential_helper=*.%s=bazel-credential-nsc\n", domain)); err != nil {
-				return nil, fnerrors.Newf("failed to append credential_helper: %w", err)
-			}
-		}
-
-		if _, err := exec.LookPath(BazelCredHelperBinary); err != nil {
+		path, err := exec.LookPath(BazelCredHelperBinary)
+		if err != nil {
 			stdout := console.Stdout(ctx)
 			style := colors.Ctx(ctx)
 
@@ -273,8 +270,19 @@ func toBazelConfig(ctx context.Context, out bazelSetup) ([]byte, error) {
 				fmt.Fprint(stdout, style.Highlight.Apply(fmt.Sprintf("We didn't find %s in your $PATH.", BazelCredHelperBinary)))
 				fmt.Fprintf(stdout, "\nIt's usually installed along-side nsc; so if you have added nsc to the $PATH, %s will also be available.\n", BazelCredHelperBinary)
 				fmt.Fprintf(stdout, "\nWhile your $PATH is not updated, accessing the remote bazel cache won't work.\n")
-			} else {
+			}
+			if !errors.Is(err, exec.ErrNotFound) || useAbsoluteCredHelperPath {
 				return nil, fnerrors.Newf("failed to look up %s in $PATH: %w", BazelCredHelperBinary, err)
+			}
+		}
+
+		for _, domain := range out.CredentialHelperDomains {
+			credHelper := BazelCredHelperBinary
+			if useAbsoluteCredHelperPath {
+				credHelper = path
+			}
+			if _, err := buffer.WriteString(fmt.Sprintf("build --credential_helper=*.%s=%s\n", domain, credHelper)); err != nil {
+				return nil, fnerrors.Newf("failed to append credential_helper: %w", err)
 			}
 		}
 	}
