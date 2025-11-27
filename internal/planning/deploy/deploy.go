@@ -873,6 +873,7 @@ func PrepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Pla
 	out.PackageRef = srv.Proto().GetPackageRef()
 	out.Class = schema.DeployableClass(proto.DeployableClass)
 	out.Replicas = frag.Replicas
+	out.PriorityClass = frag.PriorityClass
 	out.PodAntiAffinity = frag.PodAntiAffinity
 	out.UpdateStrategy = frag.UpdateStrategy
 	out.SpreadConstraints = frag.SpreadConstraints

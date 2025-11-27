@@ -157,6 +157,7 @@ message ServerFragment {
     PodAntiAffinity            pod_anti_affinity  = 16;
     UpdateStrategy             update_strategy    = 17;
     SpreadConstraints          spread_constraints = 18;
+    string                     priority_class     = 19;
 }
 
 message Listener {

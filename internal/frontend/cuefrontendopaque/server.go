@@ -26,7 +26,7 @@ var (
 		"args", "env", "services", "ports", "unstable_permissions", "permissions", "probe", "probes", "security",
 		"sidecars", "mounts", "resources", "requires", "tolerations", "annotations",
 		"resourceLimits", "resourceRequests", "terminationGracePeriodSeconds",
-		"extensions", "nodeSelector", "replicas", "pod_anti_affinity", "update_strategy",
+		"extensions", "nodeSelector", "replicas", "priorityClass", "pod_anti_affinity", "update_strategy",
 		"spread_constraints", "listeners",
 		// This is needed for the "spec" in server templates. This can't be a private field, otherwise it can't be overridden.
 		"spec",
@@ -67,7 +67,9 @@ type cueServerExtension struct {
 
 	TerminationGracePeriodSeconds int64 `json:"terminationGracePeriodSeconds,omitempty"`
 
-	Replicas          int32                     `json:"replicas"`
+	Replicas      int32  `json:"replicas"`
+	PriorityClass string `json:"priorityClass,omitempty"`
+
 	PodAntiAffinity   *schema.PodAntiAffinity   `json:"pod_anti_affinity,omitempty"`
 	UpdateStrategy    *schema.UpdateStrategy    `json:"update_strategy,omitempty"`
 	SpreadConstraints *schema.SpreadConstraints `json:"spread_constraints,omitempty"`
@@ -403,6 +405,7 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 	}
 
 	out.Replicas = bits.Replicas
+	out.PriorityClass = bits.PriorityClass
 	out.PodAntiAffinity = bits.PodAntiAffinity
 	out.UpdateStrategy = bits.UpdateStrategy
 	out.SpreadConstraints = bits.SpreadConstraints
