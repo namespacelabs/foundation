@@ -244,6 +244,7 @@ type DeployableSpec struct {
 	Volumes           []*schema.Volume
 	Permissions       *schema.ServerPermissions
 	Replicas          int32
+	PriorityClass     string
 	Tolerations       []*schema.Server_Toleration
 	Annotations       []*schema.NamedResolvable // Annotations that apply to individual pods.
 	NodeSelector      []*schema.NodeSelectorItem

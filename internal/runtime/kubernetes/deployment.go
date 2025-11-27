@@ -158,6 +158,10 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 		spec = spec.WithTerminationGracePeriodSeconds(deployable.MainContainer.TerminationGracePeriodSeconds)
 	}
 
+	if deployable.PriorityClass != "" {
+		spec = spec.WithPriorityClassName(deployable.PriorityClass)
+	}
+
 	if target.planning != nil {
 		nodeSelector := target.planning.DefaultNodeSelector
 

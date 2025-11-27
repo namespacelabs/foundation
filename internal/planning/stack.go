@@ -372,6 +372,14 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 				}
 			}
 
+			if frag.PriorityClass != "" {
+				if ps.MergedFragment.PriorityClass != "" && frag.PriorityClass != ps.MergedFragment.PriorityClass {
+					return fnerrors.Newf("incompatible priority class definition")
+				} else if ps.MergedFragment.PriorityClass == "" {
+					ps.MergedFragment.PriorityClass = frag.PriorityClass
+				}
+			}
+
 			if frag.PodAntiAffinity != nil {
 				if ps.MergedFragment.PodAntiAffinity != nil {
 					return fnerrors.Newf("pod_anti_affinity defined more than once")
