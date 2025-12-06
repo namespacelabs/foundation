@@ -28,7 +28,8 @@ var ignoreSuffixes = []string{
 	".fn.js",
 	"_pb.ts",
 	"stacktrace/stacktrace.go",
-	"stacktrace/serializer/serializer.go"}
+	"stacktrace/serializer/serializer.go",
+	"npm-package/bin/cli.js"}
 
 func newUpdateLicenseCmd() *cobra.Command {
 	var check bool
