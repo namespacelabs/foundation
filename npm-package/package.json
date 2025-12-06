@@ -1,0 +1,31 @@
+{
+  "name": "@namespacelabs/cli",
+  "version": "1.0.0",
+  "description": "Namespace CLI",
+  "homepage": "https://namespace.so",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/namespacelabs/foundation"
+  },
+  "license": "Apache-2.0",
+  "scripts": {
+    "nsc": "node bin/cli.js",
+    "test": "jest --forceExit"
+  },
+  "bin": {
+    "nsc": "./bin/cli.js"
+  },
+  "files": [
+    "bin",
+    "lib"
+  ],
+  "engines": {
+    "node": ">=14"
+  },
+  "dependencies": {
+    "tar": "^7.4.3"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
