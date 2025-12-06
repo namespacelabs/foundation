@@ -5,7 +5,7 @@
   "homepage": "https://namespace.so",
   "repository": {
     "type": "git",
-    "url": "https://github.com/namespacelabs/foundation"
+    "url": "git+https://github.com/namespacelabs/foundation.git"
   },
   "license": "Apache-2.0",
   "scripts": {
@@ -13,7 +13,7 @@
     "test": "jest --forceExit"
   },
   "bin": {
-    "nsc": "./bin/cli.js"
+    "nsc": "bin/cli.js"
   },
   "files": [
     "bin",
