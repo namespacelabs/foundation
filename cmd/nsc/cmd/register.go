@@ -88,6 +88,7 @@ func newGithub() *cobra.Command {
 
 	cmd.AddCommand(github.NewBaseImageBuildCmd("build-base-image"))
 	cmd.AddCommand(github.NewProfileCmd())
+	cmd.AddCommand(github.NewJobsCmd())
 
 	return cmd
 }

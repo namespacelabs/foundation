@@ -44,3 +44,18 @@ func NewProfileServiceClient(ctx context.Context) (githubv1betaconnect.ProfileSe
 
 	return client, nil
 }
+
+func NewJobsServiceClient(ctx context.Context) (githubv1betaconnect.JobsServiceClient, error) {
+	tok, err := FetchToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	client := githubv1betaconnect.NewJobsServiceClient(
+		http.DefaultClient,
+		GlobalEndpoint(),
+		connect.WithInterceptors(newAuthInterceptor(tok)),
+	)
+
+	return client, nil
+}
