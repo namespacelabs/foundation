@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -104,12 +105,25 @@ func NewAddCmd() *cobra.Command {
 	description := cmd.Flags().StringP("description", "d", "", "Description of the secret")
 	revealable := cmd.Flags().Bool("revealable", false, "If set, the secret value can be retrieved in future calls")
 	labels := cmd.Flags().StringToString("label", nil, "Key-value labels to attach to the secret")
+	fromFile := cmd.Flags().String("from_file", "", "Load the file contents as the secret value.")
 	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		value, err := tui.AskSecret(ctx, "Secret value", "The secret value to add.", "Secret value")
-		if err != nil {
-			return err
+		var secret []byte
+		if *fromFile != "" {
+			value, err := os.ReadFile(*fromFile)
+			if err != nil {
+				return fnerrors.BadInputError("%s: failed to load: %w", *fromFile, err)
+			}
+
+			secret = value
+		} else {
+			value, err := tui.AskSecret(ctx, "Secret value", "The secret value to add.", "Secret value")
+			if err != nil {
+				return err
+			}
+
+			secret = value
 		}
 
 		tokenSource, err := auth.LoadDefaults()
@@ -134,7 +148,7 @@ func NewAddCmd() *cobra.Command {
 
 		req := &v1beta.CreateObjectRequest{
 			Description: *description,
-			Value:       string(value),
+			Value:       string(secret),
 			Revealable:  *revealable,
 			Labels:      protoLabels,
 		}
@@ -174,12 +188,25 @@ func NewSetCmd() *cobra.Command {
 
 	secretId := cmd.Flags().String("object_id", "", "The object to update.")
 	version := cmd.Flags().String("if-version-matches", "", "Only update if the object version matches this value")
+	fromFile := cmd.Flags().String("from_file", "", "Load the file contents as the secret value.")
 	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		value, err := tui.AskSecret(ctx, "Secret value", "The secret value to add.", "Secret value")
-		if err != nil {
-			return err
+		var secret []byte
+		if *fromFile != "" {
+			value, err := os.ReadFile(*fromFile)
+			if err != nil {
+				return fnerrors.BadInputError("%s: failed to load: %w", *fromFile, err)
+			}
+
+			secret = value
+		} else {
+			value, err := tui.AskSecret(ctx, "Secret value", "The secret value to add.", "Secret value")
+			if err != nil {
+				return err
+			}
+
+			secret = value
 		}
 
 		tokenSource, err := auth.LoadDefaults()
@@ -195,7 +222,7 @@ func NewSetCmd() *cobra.Command {
 
 		req := &v1beta.UpdateObjectRequest{
 			ObjectId:         *secretId,
-			NewValue:         string(value),
+			NewValue:         string(secret),
 			IfVersionMatches: *version,
 		}
 
