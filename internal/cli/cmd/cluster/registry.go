@@ -153,6 +153,7 @@ func newRegistryListCmd() *cobra.Command {
 	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
 	matchRepo := cmd.Flags().String("repository", "", "Filter images by repository name")
 	includeDeleted := cmd.Flags().Bool("include_deleted", false, "Include deleted images in results")
+	limit := cmd.Flags().Int("limit", 0, "The maximum number of images/repositories to list. Fewer entries might be returned")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		// Use positional argument if provided, unless --repository flag is explicitly set
@@ -177,7 +178,12 @@ func newRegistryListCmd() *cobra.Command {
 		defer client.Close()
 
 		if *repositories {
-			resp, err := client.ContainerRegistry.ListRepositories(ctx, &registryv1beta.ListRepositoriesRequest{})
+			req := &registryv1beta.ListRepositoriesRequest{}
+			if *limit > 0 {
+				req.MaxEntries = int64(*limit)
+			}
+
+			resp, err := client.ContainerRegistry.ListRepositories(ctx, req)
 			if err != nil {
 				return fnerrors.InvocationError("registry", "failed to list repositories: %w", err)
 			}
@@ -215,6 +221,10 @@ func newRegistryListCmd() *cobra.Command {
 					Values: []string{repository},
 					Op:     stdlib.StringMatcher_IS_ANY_OF,
 				}
+			}
+
+			if *limit > 0 {
+				req.MaxEntries = int64(*limit)
 			}
 
 			resp, err := client.ContainerRegistry.ListImages(ctx, req)
