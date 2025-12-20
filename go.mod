@@ -33,7 +33,7 @@ require (
 	github.com/charmbracelet/lipgloss v0.6.0
 	github.com/containerd/console v1.0.5
 	github.com/containerd/containerd v1.7.27
-	github.com/containerd/containerd/v2 v2.1.4
+	github.com/containerd/containerd/v2 v2.1.5
 	github.com/containerd/nerdctl v1.2.1
 	github.com/containerd/stargz-snapshotter/estargz v0.16.3
 	github.com/creack/pty v1.1.24
