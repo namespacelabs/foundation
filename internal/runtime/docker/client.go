@@ -44,6 +44,7 @@ type Client interface {
 	ImageLoad(ctx context.Context, input io.Reader, quiet bool) (image.LoadResponse, error)
 	ImageTag(ctx context.Context, source, target string) error
 	VolumeRemove(ctx context.Context, volumeID string, force bool) error
+	ClientVersion() string
 	Close() error
 }
 
@@ -188,6 +189,10 @@ func (w wrappedClient) ImageTag(ctx context.Context, source, target string) erro
 
 func (w wrappedClient) VolumeRemove(ctx context.Context, volumeID string, force bool) error {
 	return maybeReplaceErr(w.cli.VolumeRemove(ctx, volumeID, force))
+}
+
+func (w wrappedClient) ClientVersion() string {
+	return w.cli.ClientVersion()
 }
 
 func (w wrappedClient) Close() error {
