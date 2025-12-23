@@ -58,17 +58,19 @@ func FetchToken(ctx context.Context) (*localauth.Token, error) {
 			return ImpersonateFromSpec(ctx, spec, impersonate)
 		}
 
-		spec, err := ResolveSpec()
-		if err != nil {
-			return nil, err
-		}
+		if !localauth.HasKeychain() {
+			spec, err := ResolveSpec()
+			if err != nil {
+				return nil, err
+			}
 
-		if spec != "" {
-			return localauth.FetchTokenFromSpec(ctx, IssueTenantTokenFromSession, spec)
-		}
+			if spec != "" {
+				return localauth.FetchTokenFromSpec(ctx, IssueTenantTokenFromSession, spec)
+			}
 
-		if specified := os.Getenv("NSC_TOKEN_FILE"); specified != "" {
-			return localauth.LoadTokenFromPath(ctx, IssueTenantTokenFromSession, specified, time.Now())
+			if specified := os.Getenv("NSC_TOKEN_FILE"); specified != "" {
+				return localauth.LoadTokenFromPath(ctx, IssueTenantTokenFromSession, specified, time.Now())
+			}
 		}
 
 		return localauth.LoadTenantToken(ctx, IssueTenantTokenFromSession)
