@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -30,9 +31,11 @@ const (
 )
 
 var Workspace string
+var Keychain string
 
 func SetupFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&Workspace, "workspace", "", "Select a workspace log in to.")
+	flags.StringVar(&Keychain, "keychain", "", "Use the specified token keychain.")
 
 	_ = flags.MarkHidden("workspace")
 }
@@ -238,7 +241,19 @@ func StoreToken(token StoredToken) error {
 		return err
 	}
 
-	if err := os.WriteFile(filepath.Join(configDir, tokenLoc()), data, 0600); err != nil {
+	p := filepath.Join(configDir, tokenLoc())
+	if Keychain != "" {
+		p, err = keychainPath(configDir)
+		if err != nil {
+			return err
+		}
+
+		if err := os.MkdirAll(filepath.Dir(p), 0700); err != nil {
+			return err
+		}
+	}
+
+	if err := os.WriteFile(p, data, 0600); err != nil {
 		return fnerrors.Newf("failed to write token data: %w", err)
 	}
 
@@ -259,6 +274,20 @@ func DeleteStoredToken() error {
 	return nil
 }
 
+func HasKeychain() bool {
+	return Keychain != ""
+}
+
+var validKeychainName = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
+
+func keychainPath(configDir string) (string, error) {
+	if len(Keychain) == 0 || len(Keychain) > 63 || !validKeychainName.MatchString(Keychain) {
+		return "", fnerrors.New("invalid keychain name: must be 1-63 lowercase alphanumeric characters or hyphens, and cannot start or end with a hyphen")
+	}
+
+	return filepath.Join(configDir, "keychain", Keychain+".json"), nil
+}
+
 func loadWorkspaceToken(ctx context.Context, issue IssueShortTermFunc, target time.Time) (*Token, error) {
 	dir, err := dirs.Config()
 	if err != nil {
@@ -266,6 +295,13 @@ func loadWorkspaceToken(ctx context.Context, issue IssueShortTermFunc, target ti
 	}
 
 	p := filepath.Join(dir, tokenLoc())
+	if Keychain != "" {
+		p, err = keychainPath(dir)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	token, err := LoadTokenFromPath(ctx, issue, p, target)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
