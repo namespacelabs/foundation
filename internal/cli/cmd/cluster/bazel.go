@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
@@ -43,8 +44,9 @@ func NewBazelCmd() *cobra.Command {
 
 func newSetupCacheCmd() *cobra.Command {
 	var bazelRcPath, output, certPath string
-	var sendBuildEvents, useAbsoluteCredHelperPath bool
+	var sendBuildEvents, useAbsoluteCredHelperPath, static bool
 	var version int64
+	var staticDur time.Duration
 
 	return fncobra.Cmd(&cobra.Command{
 		Use:   "setup",
@@ -55,7 +57,9 @@ func newSetupCacheCmd() *cobra.Command {
 		flags.StringVar(&certPath, "cred_path", "", "If specified, write credentials to this directory. Using this flag also ensures stable file names for all emitted credentials.")
 		flags.BoolVar(&sendBuildEvents, "send_build_events", false, "If specified, send build events to the build event service.")
 		flags.BoolVar(&useAbsoluteCredHelperPath, "use_absolute_credentialhelper_path", false, "If specified, use an absolute path to the credential helper binary.")
+		flags.BoolVar(&static, "static", false, "If specified, use a static bearer token in --remote_header instead of a credential helper.")
 		flags.Int64Var(&version, "version", 1, "Which bazel version to use.")
+		flags.DurationVar(&staticDur, "static_token_duration", 4*time.Hour, "The minimum duration of the static token configured (requires --static).")
 
 		flags.MarkHidden("cred_path")
 		flags.MarkHidden("use_absolute_credentialhelper_path")
@@ -138,6 +142,22 @@ func newSetupCacheCmd() *cobra.Command {
 				Endpoint:                response.HttpsCacheEndpoint,
 				ExpiresAt:               response.ExpiresAt,
 				CredentialHelperDomains: response.CredentialHelperDomains,
+			}
+		}
+
+		if static {
+			if response.HttpsCacheEndpoint == "" {
+				return fnerrors.Newf("--static requires HTTPS cache endpoint but it was not provided")
+			}
+
+			token, err := fnapi.IssueToken(ctx, staticDur)
+			if err != nil {
+				return fnerrors.Newf("failed to issue bearer token: %w", err)
+			}
+
+			out = bazelSetup{
+				Endpoint:    response.HttpsCacheEndpoint,
+				StaticToken: token,
 			}
 		}
 
@@ -259,7 +279,11 @@ func toBazelConfig(ctx context.Context, out bazelSetup, useAbsoluteCredHelperPat
 		}
 	}
 
-	if len(out.CredentialHelperDomains) > 0 {
+	if out.StaticToken != "" {
+		if _, err := buffer.WriteString(fmt.Sprintf("build --remote_header=x-nsc-ingress-auth=Bearer\\ %s\n", out.StaticToken)); err != nil {
+			return nil, fnerrors.Newf("failed to append x-nsc-ingress-auth header: %w", err)
+		}
+	} else if len(out.CredentialHelperDomains) > 0 {
 		path, err := exec.LookPath(BazelCredHelperBinary)
 		if err != nil {
 			stdout := console.Stdout(ctx)
@@ -298,4 +322,5 @@ type bazelSetup struct {
 	ExpiresAt               *time.Time `json:"expires_at,omitempty"`
 	CredentialHelperDomains []string   `json:"credential_helper_domains,omitempty"`
 	BuildEventEndpoint      string     `json:"build_event_endpoint,omitempty"`
+	StaticToken             string     `json:"static_token,omitempty"`
 }
