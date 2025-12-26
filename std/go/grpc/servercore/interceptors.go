@@ -58,14 +58,24 @@ func OrderedServerInterceptors() []grpc.ServerOption {
 
 	var coreU []grpc.UnaryServerInterceptor
 	var coreS []grpc.StreamServerInterceptor
+	var opts []grpc.ServerOption
 	for _, key := range sorted {
 		reg := registrations[index[key]]
-		coreU = append(coreU, reg.Unary)
-		coreS = append(coreS, reg.Stream)
+		if reg.Unary != nil {
+			coreU = append(coreU, reg.Unary)
+		}
+
+		if reg.Stream != nil {
+			coreS = append(coreS, reg.Stream)
+		}
+
+		if reg.Handler != nil {
+			opts = append(opts, grpc.StatsHandler(reg.Handler))
+		}
 	}
 
-	return []grpc.ServerOption{
+	return append(opts,
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(coreS...)),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(coreU...)),
-	}
+	)
 }

@@ -17,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/k3s"
 	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/internal/providers/onepassword"
-	"namespacelabs.dev/foundation/internal/providers/teleport"
 	"namespacelabs.dev/foundation/internal/providers/vault"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
@@ -34,7 +33,6 @@ func RegisterProviders() {
 	artifactregistry.Register()
 	k3dp.Register()
 	k3s.Register()
-	teleport.Register()
 	nscloud.Register()
 	onepassword.Register()
 	vault.Register()

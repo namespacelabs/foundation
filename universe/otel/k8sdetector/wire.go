@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 )
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {

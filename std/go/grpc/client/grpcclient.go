@@ -8,19 +8,13 @@ import (
 	"os"
 	"time"
 
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 )
 
 func NewClient(target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
-	unary, streaming := interceptors.ClientInterceptors()
-
-	opts = append(opts,
-		grpc.WithStreamInterceptor(grpc_middleware.ChainStreamClient(streaming...)),
-		grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(unary...)),
-	)
+	opts = append(opts, interceptors.ClientInterceptors()...)
 
 	if svccfg := os.Getenv("FOUNDATION_GRPC_DEFAULT_SERVICE_CONFIG"); svccfg != "" {
 		opts = append(opts, grpc.WithDefaultServiceConfig(svccfg))

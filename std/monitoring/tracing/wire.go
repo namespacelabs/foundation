@@ -24,12 +24,13 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 	oteltrace "go.opentelemetry.io/otel/trace"
 	t "go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/stats"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/core/types"
 	"namespacelabs.dev/foundation/std/go/core"
@@ -117,7 +118,7 @@ func CreateResource(ctx context.Context, serverInfo *types.ServerInfo, detectors
 			semconv.ServiceNameKey.String(serverInfo.ServerName),
 			semconv.ServiceVersionKey.String(serverInfo.GetVcs().GetRevision()),
 			semconv.ServiceInstanceIDKey.String(instanceID),
-			semconv.DeploymentEnvironmentKey.String(serverInfo.EnvName),
+			semconv.DeploymentEnvironmentName(serverInfo.EnvName),
 			attribute.String("environment", serverInfo.EnvName),
 		),
 	)
@@ -175,56 +176,48 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 		serverResources.Add(closeable)
 	}
 
-	grpcFilter := func(*otelgrpc.InterceptorInfo) bool { return true } // By default we trace every gRPC method
+	grpcFilter := func(*stats.RPCTagInfo) bool { return true } // By default we trace every gRPC method
 	if skipStr := os.Getenv("FOUNDATION_GRPCTRACE_SKIP_METHODS"); skipStr != "" {
 		skipTraces := strings.Split(skipStr, ",")
-		grpcFilter = func(info *otelgrpc.InterceptorInfo) bool {
-			if info != nil {
-				if slices.Contains(skipTraces, info.Method) {
-					return false
-				}
-				if info.UnaryServerInfo != nil && slices.Contains(skipTraces, info.UnaryServerInfo.FullMethod) {
-					return false
-				}
-				if info.StreamServerInfo != nil && slices.Contains(skipTraces, info.StreamServerInfo.FullMethod) {
-					return false
-				}
+		grpcFilter = func(info *stats.RPCTagInfo) bool {
+			if info != nil && slices.Contains(skipTraces, info.FullMethodName) {
+				return false
 			}
+
 			return true
 		}
 	}
 
-	uni := otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
-		otelgrpc.WithInterceptorFilter(grpcFilter))
-	stream := otelgrpc.StreamServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
-		otelgrpc.WithInterceptorFilter(grpcFilter))
+	srvh := otelgrpc.NewServerHandler(
+		otelgrpc.WithTracerProvider(provider),
+		otelgrpc.WithPropagators(propagators),
+		otelgrpc.WithFilter(grpcFilter),
+	)
+
+	deps.Interceptors.HandlerForServer(srvh)
 
 	deps.Interceptors.ForServer(func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-		return uni(ctx, req, info, func(ctx context.Context, req any) (any, error) {
-			span := t.SpanFromContext(ctx)
-			if t, ok := ctx.Deadline(); ok {
-				span.SetAttributes(attribute.Int64("rpc.deadline_left_ms", time.Until(t).Milliseconds()))
-			}
+		if deadline, ok := ctx.Deadline(); ok {
+			t.SpanFromContext(ctx).SetAttributes(attribute.Int64("rpc.deadline_left_ms", time.Until(deadline).Milliseconds()))
+		}
 
-			return handler(ctx, req)
-		})
+		return handler(ctx, req)
 	}, func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		return stream(srv, ss, info, func(srv any, stream grpc.ServerStream) error {
-			span := t.SpanFromContext(stream.Context())
-			if t, ok := ctx.Deadline(); ok {
-				span.SetAttributes(attribute.Int64("rpc.deadline_left_ms", time.Until(t).Milliseconds()))
-			}
+		ctx := ss.Context()
+		if deadline, ok := ctx.Deadline(); ok {
+			t.SpanFromContext(ctx).SetAttributes(attribute.Int64("rpc.deadline_left_ms", time.Until(deadline).Milliseconds()))
+		}
 
-			return handler(srv, stream)
-		})
+		return handler(srv, ss)
 	})
 
-	deps.Interceptors.ForClient(
-		otelgrpc.UnaryClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
-			otelgrpc.WithInterceptorFilter(grpcFilter)),
-		otelgrpc.StreamClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
-			otelgrpc.WithInterceptorFilter(grpcFilter)),
+	clih := otelgrpc.NewClientHandler(
+		otelgrpc.WithTracerProvider(provider),
+		otelgrpc.WithPropagators(propagators),
+		otelgrpc.WithFilter(grpcFilter),
 	)
+
+	deps.Interceptors.HandlerForClient(clih)
 
 	httpFilter := func(r *http.Request) bool { return true } // By default we trace every HTTP path
 	if skipStr := os.Getenv("FOUNDATION_HTTP_TRACE_SKIP_PATHS"); skipStr != "" {

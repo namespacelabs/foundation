@@ -8,7 +8,9 @@ import (
 	"context"
 	"sync"
 
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/stats"
 	"namespacelabs.dev/foundation/std/go/core"
 )
 
@@ -23,6 +25,7 @@ var (
 		registrations []Registration // Each index of `unary` and `streaming` maps back to the same index `Registration`.
 		unary         []grpc.UnaryClientInterceptor
 		streaming     []grpc.StreamClientInterceptor
+		handlers      []stats.Handler
 	}
 )
 
@@ -33,14 +36,15 @@ type Registration struct {
 }
 
 type Registered struct {
-	Name   string
-	After  []string
-	Unary  grpc.UnaryServerInterceptor
-	Stream grpc.StreamServerInterceptor
+	Name    string
+	After   []string
+	Unary   grpc.UnaryServerInterceptor
+	Stream  grpc.StreamServerInterceptor
+	Handler stats.Handler
 }
 
 func (r Registration) ForClient(u grpc.UnaryClientInterceptor, s grpc.StreamClientInterceptor) {
-	core.AssertNotRunning("AddServerInterceptor")
+	core.AssertNotRunning("AddClientInterceptor")
 
 	interceptorsMu.Lock()
 	defer interceptorsMu.Unlock()
@@ -48,6 +52,16 @@ func (r Registration) ForClient(u grpc.UnaryClientInterceptor, s grpc.StreamClie
 	clientInterceptors.registrations = append(clientInterceptors.registrations, r)
 	clientInterceptors.unary = append(clientInterceptors.unary, u)
 	clientInterceptors.streaming = append(clientInterceptors.streaming, s)
+}
+
+func (r Registration) HandlerForClient(u stats.Handler) {
+	core.AssertNotRunning("AddServerInterceptor")
+
+	interceptorsMu.Lock()
+	defer interceptorsMu.Unlock()
+
+	clientInterceptors.registrations = append(clientInterceptors.registrations, r)
+	clientInterceptors.handlers = append(clientInterceptors.handlers, u)
 }
 
 func (r Registration) ForServer(u grpc.UnaryServerInterceptor, s grpc.StreamServerInterceptor) {
@@ -64,19 +78,41 @@ func (r Registration) ForServer(u grpc.UnaryServerInterceptor, s grpc.StreamServ
 	})
 }
 
+func (r Registration) HandlerForServer(u stats.Handler) {
+	core.AssertNotRunning("AddServerInterceptor")
+
+	interceptorsMu.Lock()
+	defer interceptorsMu.Unlock()
+
+	serverInterceptors.registrations = append(serverInterceptors.registrations, Registered{
+		Name:    r.name,
+		After:   r.after,
+		Handler: u,
+	})
+}
+
 func ServerInterceptors() []Registered {
 	interceptorsMu.RLock()
 	defer interceptorsMu.RUnlock()
 	return serverInterceptors.registrations
 }
 
-func ClientInterceptors() ([]grpc.UnaryClientInterceptor, []grpc.StreamClientInterceptor) {
+func ClientInterceptors() []grpc.DialOption {
 	interceptorsMu.RLock()
 	defer interceptorsMu.RUnlock()
 
-	unary := clientInterceptors.unary
-	streaming := clientInterceptors.streaming
-	return unary, streaming
+	var opts []grpc.DialOption
+
+	for _, h := range clientInterceptors.handlers {
+		opts = append(opts, grpc.WithStatsHandler(h))
+	}
+
+	opts = append(opts,
+		grpc.WithStreamInterceptor(grpc_middleware.ChainStreamClient(clientInterceptors.streaming...)),
+		grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(clientInterceptors.unary...)),
+	)
+
+	return opts
 }
 
 func ProvideInterceptorRegistration(ctx context.Context, r *InterceptorRegistration) (Registration, error) {
