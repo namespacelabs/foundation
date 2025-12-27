@@ -234,6 +234,8 @@ func Annotate(hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions [
 
 	allowedHeaders := []string{"DNT", "Keep-Alive", "User-Agent", "X-Requested-With", "If-Modified-Since", "Cache-Control", "Content-Type", "Range", "Authorization"}
 	allowedHeaders = append(allowedHeaders, "Connect-Protocol-Version")
+	allowedHeaders = append(allowedHeaders, "x-namespace-sid")
+	allowedHeaders = append(allowedHeaders, "x-namespace-app-version")
 
 	annotations["nginx.ingress.kubernetes.io/cors-allow-headers"] = strings.Join(allowedHeaders, ",")
 
