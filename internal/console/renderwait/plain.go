@@ -32,6 +32,8 @@ func (rwb logRenderer) Loop(ctx context.Context) {
 
 	l := console.Output(ctx, "rwb")
 
+	lastStage := map[string]orchestration.Event_Stage{}
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -42,8 +44,27 @@ func (rwb logRenderer) Loop(ctx context.Context) {
 				return
 			}
 
-			fmt.Fprintf(l, "waiting (stage=%v alreadyExisted=%v) for id %s category %s title %s impl %v\n",
-				ev.Stage, ev.AlreadyExisted, ev.ResourceId, ev.Category, title(ev), string(ev.ImplMetadata))
+			prevStage := lastStage[ev.ResourceId]
+			lastStage[ev.ResourceId] = ev.Stage
+
+			if ev.Stage == prevStage && ev.Stage != orchestration.Event_DONE {
+				continue
+			}
+
+			switch ev.Stage {
+			case orchestration.Event_WAITING:
+				fmt.Fprintf(l, "waiting for %s\n", title(ev))
+			case orchestration.Event_COMMITTED:
+				fmt.Fprintf(l, "committed %s\n", title(ev))
+			case orchestration.Event_RUNNING:
+				fmt.Fprintf(l, "running %s\n", title(ev))
+			case orchestration.Event_DONE:
+				if ev.AlreadyExisted {
+					fmt.Fprintf(l, "ready %s (no update required)\n", title(ev))
+				} else {
+					fmt.Fprintf(l, "ready %s\n", title(ev))
+				}
+			}
 		}
 	}
 }

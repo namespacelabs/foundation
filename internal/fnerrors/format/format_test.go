@@ -18,9 +18,9 @@ func TestErrorFormatting(t *testing.T) {
 		expected string
 	}{
 		{err: fnerrors.UsageError("Run 'foobar'.", "It expired."),
-			expected: "Failed: It expired.\n\n  Run 'foobar'.\n"},
+			expected: "\n========================================\nFailed: It expired.\n\n  Run 'foobar'.\n========================================\n"},
 		{err: fnerrors.Newf("wrapping it: %w", fnerrors.UsageError("Run 'foobar'.", "It expired.")),
-			expected: "Failed: wrapping it: It expired.\n\n  Run 'foobar'.\n"},
+			expected: "\n========================================\nFailed: wrapping it: It expired.\n\n  Run 'foobar'.\n========================================\n"},
 	}
 
 	for _, c := range cases {

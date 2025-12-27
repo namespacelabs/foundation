@@ -118,7 +118,11 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 			ch <- ev
 		}
 
-		return client.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(c context.Context) (done bool, err error) {
+		var lastReplicas, lastReadyReplicas, lastUpdatedReplicas int32
+		var lastObservedGeneration int64
+		var lastWaitStatus []*orchestration.Event_WaitStatus
+
+		pollErr := client.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(c context.Context) (done bool, err error) {
 			var observedGeneration int64
 			var readyReplicas, replicas, updatedReplicas int32
 
@@ -206,9 +210,15 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 				return false, fnerrors.InternalError("%s: unsupported resource type for watching", w.GroupVersionKind)
 			}
 
+			lastReplicas = replicas
+			lastReadyReplicas = readyReplicas
+			lastUpdatedReplicas = updatedReplicas
+			lastObservedGeneration = observedGeneration
+
 			if podSelector != nil {
 				if status, err := podWaitingStatus(c, cli, w.Namespace, podSelector); err == nil {
 					ev.WaitStatus = status
+					lastWaitStatus = status
 				}
 			}
 
@@ -231,7 +241,53 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 
 			return ev.Ready == orchestration.Event_READY, nil
 		})
+
+		if pollErr != nil {
+			return formatWaitError(pollErr, w.GroupVersionKind, w.Namespace, w.Name, w.Scope,
+				lastReplicas, lastReadyReplicas, lastUpdatedReplicas, lastObservedGeneration, w.ExpectedGen, lastWaitStatus)
+		}
+		return nil
 	})
+}
+
+func formatWaitError(err error, gvk kubeschema.GroupVersionKind, namespace, name string, scope schema.PackageName,
+	replicas, readyReplicas, updatedReplicas int32, observedGen, expectedGen int64, waitStatus []*orchestration.Event_WaitStatus) error {
+
+	kind := strings.ToLower(gvk.Kind)
+	resourceID := scope.String()
+	if resourceID == "" {
+		resourceID = fmt.Sprintf("%s/%s", namespace, name)
+	}
+
+	var statusDetails string
+	if replicas > 0 {
+		statusDetails = fmt.Sprintf("ready=%d/%d, updated=%d/%d", readyReplicas, replicas, updatedReplicas, replicas)
+	} else {
+		statusDetails = "no replicas found"
+	}
+
+	if expectedGen > 0 && observedGen != expectedGen {
+		statusDetails += fmt.Sprintf(", generation=%d (expected %d)", observedGen, expectedGen)
+	}
+
+	var podDetails string
+	for _, ws := range waitStatus {
+		if ws.Description != "" {
+			if podDetails != "" {
+				podDetails += "; "
+			}
+			podDetails += ws.Description
+		}
+	}
+
+	msg := fmt.Sprintf("%s %q: timed out waiting for rollout to complete\n  Status: %s", kind, resourceID, statusDetails)
+	if podDetails != "" {
+		msg += fmt.Sprintf("\n  Pods: %s", podDetails)
+	}
+	msg += fmt.Sprintf("\n  Expected: all %d replicas ready and updated", replicas)
+	msg += fmt.Sprintf("\n  Help: kubectl -n %s describe %s %s", namespace, kind, name)
+
+	return fnerrors.New(msg)
 }
 
 func AreReplicasReady(replicas, ready, updated int32) bool {
