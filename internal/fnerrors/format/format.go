@@ -59,6 +59,9 @@ func Format(w io.Writer, err error, args ...FormatOption) {
 	for _, opt := range args {
 		opt(opts)
 	}
+
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, opts.style.ErrorHeader.Apply("========================================"))
 	fmt.Fprint(w, opts.style.ErrorHeader.Apply("Failed: "))
 
 	if opts.tracing {
@@ -109,6 +112,8 @@ func Format(w io.Writer, err error, args ...FormatOption) {
 	format(w, cause, opts)
 	// XXX TODO write stacktrace out if requested.
 	// writeSourceFileAndLine(w, cause, opts.style)
+
+	fmt.Fprintln(w, opts.style.ErrorHeader.Apply("========================================"))
 }
 
 func writeSourceFileAndLine(w io.Writer, err error, colors colors.Style) {
