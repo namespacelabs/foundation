@@ -245,7 +245,9 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 			otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
 				return fmt.Sprintf("%s %s", r.Method, r.URL.Path)
 			}),
-			otelhttp.WithFilter(httpFilter))
+			otelhttp.WithFilter(httpFilter),
+			otelhttp.WithPropagators(SafePropagators()),
+		)
 	})
 
 	global.mu.Lock()
@@ -341,4 +343,8 @@ func MustTracer(pkg *core.Package, p DeferredTracerProvider) oteltrace.Tracer {
 
 func Propagators() propagation.TextMapPropagator {
 	return propagation.NewCompositeTextMapPropagator(NamespaceTraceParent{}, propagation.TraceContext{}, propagation.Baggage{})
+}
+
+func SafePropagators() propagation.TextMapPropagator {
+	return propagation.NewCompositeTextMapPropagator(NamespaceTraceParent{})
 }
