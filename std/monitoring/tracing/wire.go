@@ -49,8 +49,6 @@ var (
 		tracerProvider  t.TracerProvider // We don't use otel's global, to ensure that dependency order is respected.
 	}
 
-	propagators = propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{})
-
 	instanceID = uuid.New().String()
 )
 
@@ -190,7 +188,7 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 
 	srvh := otelgrpc.NewServerHandler(
 		otelgrpc.WithTracerProvider(provider),
-		otelgrpc.WithPropagators(propagators),
+		otelgrpc.WithPropagators(Propagators()),
 		otelgrpc.WithFilter(grpcFilter),
 	)
 
@@ -213,7 +211,7 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 
 	clih := otelgrpc.NewClientHandler(
 		otelgrpc.WithTracerProvider(provider),
-		otelgrpc.WithPropagators(propagators),
+		otelgrpc.WithPropagators(Propagators()),
 		otelgrpc.WithFilter(grpcFilter),
 	)
 
@@ -339,4 +337,8 @@ func MustTracer(pkg *core.Package, p DeferredTracerProvider) oteltrace.Tracer {
 	}
 
 	return t
+}
+
+func Propagators() propagation.TextMapPropagator {
+	return propagation.NewCompositeTextMapPropagator(NamespaceTraceParent{}, propagation.TraceContext{}, propagation.Baggage{})
 }
