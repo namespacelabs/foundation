@@ -15,6 +15,8 @@ import (
 	"path/filepath"
 	"time"
 
+	bazelv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/integrations/bazel/v1beta"
+	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -22,7 +24,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
@@ -66,12 +67,22 @@ func newSetupCacheCmd() *cobra.Command {
 		flags.MarkHidden("send_build_events")
 		flags.MarkHidden("version")
 	}).Do(func(ctx context.Context) error {
-		response, err := api.EnsureBazelCache(ctx, api.Methods, "", version)
+		client, err := fnapi.NewBazelCacheServiceClient(ctx)
 		if err != nil {
 			return err
 		}
 
-		if response.CacheEndpoint == "" {
+		req := connect.NewRequest(&bazelv1beta.EnsureBazelCacheRequest{
+			Version: version,
+		})
+
+		resp, err := client.EnsureBazelCache(ctx, req)
+		if err != nil {
+			return fnerrors.Newf("failed to provision bazel cache: %w", err)
+		}
+
+		response := resp.Msg
+		if response.GetCacheEndpoint() == "" {
 			return fnerrors.Newf("did not receive a valid cache endpoint")
 		}
 
@@ -81,14 +92,20 @@ func newSetupCacheCmd() *cobra.Command {
 			}
 		}
 
-		out := bazelSetup{
-			Endpoint:  response.CacheEndpoint,
-			ExpiresAt: response.ExpiresAt,
+		var expiresAt *time.Time
+		if response.GetExpiresAt() != nil {
+			t := response.GetExpiresAt().AsTime()
+			expiresAt = &t
 		}
 
-		if len(response.ServerCaPem) > 0 {
+		out := bazelSetup{
+			Endpoint:  response.GetCacheEndpoint(),
+			ExpiresAt: expiresAt,
+		}
+
+		if len(response.GetServerCaPem()) > 0 {
 			if certPath == "" {
-				loc, err := writeTempFile(bazelCachePathBase, "*.cert", []byte(response.ServerCaPem))
+				loc, err := writeTempFile(bazelCachePathBase, "*.cert", []byte(response.GetServerCaPem()))
 				if err != nil {
 					return fnerrors.Newf("failed to create temp file: %w", err)
 				}
@@ -97,15 +114,15 @@ func newSetupCacheCmd() *cobra.Command {
 			} else {
 				out.ServerCaCert = filepath.Join(certPath, "server_ca.cert")
 
-				if err := writeFile(out.ServerCaCert, []byte(response.ServerCaPem)); err != nil {
+				if err := writeFile(out.ServerCaCert, []byte(response.GetServerCaPem())); err != nil {
 					return err
 				}
 			}
 		}
 
-		if len(response.ClientCertPem) > 0 {
+		if len(response.GetClientCertPem()) > 0 {
 			if certPath == "" {
-				loc, err := writeTempFile(bazelCachePathBase, "*.cert", []byte(response.ClientCertPem))
+				loc, err := writeTempFile(bazelCachePathBase, "*.cert", []byte(response.GetClientCertPem()))
 				if err != nil {
 					return fnerrors.Newf("failed to create temp file: %w", err)
 				}
@@ -114,15 +131,15 @@ func newSetupCacheCmd() *cobra.Command {
 			} else {
 				out.ClientCert = filepath.Join(certPath, "client.cert")
 
-				if err := writeFile(out.ClientCert, []byte(response.ClientCertPem)); err != nil {
+				if err := writeFile(out.ClientCert, []byte(response.GetClientCertPem())); err != nil {
 					return err
 				}
 			}
 		}
 
-		if len(response.ClientKeyPem) > 0 {
+		if len(response.GetClientKeyPem()) > 0 {
 			if certPath == "" {
-				loc, err := writeTempFile(bazelCachePathBase, "*.key", []byte(response.ClientKeyPem))
+				loc, err := writeTempFile(bazelCachePathBase, "*.key", []byte(response.GetClientKeyPem()))
 				if err != nil {
 					return fnerrors.Newf("failed to create temp file: %w", err)
 				}
@@ -131,22 +148,22 @@ func newSetupCacheCmd() *cobra.Command {
 			} else {
 				out.ClientKey = filepath.Join(certPath, "client.key")
 
-				if err := writeFile(out.ClientKey, []byte(response.ClientKeyPem)); err != nil {
+				if err := writeFile(out.ClientKey, []byte(response.GetClientKeyPem())); err != nil {
 					return err
 				}
 			}
 		}
 
-		if len(response.CredentialHelperDomains) > 0 {
+		if len(response.GetCredentialHelperDomains()) > 0 {
 			out = bazelSetup{
-				Endpoint:                response.HttpsCacheEndpoint,
-				ExpiresAt:               response.ExpiresAt,
-				CredentialHelperDomains: response.CredentialHelperDomains,
+				Endpoint:                response.GetHttpsCacheEndpoint(),
+				ExpiresAt:               expiresAt,
+				CredentialHelperDomains: response.GetCredentialHelperDomains(),
 			}
 		}
 
 		if static {
-			if response.HttpsCacheEndpoint == "" {
+			if response.GetHttpsCacheEndpoint() == "" {
 				return fnerrors.Newf("--static requires HTTPS cache endpoint but it was not provided")
 			}
 
@@ -156,21 +173,21 @@ func newSetupCacheCmd() *cobra.Command {
 			}
 
 			out = bazelSetup{
-				Endpoint:    response.HttpsCacheEndpoint,
+				Endpoint:    response.GetHttpsCacheEndpoint(),
 				StaticToken: token,
 			}
 		}
 
 		if sendBuildEvents {
-			if response.BuildEventEndpoint == "" {
+			if response.GetBuildEventEndpoint() == "" {
 				return fnerrors.Newf("did not receive a valid build events endpoint but was asked to send build events")
 			}
 
-			if len(response.CredentialHelperDomains) == 0 {
+			if len(response.GetCredentialHelperDomains()) == 0 {
 				return fnerrors.Newf("the credential helper is not enabled but it is required to send build events")
 			}
 
-			out.BuildEventEndpoint = response.BuildEventEndpoint
+			out.BuildEventEndpoint = response.GetBuildEventEndpoint()
 		}
 
 		// If set, we always generate a bazelrc file.
