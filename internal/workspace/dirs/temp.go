@@ -42,3 +42,18 @@ func CreateUserTempDir(dir, pattern string) (string, error) {
 
 	return os.MkdirTemp(tmpDir, pattern)
 }
+
+// CreateSecureTemp creates a temporary file in the system's temp directory
+// (e.g., /tmp on Unix). These files are automatically cleaned up on system
+// reboot, making them suitable for storing sensitive data like credentials.
+func CreateSecureTemp(dir, pattern string) (*os.File, error) {
+	tmpDir := filepath.Join(os.TempDir(), "namespace", dir)
+
+	// Make sure that the temp directory has permissions locked to the
+	// owning user.
+	if err := os.MkdirAll(tmpDir, 0700); err != nil {
+		return nil, err
+	}
+
+	return os.CreateTemp(tmpDir, pattern)
+}
