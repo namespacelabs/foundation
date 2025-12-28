@@ -467,11 +467,6 @@ type GetKubernetesConfigResponse struct {
 	Kubeconfig string `json:"kubeconfig,omitempty"`
 }
 
-type EnsureBazelCacheRequest struct {
-	Key     string `json:"key,omitempty"`
-	Version int64  `json:"version,omitempty"`
-}
-
 type MakeImagePublicRequest struct {
 	Repository string     `json:"repository,omitempty"`
 	Digest     string     `json:"digest,omitempty"`
@@ -492,18 +487,6 @@ type PublicImage struct {
 
 type MakeImagePublicResponse struct {
 	PublicImage *PublicImage `json:"publicImage,omitempty"`
-}
-
-type EnsureBazelCacheResponse struct {
-	CacheEndpoint           string     `json:"cache_endpoint,omitempty"`
-	HttpsMtlsCacheEndpoint  string     `json:"https_mtls_cache_endpoint,omitempty"`
-	HttpsCacheEndpoint      string     `json:"https_cache_endpoint,omitempty"`
-	ServerCaPem             string     `json:"server_ca_pem,omitempty"`
-	ClientCertPem           string     `json:"client_cert_pem,omitempty"`
-	ClientKeyPem            string     `json:"client_key_pem,omitempty"`
-	ExpiresAt               *time.Time `json:"expires_at,omitempty"`
-	CredentialHelperDomains []string   `json:"credential_helper_domains,omitempty"`
-	BuildEventEndpoint      string     `json:"build_event_endpoint,omitempty"`
 }
 
 type GetProfileResponse struct {

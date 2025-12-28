@@ -9,14 +9,16 @@ import (
 	"fmt"
 	"os"
 
+	bazelv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/integrations/bazel/v1beta"
+	"connectrpc.com/connect"
 	toml "github.com/pelletier/go-toml/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
 const pantsCachePathBase = "pantscache"
@@ -44,23 +46,33 @@ func newSetupPantsCacheCmd() *cobra.Command {
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		flags.StringVar(&pantsTomlPath, "pants-toml", "", "If specified, write the toml to this path.")
 	}).Do(func(ctx context.Context) error {
-		response, err := api.EnsureBazelCache(ctx, api.Methods, "", 1)
+		client, err := fnapi.NewBazelCacheServiceClient(ctx)
 		if err != nil {
 			return err
 		}
 
-		if response.CacheEndpoint == "" {
+		req := connect.NewRequest(&bazelv1beta.EnsureBazelCacheRequest{
+			Version: 1,
+		})
+
+		resp, err := client.EnsureBazelCache(ctx, req)
+		if err != nil {
+			return fnerrors.Newf("failed to provision bazel cache: %w", err)
+		}
+
+		response := resp.Msg
+		if response.GetCacheEndpoint() == "" {
 			return fnerrors.Newf("did not receive a valid cache endpoint")
 		}
 
 		globalCfg := map[string]any{
 			"remote_cache_read":    true,
 			"remote_cache_write":   true,
-			"remote_store_address": response.CacheEndpoint,
+			"remote_store_address": response.GetCacheEndpoint(),
 		}
 
-		if len(response.ServerCaPem) > 0 {
-			loc, err := writeTempFile(pantsCachePathBase, "*.cert", []byte(response.ServerCaPem))
+		if len(response.GetServerCaPem()) > 0 {
+			loc, err := writeTempFile(pantsCachePathBase, "*.cert", []byte(response.GetServerCaPem()))
 			if err != nil {
 				return fnerrors.Newf("failed to create temp file: %w", err)
 			}
@@ -68,8 +80,8 @@ func newSetupPantsCacheCmd() *cobra.Command {
 			globalCfg["remote_ca_certs_path"] = loc
 		}
 
-		if len(response.ClientCertPem) > 0 {
-			loc, err := writeTempFile(pantsCachePathBase, "*.cert", []byte(response.ClientCertPem))
+		if len(response.GetClientCertPem()) > 0 {
+			loc, err := writeTempFile(pantsCachePathBase, "*.cert", []byte(response.GetClientCertPem()))
 			if err != nil {
 				return fnerrors.Newf("failed to create temp file: %w", err)
 			}
@@ -77,8 +89,8 @@ func newSetupPantsCacheCmd() *cobra.Command {
 			globalCfg["remote_client_certs_path"] = loc
 		}
 
-		if len(response.ClientKeyPem) > 0 {
-			loc, err := writeTempFile(pantsCachePathBase, "*.key", []byte(response.ClientKeyPem))
+		if len(response.GetClientKeyPem()) > 0 {
+			loc, err := writeTempFile(pantsCachePathBase, "*.key", []byte(response.GetClientKeyPem()))
 			if err != nil {
 				return fnerrors.Newf("failed to create temp file: %w", err)
 			}
