@@ -25,7 +25,7 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Run gofmt (goimports)
-        run: go run golang.org/x/tools/cmd/goimports -d --format-only .
+        run: go run golang.org/x/tools/cmd/goimports -d --format-only $(find . -name '*.go' ! -name '*.pb.go' ! -name 'deps.fn.go' -type f)
 
   vet:
     runs-on: nscloud-ubuntu-22.04-amd64-2x8
