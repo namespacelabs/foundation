@@ -85,13 +85,18 @@ func WithHTTPMux(httpMux *mux.Router, middleware ...mux.MiddlewareFunc) *mux.Rou
 	})
 
 	httpMux.Use(hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
-		hlog.FromRequest(r).Info().
+		ev := hlog.FromRequest(r).Info().
 			Str("method", r.Method).
+			Str("host", r.Host).
+			Str("remote_addr", r.RemoteAddr).
 			Stringer("url", r.URL).
 			Int("status", status).
 			Int("size", size).
-			Dur("duration", duration).
-			Send()
+			Dur("duration", duration)
+		if r.ContentLength >= 0 {
+			ev = ev.Int64("content_length", r.ContentLength)
+		}
+		ev.Send()
 	}))
 
 	return httpMux
