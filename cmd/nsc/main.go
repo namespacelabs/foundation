@@ -10,6 +10,7 @@ import (
 	"io"
 	"time"
 
+	iamv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/iam/v1beta"
 	"github.com/muesli/reflow/wordwrap"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
@@ -76,6 +77,14 @@ func renderLine(w io.Writer, style colors.Style, t time.Time, li consolesink.Ren
 	return ""
 }
 
+func formatPermission(perm *iamv1beta.Access) string {
+	if perm.GetResourceId() != "" {
+		return fmt.Sprintf("%s:%s on %s", perm.GetResourceType(), perm.GetAction(), perm.GetResourceId())
+	}
+
+	return fmt.Sprintf("%s:%s", perm.GetResourceType(), perm.GetAction())
+}
+
 func formatErr(out io.Writer, style colors.Style, err error) {
 	st, _ := unwrapStatus(err)
 
@@ -106,7 +115,24 @@ func formatErr(out io.Writer, style colors.Style, err error) {
 
 	switch st.Code() {
 	case codes.PermissionDenied:
-		fmt.Fprintf(ww, "it seems that's not allowed. We got: %s\n", msg)
+		x, _ := hasDetail(st, &iamv1beta.PermissionDeniedError{})
+
+		// x is nil if the detail is missing.
+		switch len(x.GetMissingAccessPermissions()) {
+		case 0:
+			fmt.Fprintf(ww, "it seems that's not allowed. We got: %s\n", msg)
+
+		case 1:
+			permStr := formatPermission(x.MissingAccessPermissions[0])
+			fmt.Fprintf(ww, "that's not allowed. You're missing the permission %s.\n", style.CommentHighlight.Apply(permStr))
+
+		default:
+			fmt.Fprintf(ww, "that's not allowed. You're missing the following permissions:\n")
+			for _, perm := range x.MissingAccessPermissions {
+				permStr := formatPermission(perm)
+				fmt.Fprintf(ww, "  • %s\n", style.CommentHighlight.Apply(permStr))
+			}
+		}
 
 		if rid != nil {
 			fmt.Fprintln(ww)
