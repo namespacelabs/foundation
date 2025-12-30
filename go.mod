@@ -5,7 +5,7 @@ go 1.24.4
 require (
 	buf.build/gen/go/namespace/cloud/connectrpc/go v1.19.1-20251227235151-4df0344e4016.2
 	buf.build/gen/go/namespace/cloud/grpc/go v1.6.0-20251207125149-931ce9589bd8.1
-	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20251227235151-4df0344e4016.1
+	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20251230122740-32f3b2d49460.1
 	cloud.google.com/go/artifactregistry v1.14.7
 	cloud.google.com/go/container v1.31.0
 	connectrpc.com/connect v1.19.1
