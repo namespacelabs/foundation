@@ -48,6 +48,8 @@ message Server {
 
     string image_ref = 5;  // Only set for current.
 
+    TelemetryResource telemetry_resource = 8;
+
     message Port {
         string name = 1;
         int32  port = 2;
@@ -80,6 +82,10 @@ message Server {
             string kind = 2;
         }
     }
+}
+
+message TelemetryResource {
+    string service_name = 1;
 }
 
 message BuildVCS {

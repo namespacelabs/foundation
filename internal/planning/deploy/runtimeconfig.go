@@ -143,6 +143,12 @@ func makeServerConfig(stack *planning.StackWithIngress, srv planning.PlannedServ
 		current.InternalEndpoint = append(current.InternalEndpoint, ie)
 	}
 
+	if server.TelemetryResource != nil {
+		current.TelemetryResource = &runtime.TelemetryResource{
+			ServiceName: server.TelemetryResource.ServiceName,
+		}
+	}
+
 	return current
 }
 

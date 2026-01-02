@@ -98,11 +98,12 @@ func initializedData() data {
 func ProvideServerInfo(ctx context.Context, _ *types.ServerInfoArgs) (*types.ServerInfo, error) {
 	data := initializedData()
 	return &types.ServerInfo{
-		ServerName:     data.serverName,
-		EnvName:        data.rt.Environment.Name,
-		EnvPurpose:     data.rt.Environment.Purpose,
-		Vcs:            data.rtVcs,
-		SecretChecksum: data.rtSecretChecksums,
+		ServerName:        data.serverName,
+		EnvName:           data.rt.Environment.Name,
+		EnvPurpose:        data.rt.Environment.Purpose,
+		Vcs:               data.rtVcs,
+		SecretChecksum:    data.rtSecretChecksums,
+		TelemetryResource: data.rt.GetCurrent().GetTelemetryResource(),
 	}, nil
 }
 

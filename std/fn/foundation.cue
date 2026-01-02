@@ -137,6 +137,10 @@ _#Node: {
 		}
 	}
 
+	resource?: {
+		"service.name"?: string
+	}
+
 	#ServiceSpec: {
 		name?:         string
 		label?:        string

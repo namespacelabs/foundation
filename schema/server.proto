@@ -158,6 +158,11 @@ message ServerFragment {
     UpdateStrategy             update_strategy    = 17;
     SpreadConstraints          spread_constraints = 18;
     string                     priority_class     = 19;
+    TelemetryResource          telemetry_resource = 20;
+}
+
+message TelemetryResource {
+    string service_name = 1;
 }
 
 message Listener {

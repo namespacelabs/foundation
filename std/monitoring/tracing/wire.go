@@ -105,6 +105,11 @@ func ProvideDetector(_ context.Context, args *DetectorArgs, _ ExtensionDeps) (De
 }
 
 func CreateResource(ctx context.Context, serverInfo *types.ServerInfo, detectors []resource.Detector) (*resource.Resource, error) {
+	serviceName := serverInfo.ServerName
+	if serverInfo.GetTelemetryResource().GetServiceName() != "" {
+		serviceName = serverInfo.GetTelemetryResource().GetServiceName()
+	}
+
 	return resource.New(ctx,
 		resource.WithSchemaURL(semconv.SchemaURL),
 		resource.WithOS(),
@@ -113,7 +118,7 @@ func CreateResource(ctx context.Context, serverInfo *types.ServerInfo, detectors
 		resource.WithProcessRuntimeDescription(),
 		resource.WithDetectors(detectors...),
 		resource.WithAttributes(
-			semconv.ServiceNameKey.String(serverInfo.ServerName),
+			semconv.ServiceNameKey.String(serviceName),
 			semconv.ServiceVersionKey.String(serverInfo.GetVcs().GetRevision()),
 			semconv.ServiceInstanceIDKey.String(instanceID),
 			semconv.DeploymentEnvironmentName(serverInfo.EnvName),

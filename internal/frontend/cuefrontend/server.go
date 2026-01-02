@@ -38,6 +38,7 @@ type cueServer struct {
 	Binary      interface{}                         `json:"binary"` // Polymorphic: either package name, or cueServerBinary.
 	Extensions  []string                            `json:"extensions,omitempty"`
 	Listeners   map[string]CueListenerConfiguration `json:"listeners,omitempty"`
+	Resource    map[string]string                   `json:"resource,omitempty"`
 
 	// XXX this should be somewhere else.
 	URLMap []cueURLMapEntry `json:"urlmap"`
@@ -224,6 +225,12 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 		}
 
 		out.Self.Listener = append(out.Self.Listener, l)
+	}
+
+	if serviceName, ok := bits.Resource["service.name"]; ok && serviceName != "" {
+		out.Self.TelemetryResource = &schema.TelemetryResource{
+			ServiceName: serviceName,
+		}
 	}
 
 	if err := fncue.WalkAttrs(parent.Val, func(v cue.Value, key, value string) error {
