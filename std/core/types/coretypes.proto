@@ -23,5 +23,7 @@ message ServerInfo {
 
     repeated foundation.schema.runtime.SecretChecksum secret_checksum = 6;
 
+    foundation.schema.runtime.TelemetryResource telemetry_resource = 7;
+
     reserved 3;
 }
