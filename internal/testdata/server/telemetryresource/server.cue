@@ -10,6 +10,8 @@ server: fn.#Server & {
 	}
 
 	import: [
+		"namespacelabs.dev/foundation/std/grpc/logging",
+		"namespacelabs.dev/foundation/std/monitoring/tracing",
 		"namespacelabs.dev/foundation/internal/testdata/service/telemetryinfo",
 	]
 }

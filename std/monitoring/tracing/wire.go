@@ -197,22 +197,23 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 		otelgrpc.WithFilter(grpcFilter),
 	)
 
-	deps.Interceptors.HandlerForServer(srvh)
+	deps.Interceptors.ServerBuilder().
+		WithHandler(srvh).
+		WithInterceptors(func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+			if deadline, ok := ctx.Deadline(); ok {
+				t.SpanFromContext(ctx).SetAttributes(attribute.Int64("rpc.deadline_left_ms", time.Until(deadline).Milliseconds()))
+			}
 
-	deps.Interceptors.ForServer(func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-		if deadline, ok := ctx.Deadline(); ok {
-			t.SpanFromContext(ctx).SetAttributes(attribute.Int64("rpc.deadline_left_ms", time.Until(deadline).Milliseconds()))
-		}
+			return handler(ctx, req)
+		}, func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+			ctx := ss.Context()
+			if deadline, ok := ctx.Deadline(); ok {
+				t.SpanFromContext(ctx).SetAttributes(attribute.Int64("rpc.deadline_left_ms", time.Until(deadline).Milliseconds()))
+			}
 
-		return handler(ctx, req)
-	}, func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		ctx := ss.Context()
-		if deadline, ok := ctx.Deadline(); ok {
-			t.SpanFromContext(ctx).SetAttributes(attribute.Int64("rpc.deadline_left_ms", time.Until(deadline).Milliseconds()))
-		}
-
-		return handler(srv, ss)
-	})
+			return handler(srv, ss)
+		}).
+		Register()
 
 	clih := otelgrpc.NewClientHandler(
 		otelgrpc.WithTracerProvider(provider),

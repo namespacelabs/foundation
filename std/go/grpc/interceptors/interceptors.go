@@ -6,6 +6,7 @@ package interceptors
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -43,6 +44,13 @@ type Registered struct {
 	Handler stats.Handler
 }
 
+type ServerRegistrationBuilder struct {
+	r       Registration
+	unary   grpc.UnaryServerInterceptor
+	stream  grpc.StreamServerInterceptor
+	handler stats.Handler
+}
+
 func (r Registration) ForClient(u grpc.UnaryClientInterceptor, s grpc.StreamClientInterceptor) {
 	core.AssertNotRunning("AddClientInterceptor")
 
@@ -70,6 +78,8 @@ func (r Registration) ForServer(u grpc.UnaryServerInterceptor, s grpc.StreamServ
 	interceptorsMu.Lock()
 	defer interceptorsMu.Unlock()
 
+	checkDuplicateServerRegistration(r.name)
+
 	serverInterceptors.registrations = append(serverInterceptors.registrations, Registered{
 		Name:   r.name,
 		After:  r.after,
@@ -84,11 +94,53 @@ func (r Registration) HandlerForServer(u stats.Handler) {
 	interceptorsMu.Lock()
 	defer interceptorsMu.Unlock()
 
+	checkDuplicateServerRegistration(r.name)
+
 	serverInterceptors.registrations = append(serverInterceptors.registrations, Registered{
 		Name:    r.name,
 		After:   r.after,
 		Handler: u,
 	})
+}
+
+func (r Registration) ServerBuilder() *ServerRegistrationBuilder {
+	return &ServerRegistrationBuilder{r: r}
+}
+
+func (b *ServerRegistrationBuilder) WithInterceptors(u grpc.UnaryServerInterceptor, s grpc.StreamServerInterceptor) *ServerRegistrationBuilder {
+	b.unary = u
+	b.stream = s
+	return b
+}
+
+func (b *ServerRegistrationBuilder) WithHandler(h stats.Handler) *ServerRegistrationBuilder {
+	b.handler = h
+	return b
+}
+
+func (b *ServerRegistrationBuilder) Register() {
+	core.AssertNotRunning("AddServerInterceptor")
+
+	interceptorsMu.Lock()
+	defer interceptorsMu.Unlock()
+
+	checkDuplicateServerRegistration(b.r.name)
+
+	serverInterceptors.registrations = append(serverInterceptors.registrations, Registered{
+		Name:    b.r.name,
+		After:   b.r.after,
+		Unary:   b.unary,
+		Stream:  b.stream,
+		Handler: b.handler,
+	})
+}
+
+func checkDuplicateServerRegistration(name string) {
+	for _, reg := range serverInterceptors.registrations {
+		if reg.Name == name {
+			panic(fmt.Sprintf("duplicate server interceptor registration: %q", name))
+		}
+	}
 }
 
 func ServerInterceptors() []Registered {
