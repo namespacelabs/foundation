@@ -23,8 +23,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 )
 
-type contextKey string
-
 func NewGitCheckoutCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "git-checkout",
@@ -49,12 +47,15 @@ func newUpdateSubmodulesCmd(mirrorBaseDir *string) *cobra.Command {
 	repositoryPath := cmd.Flags().String("repository_path", "", "the path of the repository to work in")
 	cmd.MarkFlagRequired("repository_path")
 
-	recurseSubmodules := cmd.Flags().Bool("recurse", false, "if true, will recursively update all submodules")
-	dissociate := cmd.Flags().Bool("dissociate", false, "if true, will dissociate all updated submodule checkouts from the cache")
-	depth := cmd.Flags().Int("depth", 0, "trucate history to the specified number of commits")
-	numWorkers := cmd.Flags().Int("workers", 4, "number of workers for submodule fetch and update operations")
+	recurseSubmodules := cmd.Flags().Bool("recurse", false, "If true, will recursively update all submodules.")
+	dissociate := cmd.Flags().Bool("dissociate", false, "If true, will dissociate all updated submodule checkouts from the cache.")
+	depth := cmd.Flags().Int("depth", 0, "Truncate history to the specified number of commits.")
+	filter := cmd.Flags().String("filter", "", "If specified, the given partial clone filter will be applied.")
+	numWorkers := cmd.Flags().Int("workers", 4, "Number of workers for submodule fetch and update operations.")
+
 	repoBufLen := cmd.Flags().Int("repo-buf-len", 1000, "max length of the pending repos buffer")
 	cmd.Flags().MarkHidden("repo-buf-len")
+
 	maxRecurseDepth := cmd.Flags().Int("max-recurse-depth", 20, "max depth of recursion into subdirectories")
 	cmd.Flags().MarkHidden("max-recurse-depth")
 
@@ -65,6 +66,7 @@ func newUpdateSubmodulesCmd(mirrorBaseDir *string) *cobra.Command {
 			recurseSubmodules: *recurseSubmodules,
 			dissociate:        *dissociate,
 			depth:             *depth,
+			filter:            *filter,
 			numWorkers:        *numWorkers,
 			repoBufLen:        *repoBufLen,
 			maxRecurseDepth:   *maxRecurseDepth,
@@ -88,6 +90,9 @@ type processor struct {
 	// Truncate git history to this number of commits, i.e. pass --depth <depth> to git submodule update.
 	// If 0, the option is omitted (all commits)
 	depth int
+	// The given partial clone filter will be applied to each submodule, i.e. pass --filter <filter> to git submodule update.
+	// If empty, the option is omitted (all commits)
+	filter string
 
 	numWorkers      int
 	repoBufLen      int
@@ -323,6 +328,9 @@ func (p *processor) doUpdateSubmodule(ctx context.Context, repoPath string, recu
 	}
 	if p.depth > 0 {
 		submoduleUpdateArgs = append(submoduleUpdateArgs, "--depth", strconv.Itoa(p.depth))
+	}
+	if p.filter != "" {
+		submoduleUpdateArgs = append(submoduleUpdateArgs, "--filter", p.filter)
 	}
 	submoduleUpdateArgs = append(submoduleUpdateArgs, submod.relativePath)
 	cmd := inRepoGit(repoPath, submoduleUpdateArgs...)
