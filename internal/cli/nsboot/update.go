@@ -25,7 +25,6 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/download"
 	"namespacelabs.dev/foundation/internal/artifacts/unpack"
 	"namespacelabs.dev/foundation/internal/cli/version"
-	"namespacelabs.dev/foundation/internal/cli/versioncheck"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -117,9 +116,17 @@ func checkAndDoUpdate(ctx context.Context, command string, currentVersion string
 	var ns NSPackage
 	ns.Command = command
 
+	var report *reportedExistingVersion
+	if cached != nil && cached.Latest != nil {
+		report = &reportedExistingVersion{
+			TagName: cached.Latest.TagName,
+			SHA256:  cached.Latest.SHA256,
+		}
+	}
+
 	updateErr := compute.Do(ctx, func(ctx context.Context) error {
 		var err error
-		ver, ns, err = performUpdate(ctx, command, cached, currentVersion, !needUpdate)
+		ver, ns, err = performUpdate(ctx, command, report, currentVersion, !needUpdate)
 		return err
 	})
 
@@ -127,19 +134,27 @@ func checkAndDoUpdate(ctx context.Context, command string, currentVersion string
 }
 
 func ForceUpdate(ctx context.Context, command string) error {
-	cached, err := loadCachedMetadata(command)
+	curr, err := version.Current()
 	if err != nil {
 		return err
 	}
 
-	newVersion, _, err := performUpdate(ctx, command, cached, "", true)
+	newVersion, _, err := performUpdate(ctx, command, &reportedExistingVersion{
+		TagName: curr.Version,
+		SHA256:  curr.GitCommit,
+	}, "", true)
 	if err != nil {
 		return err
 	}
 
-	if cached != nil && cached.Latest != nil && cached.Latest.TagName == newVersion.TagName {
+	switch curr.Version {
+	case newVersion.TagName:
 		fmt.Fprintf(console.Stdout(ctx), "Already up-to-date at %s.\n", newVersion.TagName)
-	} else {
+
+	case version.DevelopmentBuildVersion:
+		fmt.Fprintf(console.Stdout(ctx), "Ignoring update: %s is a development build.\n", command)
+
+	default:
 		fmt.Fprintf(console.Stdout(ctx), "Updated to version %s.\n", newVersion.TagName)
 	}
 
@@ -172,7 +187,7 @@ func loadCheckCachedMetadata(ctx context.Context, command string, silent bool) (
 	return cache, needUpdate, nil
 }
 
-func performUpdate(ctx context.Context, command string, previous *versionCache, currentVersion string, forceUpdate bool) (*toolVersion, NSPackage, error) {
+func performUpdate(ctx context.Context, command string, previous *reportedExistingVersion, currentVersion string, forceUpdate bool) (*toolVersion, NSPackage, error) {
 	// XXX store the last time timestamp checked, else after 24h we're always checking.
 	newVersion, err := fetchRemoteVersion(ctx, command)
 	if err != nil {
@@ -186,12 +201,8 @@ func performUpdate(ctx context.Context, command string, previous *versionCache, 
 
 	values := url.Values{}
 
-	if previous != nil && previous.Latest != nil {
-		serialized, _ := json.Marshal(reportedExistingVersion{
-			TagName: previous.Latest.TagName,
-			SHA256:  previous.Latest.SHA256,
-		})
-
+	if previous != nil {
+		serialized, _ := json.Marshal(previous)
 		values.Add("update_from", base64.RawURLEncoding.EncodeToString(serialized))
 	}
 
@@ -255,30 +266,6 @@ func loadCachedMetadata(command string) (*versionCache, error) {
 		return nil, err
 	}
 	return &cache, nil
-}
-
-func NewerVersion(command string, ver *versioncheck.Status) bool {
-	cached, err := loadCachedMetadata(command)
-	if err == nil && cached != nil && cached.Latest != nil {
-		return semver.Compare(ver.Version, cached.Latest.TagName) > 0
-	}
-
-	return false
-}
-
-func invalidate(command string, cached *versionCache, pending string) error {
-	dir, err := dirs.Cache()
-	if err != nil {
-		return err
-	}
-
-	return rewrite(dir, versionsJson(command), func(w io.Writer) error {
-		copy := *cached
-		copy.PendingVersion = pending
-		enc := json.NewEncoder(w)
-		enc.SetIndent("", "  ")
-		return enc.Encode(copy)
-	})
 }
 
 func persistVersion(command string, version *toolVersion, path string) error {
