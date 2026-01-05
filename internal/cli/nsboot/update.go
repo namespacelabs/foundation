@@ -142,15 +142,18 @@ func ForceUpdate(ctx context.Context, command string) error {
 	newVersion, _, err := performUpdate(ctx, command, &reportedExistingVersion{
 		TagName: curr.Version,
 		SHA256:  curr.GitCommit,
-	}, "", true)
+	}, curr.Version, true)
 	if err != nil {
 		return err
 	}
 
-	switch curr.Version {
-	case newVersion.TagName:
-		fmt.Fprintf(console.Stdout(ctx), "Already up-to-date at %s.\n", newVersion.TagName)
+	if newVersion == nil {
+		// No update was needed - current version is already >= latest.
+		fmt.Fprintf(console.Stdout(ctx), "Already up-to-date at %s.\n", curr.Version)
+		return nil
+	}
 
+	switch curr.Version {
 	case version.DevelopmentBuildVersion:
 		fmt.Fprintf(console.Stdout(ctx), "Ignoring update: %s is a development build.\n", command)
 
