@@ -83,8 +83,25 @@ do_install() {
 
   echo "Detected ${architecture} as the platform architecture"
 
-  TEMP_DIR=$(mktemp -d)
-  trap "rm -rf $TEMP_DIR" EXIT
+  ns_root=${NS_ROOT:-}
+  if [ -z "$ns_root"  ]; then
+    case "$os" in
+      darwin) ns_root="$HOME/Library/Application Support/ns" ;;
+      linux) ns_root="$HOME/.ns" ;;
+    esac
+  fi
+
+  case "$os" in
+    darwin) bin_dir="$(printf %q "$ns_root")/bin" ;;
+    # printf is not available in sh on Github runners.
+    linux) bin_dir="$ns_root/bin" ;;
+  esac
+
+  temp_tar="$(mktemp)"
+
+  if [ ! -d "$bin_dir" ]; then
+    $sh_c "mkdir -p ${bin_dir}"
+  fi
 
   download_uri="https://get.namespace.so/packages/${tool_name}/latest?arch=${architecture}&os=${os}"
   if [ ! -z "${version:-}" ]; then
@@ -98,25 +115,31 @@ do_install() {
     ci_header="-H 'CI: ${CI}'"
   fi
 
-  cd ${TEMP_DIR}
-  $sh_c "curl $ci_header --fail --location --progress-bar --user-agent install_nsc.sh \"${download_uri}\" | tar -xz"
+  $sh_c "curl $ci_header --fail --location --progress-bar --user-agent install_nsc.sh --output ${temp_tar} \"${download_uri}\""
 
-  $sh_c "chmod +x ${tool_name}"
-  $sh_c "chmod +x ${docker_cred_helper_name}"
-  $sh_c "chmod +x ${bazel_cred_helper_name}"
+  $sh_c "tar -xzf ${temp_tar} -C ${bin_dir} ${tool_name}"
+  $sh_c "tar -xzf ${temp_tar} -C ${bin_dir} ${docker_cred_helper_name}"
+  $sh_c "tar -xzf ${temp_tar} -C ${bin_dir} ${bazel_cred_helper_name}"
 
-  # Run install commands to handle installation
-  echo "Installing..."
-  $sh_c "./${tool_name} install"
-  $sh_c "./${docker_cred_helper_name} install"
-  $sh_c "./${bazel_cred_helper_name} install"
+  $sh_c "chmod +x ${bin_dir}/${tool_name}"
+  $sh_c "chmod +x ${bin_dir}/${docker_cred_helper_name}"
+  $sh_c "chmod +x ${bin_dir}/${bazel_cred_helper_name}"
 
-  # Clean up the temporary binary
-  $sh_c "rm ${tool_name}"
-  $sh_c "rm ${docker_cred_helper_name}"
-  $sh_c "rm ${bazel_cred_helper_name}"
+  $sh_c "rm ${temp_tar}"
 
-  echo "Installation complete"
+  echo
+  echo "Namespace was successfully installed to ${bin_dir}/${tool_name}"
+  echo
+
+  case `echo $0` in
+    *zsh) shell_profile=".zshrc" ;;
+    *bash) shell_profile=".bashrc" ;;
+    *) shell_profile=".profile" ;;
+  esac
+  echo "Manually add the directory to your \$HOME/$shell_profile (or similar)"
+  echo "  export PATH=\"$ns_root/bin:\$PATH\""
+  echo
+  echo "Or simply run ${bin_dir}/${tool_name}"
 }
 
 do_install "$@"
