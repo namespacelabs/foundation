@@ -20,7 +20,7 @@ func NewGradleCacheServiceClient(ctx context.Context) (gradlev1betaconnect.Gradl
 
 	client := gradlev1betaconnect.NewGradleCacheServiceClient(
 		http.DefaultClient,
-		"https://global.namespaceapis.com",
+		GlobalEndpoint(),
 		connect.WithInterceptors(newAuthInterceptor(tok)),
 	)
 
