@@ -14,6 +14,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 func NewInstallCmd(binaryName string) *cobra.Command {
@@ -26,34 +28,34 @@ func NewInstallCmd(binaryName string) *cobra.Command {
 		RunE: RunE(func(ctx context.Context, args []string) error {
 			execPath, err := os.Executable()
 			if err != nil {
-				return fmt.Errorf("failed to get executable path: %w", err)
+				return fnerrors.InternalError("failed to get executable path: %w", err)
 			}
 
 			binDir := installDir
 			if strings.HasPrefix(binDir, "~/") {
 				homeDir, err := os.UserHomeDir()
 				if err != nil {
-					return fmt.Errorf("failed to get home directory: %w", err)
+					return fnerrors.InternalError("failed to get home directory: %w", err)
 				}
 				binDir = filepath.Join(homeDir, binDir[2:])
 			}
 
 			if err := os.MkdirAll(binDir, 0755); err != nil {
-				return fmt.Errorf("failed to create directory %s: %w", binDir, err)
+				return fnerrors.InternalError("failed to create directory %s: %w", binDir, err)
 			}
 
 			destPath := filepath.Join(binDir, binaryName)
 			if err := copyFile(execPath, destPath); err != nil {
-				return fmt.Errorf("failed to copy executable: %w", err)
+				return fnerrors.InternalError("failed to copy executable: %w", err)
 			}
 
 			if err := os.Chmod(destPath, 0755); err != nil {
-				return fmt.Errorf("failed to make executable: %w", err)
+				return fnerrors.InternalError("failed to make executable: %w", err)
 			}
 
-			fmt.Printf("✓ Installed %s to %s\n", binaryName, destPath)
+			fmt.Fprintf(console.Stdout(ctx), "✓ Installed %s to %s\n", binaryName, destPath)
 
-			PrintPathWarning(binDir)
+			PrintPathWarning(ctx, binDir)
 
 			return nil
 		}),
@@ -64,7 +66,7 @@ func NewInstallCmd(binaryName string) *cobra.Command {
 	return cmd
 }
 
-func PrintPathWarning(binDir string) {
+func PrintPathWarning(ctx context.Context, binDir string) {
 	path := os.Getenv("PATH")
 	inPath := slices.Contains(strings.Split(path, ":"), binDir)
 
@@ -75,8 +77,8 @@ func PrintPathWarning(binDir string) {
 			configFile = "~/.zshrc"
 		}
 
-		fmt.Println("\n⚠ Setup notes:")
-		fmt.Printf("  • %s is not in your PATH. Run: echo 'export PATH=\"%s:$PATH\"' >> %s && source %s\n", binDir, binDir, configFile, configFile)
+		fmt.Fprintf(console.Stdout(ctx), "\n⚠ Setup notes:\n")
+		fmt.Fprintf(console.Stdout(ctx), "  • %s is not in your PATH. Run: echo 'export PATH=\"%s:$PATH\"' >> %s && source %s\n", binDir, binDir, configFile, configFile)
 	}
 }
 
