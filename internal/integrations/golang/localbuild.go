@@ -107,7 +107,7 @@ func compile(ctx context.Context, sdk golang.LocalSDK, absWorkspace string, targ
 	cmd.Label = "go build"
 	cmd.Command = golang.GoBin(sdk)
 	cmd.Args = []string{"build"}
-	cmd.Args = append(cmd.Args, constructArgs(goBuildArgs(sdk.Version, bin.StripBinary))...)
+	cmd.Args = append(cmd.Args, constructArgs(goBuildArgs(sdk.Version, bin.StripSymbols, bin.StripDwarf))...)
 	cmd.Args = append(cmd.Args, "-o="+out, pkg)
 	cmd.AdditionalEnv = append(env, rungo.MakeGoEnv(sdk)...)
 	cmd.Dir = modulePath
