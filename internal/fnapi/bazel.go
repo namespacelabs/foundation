@@ -20,7 +20,7 @@ func NewBazelCacheServiceClient(ctx context.Context) (bazelv1betaconnect.BazelCa
 
 	client := bazelv1betaconnect.NewBazelCacheServiceClient(
 		http.DefaultClient,
-		"https://global.namespaceapis.com",
+		GlobalEndpoint(),
 		connect.WithInterceptors(newAuthInterceptor(tok)),
 	)
 
