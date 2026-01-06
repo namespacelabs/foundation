@@ -208,6 +208,7 @@ func doMain(opts MainOpts) (colors.Style, error) {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}
 
+	rootCmd.AddCommand(NewInstallCmd(opts.Name))
 	opts.RegisterCommands(rootCmd)
 
 	debugLog := console.Debug(rootCtx)
