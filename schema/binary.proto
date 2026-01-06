@@ -55,10 +55,12 @@ message ImageBuildPlan {
     }
 
     message GoBuild {
-        string rel_path    = 1;
-        string binary_name = 2;
-        bool   binary_only = 3;
-        bool   strip       = 4;
+        string rel_path      = 1;
+        string binary_name   = 2;
+        bool   binary_only   = 3;
+        bool   strip         = 4;  // Deprecated: use strip_symbols and strip_dwarf instead.
+        bool   strip_symbols = 5;
+        bool   strip_dwarf   = 6;
     }
 
     message AlpineBuild {

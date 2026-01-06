@@ -31,7 +31,8 @@ type GoBinary struct {
 	BinaryName      string `json:"binaryName"`
 
 	BinaryOnly      bool
-	StripBinary     bool
+	StripSymbols    bool
+	StripDwarf      bool
 	UnsafeCacheable bool // Unsafe because we can't guarantee that the sources used for compilation are consistent with the workspace contents.
 }
 
@@ -91,7 +92,8 @@ func GoBuilder(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Loca
 	}
 
 	gobin.BinaryOnly = plan.BinaryOnly
-	gobin.StripBinary = plan.Strip || plan.BinaryOnly
+	gobin.StripSymbols = plan.StripSymbols || plan.Strip
+	gobin.StripDwarf = plan.StripDwarf || plan.Strip
 	gobin.BinaryName = plan.BinaryName
 	gobin.UnsafeCacheable = unsafeCacheable
 

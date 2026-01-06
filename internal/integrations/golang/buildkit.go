@@ -71,7 +71,7 @@ func buildUsingBuildkit(ctx context.Context, env pkggraph.SealedContext, bin GoB
 	}
 
 	goBuild := []string{"build"}
-	goBuild = append(goBuild, quoteArgs(goBuildArgs(version, bin.StripBinary))...)
+	goBuild = append(goBuild, quoteArgs(goBuildArgs(version, bin.StripSymbols, bin.StripDwarf))...)
 	goBuild = append(goBuild, fmt.Sprintf("-o=/out/%s", bin.BinaryName))
 
 	pkg := path.Join(bin.GoModule, bin.SourcePath)

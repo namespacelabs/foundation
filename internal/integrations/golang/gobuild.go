@@ -5,17 +5,26 @@
 package golang
 
 import (
+	"strings"
+
 	"golang.org/x/mod/semver"
 )
 
-func goBuildArgs(goVersion string, strip bool) map[string]string {
+func goBuildArgs(goVersion string, stripSymbols, stripDwarf bool) map[string]string {
 	m := map[string]string{
 		"-v":        "",
 		"-trimpath": "",
 	}
 
-	if strip {
-		m["-ldflags"] = "-s -w"
+	var ldflags []string
+	if stripSymbols {
+		ldflags = append(ldflags, "-s")
+	}
+	if stripDwarf {
+		ldflags = append(ldflags, "-w")
+	}
+	if len(ldflags) > 0 {
+		m["-ldflags"] = strings.Join(ldflags, " ")
 	}
 
 	// VCS information is not included in the binaries, to ensure we have reproducible builds.

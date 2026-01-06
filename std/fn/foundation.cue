@@ -297,9 +297,11 @@ _#ConfigureBase: {
 		prebuilt?:   string
 		go_package?: string
 		go_build?: {
-			rel_path:     string
-			binary_name:  string
-			binary_only?: bool
+			rel_path:       string
+			binary_name:    string
+			binary_only?:   bool
+			strip_symbols?: bool
+			strip_dwarf?:   bool
 		}
 		dockerfile?: string
 		nix_flake?:  string
