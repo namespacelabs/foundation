@@ -90,7 +90,7 @@ func CheckCachedUpdate(ctx context.Context, command string, currentVersion strin
 }
 
 func checkAndDoUpdate(ctx context.Context, command string, currentVersion string, doUpdate bool) (*toolVersion, NSPackage, error) {
-	cached, needUpdate, err := loadCheckCachedMetadata(ctx, command, true)
+	cached, maybeStale, err := loadCheckCachedMetadata(ctx, command, true)
 	if err != nil {
 		return nil, NSPackage{}, fnerrors.Newf("failed to load versions.json: %w", err)
 	}
@@ -101,7 +101,7 @@ func checkAndDoUpdate(ctx context.Context, command string, currentVersion string
 			return nil, NSPackage{}, nil
 		}
 
-		if !needUpdate {
+		if !maybeStale || !doUpdate {
 			if ns, ok := checkExists(command, cached); ok {
 				return cached.Latest, ns, nil
 			}
@@ -126,7 +126,7 @@ func checkAndDoUpdate(ctx context.Context, command string, currentVersion string
 
 	updateErr := compute.Do(ctx, func(ctx context.Context) error {
 		var err error
-		ver, ns, err = performUpdate(ctx, command, report, currentVersion, !needUpdate)
+		ver, ns, err = performUpdate(ctx, command, report, currentVersion, !maybeStale)
 		return err
 	})
 
