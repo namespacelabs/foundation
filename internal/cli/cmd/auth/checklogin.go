@@ -22,8 +22,7 @@ func NewCheckLoginCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 
-	var dur time.Duration
-	cmd.Flags().DurationVar(&dur, "duration", time.Minute*5, "Fail if the current session does not last at least this much more time.")
+	dur := fncobra.Duration(cmd.Flags(), "duration", 5*time.Minute, "Fail if the current session does not last at least this much more time.")
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		tok, err := fnapi.FetchToken(ctx)
@@ -39,7 +38,7 @@ func NewCheckLoginCmd() *cobra.Command {
 		// ok is false for revokable tokens which are validated server-side.
 		if ok {
 			// Do an expiry check for non-session tokens only.
-			if expires := time.Until(expiry); expires < dur && !tok.IsSessionToken() {
+			if expires := time.Until(expiry); expires < *dur && !tok.IsSessionToken() {
 				if expires < 0 {
 					return fmt.Errorf("token expired %s", humanize.Time(expiry))
 				}
@@ -50,7 +49,7 @@ func NewCheckLoginCmd() *cobra.Command {
 
 		// For session tokens and revokable tokens we need to try issuing a tenant token
 		// regardless of expiry, because the session could have been revoked.
-		_, err = tok.IssueToken(ctx, dur, true)
+		_, err = tok.IssueToken(ctx, *dur, true)
 		return err
 	})
 }

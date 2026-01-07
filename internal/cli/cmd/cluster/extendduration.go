@@ -23,8 +23,8 @@ func NewExtendDurationCmd(name string) *cobra.Command {
 		Args:  cobra.MaximumNArgs(1),
 	}
 
-	duration := cmd.Flags().Duration("duration", 0, "For how long to extend the ephemeral environment.")
-	ensureMinimum := cmd.Flags().Duration("ensure_minimum", 0, "Ensure that the target instance has a minimum of the specified duration.")
+	duration := fncobra.Duration(cmd.Flags(), "duration", 0, "For how long to extend the ephemeral environment.")
+	ensureMinimum := fncobra.Duration(cmd.Flags(), "ensure_minimum", 0, "Ensure that the target instance has a minimum of the specified duration.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *duration == 0 && *ensureMinimum == 0 {
@@ -42,8 +42,8 @@ func NewExtendDurationCmd(name string) *cobra.Command {
 
 		req := api.RefreshKubernetesClusterRequest{
 			ClusterId:         cluster.ClusterId,
-			ExtendBySecs:      int32(math.Floor(duration.Seconds())),
-			EnsureMinimumSecs: int32(math.Floor(ensureMinimum.Seconds())),
+			ExtendBySecs:      int32(math.Floor((*duration).Seconds())),
+			EnsureMinimumSecs: int32(math.Floor((*ensureMinimum).Seconds())),
 		}
 
 		resp, err := api.RefreshCluster(ctx, api.Methods, req, cluster.ApiEndpoint)

@@ -60,7 +60,7 @@ func newSetupCacheCmd() *cobra.Command {
 		flags.BoolVar(&useAbsoluteCredHelperPath, "use_absolute_credentialhelper_path", false, "If specified, use an absolute path to the credential helper binary.")
 		flags.BoolVar(&static, "static", false, "If specified, use a static bearer token in --remote_header instead of a credential helper.")
 		flags.Int64Var(&version, "version", 1, "Which bazel version to use.")
-		flags.DurationVar(&staticDur, "static_token_duration", 4*time.Hour, "The minimum duration of the static token configured (requires --static).")
+		fncobra.DurationVar(flags, &staticDur, "static_token_duration", 4*time.Hour, "The minimum duration of the static token configured (requires --static).")
 
 		flags.MarkHidden("cred_path")
 		flags.MarkHidden("use_absolute_credentialhelper_path")

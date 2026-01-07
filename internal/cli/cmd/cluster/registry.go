@@ -615,7 +615,7 @@ Alternatively, use --repository and --digest flags.`,
 	digestFlag := cmd.Flags().String("digest", "", "Image digest")
 
 	expireAt := cmd.Flags().String("expire-at", "", "Set new absolute expiry time in RFC3339 format (e.g., 2024-12-31T23:59:59Z)")
-	ensureMinimum := cmd.Flags().Duration("ensure-minimum", 0, "Ensure at least this much time remains before expiry (e.g., 168h for 7 days)")
+	ensureMinimum := fncobra.Duration(cmd.Flags(), "ensure-minimum", 0, "Ensure at least this much time remains before expiry (e.g., 168h for 7 days)")
 
 	cmd.MarkFlagsOneRequired("expire-at", "ensure-minimum")
 	cmd.MarkFlagsMutuallyExclusive("expire-at", "ensure-minimum")
@@ -774,7 +774,7 @@ func newRegistrySetDefaultExpirationCmd() *cobra.Command {
 		Long:  `Sets the default expiration setting that is applied to new images.`,
 	}
 
-	expiration := cmd.Flags().Duration("expiration", 0, "The default expiration duration that is applied to new container images (e.g., 168h for 7 days). Needs to be at least 4h.")
+	expiration := fncobra.Duration(cmd.Flags(), "expiration", 0, "The default expiration duration that is applied to new container images (e.g., 168h for 7 days). Needs to be at least 4h.")
 	noExpiration := cmd.Flags().Bool("no-expiration", false, "Set the default for new images to never expire.")
 
 	cmd.MarkFlagsOneRequired("expiration", "no-expiration")
@@ -800,7 +800,7 @@ func newRegistrySetDefaultExpirationCmd() *cobra.Command {
 		var newExpiry *durationpb.Duration
 
 		if !*noExpiration {
-			if expiration != nil {
+			if *expiration > 0 {
 				newExpiry = durationpb.New(*expiration)
 			}
 

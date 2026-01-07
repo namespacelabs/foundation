@@ -45,7 +45,7 @@ func newJobsListCmd() *cobra.Command {
 	repository := cmd.Flags().String("repository", "", "Filter by repository (e.g., 'owner/repo').")
 	conclusion := cmd.Flags().String("conclusion", "", "Filter by conclusion (e.g., 'success', 'failure', 'cancelled').")
 	senderLogin := cmd.Flags().String("sender_login", "", "Filter by the GitHub login of the user who triggered the workflow.")
-	since := cmd.Flags().Duration("since", 0, "Filter jobs created after this duration ago (e.g., '24h', '7d').")
+	since := fncobra.Duration(cmd.Flags(), "since", 0, "Filter jobs created after this duration ago (e.g., '24h', '7d').")
 	pending := cmd.Flags().Bool("pending", false, "Only show jobs that have not started yet.")
 	running := cmd.Flags().Bool("running", false, "Only show jobs that are currently running (started but not finished).")
 

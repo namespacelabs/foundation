@@ -49,7 +49,7 @@ func newSignPartnerTokenCmd() *cobra.Command {
 			flags.StringVar(&signingMethod, "signing_method", "ES256", "JWT signing method (supported: ES256, RS256).")
 			flags.StringVar(&keyFromFile, "key_from_file", "", "Read signing key from file.")
 			flags.StringVar(&keyFrom1P, "key_from_1p", "", "Read signing key from 1Password ('op://...').")
-			flags.DurationVar(&tokenDuration, "expiration", time.Hour, "How long the token should be valid for.")
+			fncobra.DurationVar(flags, &tokenDuration, "expiration", time.Hour, "How long the token should be valid for.")
 		}).
 		DoWithArgs(func(ctx context.Context, args []string) error {
 			if partnerID == "" || issuerURL == "" {

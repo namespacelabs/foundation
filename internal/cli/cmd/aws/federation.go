@@ -34,7 +34,7 @@ func newAssumeRoleCmd() *cobra.Command {
 	roleArn := cmd.Flags().String("role_arn", "", "The ARN of the role to assume.")
 	awsProfile := cmd.Flags().String("aws_profile", "", "Use the specified AWS profile.")
 	envFile := cmd.Flags().String("write_env", "", "Instead of outputting, write the environment variables to the specified file.")
-	duration := cmd.Flags().Duration("duration", time.Hour, "For how long the resulting AWS credentials should be valid for.")
+	duration := fncobra.Duration(cmd.Flags(), "duration", time.Hour, "For how long the resulting AWS credentials should be valid for.")
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if *roleArn == "" {

@@ -29,7 +29,7 @@ func NewSshCmd() *cobra.Command {
 	forcePty := cmd.Flags().BoolP("force-pty", "t", false, "Force pseudo-terminal allocation.")
 	disablePty := cmd.Flags().BoolP("disable-pty", "T", false, "Disable pseudo-terminal allocation.")
 	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type.")
-	waitTimeout := cmd.Flags().Duration("wait_timeout", 2*time.Minute, "For how long to wait until the instance becomes ready.")
+	waitTimeout := fncobra.Duration(cmd.Flags(), "wait_timeout", 2*time.Minute, "For how long to wait until the instance becomes ready.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *forcePty && *disablePty {

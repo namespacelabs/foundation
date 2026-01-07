@@ -108,7 +108,7 @@ func NewCreateCmd() *cobra.Command {
 
 	name := cmd.Flags().String("name", "", "A unique name for the token within the tenant")
 	description := cmd.Flags().StringP("description", "d", "", "A human-readable description of the token's purpose")
-	expiresIn := cmd.Flags().Duration("expires_in", 24*time.Hour, "Duration until the token expires (max 90 days)")
+	expiresIn := fncobra.Duration(cmd.Flags(), "expires_in", 24*time.Hour, "Duration until the token expires (max 90 days)")
 	grants := cmd.Flags().StringArray("grant", nil, "Grant permission as JSON object (can be specified multiple times). Format: {\"resource_type\":\"...\",\"resource_id\":\"...\",\"actions\":[\"...\"]}")
 	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json, token")
 	tokenFile := cmd.Flags().String("token_file", "", "Write token to this file in JSON format")

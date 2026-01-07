@@ -53,10 +53,10 @@ func NewCreateCmd() *cobra.Command {
 	experimental := cmd.Flags().String("experimental", "", "JSON definition of experimental features.")
 	experimentalFrom := cmd.Flags().String("experimental_from", "", "Load experimental definitions from the specified file.")
 
-	duration := cmd.Flags().Duration("duration", 0, "For how long to run the ephemeral environment.")
+	duration := fncobra.Duration(cmd.Flags(), "duration", 0, "For how long to run the ephemeral environment.")
 
 	waitKubeSystem := cmd.Flags().Bool("wait_kube_system", false, "If true, wait until kube-system resources (e.g. coredns and local-path-provisioner) are ready.")
-	waitTimeout := cmd.Flags().Duration("wait_timeout", time.Minute, "For how long to wait until the instance becomes ready.")
+	waitTimeout := fncobra.Duration(cmd.Flags(), "wait_timeout", time.Minute, "For how long to wait until the instance becomes ready.")
 
 	availableSecrets := cmd.Flags().StringSlice("available_secrets", nil, "Attaches the specified secrets to this instance.")
 	cmd.Flags().MarkHidden("available_secrets")

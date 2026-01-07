@@ -53,7 +53,7 @@ func NewGenerateTokenCmd() *cobra.Command {
 	}
 
 	outputPath := cmd.Flags().String("output_to", "", "If specified, write the access token to this path.")
-	duration := cmd.Flags().Duration("duration", time.Minute, "How long the token should last. Default is 1 minute.")
+	duration := fncobra.Duration(cmd.Flags(), "duration", time.Minute, "How long the token should last. Default is 1 minute.")
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		tok, err := fnapi.FetchToken(ctx)

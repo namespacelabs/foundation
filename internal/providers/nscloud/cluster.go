@@ -15,6 +15,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/build/registry"
+	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/internal/protos"
@@ -43,7 +44,7 @@ func SetupFlags(flags *pflag.FlagSet, hide bool) {
 	flags.StringVar(&defaultMachineType, "nscloud_default_machine_type", "", "If specified, overrides the default machine type new clusters are created with.")
 	_ = flags.MarkHidden("nscloud_default_machine_type")
 
-	flags.DurationVar(&defaultDuration, "nscloud_default_duration", 0, "If specified, overrides the default duration new clusters are created with.")
+	fncobra.DurationVar(flags, &defaultDuration, "nscloud_default_duration", 0, "If specified, overrides the default duration new clusters are created with.")
 	_ = flags.MarkHidden("nscloud_default_duration")
 }
 
