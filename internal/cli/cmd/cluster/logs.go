@@ -32,7 +32,7 @@ func NewLogsCmd() *cobra.Command {
 	}
 
 	follow := cmd.Flags().BoolP("follow", "f", false, "Specify if logs should be streamed continuously.")
-	since := cmd.Flags().Duration("since", time.Duration(0), "Show logs relative to a timestamp (e.g. 42m for 42 minutes). The flag can't be use with --follow.")
+	since := fncobra.Duration(cmd.Flags(), "since", 0, "Show logs relative to a timestamp (e.g. 42m for 42 minutes). The flag can't be use with --follow.")
 	namespace := cmd.Flags().StringP("namespace", "n", "", "If specified, only display logs of this Kubernetes namespace.")
 	pod := cmd.Flags().StringP("pod", "p", "", "If specified, only display logs of this Kubernetes Pod.")
 	container := cmd.Flags().StringP("container", "c", "", "If specified, only display logs of this container.")
@@ -60,7 +60,7 @@ func NewLogsCmd() *cobra.Command {
 			return nil
 		}
 
-		if *follow && *since != time.Duration(0) {
+		if *follow && *since != 0 {
 			return fnerrors.Newf("--follow flag can't be used with --since flag")
 		}
 
@@ -121,8 +121,8 @@ func NewLogsCmd() *cobra.Command {
 			return api.TailClusterLogs(ctx, api.Methods, logOpts, handle)
 		}
 
-		if *since != time.Duration(0) {
-			ts := time.Now().In(time.UTC).Add(-1 * (*since))
+		if *since != 0 {
+			ts := time.Now().In(time.UTC).Add(-1 * *since)
 			logOpts.StartTs = &ts
 		}
 

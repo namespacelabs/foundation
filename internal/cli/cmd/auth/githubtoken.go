@@ -26,7 +26,7 @@ func NewExchangeGithubTokenCmd() *cobra.Command {
 		Hidden: true,
 	}
 
-	ensuredDuration := cmd.Flags().Duration("ensure", 0, "If the current token is still valid for this duration, do nothing. Otherwise fetch a new token.")
+	ensuredDuration := fncobra.Duration(cmd.Flags(), "ensure", 0, "If the current token is still valid for this duration, do nothing. Otherwise fetch a new token.")
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if !ghenv.IsRunningInActions() {

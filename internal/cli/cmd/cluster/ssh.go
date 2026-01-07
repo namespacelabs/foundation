@@ -45,7 +45,7 @@ func NewSshCmd() *cobra.Command {
 	forcePty := cmd.Flags().BoolP("force-pty", "t", false, "Force pseudo-terminal allocation.")
 	disablePty := cmd.Flags().BoolP("disable-pty", "T", false, "Disable pseudo-terminal allocation.")
 
-	waitTimeout := cmd.Flags().Duration("wait_timeout", time.Minute, "For how long to wait until the instance becomes ready.")
+	waitTimeout := fncobra.Duration(cmd.Flags(), "wait_timeout", time.Minute, "For how long to wait until the instance becomes ready.")
 	cmd.Flags().MarkHidden("wait_timeout")
 
 	user := cmd.Flags().String("user", "", "The user to connect as.")

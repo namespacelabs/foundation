@@ -6,8 +6,11 @@ package fncobra
 
 import (
 	"context"
+	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	dur "namespacelabs.dev/foundation/internal/duration"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/module"
 )
@@ -77,4 +80,41 @@ func PushPreParse(cmd *cobra.Command, handler func(ctx context.Context, args []s
 
 		return handler(cmd.Context(), args)
 	}
+}
+
+// Custom duration flag type to support parsing extra units: "d" (day) and "w" (week).
+type duration struct {
+	value *time.Duration
+}
+
+func (d *duration) Set(s string) error {
+	parsed, err := dur.ParseDuration(s)
+	if err != nil {
+		return err
+	}
+	*d.value = parsed
+	return nil
+}
+
+func (d *duration) String() string {
+	return d.value.String()
+}
+
+func (d *duration) Type() string {
+	return "duration"
+}
+
+func DurationVar(flags *pflag.FlagSet, d *time.Duration, name string, value time.Duration, usage string) {
+	wrapped := duration{d}
+	*wrapped.value = value
+
+	flags.Var(&wrapped, name, usage)
+}
+
+func Duration(flags *pflag.FlagSet, name string, value time.Duration, usage string) *time.Duration {
+	var res time.Duration
+
+	DurationVar(flags, &res, name, value, usage)
+
+	return &res
 }

@@ -40,7 +40,7 @@ func newEcrDockerLoginCmd() *cobra.Command {
 	roleArn := cmd.Flags().String("role_arn", "", "The ARN of the role to log in as.")
 	awsProfile := cmd.Flags().String("aws_profile", "", "Use the specified AWS profile.")
 	region := cmd.Flags().String("region", "", "Use the specified AWS region.")
-	duration := cmd.Flags().Duration("duration", time.Hour, "For how long the resulting AWS credentials should be valid for.")
+	duration := fncobra.Duration(cmd.Flags(), "duration", time.Hour, "For how long the resulting AWS credentials should be valid for.")
 	temp := cmd.Flags().Bool("temp", false, "Create a temporary Docker config file with the added credentials.")
 	outputPath := cmd.Flags().String("output_to", "", "If specified, write the path of the Docker config to this path.")
 

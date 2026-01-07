@@ -37,8 +37,8 @@ func newImpersonateCmd() *cobra.Command {
 		"The full identifier of the GCP Workload Identity Provider, including the project number, pool name, and provider name.")
 	credsFile := cmd.Flags().String("write_creds", "", "Instead of outputting, write the credentials to the specified file.")
 
-	duration := cmd.Flags().Duration("duration", time.Hour, "How long the generated credentials should be valid. Default is 1 hour.")
-	gcpTokenLifetime := cmd.Flags().Duration("gcp_token_lifetime", 10*time.Minute, "Lifetime of GCP tokens generated using these credentials. As long as the credentials are valid the GCP token can be refreshed.")
+	duration := fncobra.Duration(cmd.Flags(), "duration", time.Hour, "How long the generated credentials should be valid. Default is 1 hour.")
+	gcpTokenLifetime := fncobra.Duration(cmd.Flags(), "gcp_token_lifetime", 10*time.Minute, "Lifetime of GCP tokens generated using these credentials. As long as the credentials are valid the GCP token can be refreshed.")
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if *serviceAccount == "" {
@@ -97,7 +97,7 @@ func newImpersonateCmd() *cobra.Command {
 			},
 			"service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/" + *serviceAccount + ":generateAccessToken",
 			"service_account_impersonation": map[string]any{
-				"token_lifetime_seconds": int32(gcpTokenLifetime.Seconds()),
+				"token_lifetime_seconds": int32((*gcpTokenLifetime).Seconds()),
 			},
 		})
 	})

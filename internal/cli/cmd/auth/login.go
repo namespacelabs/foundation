@@ -93,7 +93,7 @@ func NewLoginCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&openBrowser, "browser", true, "Open a browser to login.")
 	cmd.Flags().BoolVar(&session, "session", true, "If set, gets a long-lived session.")
 	cmd.Flags().MarkHidden("session")
-	cmd.Flags().DurationVar(&duration, "duration", defaultSessionDuration, "The default duration of a session.")
+	fncobra.DurationVar(cmd.Flags(), &duration, "duration", defaultSessionDuration, "The default duration of a session.")
 	cmd.Flags().MarkHidden("duration")
 
 	return cmd

@@ -32,7 +32,7 @@ func newExchangeAwsCognitoCmd() *cobra.Command {
 	awsRegion := cmd.Flags().String("aws_region", "", "The AWS region to connect to.")
 	awsProfile := cmd.Flags().String("aws_profile", "", "Use the specified AWS profile.")
 	identityPool := cmd.Flags().String("identity_pool", "", "UUID of the identity pool.")
-	ensuredDuration := cmd.Flags().Duration("ensure", 0, "If the current token is still valid for this duration, do nothing. Otherwise fetch a new token.")
+	ensuredDuration := fncobra.Duration(cmd.Flags(), "ensure", 0, "If the current token is still valid for this duration, do nothing. Otherwise fetch a new token.")
 	tenantId := cmd.Flags().String("tenant_id", "", "What tenant to authenticate.")
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {

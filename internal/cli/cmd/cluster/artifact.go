@@ -65,7 +65,7 @@ func newArtifactUploadCmd() *cobra.Command {
 		Args:  cobra.RangeArgs(1, 2),
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		flags.StringVar(&namespace, "namespace", mainArtifactNamespace, "Target namespace of the artifact.")
-		flags.DurationVar(&expirationDur, "expires_in", 0, "If set, sets the artifact's expiration into the specified future.")
+		fncobra.DurationVar(flags, &expirationDur, "expires_in", 0, "If set, sets the artifact's expiration into the specified future.")
 		flags.StringVar(&pack, "pack", "", "A glob pattern to select files to zip and upload.")
 	}).DoWithArgs(func(ctx context.Context, args []string) error {
 		var src, dest string
@@ -412,7 +412,7 @@ The content at the URL is assumed to be immutable.`,
 		Args: cobra.ExactArgs(1),
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		//flags.BoolVar(&renew, "renew", false, "Force-download from the source and update the cached content.")
-		flags.DurationVar(&maxAge, "max_age", 0, "Redownload from source if the cached content is older than this duration.")
+		fncobra.DurationVar(flags, &maxAge, "max_age", 0, "Redownload from source if the cached content is older than this duration.")
 		flags.StringVar(&dest, "out", "", "Filename to save the downloaded content at.")
 		cobra.MarkFlagRequired(flags, "out")
 		maxAgeFlag = flags.Lookup("max_age")
