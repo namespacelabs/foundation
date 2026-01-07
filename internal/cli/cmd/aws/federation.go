@@ -87,7 +87,7 @@ func newAssumeRoleCmd() *cobra.Command {
 			RoleArn:          aws.String(*roleArn),
 			RoleSessionName:  aws.String(sessionName),
 			WebIdentityToken: aws.String(resp.IdToken),
-			DurationSeconds:  aws.Int32(int32((*duration).Seconds())),
+			DurationSeconds:  aws.Int32(int32(duration.Seconds())),
 		})
 		if err != nil {
 			return err
