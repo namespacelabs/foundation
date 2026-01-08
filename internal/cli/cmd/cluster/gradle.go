@@ -53,7 +53,7 @@ func newSetupGradleCacheCmd() *cobra.Command {
 	var initGradlePath, output string
 	var push, user bool
 	var name, site string
-	var token, tokenFile string
+	var tokenFile string
 
 	return fncobra.Cmd(&cobra.Command{
 		Use:   "setup",
@@ -74,15 +74,10 @@ Or by placing it in ~/.gradle/init.d/ to apply to all builds.`,
 		flags.StringVar(&name, "name", "default", "A name for the cache.")
 		flags.StringVar(&site, "site", "", "Site preference (e.g., 'iad', 'fra'). If not set, determined automatically.")
 		flags.BoolVar(&user, "user", false, "If set, write the init.gradle to ~/.gradle/init.d/namespace.cache.gradle.")
-		flags.StringVar(&token, "token", "", "Use this bearer token for authentication instead of the default.")
-		flags.StringVar(&tokenFile, "token_file", "", "Read the bearer token from this file (JSON with bearer_token field).")
+		flags.StringVar(&tokenFile, "token", "", "Use the bearer token stored at this location for authentication instead of the default.")
 	}).Do(func(ctx context.Context) error {
 		if user && initGradlePath != "" {
 			return fnerrors.New("--user and --init-gradle are mutually exclusive")
-		}
-
-		if token != "" && tokenFile != "" {
-			return fnerrors.New("--token and --token_file are mutually exclusive")
 		}
 
 		if user {
@@ -98,21 +93,20 @@ Or by placing it in ~/.gradle/init.d/ to apply to all builds.`,
 		}
 
 		var client gradlev1betaconnect.GradleCacheServiceClient
-		var err error
-
-		if token != "" {
-			client = fnapi.NewGradleCacheServiceClientWithToken(staticTokenSource(token))
-		} else if tokenFile != "" {
+		if tokenFile != "" {
 			tokenSource, err := loadTokenFromFile(tokenFile)
 			if err != nil {
 				return fnerrors.Newf("failed to load token from file: %w", err)
 			}
+
 			client = fnapi.NewGradleCacheServiceClientWithToken(tokenSource)
 		} else {
-			client, err = fnapi.NewGradleCacheServiceClient(ctx)
+			cli, err := fnapi.NewGradleCacheServiceClient(ctx)
 			if err != nil {
 				return err
 			}
+
+			client = cli
 		}
 
 		req := connect.NewRequest(&gradlev1beta.EnsureGradleCacheRequest{
@@ -204,6 +198,10 @@ Or by placing it in ~/.gradle/init.d/ to apply to all builds.`,
 				fmt.Fprintf(console.Stdout(ctx), "  %s\n", style.Highlight.Apply(fmt.Sprintf("--init-script=%s", initGradlePath)))
 				fmt.Fprintf(console.Stdout(ctx), "\nOr copy it to ~/.gradle/init.d/ to apply to all builds.\n")
 			}
+
+			if tokenFile != "" {
+				fmt.Fprintf(console.Stdout(ctx), "\nToken file %s can be removed now.\n", tokenFile)
+			}
 		}
 
 		return nil
@@ -213,25 +211,16 @@ Or by placing it in ~/.gradle/init.d/ to apply to all builds.`,
 func newCreateTokenCmd() *cobra.Command {
 	var name string
 	var expiresIn time.Duration
-	var output, tokenFile string
-	var userScope bool
+	var tokenFile, scope string
 
 	return fncobra.Cmd(&cobra.Command{
 		Use:   "create-token",
 		Short: "Create a revokable token for accessing the Gradle cache.",
-		Long: `Create a revokable token with the required permissions to access the Gradle cache.
-
-This command fetches the required permissions for the specified Gradle cache and creates
-a revokable token that can be used for CI/CD or other automated access to the cache.
-
-Example:
-  nsc gradle cache create-token --name default`,
 	}).WithFlags(func(flags *pflag.FlagSet) {
-		flags.StringVar(&name, "name", "default", "The name of the Gradle cache.")
+		flags.StringVar(&name, "cache_name", "*", "Select a Gradle cache to grant access to. By default, all Gradle caches can be accessed.")
 		fncobra.DurationVar(flags, &expiresIn, "expires_in", 24*time.Hour, "Duration until the token expires (max 90 days).")
-		flags.StringVarP(&output, "output", "o", "plain", "Output format: plain, json, or token.")
-		flags.StringVar(&tokenFile, "token_file", "", "Write token to this file in JSON format.")
-		flags.BoolVar(&userScope, "user", false, "Create a token bound to the current user's workspace membership.")
+		flags.StringVar(&tokenFile, "token", "token.json", "Write token to this file in JSON format.")
+		flags.StringVar(&scope, "scope", "user", "Set the scope of the generated access token. Valid options: `tenant`, `user`. Tokens with user scope are bound to the tenant membership of the current user.")
 	}).Do(func(ctx context.Context) error {
 		gradleClient, err := fnapi.NewGradleCacheServiceClient(ctx)
 		if err != nil {
@@ -274,7 +263,11 @@ Example:
 			},
 		}
 
-		if userScope {
+		switch scope {
+		case "tenant":
+			req.Scope = iamv1beta.RevokableToken_TENANT_SCOPE
+
+		case "user":
 			req.Scope = iamv1beta.RevokableToken_TENANT_MEMBERSHIP_SCOPE
 		}
 
@@ -283,43 +276,20 @@ Example:
 			return fnerrors.InvocationError("token", "failed to create token: %w", err)
 		}
 
-		if tokenFile != "" {
-			if err := writeGradleTokenToFile(tokenFile, resp.BearerToken); err != nil {
-				return fnerrors.InvocationError("token", "failed to write token to file: %w", err)
-			}
-			fmt.Fprintf(console.Stdout(ctx), "Token written to %s\n", tokenFile)
+		fmt.Fprintf(console.Stdout(ctx), "Token ID:    %s\n", resp.Token.GetTokenId())
+		fmt.Fprintf(console.Stdout(ctx), "Name:        %s\n", resp.Token.GetName())
+		fmt.Fprintf(console.Stdout(ctx), "Expires At:  %s\n", expiresAt.Format(time.RFC3339))
+
+		if err := writeGradleTokenToFile(tokenFile, resp.BearerToken); err != nil {
+			return fnerrors.InvocationError("token", "failed to write token to file: %w", err)
 		}
 
-		switch output {
-		case "json":
-			d := json.NewEncoder(console.Stdout(ctx))
-			d.SetIndent("", "  ")
-			return d.Encode(map[string]any{
-				"token_id":     resp.Token.GetTokenId(),
-				"name":         resp.Token.GetName(),
-				"bearer_token": resp.BearerToken,
-				"expires_at":   expiresAt.Format(time.RFC3339),
-			})
+		fmt.Fprintf(console.Stdout(ctx), "You can set up your gradle cache config with:\n")
 
-		case "token":
-			fmt.Fprintln(console.Stdout(ctx), resp.BearerToken)
-			return nil
+		style := colors.Ctx(ctx)
+		fmt.Fprintf(console.Stdout(ctx), "  %s\n", style.Highlight.Apply(fmt.Sprintf("nsc gradle cache setup --name %s --token %s", name, tokenFile)))
 
-		default:
-			if output != "" && output != "plain" {
-				fmt.Fprintf(console.Warnings(ctx), "unsupported output %q, defaulting to plain\n", output)
-			}
-
-			fmt.Fprintf(console.Stdout(ctx), "Token ID:    %s\n", resp.Token.GetTokenId())
-			fmt.Fprintf(console.Stdout(ctx), "Name:        %s\n", resp.Token.GetName())
-			fmt.Fprintf(console.Stdout(ctx), "Expires At:  %s\n", expiresAt.Format(time.RFC3339))
-
-			if tokenFile == "" {
-				fmt.Fprintf(console.Stdout(ctx), "\nBearer Token: %s\n", resp.BearerToken)
-				fmt.Fprintf(console.Stdout(ctx), "\n⚠️  Save this token securely - it will not be shown again.\n")
-			}
-			return nil
-		}
+		return nil
 	})
 }
 
