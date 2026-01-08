@@ -18,6 +18,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cenkalti/backoff"
 	"github.com/docker/buildx/store"
 	"github.com/docker/buildx/store/storeutil"
 	"github.com/docker/buildx/util/dockerutil"
@@ -27,6 +28,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -984,9 +986,31 @@ func newWaitBuilderCommand() *cobra.Command {
 					return err
 				}
 
-				// Also waits for buildkit readiness.
-				_, err = ensureBuildCluster(ctx, parsed)
-				return err
+				b := &backoff.ExponentialBackOff{
+					InitialInterval:     500 * time.Millisecond,
+					RandomizationFactor: 0.5,
+					Multiplier:          1.5,
+					MaxInterval:         5 * time.Second,
+					MaxElapsedTime:      5 * time.Minute,
+					Clock:               backoff.SystemClock,
+				}
+
+				b.Reset()
+
+				return backoff.Retry(func() error {
+					// Also waits for buildkit readiness.
+					_, err = ensureBuildCluster(ctx, parsed)
+					if err != nil {
+						if status.Code(err) == codes.ResourceExhausted {
+							fmt.Fprintf(console.Debug(ctx), "[buildx] %s resources exhausted, will retry ensuring a builder: %v\n", plat, err)
+							return err
+						}
+
+						return backoff.Permanent(err)
+					}
+
+					return nil
+				}, backoff.WithContext(b, ctx))
 			})
 		}
 
