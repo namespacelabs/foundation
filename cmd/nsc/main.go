@@ -11,6 +11,7 @@ import (
 	"time"
 
 	iamv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/iam/v1beta"
+	"connectrpc.com/connect"
 	"github.com/muesli/reflow/wordwrap"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
@@ -85,21 +86,79 @@ func formatPermission(perm *iamv1beta.Access) string {
 	return fmt.Sprintf("%s:%s", perm.GetResourceType(), perm.GetAction())
 }
 
-func formatErr(out io.Writer, style colors.Style, err error) {
-	st, _ := unwrapStatus(err)
+type rpcError struct {
+	code    codes.Code
+	message string
+	rid     *protocol.RequestID
+	details []proto.Message
+}
 
-	var rid *protocol.RequestID
-	for _, msg := range st.Proto().Details {
-		decRid := &protocol.RequestID{}
-		if msg.MessageIs(decRid) {
-			if msg.UnmarshalTo(decRid) == nil {
-				rid = decRid
-			}
+func rpcErrorFromConnect(connectErr *connect.Error) *rpcError {
+	re := &rpcError{
+		code:    codes.Code(connectErr.Code()),
+		message: connectErr.Message(),
+	}
+
+	for _, detail := range connectErr.Details() {
+		value, err := detail.Value()
+		if err != nil {
+			continue
+		}
+		re.details = append(re.details, value)
+		if rid, ok := value.(*protocol.RequestID); ok {
+			re.rid = rid
 		}
 	}
 
-	if st.Code() == codes.Unknown {
-		// Not a status error
+	return re
+}
+
+func rpcErrorFromStatus(st *status.Status) *rpcError {
+	re := &rpcError{
+		code:    st.Code(),
+		message: st.Message(),
+	}
+
+	for _, any := range st.Proto().Details {
+		msg, err := any.UnmarshalNew()
+		if err != nil {
+			continue
+		}
+		re.details = append(re.details, msg)
+		if rid, ok := msg.(*protocol.RequestID); ok {
+			re.rid = rid
+		}
+	}
+
+	return re
+}
+
+func (re *rpcError) findDetail(target proto.Message) bool {
+	for _, d := range re.details {
+		if proto.MessageName(d) == proto.MessageName(target) {
+			proto.Merge(target, d)
+			return true
+		}
+	}
+	return false
+}
+
+func formatErr(out io.Writer, style colors.Style, err error) {
+	var re *rpcError
+
+	var connectErr *connect.Error
+	if errors.As(err, &connectErr) {
+		re = rpcErrorFromConnect(connectErr)
+	} else {
+		st, _ := unwrapStatus(err)
+		if st.Code() == codes.Unknown {
+			fncobra.DefaultErrorFormatter(out, style, err)
+			return
+		}
+		re = rpcErrorFromStatus(st)
+	}
+
+	if re == nil {
 		fncobra.DefaultErrorFormatter(out, style, err)
 		return
 	}
@@ -108,39 +167,39 @@ func formatErr(out io.Writer, style colors.Style, err error) {
 	fmt.Fprintln(ww)
 	fmt.Fprint(ww, style.ErrorHeader.Apply("Failed: "))
 
-	msg := st.Message()
-	if x, ok := hasDetail(st, &v1.UserMessage{}); ok && x.Message != "" {
-		msg = x.Message
+	msg := re.message
+	var userMsg v1.UserMessage
+	if re.findDetail(&userMsg) && userMsg.Message != "" {
+		msg = userMsg.Message
 	}
 
-	switch st.Code() {
+	switch re.code {
 	case codes.PermissionDenied:
-		x, _ := hasDetail(st, &iamv1beta.PermissionDeniedError{})
+		var permDenied iamv1beta.PermissionDeniedError
+		re.findDetail(&permDenied)
 
-		// x is nil if the detail is missing.
-		switch len(x.GetMissingAccessPermissions()) {
+		switch len(permDenied.GetMissingAccessPermissions()) {
 		case 0:
 			fmt.Fprintf(ww, "it seems that's not allowed. We got: %s\n", msg)
 
 		case 1:
-			permStr := formatPermission(x.MissingAccessPermissions[0])
+			permStr := formatPermission(permDenied.MissingAccessPermissions[0])
 			fmt.Fprintf(ww, "that's not allowed. You're missing the permission %s.\n", style.CommentHighlight.Apply(permStr))
 
 		default:
 			fmt.Fprintf(ww, "that's not allowed. You're missing the following permissions:\n")
-			for _, perm := range x.MissingAccessPermissions {
+			for _, perm := range permDenied.MissingAccessPermissions {
 				permStr := formatPermission(perm)
 				fmt.Fprintf(ww, "  • %s\n", style.CommentHighlight.Apply(permStr))
 			}
 		}
 
-		if rid != nil {
+		if re.rid != nil {
 			fmt.Fprintln(ww)
-
 			fmt.Fprint(ww, style.Comment.Apply("If this was unexpected, reach out to our team at "),
 				style.CommentHighlight.Apply("support@namespace.so"),
 				style.Comment.Apply(" and mention request ID "),
-				style.CommentHighlight.Apply(rid.Id),
+				style.CommentHighlight.Apply(re.rid.Id),
 			)
 			fmt.Fprintln(ww)
 		}
@@ -162,24 +221,26 @@ func formatErr(out io.Writer, style colors.Style, err error) {
 			style.Comment.Apply("."))
 
 	case codes.NotFound:
-		if x, ok := hasDetail(st, &v1.EnvironmentDoesntExist{}); ok {
-			fmt.Fprintf(ww, "%q does not exist.", x.ClusterId)
+		var envNotExist v1.EnvironmentDoesntExist
+		if re.findDetail(&envNotExist) {
+			fmt.Fprintf(ww, "%q does not exist.", envNotExist.ClusterId)
 		} else {
-			generic(ww, style, st.Code(), msg, rid)
+			generic(ww, style, re.code, msg, re.rid)
 		}
 
 	case codes.FailedPrecondition:
-		if x, ok := hasDetail(st, &v1.EnvironmentDestroyed{}); ok {
-			fmt.Fprintf(ww, "%q is no longer running.", x.ClusterId)
+		var envDestroyed v1.EnvironmentDestroyed
+		if re.findDetail(&envDestroyed) {
+			fmt.Fprintf(ww, "%q is no longer running.", envDestroyed.ClusterId)
 		} else {
-			generic(ww, style, st.Code(), msg, rid)
+			generic(ww, style, re.code, msg, re.rid)
 		}
 
 	case codes.ResourceExhausted:
-		fmt.Fprintf(ww, "ran out of capacity: %s%s.\n", msg, appendRid(rid))
+		fmt.Fprintf(ww, "ran out of capacity: %s%s.\n", msg, appendRid(re.rid))
 
 	default:
-		generic(ww, style, st.Code(), msg, rid)
+		generic(ww, style, re.code, msg, re.rid)
 	}
 
 	fmt.Fprintln(ww)
@@ -193,19 +254,6 @@ func appendRid(rid *protocol.RequestID) string {
 	}
 
 	return fmt.Sprintf(" (request id: %s)", rid.GetId())
-}
-
-func hasDetail[Msg proto.Message](st *status.Status, detail Msg) (Msg, bool) {
-	for _, x := range st.Proto().Details {
-		if x.MessageIs(detail) {
-			if x.UnmarshalTo(detail) == nil {
-				return detail, true
-			}
-			return detail, false
-		}
-	}
-
-	return detail, false
 }
 
 func generic(ww io.Writer, style colors.Style, code codes.Code, msg string, rid *protocol.RequestID) {
