@@ -51,6 +51,7 @@ func NewDockerCmd() *cobra.Command {
 	buildx.AddCommand(newWireBuildxCommand(true))
 	buildx.AddCommand(newStatusBuildxCommand())
 	buildx.AddCommand(newDumpListWorkersBuildxCommand())
+	buildx.AddCommand(newWaitBuilderCommand())
 
 	cmd.AddCommand(buildx)
 

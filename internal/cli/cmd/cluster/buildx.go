@@ -35,6 +35,7 @@ import (
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/files"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
@@ -954,6 +955,42 @@ func newDumpListWorkersBuildxCommand() *cobra.Command {
 		}
 
 		return nil
+	})
+
+	return cmd
+}
+
+func newWaitBuilderCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    "wait-for-builder",
+		Short:  "Ensures a remote builder is running and ready to execute builds.",
+		Args:   cobra.NoArgs,
+		Hidden: true,
+	}
+
+	platforms := cmd.Flags().StringSlice("platform", []string{}, "Select the platforms to wait for. Valid options: amd64, arm64.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if len(*platforms) == 0 {
+			*platforms = []string{platform.RuntimePlatform().Architecture}
+		}
+
+		eg := executor.New(ctx, "buildx.wait-for-builder")
+		for _, plat := range *platforms {
+
+			eg.Go(func(ctx context.Context) error {
+				parsed, err := api.ParseBuildPlatform(plat)
+				if err != nil {
+					return err
+				}
+
+				// Also waits for buildkit readiness.
+				_, err = ensureBuildCluster(ctx, parsed)
+				return err
+			})
+		}
+
+		return eg.Wait()
 	})
 
 	return cmd

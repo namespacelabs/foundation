@@ -375,7 +375,7 @@ func GetBuilderConfiguration(ctx context.Context, platform BuildPlatform, conf B
 			defer conn.Close()
 
 			t := time.Now()
-			fmt.Fprintf(console.Debug(ctx), "[%s] RPC: calling EnsureBuildInstance {platform: %v}\n", tid, platform)
+			fmt.Fprintf(console.Debug(ctx), "[%s] RPC: calling GetBuilderConfiguration {platform: %v}\n", tid, platform)
 			response, err := cli.GetBuilderConfiguration(ctx, &builderv1beta.GetBuilderConfigurationRequest{
 				Platform:            string(platform),
 				SkipBuilderPreSpawn: conf.SkipPrespawn,
