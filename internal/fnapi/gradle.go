@@ -10,6 +10,7 @@ import (
 
 	"buf.build/gen/go/namespace/cloud/connectrpc/go/proto/namespace/cloud/integrations/gradle/v1beta/gradlev1betaconnect"
 	"connectrpc.com/connect"
+	"namespacelabs.dev/integrations/api"
 )
 
 func NewGradleCacheServiceClient(ctx context.Context) (gradlev1betaconnect.GradleCacheServiceClient, error) {
@@ -18,11 +19,13 @@ func NewGradleCacheServiceClient(ctx context.Context) (gradlev1betaconnect.Gradl
 		return nil, err
 	}
 
-	client := gradlev1betaconnect.NewGradleCacheServiceClient(
+	return NewGradleCacheServiceClientWithToken(tok), nil
+}
+
+func NewGradleCacheServiceClientWithToken(tok api.TokenSource) gradlev1betaconnect.GradleCacheServiceClient {
+	return gradlev1betaconnect.NewGradleCacheServiceClient(
 		http.DefaultClient,
 		GlobalEndpoint(),
 		connect.WithInterceptors(newAuthInterceptor(tok)),
 	)
-
-	return client, nil
 }

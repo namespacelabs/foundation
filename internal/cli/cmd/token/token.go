@@ -112,6 +112,7 @@ func NewCreateCmd() *cobra.Command {
 	grants := cmd.Flags().StringArray("grant", nil, "Grant permission as JSON object (can be specified multiple times). Format: {\"resource_type\":\"...\",\"resource_id\":\"...\",\"actions\":[\"...\"]}")
 	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json, token")
 	tokenFile := cmd.Flags().String("token_file", "", "Write token to this file in JSON format")
+	userScope := cmd.Flags().Bool("user", false, "Create a token bound to the current user's workspace membership.")
 
 	cmd.MarkFlagRequired("name")
 	cmd.MarkFlagRequired("grant")
@@ -142,6 +143,10 @@ func NewCreateCmd() *cobra.Command {
 			Access: &v1beta.AccessPolicy{
 				Grants: permissions,
 			},
+		}
+
+		if *userScope {
+			req.Scope = v1beta.RevokableToken_TENANT_MEMBERSHIP_SCOPE
 		}
 
 		resp, err := client.Tokens.CreateRevokableToken(ctx, req)
