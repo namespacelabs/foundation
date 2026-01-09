@@ -217,7 +217,7 @@ func newCreateTokenCmd() *cobra.Command {
 		Use:   "create-token",
 		Short: "Create a revokable token for accessing the Gradle cache.",
 	}).WithFlags(func(flags *pflag.FlagSet) {
-		flags.StringVar(&name, "cache_name", "*", "Select a Gradle cache to grant access to. By default, all Gradle caches can be accessed.")
+		flags.StringVar(&name, "cache_name", "", "Select a Gradle cache to grant access to. By default, all Gradle caches can be accessed.")
 		fncobra.DurationVar(flags, &expiresIn, "expires_in", 24*time.Hour, "Duration until the token expires (max 90 days).")
 		flags.StringVar(&tokenFile, "token", "token.json", "Write token to this file in JSON format.")
 		flags.StringVar(&scope, "scope", "user", "Set the scope of the generated access token. Valid options: `tenant`, `user`. Tokens with user scope are bound to the tenant membership of the current user.")
@@ -287,7 +287,12 @@ func newCreateTokenCmd() *cobra.Command {
 		fmt.Fprintf(console.Stdout(ctx), "You can set up your gradle cache config with:\n")
 
 		style := colors.Ctx(ctx)
-		fmt.Fprintf(console.Stdout(ctx), "  %s\n", style.Highlight.Apply(fmt.Sprintf("nsc gradle cache setup --name %s --token %s", name, tokenFile)))
+		cmd := fmt.Sprintf("nsc gradle cache setup --token %s", tokenFile)
+		if name != "" {
+			cmd = fmt.Sprintf("%s --name %s", cmd, name)
+		}
+
+		fmt.Fprintf(console.Stdout(ctx), "  %s\n", style.Highlight.Apply(cmd))
 
 		return nil
 	})
