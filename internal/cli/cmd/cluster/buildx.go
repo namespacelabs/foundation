@@ -1009,6 +1009,9 @@ func newWaitBuilderCommand() *cobra.Command {
 						case codes.Unauthenticated:
 							fmt.Fprintf(console.Info(ctx), "failed to create %s builder: %v\n", plat, err)
 							return backoff.Permanent(err)
+
+						default:
+							fmt.Fprintf(console.Info(ctx), "failed to ensure %s builder, will retry: %v\n", plat, err)
 						}
 
 						return err
@@ -1016,6 +1019,7 @@ func newWaitBuilderCommand() *cobra.Command {
 
 					return nil
 				}, backoff.WithContext(b, ctx)); err != nil {
+					// nsc main handler will pretty-print this error.
 					return err
 				}
 
