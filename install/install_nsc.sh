@@ -113,7 +113,11 @@ do_install() {
   if [ -z "${version:-}" ]; then
     echo "Installing latest version of Namespace"
     install_args=""
-    if [ -x "$old_bin_dir/$tool_name" ]; then
+    if [ ! -z "${NS_ROOT:-}" ]; then
+      install_args="--dir=\"$NS_ROOT/bin\""
+    elif [ ! -z "${NS_INSTALL_DIR:-}" ]; then
+      install_args="--dir=\"$NS_INSTALL_DIR\""
+    elif [ -x "$old_bin_dir/$tool_name" ]; then
       install_args="--dir=\"$old_bin_dir\""
     fi
 
