@@ -975,6 +975,7 @@ func newWaitBuilderCommand() *cobra.Command {
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if len(*platforms) == 0 {
 			*platforms = []string{platform.RuntimePlatform().Architecture}
+			fmt.Fprintf(console.Info(ctx), "No platform specified, defaulting to %s.\n", platform.RuntimePlatform().Architecture)
 		}
 
 		eg := executor.New(ctx, "buildx.wait-for-builder")
@@ -997,20 +998,29 @@ func newWaitBuilderCommand() *cobra.Command {
 
 				b.Reset()
 
-				return backoff.Retry(func() error {
+				t := time.Now()
+				if err := backoff.Retry(func() error {
 					// Also waits for buildkit readiness.
-					_, err = ensureBuildCluster(ctx, parsed)
-					if err != nil {
-						if status.Code(err) == codes.ResourceExhausted {
-							fmt.Fprintf(console.Debug(ctx), "[buildx] %s resources exhausted, will retry ensuring a builder: %v\n", plat, err)
-							return err
+					if _, err := ensureBuildCluster(ctx, parsed); err != nil {
+						switch status.Code(err) {
+						case codes.ResourceExhausted:
+							fmt.Fprintf(console.Info(ctx), "%s resources exhausted, will retry ensuring a builder: %v\n", plat, err)
+
+						case codes.Unauthenticated:
+							fmt.Fprintf(console.Info(ctx), "failed to create %s builder: %v\n", plat, err)
+							return backoff.Permanent(err)
 						}
 
-						return backoff.Permanent(err)
+						return err
 					}
 
 					return nil
-				}, backoff.WithContext(b, ctx))
+				}, backoff.WithContext(b, ctx)); err != nil {
+					return err
+				}
+
+				fmt.Fprintf(console.Info(ctx), "%s builder is ready (took %v).\n", plat, time.Since(t))
+				return nil
 			})
 		}
 
