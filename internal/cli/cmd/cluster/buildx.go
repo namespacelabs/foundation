@@ -970,7 +970,7 @@ func newWaitBuilderCommand() *cobra.Command {
 		Hidden: true,
 	}
 
-	platforms := cmd.Flags().StringSlice("platform", []string{}, "Select the platforms to wait for. Valid options: amd64, arm64.")
+	platforms := cmd.Flags().StringSlice("platform", []string{}, "Select the platforms to wait for. Valid options: linux/amd64, linux/arm64.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if len(*platforms) == 0 {
@@ -982,7 +982,7 @@ func newWaitBuilderCommand() *cobra.Command {
 		for _, plat := range *platforms {
 
 			eg.Go(func(ctx context.Context) error {
-				parsed, err := api.ParseBuildPlatform(plat)
+				parsed, err := api.ParseBuildPlatform(strings.TrimPrefix(plat, "linux/"))
 				if err != nil {
 					return err
 				}
