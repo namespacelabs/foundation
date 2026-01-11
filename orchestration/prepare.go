@@ -21,6 +21,14 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
+const (
+	OrchestratorModeHead      = "head"
+	OrchestratorModePrebuilt  = "prebuilt"
+	PrebuiltOrchestratorImage = "registry.zrh-services.namespace.systems/namespacelabs.dev/foundation/orchestration/server@sha256:c9fb3e8e70e06d47168879a998049f96bf3e1693e0e3b65f581b5d93ea80b5c8"
+)
+
+var OrchestratorMode = OrchestratorModeHead
+
 var stateless = &runtimepb.Deployable{
 	PackageRef:      schema.MakePackageSingleRef(constants.ServerPkg),
 	Id:              constants.ServerId,
@@ -71,6 +79,10 @@ func deployOrchestrator(ctx context.Context, env cfg.Context, boundCluster runti
 		Runtime:  planner,
 		Registry: planner.Registry(),
 		Secrets:  secrets.NoSecrets,
+	}
+
+	if OrchestratorMode == OrchestratorModePrebuilt {
+		p.PrebuiltImage = PrebuiltOrchestratorImage
 	}
 
 	plan, err := deploy.PrepareDeployServers(ctx, p, focus)
