@@ -15,10 +15,11 @@ import (
 )
 
 type Planner struct {
-	Context  cfg.Context
-	Runtime  runtime.Planner
-	Registry registry.Manager
-	Secrets  secrets.SecretsSource
+	Context       cfg.Context
+	Runtime       runtime.Planner
+	Registry      registry.Manager
+	Secrets       secrets.SecretsSource
+	PrebuiltImage string // If set, use this pre-built image instead of building from source.
 }
 
 func NewPlanner(ctx context.Context, env cfg.Context) (Planner, error) {

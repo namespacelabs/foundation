@@ -203,6 +203,9 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 			rootCmd.PersistentFlags().BoolVar(&k3d.IgnoreVersionCheck, "k3d_ignore_docker_version", k3d.IgnoreVersionCheck,
 				"If set to true, does not validate Docker's verison.")
 			rootCmd.PersistentFlags().BoolVar(&kubeops.ForceApply, "kubernetes_force_apply", kubeops.ForceApply, "Whether to force-apply an Apply.")
+			rootCmd.PersistentFlags().StringVar(&orchestration.OrchestratorMode, "orchestrator", orchestration.OrchestratorMode,
+				fmt.Sprintf("Orchestrator deployment mode: %q builds from source, %q uses %s.",
+					orchestration.OrchestratorModeHead, orchestration.OrchestratorModePrebuilt, orchestration.PrebuiltOrchestratorImage))
 
 			// We have too many flags, hide some of them from --help so users can focus on what's important.
 			for _, noisy := range []string{

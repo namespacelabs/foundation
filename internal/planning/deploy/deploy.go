@@ -616,17 +616,26 @@ func prepareServerImages(ctx context.Context, planner planning.Planner, stack *p
 	for _, srv := range stack.Servers {
 		images := serverBuildSpec{PackageName: srv.PackageName()}
 
-		prebuilt, err := binary.PrebuiltImageID(ctx, srv.Location, planner.Context.Configuration())
-		if err != nil {
-			return nil, err
-		}
-
 		var spec build.Spec
+		var err error
 
-		if prebuilt != nil {
-			spec = build.PrebuiltPlan(*prebuilt, false /* platformIndependent */, build.PrebuiltResolveOpts())
+		if planner.PrebuiltImage != "" {
+			imgid, parseErr := oci.ParseImageID(planner.PrebuiltImage)
+			if parseErr != nil {
+				return nil, fnerrors.Newf("failed to parse prebuilt image %q: %w", planner.PrebuiltImage, parseErr)
+			}
+			spec = build.PrebuiltPlan(imgid, false /* platformIndependent */, build.PrebuiltResolveOpts())
 		} else {
-			spec, err = integrations.IntegrationFor(srv.Framework()).PrepareBuild(ctx, makeBuildAssets(opts.IngressFragments), srv, stack.Focus.Has(srv.PackageName()))
+			prebuilt, prebuiltErr := binary.PrebuiltImageID(ctx, srv.Location, planner.Context.Configuration())
+			if prebuiltErr != nil {
+				return nil, prebuiltErr
+			}
+
+			if prebuilt != nil {
+				spec = build.PrebuiltPlan(*prebuilt, false /* platformIndependent */, build.PrebuiltResolveOpts())
+			} else {
+				spec, err = integrations.IntegrationFor(srv.Framework()).PrepareBuild(ctx, makeBuildAssets(opts.IngressFragments), srv, stack.Focus.Has(srv.PackageName()))
+			}
 		}
 		if err != nil {
 			return nil, err
