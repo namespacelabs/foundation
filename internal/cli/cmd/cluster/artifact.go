@@ -8,6 +8,7 @@ import (
 	"archive/zip"
 	"compress/flate"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -49,6 +50,7 @@ func NewArtifactCmd() *cobra.Command {
 	cmd.AddCommand(newArtifactDownloadCmd())
 	cmd.AddCommand(newArtifactCacheURLCmd())
 	cmd.AddCommand(newArtifactExpireCmd())
+	cmd.AddCommand(newArtifactDescribeCmd())
 
 	return cmd
 }
@@ -495,4 +497,120 @@ func writeArtifactWithResume(ctx context.Context, cli storage.Client, namespace,
 	}
 
 	return downloader.Download(ctx, dest, opts)
+}
+
+func newArtifactDescribeCmd() *cobra.Command {
+	var namespace string
+	var output string
+
+	return fncobra.Cmd(&cobra.Command{
+		Use:   "describe [path]",
+		Short: "Describe an artifact's metadata.",
+		Args:  cobra.ExactArgs(1),
+	}).WithFlags(func(flags *pflag.FlagSet) {
+		flags.StringVar(&namespace, "namespace", mainArtifactNamespace, "Namespace of the artifact.")
+		flags.StringVarP(&output, "output", "o", "plain", "Output format: plain, json")
+	}).DoWithArgs(func(ctx context.Context, args []string) error {
+		path := args[0]
+
+		token, err := auth.LoadDefaults()
+		if err != nil {
+			return err
+		}
+
+		cli, err := storage.NewClient(ctx, token)
+		if err != nil {
+			return err
+		}
+		defer cli.Close()
+
+		res, err := cli.Artifacts.ResolveArtifact(ctx, &storagev1beta.ResolveArtifactRequest{
+			Path:      path,
+			Namespace: namespace,
+		})
+		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				fmt.Fprintf(console.Stdout(ctx), "%s doesn't exist\n", path)
+				return fnerrors.ExitWithCode(fmt.Errorf("%s doesn't exist", path), 2)
+			}
+			return err
+		}
+
+		desc := res.GetDescription()
+
+		if desc.GetStatus() == storagev1beta.Artifact_EXPIRED {
+			fmt.Fprintf(console.Stdout(ctx), "%s doesn't exist\n", path)
+			return fnerrors.ExitWithCode(fmt.Errorf("%s doesn't exist", path), 2)
+		}
+
+		switch output {
+		case "json":
+			type jsonOutput struct {
+				ID        string            `json:"id"`
+				Path      string            `json:"path"`
+				Namespace string            `json:"namespace"`
+				Size      int64             `json:"size"`
+				Status    string            `json:"status"`
+				CreatedAt *time.Time        `json:"created_at,omitempty"`
+				ExpiresAt *time.Time        `json:"expires_at,omitempty"`
+				Labels    map[string]string `json:"labels,omitempty"`
+				WebURL    string            `json:"web_url,omitempty"`
+			}
+
+			out := jsonOutput{
+				ID:        desc.GetId(),
+				Path:      desc.GetPath(),
+				Namespace: desc.GetNamespace(),
+				Size:      desc.GetSize(),
+				Status:    desc.GetStatus().String(),
+				WebURL:    desc.GetWebUrl(),
+			}
+
+			if desc.GetCreatedAt() != nil {
+				t := desc.GetCreatedAt().AsTime()
+				out.CreatedAt = &t
+			}
+			if desc.GetExpiresAt() != nil {
+				t := desc.GetExpiresAt().AsTime()
+				out.ExpiresAt = &t
+			}
+			if len(desc.GetLabels()) > 0 {
+				out.Labels = make(map[string]string)
+				for _, lbl := range desc.GetLabels() {
+					out.Labels[lbl.GetName()] = lbl.GetValue()
+				}
+			}
+
+			enc := json.NewEncoder(console.Stdout(ctx))
+			enc.SetIndent("", "  ")
+			return enc.Encode(out)
+
+		case "plain":
+			stdout := console.Stdout(ctx)
+			fmt.Fprintf(stdout, "Path:      %s\n", desc.GetPath())
+			fmt.Fprintf(stdout, "Namespace: %s\n", desc.GetNamespace())
+			fmt.Fprintf(stdout, "ID:        %s\n", desc.GetId())
+			fmt.Fprintf(stdout, "Size:      %s (%d bytes)\n", humanize.Bytes(uint64(desc.GetSize())), desc.GetSize())
+			fmt.Fprintf(stdout, "Status:    %s\n", desc.GetStatus().String())
+			if desc.GetCreatedAt() != nil {
+				fmt.Fprintf(stdout, "Created:   %s\n", desc.GetCreatedAt().AsTime().Format(time.RFC3339))
+			}
+			if desc.GetExpiresAt() != nil {
+				fmt.Fprintf(stdout, "Expires:   %s\n", desc.GetExpiresAt().AsTime().Format(time.RFC3339))
+			}
+			if desc.GetWebUrl() != "" {
+				fmt.Fprintf(stdout, "Web URL:   %s\n", desc.GetWebUrl())
+			}
+			if len(desc.GetLabels()) > 0 {
+				fmt.Fprintf(stdout, "Labels:\n")
+				for _, lbl := range desc.GetLabels() {
+					fmt.Fprintf(stdout, "  %s: %s\n", lbl.GetName(), lbl.GetValue())
+				}
+			}
+			return nil
+
+		default:
+			return fnerrors.BadInputError("invalid output format: %s", output)
+		}
+	})
 }
