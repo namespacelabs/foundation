@@ -6,7 +6,6 @@ package cluster
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 
@@ -99,15 +98,4 @@ func connectToInstanceService(ctx context.Context, instance *api.KubernetesClust
 	}
 
 	return eg.Wait()
-}
-
-func selectClusterFriendly(ctx context.Context, args []string) (*api.KubernetesCluster, error) {
-	cluster, _, err := SelectRunningCluster(ctx, args)
-	if errors.Is(err, ErrEmptyClusterList) {
-		PrintCreateClusterMsg(ctx)
-		return nil, nil
-	} else if err != nil {
-		return nil, err
-	}
-	return cluster, err
 }
