@@ -48,6 +48,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(cluster.NewSshCmd())                        // nsc ssh
 	root.AddCommand(cluster.NewVncCmd())                        // nsc vnc
 	root.AddCommand(cluster.NewRdpCmd())                        // nsc rdp
+	root.AddCommand(cluster.NewProxyCmd())                      // nsc proxy
 	root.AddCommand(cluster.NewTopCmd())                        // nsc top
 	root.AddCommand(cluster.NewDockerCmd())                     // nsc docker
 	root.AddCommand(cluster.NewDescribeCmd())                   // nsc describe

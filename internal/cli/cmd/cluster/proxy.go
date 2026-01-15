@@ -6,181 +6,197 @@ package cluster
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
-	"os"
-	"os/exec"
-	"time"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
+	"namespacelabs.dev/foundation/framework/netcopy"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/fnapi"
+	"namespacelabs.dev/foundation/internal/files"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/process"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
-	"namespacelabs.dev/foundation/internal/providers/nscloud/endpoint"
 )
 
-const (
-	buildCluster      = "build-cluster"
-	buildClusterArm64 = "build-cluster-arm64"
-)
+type proxyServiceCredentials struct {
+	Credentials *proxyCredentials `json:"credentials,omitempty"`
+}
+
+type proxyCredentials struct {
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+}
+
+type proxyOutput struct {
+	Endpoint string
+	Services map[string]*proxyServiceCredentials
+}
+
+func (p proxyOutput) MarshalJSON() ([]byte, error) {
+	m := map[string]any{"endpoint": p.Endpoint}
+	for k, v := range p.Services {
+		m[k] = v
+	}
+
+	return json.Marshal(m)
+}
 
 func NewProxyCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "proxy",
-		Short:  "Runs a unix socket proxy for a well known service.",
-		Hidden: true,
-		Args:   cobra.NoArgs,
+		Use:   "proxy [instance-id]",
+		Short: "Provides proxy support for instance services.",
+		Args:  cobra.ArbitraryArgs,
 	}
 
-	kind := cmd.Flags().String("kind", "", "The service being proxied.")
-	sockPath := cmd.Flags().String("sock_path", "", "If specified listens on the specified path.")
-	cluster := cmd.Flags().String("cluster", "", "Cluster ID to proxy.")
-	background := cmd.Flags().String("background", "", "If specified runs the proxy in the background, and writes the process PID to the specified path.")
+	service := cmd.Flags().StringP("service", "s", "", "The service to proxy (e.g. vnc, rdp).")
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+	outputTo := cmd.Flags().String("output_to", "", "If specified, write the JSON configuration to this path.")
+	once := cmd.Flags().Bool("once", false, "If set, stop the proxy after a single connection.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		if *cluster == "" || *kind == "" {
-			return fnerrors.Newf("--cluster and --kind are required")
+		if *service == "" {
+			return fnerrors.Newf("--service is required")
 		}
 
-		if *background != "" {
-			if *sockPath == "" {
-				return fnerrors.Newf("--background requires --sock_path")
+		cluster, err := selectClusterFriendly(ctx, args)
+		if err != nil {
+			return err
+		}
+		if cluster == nil {
+			return nil
+		}
+
+		svc := api.ClusterService(cluster, *service)
+		if svc == nil || svc.Endpoint == "" {
+			return fnerrors.Newf("instance does not have service %q", *service)
+		}
+
+		if svc.Status != "READY" {
+			return fnerrors.Newf("expected %s to be READY, saw %q", *service, svc.Status)
+		}
+
+		var d net.ListenConfig
+		lst, err := d.Listen(ctx, "tcp", "127.0.0.1:0")
+		if err != nil {
+			return err
+		}
+		defer lst.Close()
+
+		addr := lst.Addr().String()
+
+		out := proxyOutput{
+			Endpoint: addr,
+		}
+		if svc.Credentials != nil {
+			out.Services = map[string]*proxyServiceCredentials{
+				*service: {
+					Credentials: &proxyCredentials{
+						Username: svc.Credentials.Username,
+						Password: svc.Credentials.Password,
+					},
+				},
+			}
+		}
+
+		if *outputTo != "" {
+			if err := files.WriteJson(*outputTo, out, 0600); err != nil {
+				return fnerrors.InternalError("failed to write output to %q: %w", *outputTo, err)
 			}
 
-			// Make sure the cluster exists before going to the background.
-			resolved, err := ensureCluster(ctx, *cluster)
+			fmt.Fprintf(console.Stdout(ctx), "Wrote %q\n", *outputTo)
+		}
+
+		switch *output {
+		case "json":
+			if err := json.NewEncoder(console.Stdout(ctx)).Encode(out); err != nil {
+				return fnerrors.InternalError("failed to encode output as JSON: %w", err)
+			}
+
+		default:
+			if *output != "" && *output != "plain" {
+				fmt.Fprintf(console.Warnings(ctx), "unsupported output %q, defaulting to plain\n", *output)
+			}
+
+			stdout := console.Stdout(ctx)
+			fmt.Fprintf(stdout, "%s:\n", strings.ToUpper(*service))
+			fmt.Fprintf(stdout, "  Endpoint: %s\n", addr)
+			if svc.Credentials != nil {
+				fmt.Fprintf(stdout, "  Username: %s\n", svc.Credentials.Username)
+				fmt.Fprintf(stdout, "  Password: %s\n", svc.Credentials.Password)
+			}
+		}
+
+		eg, egCtx := errgroup.WithContext(ctx)
+
+		handleConn := func(conn net.Conn) error {
+			defer conn.Close()
+
+			peerConn, err := api.DialEndpoint(egCtx, svc.Endpoint)
+			if err != nil {
+				if *output == "plain" {
+					fmt.Fprintf(console.Warnings(ctx), "Failed to connect to service: %v\n", err)
+				}
+
+				return nil
+			}
+
+			defer peerConn.Close()
+
+			if *output == "plain" {
+				fmt.Fprintf(console.Stdout(ctx), "Client %s connected.\n", conn.RemoteAddr())
+			}
+
+			_ = netcopy.CopyConns(nil, conn, peerConn)
+
+			if *output == "plain" {
+				fmt.Fprintf(console.Stdout(ctx), "Client %s disconnected.\n", conn.RemoteAddr())
+			}
+
+			return nil
+		}
+
+		if *once {
+			conn, err := lst.Accept()
 			if err != nil {
 				return err
 			}
 
-			return setupBackgroundProxy(ctx, resolved.ClusterId, *kind, *sockPath, *background)
+			return handleConn(conn)
 		}
 
-		return deprecateRunProxy(ctx, *cluster, *kind, *sockPath)
+		eg.Go(func() error {
+			for {
+				conn, err := lst.Accept()
+				if err != nil {
+					if egCtx.Err() != nil {
+						return nil
+					}
+					return err
+				}
+
+				eg.Go(func() error {
+					return handleConn(conn)
+				})
+			}
+		})
+
+		return eg.Wait()
 	})
 
 	return cmd
 }
 
-func setupBackgroundProxy(ctx context.Context, clusterId, kind, sockPath, pidFile string) error {
-	cmd := exec.Command(os.Args[0], "cluster", "proxy", "--kind", kind, "--sock_path", sockPath, "--cluster", clusterId, "--region", endpoint.RegionName)
-	process.SetSIDAttr(cmd, true)
-	process.ForegroundAttr(cmd, false)
-
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-
-	pid := cmd.Process.Pid
-	// Make sure the child process is not cleaned up on exit.
-	if err := cmd.Process.Release(); err != nil {
-		return err
-	}
-
-	ctx, done := context.WithTimeout(ctx, 5*time.Second)
-	defer done()
-
-	// Wait until the socket is up.
-	if err := waitForFile(ctx, sockPath); err != nil {
-		return fnerrors.Newf("socket didn't come up in time: %v", err)
-	}
-
-	if pidFile != "" {
-		return os.WriteFile(pidFile, []byte(fmt.Sprintf("%d", pid)), 0644)
-	}
-
-	return nil
-}
-
-func deprecateRunProxy(ctx context.Context, clusterReq, kind, socketPath string) error {
-	if clusterReq == "" || kind == "" {
-		return fnerrors.Newf("--cluster and --kind are required")
-	}
-
-	cluster, err := ensureCluster(ctx, clusterReq)
-	if err != nil {
-		return err
-	}
-
-	var connect func(context.Context) (net.Conn, error)
-
-	if kind == "buildkit" {
-		buildkitSvc := api.ClusterService(cluster.Cluster, "buildkit")
-		if buildkitSvc == nil || buildkitSvc.Endpoint == "" {
-			return fnerrors.Newf("instance is missing buildkit")
-		}
-
-		if buildkitSvc.Status != "READY" {
-			return fnerrors.Newf("expected buildkit to be READY, saw %q", buildkitSvc.Status)
-		}
-
-		connect = func(ctx context.Context) (net.Conn, error) {
-			return api.DialEndpoint(ctx, buildkitSvc.Endpoint)
-		}
-	} else {
-		connect = func(ctx context.Context) (net.Conn, error) {
-			token, err := fnapi.FetchToken(ctx)
-			if err != nil {
-				return nil, err
-			}
-
-			return connectToSocket(ctx, token, cluster.Cluster, kind)
-		}
-	}
-
-	ctx, cancel := context.WithCancel(ctx)
-
-	go func() {
-		_ = api.StartRefreshing(ctx, api.Methods, cluster.Cluster, func(err error) error {
-			fmt.Fprintf(console.Warnings(ctx), "Failed to refresh instance: %v\n", err)
-			return nil
-		})
-	}()
-
-	defer cancel()
-
-	if _, err := runUnixSocketProxy(ctx, cluster.ClusterId, unixSockProxyOpts{
-		Kind:       kind,
-		SocketPath: socketPath,
-		Blocking:   true,
-		Connect:    connect,
-		AnnounceSocket: func(socketPath string) {
-			fmt.Fprintf(console.Stdout(ctx), "Listening on %s\n", socketPath)
-		},
-	}); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func ensureCluster(ctx context.Context, clusterID string) (*api.CreateClusterResult, error) {
-	response, err := api.EnsureCluster(ctx, api.Methods, nil, clusterID)
-	if err != nil {
+func selectClusterFriendly(ctx context.Context, args []string) (*api.KubernetesCluster, error) {
+	cluster, _, err := SelectRunningCluster(ctx, args)
+	if errors.Is(err, ErrEmptyClusterList) {
+		PrintCreateClusterMsg(ctx)
+		return nil, nil
+	} else if err != nil {
 		return nil, err
 	}
-
-	return &api.CreateClusterResult{
-		ClusterId: response.Cluster.ClusterId,
-		Cluster:   response.Cluster,
-	}, nil
-}
-
-func waitForFile(ctx context.Context, path string) error {
-	for {
-		if _, err := os.Stat(path); err == nil {
-			return nil
-		} else if !os.IsNotExist(err) {
-			return err
-		}
-
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-
-		time.Sleep(500 * time.Millisecond)
-	}
+	return cluster, nil
 }
