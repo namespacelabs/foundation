@@ -10,7 +10,9 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
@@ -18,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/files"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
@@ -56,6 +59,7 @@ func NewProxyCmd() *cobra.Command {
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 	outputTo := cmd.Flags().String("output_to", "", "If specified, write the JSON configuration to this path.")
 	once := cmd.Flags().Bool("once", false, "If set, stop the proxy after a single connection.")
+	websocketProxy := cmd.Flags().Bool("websocket", false, "If set, outputs information to connect to the service directly using websockets.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *service == "" {
@@ -77,6 +81,64 @@ func NewProxyCmd() *cobra.Command {
 
 		if svc.Status != "READY" {
 			return fnerrors.Newf("expected %s to be READY, saw %q", *service, svc.Status)
+		}
+
+		if *websocketProxy {
+			token, err := fnapi.FetchToken(ctx)
+			if err != nil {
+				return err
+			}
+
+			bt, err := token.IssueToken(ctx, 4*time.Hour, false)
+			if err != nil {
+				return err
+			}
+
+			targetURL, err := url.Parse(svc.Endpoint)
+			if err != nil {
+				return fnerrors.InternalError("failed to parse endpoint: %w", err)
+			}
+
+			q := targetURL.Query()
+			q.Set("bearer_token", bt)
+			targetURL.RawQuery = q.Encode()
+
+			out := map[string]any{"url": targetURL.String()}
+			if svc.Credentials != nil {
+				out[*service] = &proxyServiceCredentials{
+					Credentials: &proxyCredentials{
+						Username: svc.Credentials.Username,
+						Password: svc.Credentials.Password,
+					},
+				}
+			}
+
+			if *outputTo != "" {
+				if err := files.WriteJson(*outputTo, out, 0600); err != nil {
+					return fnerrors.InternalError("failed to write output to %q: %w", *outputTo, err)
+				}
+				fmt.Fprintf(console.Stdout(ctx), "Wrote %q\n", *outputTo)
+			}
+
+			switch *output {
+			case "json":
+				if err := json.NewEncoder(console.Stdout(ctx)).Encode(out); err != nil {
+					return fnerrors.InternalError("failed to encode output as JSON: %w", err)
+				}
+			default:
+				if *output != "" && *output != "plain" {
+					fmt.Fprintf(console.Warnings(ctx), "unsupported output %q, defaulting to plain\n", *output)
+				}
+				stdout := console.Stdout(ctx)
+				fmt.Fprintf(stdout, "%s:\n", strings.ToUpper(*service))
+				fmt.Fprintf(stdout, "  URL: %s\n", targetURL.String())
+				if svc.Credentials != nil {
+					fmt.Fprintf(stdout, "  Username: %s\n", svc.Credentials.Username)
+					fmt.Fprintf(stdout, "  Password: %s\n", svc.Credentials.Password)
+				}
+			}
+
+			return nil
 		}
 
 		var d net.ListenConfig
