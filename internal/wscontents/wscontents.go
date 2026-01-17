@@ -7,17 +7,13 @@ package wscontents
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/cespare/xxhash/v2"
-	"github.com/fsnotify/fsnotify"
 	"github.com/moby/patternmatcher"
-	"namespacelabs.dev/foundation/internal/filewatcher"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
@@ -130,45 +126,6 @@ func verifyDir(path string) error {
 	}
 
 	return nil
-}
-
-func AggregateFSEvents(watcher filewatcher.EventsAndErrors, debugLogger, errLogger io.Writer, bufferCh chan []fsnotify.Event) {
-	// Usually the return callback would be sole responsible to stop the watcher,
-	// but we want to free resources as early as we know that we can longer listen
-	// to events.
-	defer watcher.Close()
-	defer close(bufferCh)
-
-	t := time.NewTicker(250 * time.Millisecond)
-	defer func() {
-		t.Stop()
-	}()
-
-	var buffer []fsnotify.Event
-	for {
-		select {
-		case ev, ok := <-watcher.Events():
-			if !ok {
-				return
-			}
-
-			fmt.Fprintf(debugLogger, "Received filesystem event (%s): %v\n", ev.Name, ev.Op)
-			buffer = append(buffer, ev)
-
-		case _, ok := <-t.C:
-			if ok && len(buffer) > 0 {
-				bufferCh <- buffer
-				buffer = nil
-			}
-
-		case err, ok := <-watcher.Errors():
-			if !ok {
-				return
-			}
-
-			fmt.Fprintf(errLogger, "Received filesystem event error: %v\n", err)
-		}
-	}
 }
 
 func digestfile(contents io.Reader) ([]byte, error) {
