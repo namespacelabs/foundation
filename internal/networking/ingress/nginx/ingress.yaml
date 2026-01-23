@@ -343,6 +343,10 @@ spec:
   minReadySeconds: 0
   template:
     metadata:
+      annotations:
+        prometheus.io/port: "10254"
+        prometheus.io/scheme: http
+        prometheus.io/scrape: "true"
       labels:
         helm.sh/chart: ingress-nginx-4.12.1
         app.kubernetes.io/name: ingress-nginx
@@ -364,6 +368,7 @@ spec:
                   - /wait-shutdown
           args:
             - /nginx-ingress-controller
+            - --enable-metrics=true
             - --publish-service=$(POD_NAMESPACE)/ingress-nginx-controller
             - --election-id=ingress-nginx-leader
             - --controller-class=k8s.io/ingress-nginx
