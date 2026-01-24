@@ -13,6 +13,8 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"namespacelabs.dev/foundation/internal/cli/fncobra/name"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
@@ -126,6 +128,7 @@ const (
 	ttlColKey      = "ttl"
 	purposeColKey  = "purpose"
 	platformColKey = "platform"
+	osColKey       = "os"
 )
 
 func tableClusters(ctx context.Context,
@@ -135,6 +138,7 @@ func tableClusters(ctx context.Context,
 		{Key: idColKey, Title: "Instance ID", MinWidth: 5, MaxWidth: 20},
 		{Key: cpuColKey, Title: "CPU", MinWidth: 3, MaxWidth: 20},
 		{Key: memColKey, Title: "Memory", MinWidth: 5, MaxWidth: 20},
+		{Key: osColKey, Title: "OS", MinWidth: 5, MaxWidth: 10},
 		{Key: platformColKey, Title: "Arch", MinWidth: 5, MaxWidth: 10},
 		{Key: createdColKey, Title: "Created", MinWidth: 10, MaxWidth: 20},
 	}
@@ -153,6 +157,7 @@ func tableClusters(ctx context.Context,
 		}
 		cpu := fmt.Sprintf("%d", cluster.Shape.VirtualCpu)
 		ram := humanize.IBytes(uint64(cluster.Shape.MemoryMegabytes) * humanize.MiByte)
+		os := formatOS(cluster.Shape)
 		arch := strings.ToLower(cluster.Shape.MachineArch)
 		created, _ := time.Parse(time.RFC3339, cluster.Created)
 		deadline, _ := time.Parse(time.RFC3339, cluster.Deadline)
@@ -161,6 +166,7 @@ func tableClusters(ctx context.Context,
 			idColKey:       cluster.ClusterId,
 			cpuColKey:      cpu,
 			memColKey:      ram,
+			osColKey:       os,
 			platformColKey: arch,
 
 			createdColKey: humanize.Time(created.Local()),
@@ -186,6 +192,15 @@ func tableClusters(ctx context.Context,
 	err := tui.StaticTable(ctx, cols, rows)
 
 	return nil, err
+}
+
+func formatOS(shape *api.ClusterShape) string {
+	switch shape.OS {
+	case "macos":
+		return "MacOS"
+	default:
+		return cases.Title(language.English).String(shape.OS)
+	}
 }
 
 func formatPurpose(cluster api.KubernetesClusterMetadata) string {
