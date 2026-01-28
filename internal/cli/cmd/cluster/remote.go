@@ -165,11 +165,6 @@ func instanceDownload(ctx context.Context, cluster *api.KubernetesCluster, remot
 		}
 
 		if err := session.Wait(); err != nil {
-			if localPath != "-" && localPath != "" {
-				os.Remove(localPath)
-			} else if tempFile != "" {
-				os.Remove(tempFile)
-			}
 			return fnerrors.Newf("remote read failed: %w", err)
 		}
 
