@@ -59,3 +59,18 @@ func NewJobsServiceClient(ctx context.Context) (githubv1betaconnect.JobsServiceC
 
 	return client, nil
 }
+
+func NewImageServiceClient(ctx context.Context) (githubv1betaconnect.ImageServiceClient, error) {
+	tok, err := FetchToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	client := githubv1betaconnect.NewImageServiceClient(
+		http.DefaultClient,
+		GlobalEndpoint(),
+		connect.WithInterceptors(newAuthInterceptor(tok)),
+	)
+
+	return client, nil
+}
