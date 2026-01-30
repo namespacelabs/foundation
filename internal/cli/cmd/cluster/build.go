@@ -32,6 +32,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/codes"
+	buildkitfw "namespacelabs.dev/foundation/framework/build/buildkit"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build/buildkit/bkkeychain"
@@ -539,7 +540,7 @@ func MakeWireBuilder(useServerSideProxy bool, experimental string, waitUntilRead
 				// Use mTLS connection for remote build clusters
 				cli, err := createMTLSBuildKitClient(ctx, remoteBp, api.BuilderConfiguration{
 					Experimental: experimental,
-				})
+				}, waitUntilReady)
 				if err != nil {
 					return nil, err
 				}
@@ -560,22 +561,25 @@ func MakeWireBuilder(useServerSideProxy bool, experimental string, waitUntilRead
 	}
 }
 
-func createMTLSBuildKitClient(ctx context.Context, remoteBp *RemoteBuildClusterInstance, conf api.BuilderConfiguration) (*client.Client, error) {
-	// Get builder configuration with certificates
+func createMTLSBuildKitClient(ctx context.Context, remoteBp *RemoteBuildClusterInstance, conf api.BuilderConfiguration, waitUntilReady bool) (*client.Client, error) {
 	builderConfig, err := getBuilderConfigWithCerts(ctx, remoteBp.platform, conf)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get builder configuration: %w", err)
 	}
 
-	// Create BuildKit client with mTLS credentials
-	cli, err := client.New(ctx, builderConfig.FullBuildkitEndpoint,
-		client.WithCredentials(builderConfig.ClientCertPath, builderConfig.ClientKeyPath),
-		client.WithServerConfig("", builderConfig.ServerCAPath))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create BuildKit client with mTLS: %w", err)
+	connect := func(ctx context.Context) (*client.Client, error) {
+		return client.New(ctx, builderConfig.FullBuildkitEndpoint,
+			client.WithCredentials(builderConfig.ClientCertPath, builderConfig.ClientKeyPath),
+			client.WithServerConfig("", builderConfig.ServerCAPath))
 	}
 
-	return cli, nil
+	if waitUntilReady {
+		if err := buildkitfw.WaitReadiness(ctx, 1*time.Minute, connect); err != nil {
+			return nil, fmt.Errorf("builder not ready: %w", err)
+		}
+	}
+
+	return connect(ctx)
 }
 
 func getBuilderConfigWithCerts(ctx context.Context, platform api.BuildPlatform, conf api.BuilderConfiguration) (BuilderConfig, error) {
