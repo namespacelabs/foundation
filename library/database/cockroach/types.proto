@@ -14,7 +14,7 @@ message ClusterInstance {
     string user     = 2;
     string password = 3;
     string host = 4;
-    int32 port = 5;
+    string port = 5;
 
     string ca_cert  = 6;
     string ssl_mode = 7;
@@ -33,7 +33,7 @@ message DatabaseInstance {
     string cluster_address = 5;
 
     string cluster_host = 6;
-    int32 cluster_port = 7;
+    string cluster_port = 7;
 
     string ssl_mode = 8;
 
