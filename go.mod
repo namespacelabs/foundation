@@ -141,7 +141,7 @@ require (
 	k8s.io/client-go v0.34.1
 	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397
 	namespacelabs.dev/go-ids v0.0.0-20221124082625-9fc72ee06af7
-	namespacelabs.dev/integrations v0.0.9-0.20251121143544-f44c8d144644
+	namespacelabs.dev/integrations v0.0.11-0.20260204211624-e14e65bed4c0
 	sigs.k8s.io/yaml v1.6.0
 )
 
