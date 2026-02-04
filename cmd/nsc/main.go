@@ -225,7 +225,7 @@ func formatErr(out io.Writer, style colors.Style, err error) {
 		if re.findDetail(&envNotExist) {
 			fmt.Fprintf(ww, "%q does not exist.", envNotExist.ClusterId)
 		} else {
-			generic(ww, style, re.code, msg, re.rid)
+			fmt.Fprintf(ww, "%s%s.", msg, appendRid(re.rid))
 		}
 
 	case codes.FailedPrecondition:
