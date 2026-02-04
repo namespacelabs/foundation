@@ -63,7 +63,7 @@ func newArtifactUploadCmd() *cobra.Command {
 	return fncobra.Cmd(&cobra.Command{
 		Use:   "upload [src] [dest]",
 		Short: "Upload an artifact.",
-		Long:  "Upload an artifact. Currently, only single file uploads are supported.",
+		Long:  "Upload an artifact.",
 		Args:  cobra.RangeArgs(1, 2),
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		flags.StringVar(&namespace, "namespace", mainArtifactNamespace, "Target namespace of the artifact.")
@@ -171,6 +171,37 @@ func zipFiles(ctx context.Context, pattern string, w io.Writer) (int, error) {
 	count := 0
 	seen := map[string]bool{}
 
+	addSymlink := func(match string, info os.FileInfo) error {
+		if seen[match] {
+			return nil
+		}
+		seen[match] = true
+
+		target, err := os.Readlink(match)
+		if err != nil {
+			return fnerrors.Newf("failed to read symlink %q: %w", match, err)
+		}
+
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return fnerrors.Newf("failed to create zip header for symlink %q: %w", match, err)
+		}
+		header.Name = match
+		header.Method = zip.Store // Symlinks don't need compression
+
+		writer, err := zw.CreateHeader(header)
+		if err != nil {
+			return fnerrors.Newf("failed to create zip writer for symlink %q: %w", match, err)
+		}
+
+		// Store the symlink target as the file content
+		if _, err := io.WriteString(writer, target); err != nil {
+			return fnerrors.Newf("failed to write symlink target for %q: %w", match, err)
+		}
+		count++
+		return nil
+	}
+
 	addFile := func(match string, info os.FileInfo) error {
 		if seen[match] {
 			return nil
@@ -202,20 +233,41 @@ func zipFiles(ctx context.Context, pattern string, w io.Writer) (int, error) {
 		return nil
 	}
 
+	addEntry := func(path string, info os.FileInfo) error {
+		if info.Mode()&os.ModeSymlink != 0 {
+			return addSymlink(path, info)
+		}
+		if info.IsDir() {
+			return nil
+		}
+		return addFile(path, info)
+	}
+
 	for _, match := range matches {
-		info, err := os.Stat(match)
+		info, err := os.Lstat(match)
 		if err != nil {
 			return 0, fnerrors.Newf("failed to stat file %q: %w", match, err)
 		}
+
+		// Handle symlinks
+		if info.Mode()&os.ModeSymlink != 0 {
+			if err := addSymlink(match, info); err != nil {
+				return 0, err
+			}
+			continue
+		}
+
 		if info.IsDir() {
 			if err := filepath.Walk(match, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
 				}
-				if info.IsDir() {
-					return nil
+				// Use Lstat to detect symlinks during walk
+				linfo, err := os.Lstat(path)
+				if err != nil {
+					return err
 				}
-				return addFile(path, info)
+				return addEntry(path, linfo)
 			}); err != nil {
 				return 0, fnerrors.Newf("failed to walk directory %q: %w", match, err)
 			}
@@ -272,7 +324,7 @@ func newArtifactDownloadCmd() *cobra.Command {
 	return fncobra.Cmd(&cobra.Command{
 		Use:   "download [src] [dest]",
 		Short: "Download an artifact.",
-		Long:  "Download an artifact. Currently, only single file downloads are supported.",
+		Long:  "Download an artifact.",
 		Args:  cobra.ExactArgs(2),
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		flags.StringVar(&namespace, "namespace", mainArtifactNamespace, "Namespace of the artifact.")
@@ -371,6 +423,36 @@ func unzipArtifact(ctx context.Context, src, dest string) error {
 
 		if err := os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
 			return fnerrors.Newf("failed to create directory %q: %w", filepath.Dir(fpath), err)
+		}
+
+		// Handle symlinks
+		if f.FileInfo().Mode()&os.ModeSymlink != 0 {
+			rc, err := f.Open()
+			if err != nil {
+				return fnerrors.Newf("failed to open zip file content %q: %w", f.Name, err)
+			}
+			targetBytes, err := io.ReadAll(rc)
+			rc.Close()
+			if err != nil {
+				return fnerrors.Newf("failed to read symlink target for %q: %w", f.Name, err)
+			}
+			target := string(targetBytes)
+
+			// Validate symlink target doesn't escape destination
+			absTarget := filepath.Join(filepath.Dir(fpath), target)
+			absTargetClean, err := filepath.Abs(filepath.Clean(absTarget))
+			if err == nil && !strings.HasPrefix(absTargetClean, absDest+string(os.PathSeparator)) && absTargetClean != absDest {
+				// Only block absolute symlinks that escape; relative symlinks within archive are ok
+				if filepath.IsAbs(target) {
+					return fnerrors.Newf("illegal symlink target escapes destination: %s -> %s", f.Name, target)
+				}
+			}
+
+			if err := os.Symlink(target, fpath); err != nil {
+				return fnerrors.Newf("failed to create symlink %q -> %q: %w", fpath, target, err)
+			}
+			fmt.Fprintf(console.Stdout(ctx), "Created symlink %s -> %s\n", fpath, target)
+			continue
 		}
 
 		outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())

@@ -5,6 +5,7 @@
 package cluster
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"os"
@@ -68,5 +69,141 @@ func TestZipFiles(t *testing.T) {
 		if count != tc.expectedCount {
 			t.Errorf("Pattern %q: expected %d files, got %d", tc.pattern, tc.expectedCount, count)
 		}
+	}
+}
+
+func TestZipFilesWithSymlinks(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "symlink-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	srcDir := filepath.Join(tmpDir, "src")
+	if err := os.MkdirAll(srcDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(wd)
+
+	if err := os.Chdir(srcDir); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a regular file
+	if err := os.WriteFile("target.txt", []byte("hello world"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a subdirectory with another file
+	if err := os.MkdirAll("subdir", 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile("subdir/nested.txt", []byte("nested content"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a symlink to the file
+	if err := os.Symlink("target.txt", "link.txt"); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a symlink to the directory
+	if err := os.Symlink("subdir", "link_dir"); err != nil {
+		t.Fatal(err)
+	}
+
+	// Zip all files
+	var buf bytes.Buffer
+	count, err := zipFiles(context.Background(), "**/*", &buf)
+	if err != nil {
+		t.Fatalf("zipFiles failed: %v", err)
+	}
+
+	// We expect: target.txt, subdir/nested.txt, link.txt (resolved), link_dir/nested.txt (resolved)
+	// Note: symlinks are followed by os.Stat, so we get the content of the target
+	if count < 2 {
+		t.Errorf("Expected at least 2 files, got %d", count)
+	}
+
+	// Write zip to a temp file for unzipping
+	zipPath := filepath.Join(tmpDir, "test.zip")
+	if err := os.WriteFile(zipPath, buf.Bytes(), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Unzip to a new directory
+	destDir := filepath.Join(tmpDir, "dest")
+	if err := unzipArtifact(context.Background(), zipPath, destDir); err != nil {
+		t.Fatalf("unzipArtifact failed: %v", err)
+	}
+
+	// Verify the target file exists
+	content, err := os.ReadFile(filepath.Join(destDir, "target.txt"))
+	if err != nil {
+		t.Fatalf("Failed to read target.txt: %v", err)
+	}
+	if string(content) != "hello world" {
+		t.Errorf("Expected 'hello world', got %q", string(content))
+	}
+
+	// Verify the nested file exists
+	content, err = os.ReadFile(filepath.Join(destDir, "subdir", "nested.txt"))
+	if err != nil {
+		t.Fatalf("Failed to read subdir/nested.txt: %v", err)
+	}
+	if string(content) != "nested content" {
+		t.Errorf("Expected 'nested content', got %q", string(content))
+	}
+
+	// Verify the symlink is recreated as a symlink
+	linkPath := filepath.Join(destDir, "link.txt")
+	linkInfo, err := os.Lstat(linkPath)
+	if err != nil {
+		t.Fatalf("Failed to lstat link.txt: %v", err)
+	}
+	if linkInfo.Mode()&os.ModeSymlink == 0 {
+		t.Errorf("Expected link.txt to be a symlink, got mode %v", linkInfo.Mode())
+	}
+
+	// Verify the symlink target is correct
+	target, err := os.Readlink(linkPath)
+	if err != nil {
+		t.Fatalf("Failed to readlink link.txt: %v", err)
+	}
+	if target != "target.txt" {
+		t.Errorf("Expected symlink target 'target.txt', got %q", target)
+	}
+
+	// Verify the symlink content is readable through the link
+	content, err = os.ReadFile(linkPath)
+	if err != nil {
+		t.Fatalf("Failed to read link.txt: %v", err)
+	}
+	if string(content) != "hello world" {
+		t.Errorf("Expected 'hello world' from link.txt, got %q", string(content))
+	}
+
+	// Verify directory symlink is recreated
+	linkDirPath := filepath.Join(destDir, "link_dir")
+	linkDirInfo, err := os.Lstat(linkDirPath)
+	if err != nil {
+		t.Fatalf("Failed to lstat link_dir: %v", err)
+	}
+	if linkDirInfo.Mode()&os.ModeSymlink == 0 {
+		t.Errorf("Expected link_dir to be a symlink, got mode %v", linkDirInfo.Mode())
+	}
+
+	// Verify directory symlink target
+	dirTarget, err := os.Readlink(linkDirPath)
+	if err != nil {
+		t.Fatalf("Failed to readlink link_dir: %v", err)
+	}
+	if dirTarget != "subdir" {
+		t.Errorf("Expected symlink target 'subdir', got %q", dirTarget)
 	}
 }
