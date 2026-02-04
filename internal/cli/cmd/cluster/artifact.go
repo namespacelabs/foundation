@@ -63,7 +63,7 @@ func newArtifactUploadCmd() *cobra.Command {
 	return fncobra.Cmd(&cobra.Command{
 		Use:   "upload [src] [dest]",
 		Short: "Upload an artifact.",
-		Long:  "Upload an artifact. Currently, only single file uploads are supported.",
+		Long:  "Upload an artifact.",
 		Args:  cobra.RangeArgs(1, 2),
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		flags.StringVar(&namespace, "namespace", mainArtifactNamespace, "Target namespace of the artifact.")
@@ -272,7 +272,7 @@ func newArtifactDownloadCmd() *cobra.Command {
 	return fncobra.Cmd(&cobra.Command{
 		Use:   "download [src] [dest]",
 		Short: "Download an artifact.",
-		Long:  "Download an artifact. Currently, only single file downloads are supported.",
+		Long:  "Download an artifact.",
 		Args:  cobra.ExactArgs(2),
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		flags.StringVar(&namespace, "namespace", mainArtifactNamespace, "Namespace of the artifact.")
