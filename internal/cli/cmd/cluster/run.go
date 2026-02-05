@@ -459,6 +459,7 @@ func PrintCreateContainersResult(ctx context.Context, output string, resp *Creat
 
 		if err := d.Encode(createOutput{
 			ClusterId:  resp.InstanceId,
+			InstanceId: resp.InstanceId,
 			ClusterUrl: resp.InstanceUrl,
 			Container:  containers,
 		}); err != nil {
@@ -514,6 +515,7 @@ func generateNameFromImage(image string) string {
 
 type createOutput struct {
 	ClusterId     string           `json:"cluster_id,omitempty"`
+	InstanceId    string           `json:"instance_id,omitempty"`
 	ClusterUrl    string           `json:"cluster_url,omitempty"`
 	Container     []*api.Container `json:"container,omitempty"`
 	IngressDomain string           `json:"ingress_domain,omitempty"`
