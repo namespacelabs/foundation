@@ -242,7 +242,8 @@ func NewCreateCmd() *cobra.Command {
 			enc.SetIndent("", "  ")
 
 			out := createOutput{
-				ClusterId: cluster.ClusterId,
+				ClusterId:  cluster.ClusterId,
+				InstanceId: cluster.ClusterId,
 			}
 
 			if cluster.Cluster != nil {
