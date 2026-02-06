@@ -27,6 +27,20 @@ func ConnectToResource(ctx context.Context, res *resources.Parsed, resourceRef s
 	return NewDatabaseFromConnectionUriWithOverrides(ctx, db, db.ConnectionUri, tp, client, overrides)
 }
 
+func ConnectToReplicaResource(ctx context.Context, res *resources.Parsed, resourceRef string, tp trace.TracerProvider, client string, overrides *ConfigOverrides) (*DB, error) {
+	db := &postgrespb.DatabaseInstance{}
+	if err := res.Unmarshal(resourceRef, db); err != nil {
+		return nil, err
+	}
+
+	connUri := db.ReplicaConnectionUri
+	if connUri == "" {
+		connUri = db.ConnectionUri
+	}
+
+	return NewDatabaseFromConnectionUriWithOverrides(ctx, db, connUri, tp, client, overrides)
+}
+
 type ConfigOverrides struct {
 	MaxConns                        int32
 	MaxConnIdleTime                 time.Duration

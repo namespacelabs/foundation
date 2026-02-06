@@ -123,6 +123,8 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 			if !ok {
 				if expected.DefaultResource != nil {
 					resourceRef = expected.DefaultResource
+				} else if expected.Optional {
+					continue
 				} else {
 					errs = append(errs, fnerrors.Newf("resource input for %q is missing", expected.Name.Canonical()))
 					continue

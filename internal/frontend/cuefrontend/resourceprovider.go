@@ -37,8 +37,9 @@ type cueResourceProvider struct {
 }
 
 type cueResourceProviderInput struct {
-	Class   string
-	Default string
+	Class    string
+	Default  string
+	Optional bool
 }
 
 func parseResourceProvider(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, key string, v *fncue.CueV) (*schema.ResourceProvider, error) {
@@ -113,8 +114,9 @@ func parseResourceProvider(ctx context.Context, env *schema.Environment, pl pars
 			errs = append(errs, err)
 		} else {
 			input := &schema.ResourceProvider_ResourceInput{
-				Name:  schema.MakePackageRef(pkg.PackageName(), key),
-				Class: class,
+				Name:     schema.MakePackageRef(pkg.PackageName(), key),
+				Class:    class,
+				Optional: value.Optional,
 			}
 
 			if value.Default != "" {
@@ -164,8 +166,9 @@ func (input *cueResourceProviderInput) UnmarshalJSON(data []byte) error {
 	}
 
 	var values struct {
-		Class   string `json:"class"`
-		Default string `json:"default"`
+		Class    string `json:"class"`
+		Default  string `json:"default"`
+		Optional bool   `json:"optional"`
 	}
 
 	if err := json.Unmarshal(data, &values); err != nil {
@@ -174,5 +177,6 @@ func (input *cueResourceProviderInput) UnmarshalJSON(data []byte) error {
 
 	input.Class = values.Class
 	input.Default = values.Default
+	input.Optional = values.Optional
 	return nil
 }
