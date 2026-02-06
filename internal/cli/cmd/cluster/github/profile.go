@@ -674,6 +674,39 @@ func transformProfileForOutput(profile *v1beta.RunnerProfileWithStatus) map[stri
 		m["experimental_features"] = profile.Spec.ExperimentalFeatures
 	}
 
+	if len(profile.Spec.CacheVolumeSettings) > 0 {
+		var volumes []map[string]any
+		for _, v := range profile.Spec.CacheVolumeSettings {
+			vol := map[string]any{
+				"volume_tag":     v.VolumeTag,
+				"volume_size_gb": v.VolumeSizeGb,
+			}
+			if v.VolumeReservedSizeGb != 0 {
+				vol["volume_reserved_size_gb"] = v.VolumeReservedSizeGb
+			}
+			if v.BundledContainerCache {
+				vol["bundled_container_cache"] = v.BundledContainerCache
+			}
+			if v.BundledBuildkitCache {
+				vol["bundled_buildkit_cache"] = v.BundledBuildkitCache
+			}
+			if v.BundledGitMirror {
+				vol["bundled_git_mirror"] = v.BundledGitMirror
+			}
+			if v.BundledRunnerToolsCache {
+				vol["bundled_runner_tools_cache"] = v.BundledRunnerToolsCache
+			}
+			if v.BundledRunnerActionsCache {
+				vol["bundled_runner_actions_cache"] = v.BundledRunnerActionsCache
+			}
+			if len(v.AllowCommitFromBranch) > 0 {
+				vol["allow_commit_from_branch"] = v.AllowCommitFromBranch
+			}
+			volumes = append(volumes, vol)
+		}
+		m["cache_volume_settings"] = volumes
+	}
+
 	if profile.CreatedAt != nil {
 		m["created_at"] = profile.CreatedAt.AsTime()
 	}
