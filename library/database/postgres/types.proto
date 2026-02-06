@@ -40,5 +40,10 @@ message DatabaseInstance {
 
     bool enable_tracing = 10;
 
+    string replica_connection_uri  = 11;
+    string replica_cluster_address = 12;
+    string replica_cluster_host    = 13;
+    string replica_cluster_port    = 14;
+
     reserved 2;
 }

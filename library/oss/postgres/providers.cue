@@ -12,6 +12,10 @@ providers: {
 				class:   "namespacelabs.dev/foundation/library/database/postgres:Cluster"
 				default: ":colocated"
 			}
+			replica: {
+				class:    "namespacelabs.dev/foundation/library/database/postgres:Cluster"
+				optional: true
+			}
 		}
 	}
 

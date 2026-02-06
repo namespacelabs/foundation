@@ -36,6 +36,17 @@ extension: fn.#Extension & {
 			}
 		}
 
+		DatabaseReplica: {
+			input: $providerProto.types.DatabaseArgs
+
+			availableIn: {
+				go: {
+					package: "namespacelabs.dev/foundation/universe/db/postgres"
+					type:    "*DB"
+				}
+			}
+		}
+
 		Factory: {
 			input: $providerProto.types.FactoryArgs
 

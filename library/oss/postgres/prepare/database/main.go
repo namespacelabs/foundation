@@ -68,6 +68,16 @@ func run(ctx context.Context, p *provider.Provider[*postgres.DatabaseIntent]) er
 		EnableTracing:  p.Intent.EnableTracing,
 	}
 
+	replica := &postgresclass.ClusterInstance{}
+	if ok, err := p.Resources.UnmarshalIfPresent(fmt.Sprintf("%s:replica", providerPkg), replica); err != nil {
+		return fmt.Errorf("unable to read optional resource \"replica\": %w", err)
+	} else if ok {
+		instance.ReplicaConnectionUri = postgres.ConnectionUri(replica, p.Intent.Name)
+		instance.ReplicaClusterAddress = replica.Address
+		instance.ReplicaClusterHost = replica.Host
+		instance.ReplicaClusterPort = replica.Port
+	}
+
 	if !exists || !p.Intent.SkipSchemaInitializationIfExists {
 		client := fmt.Sprintf("provider:%s", p.Intent.Name)
 		db, err := universepg.NewDatabaseFromConnectionUriWithOverrides(ctx, instance, instance.ConnectionUri, nil, client, &universepg.ConfigOverrides{

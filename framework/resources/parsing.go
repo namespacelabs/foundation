@@ -167,6 +167,13 @@ func byProtoOrJsonName(r protoreflect.FieldDescriptors, name string) protoreflec
 	return nil
 }
 
+func (p *Parsed) UnmarshalIfPresent(resource string, out any) (bool, error) {
+	if _, ok := p.resources[resource]; !ok {
+		return false, nil
+	}
+	return true, p.Unmarshal(resource, out)
+}
+
 func (p *Parsed) Unmarshal(resource string, out any) error {
 	raw, ok := p.resources[resource]
 	if !ok {

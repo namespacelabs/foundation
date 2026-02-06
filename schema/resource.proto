@@ -72,6 +72,7 @@ message ResourceProvider {
         PackageRef name             = 1;
         PackageRef class            = 2;
         PackageRef default_resource = 3;
+        bool       optional         = 4;
     }
 }
 

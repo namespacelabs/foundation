@@ -105,6 +105,7 @@ type ExpectedResourceInstance struct {
 	Name            *schema.PackageRef
 	Class           ResourceClass
 	DefaultResource *schema.PackageRef
+	Optional        bool
 }
 
 func (rc ResourceClass) PackageName() schema.PackageName {

@@ -41,6 +41,30 @@ package postgres
 			}
 		}
 	}
+	DatabaseReplica: {
+		client?:          string
+		resourceRef?:     string
+		maxConns?:        int
+		maxConnsFromEnv?: string
+		maxConnsIdleTime?: {
+			seconds?: int
+			nanos?:   int
+		}
+		idleInTransactionSessionTimeoutMs?: int
+		statementTimeoutMs?:                int
+		connectTimeoutMs?:                  int
+
+		#Definition: {
+			packageName: "namespacelabs.dev/foundation/universe/db/postgres"
+			type:        "DatabaseReplica"
+			typeDefinition: {
+				"typename": "foundation.universe.db.postgres.DatabaseArgs"
+				"source": [
+					"provider.proto",
+				]
+			}
+		}
+	}
 	Factory: {
 		client?: string
 

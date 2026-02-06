@@ -10,13 +10,24 @@ import (
 	"strconv"
 	"time"
 
+	"go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	postgrespb "namespacelabs.dev/foundation/library/database/postgres"
 	"namespacelabs.dev/foundation/library/oss/postgres"
 )
 
+type connectFunc func(ctx context.Context, res *resources.Parsed, resourceRef string, tp trace.TracerProvider, client string, overrides *ConfigOverrides) (*DB, error)
+
 func ProvideDatabase(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps) (*DB, error) {
+	return provideDatabase(ctx, db, deps, ConnectToResource)
+}
+
+func ProvideDatabaseReplica(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps) (*DB, error) {
+	return provideDatabase(ctx, db, deps, ConnectToReplicaResource)
+}
+
+func provideDatabase(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps, connect connectFunc) (*DB, error) {
 	if db.ResourceRef == "" {
 		return nil, fnerrors.Newf("resourceRef is required")
 	}
@@ -64,7 +75,7 @@ func ProvideDatabase(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps) 
 		overrides.ConnectTimeout = time.Millisecond * time.Duration(db.GetConnectTimeoutMs())
 	}
 
-	return ConnectToResource(ctx, res, db.ResourceRef, tp, db.GetClient(), overrides)
+	return connect(ctx, res, db.ResourceRef, tp, db.GetClient(), overrides)
 }
 
 // Workaround the fact that foundation doesn't know about primitive types.

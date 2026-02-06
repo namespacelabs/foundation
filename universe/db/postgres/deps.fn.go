@@ -22,6 +22,10 @@ type _checkProvideDatabaseReference func(context.Context, *DatabaseReferenceArgs
 
 var _ _checkProvideDatabaseReference = ProvideDatabaseReference
 
+type _checkProvideDatabaseReplica func(context.Context, *DatabaseArgs, ExtensionDeps) (*DB, error)
+
+var _ _checkProvideDatabaseReplica = ProvideDatabaseReplica
+
 type _checkProvideFactory func(context.Context, *FactoryArgs, ExtensionDeps) (Factory, error)
 
 var _ _checkProvideFactory = ProvideFactory
