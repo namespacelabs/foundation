@@ -218,4 +218,3 @@ func removeTrustRelationship(ctx context.Context, id string) error {
 	fmt.Fprintf(console.Stdout(ctx), "Successfully removed trust relationship.\n")
 	return nil
 }
-
