@@ -6,6 +6,7 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -71,8 +72,10 @@ func newTrustListCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 
+	output := cmd.Flags().StringP("output", "o", "", "Output format: json")
+
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
-		return listTrustRelationships(ctx)
+		return listTrustRelationships(ctx, *output)
 	})
 }
 
@@ -123,10 +126,19 @@ func addTrustRelationship(ctx context.Context, issuer, subjectMatch, audience st
 	return nil
 }
 
-func listTrustRelationships(ctx context.Context) error {
+func listTrustRelationships(ctx context.Context, output string) error {
 	response, err := fnapi.ListTrustRelationships(ctx)
 	if err != nil {
 		return err
+	}
+
+	if output == "json" {
+		bb, err := json.MarshalIndent(response.TrustRelationships, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(console.Stdout(ctx), string(bb))
+		return nil
 	}
 
 	fmt.Fprintf(console.Stdout(ctx), "Trust Relationships:\n\n")
