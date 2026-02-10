@@ -8,6 +8,7 @@ import (
 	"context"
 	"time"
 
+	v1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/iam/v1beta"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
@@ -260,6 +261,10 @@ type StoredTrustRelationship struct {
 	CreatedAt    *time.Time `json:"created_at,omitempty"`
 	Issuer       string     `json:"issuer,omitempty"`
 	SubjectMatch string     `json:"subject_match,omitempty"`
+	Audience     string     `json:"audience,omitempty"`
+
+	DefaultPermissions   []*v1beta.Permission `json:"default_permissions,omitempty"`
+	DefaultTokenDuration string               `json:"default_token_duration,omitempty"`
 }
 
 type UpdateTrustRelationshipsRequest struct {

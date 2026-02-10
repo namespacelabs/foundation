@@ -6,9 +6,13 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 
+	v1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/iam/v1beta"
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/cli/cmd/token"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -38,6 +42,9 @@ func newTrustAddCmd() *cobra.Command {
 
 	issuer := cmd.Flags().String("issuer", "", "Token issuer (required).")
 	subjectMatch := cmd.Flags().String("subject-match", "", "Subject match pattern (required).")
+	audience := cmd.Flags().String("audience", "", "Expected audience value.")
+	defaultPermissions := cmd.Flags().StringArray("grant", nil, `Grant default permission as JSON object (can be specified multiple times). Format: {"resource_type":"...","resource_id":"...","actions":["..."]}`)
+	defaultTokenDuration := cmd.Flags().String("default_token_duration", "", `Default token duration (e.g. "3600s").`)
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if *issuer == "" {
@@ -48,7 +55,12 @@ func newTrustAddCmd() *cobra.Command {
 			return fnerrors.Newf("--subject-match is required")
 		}
 
-		return addTrustRelationship(ctx, *issuer, *subjectMatch)
+		permissions, err := token.ParseGrants(*defaultPermissions)
+		if err != nil {
+			return err
+		}
+
+		return addTrustRelationship(ctx, *issuer, *subjectMatch, *audience, permissions, *defaultTokenDuration)
 	})
 }
 
@@ -60,8 +72,10 @@ func newTrustListCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 
+	output := cmd.Flags().StringP("output", "o", "", "Output format: json")
+
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
-		return listTrustRelationships(ctx)
+		return listTrustRelationships(ctx, *output)
 	})
 }
 
@@ -84,8 +98,7 @@ func newTrustRemoveCmd() *cobra.Command {
 	})
 }
 
-func addTrustRelationship(ctx context.Context, issuer, subjectMatch string) error {
-	// Get current trust relationships
+func addTrustRelationship(ctx context.Context, issuer, subjectMatch, audience string, defaultPermissions []*v1beta.Permission, defaultTokenDuration string) error {
 	current, err := fnapi.ListTrustRelationships(ctx)
 	if err != nil {
 		return err
@@ -95,16 +108,16 @@ func addTrustRelationship(ctx context.Context, issuer, subjectMatch string) erro
 	fmt.Fprintf(console.Stderr(ctx), "Issuer: %s\n", issuer)
 	fmt.Fprintf(console.Stderr(ctx), "Subject Match: %s\n", subjectMatch)
 
-	// Create new trust relationship (ID and CreatorJson will be set server-side)
 	newTrustRelationship := fnapi.StoredTrustRelationship{
-		Issuer:       issuer,
-		SubjectMatch: subjectMatch,
+		Issuer:               issuer,
+		SubjectMatch:         subjectMatch,
+		Audience:             audience,
+		DefaultPermissions:   defaultPermissions,
+		DefaultTokenDuration: defaultTokenDuration,
 	}
 
-	// Add to existing trust relationships
 	updatedTrustRelationships := append(current.TrustRelationships, newTrustRelationship)
 
-	// Update trust relationships
 	if err := fnapi.UpdateTrustRelationships(ctx, current.Generation, updatedTrustRelationships); err != nil {
 		return err
 	}
@@ -113,13 +126,22 @@ func addTrustRelationship(ctx context.Context, issuer, subjectMatch string) erro
 	return nil
 }
 
-func listTrustRelationships(ctx context.Context) error {
+func listTrustRelationships(ctx context.Context, output string) error {
 	response, err := fnapi.ListTrustRelationships(ctx)
 	if err != nil {
 		return err
 	}
 
-	fmt.Fprintf(console.Stdout(ctx), "Trust Relationships (Generation: %s):\n\n", response.Generation)
+	if output == "json" {
+		bb, err := json.MarshalIndent(response.TrustRelationships, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(console.Stdout(ctx), string(bb))
+		return nil
+	}
+
+	fmt.Fprintf(console.Stdout(ctx), "Trust Relationships:\n\n")
 
 	if len(response.TrustRelationships) == 0 {
 		fmt.Fprintf(console.Stdout(ctx), "No trust relationships configured.\n")
@@ -130,6 +152,22 @@ func listTrustRelationships(ctx context.Context) error {
 		fmt.Fprintf(console.Stdout(ctx), "ID: %s\n", tr.Id)
 		fmt.Fprintf(console.Stdout(ctx), "  Issuer: %s\n", tr.Issuer)
 		fmt.Fprintf(console.Stdout(ctx), "  Subject Match: %s\n", tr.SubjectMatch)
+		if tr.Audience != "" {
+			fmt.Fprintf(console.Stdout(ctx), "  Audience: %s\n", tr.Audience)
+		}
+		if len(tr.DefaultPermissions) > 0 {
+			fmt.Fprintf(console.Stdout(ctx), "  Default Permissions:\n")
+			for _, p := range tr.DefaultPermissions {
+				fmt.Fprintf(console.Stdout(ctx), "    - %s: %s", p.ResourceType, strings.Join(p.Actions, ", "))
+				if p.ResourceId != "" {
+					fmt.Fprintf(console.Stdout(ctx), " (resource_id: %s)", p.ResourceId)
+				}
+				fmt.Fprintf(console.Stdout(ctx), "\n")
+			}
+		}
+		if tr.DefaultTokenDuration != "" {
+			fmt.Fprintf(console.Stdout(ctx), "  Default Token Duration: %s\n", tr.DefaultTokenDuration)
+		}
 		if tr.CreatedAt != nil {
 			fmt.Fprintf(console.Stdout(ctx), "  Created At: %s\n", tr.CreatedAt.Format("2006-01-02 15:04:05 UTC"))
 		}

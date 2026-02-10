@@ -130,7 +130,7 @@ func NewCreateCmd() *cobra.Command {
 		}
 		defer client.Close()
 
-		permissions, err := parseGrants(*grants)
+		permissions, err := ParseGrants(*grants)
 		if err != nil {
 			return fnerrors.BadInputError("failed to parse grants: %w", err)
 		}
@@ -316,7 +316,7 @@ func writeTokenToFile(path string, bearerToken string) error {
 	return os.WriteFile(path, bb, 0600)
 }
 
-func parseGrants(grants []string) ([]*v1beta.Permission, error) {
+func ParseGrants(grants []string) ([]*v1beta.Permission, error) {
 	var permissions []*v1beta.Permission
 
 	for _, grant := range grants {
