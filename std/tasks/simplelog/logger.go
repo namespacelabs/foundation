@@ -8,6 +8,9 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
+	"sync"
+	"time"
 
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -26,15 +29,16 @@ func SetupFlags(flags *pflag.FlagSet) {
 }
 
 func NewSink(w io.Writer, maxLevel int) tasks.ActionSink {
-	return &logger{w, maxLevel}
+	return &logger{out: w, maxLevel: maxLevel}
 }
 
 type logger struct {
+	mu       sync.Mutex
 	out      io.Writer
 	maxLevel int // Only display actions at this level or below (all actions are still computed).
 }
 
-func (sl logger) shouldLog(ev tasks.EventData) bool {
+func (sl *logger) shouldLog(ev tasks.EventData) bool {
 	// Don't emit logs for "compute.wait".
 	if ev.AnchorID != "" {
 		return false
@@ -46,8 +50,9 @@ func (sl *logger) Waiting(ra *tasks.RunningAction) {
 	// Do nothing.
 }
 
-func (sl logger) write(b []byte) {
-	// Ignore errors
+func (sl *logger) write(b []byte) {
+	sl.mu.Lock()
+	defer sl.mu.Unlock()
 	_, _ = sl.out.Write(b)
 }
 
@@ -114,4 +119,27 @@ func (sl *logger) AttachmentsUpdated(tasks.ActionID, *tasks.ResultData) { /* not
 
 func (sl *logger) Output(name, contentType string, outputType idtypes.CatOutputType) io.Writer {
 	return nil
+}
+
+func (sl *logger) WriteLines(_ idtypes.IdAndHash, name string, cat idtypes.CatOutputType, _ tasks.ActionID, _ time.Time, lines [][]byte) {
+	var buf bytes.Buffer
+	for _, line := range lines {
+		switch name {
+		case idtypes.KnownStdout, idtypes.KnownStderr:
+			fmt.Fprintf(&buf, "%s\n", line)
+		default:
+			fmt.Fprintf(&buf, "%s: %s\n", name, line)
+		}
+	}
+
+	sl.mu.Lock()
+	defer sl.mu.Unlock()
+	switch name {
+	case idtypes.KnownStdout:
+		os.Stdout.Write(buf.Bytes())
+	case idtypes.KnownStderr:
+		os.Stderr.Write(buf.Bytes())
+	default:
+		sl.out.Write(buf.Bytes())
+	}
 }
