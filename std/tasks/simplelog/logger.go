@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"sync"
 	"time"
 
@@ -123,7 +124,22 @@ func (sl *logger) Output(name, contentType string, outputType idtypes.CatOutputT
 func (sl *logger) WriteLines(_ idtypes.IdAndHash, name string, cat idtypes.CatOutputType, _ tasks.ActionID, _ time.Time, lines [][]byte) {
 	var buf bytes.Buffer
 	for _, line := range lines {
-		fmt.Fprintf(&buf, "%s: %s\n", name, line)
+		switch name {
+		case idtypes.KnownStdout, idtypes.KnownStderr:
+			fmt.Fprintf(&buf, "%s\n", line)
+		default:
+			fmt.Fprintf(&buf, "%s: %s\n", name, line)
+		}
 	}
-	sl.write(buf.Bytes())
+
+	sl.mu.Lock()
+	defer sl.mu.Unlock()
+	switch name {
+	case idtypes.KnownStdout:
+		os.Stdout.Write(buf.Bytes())
+	case idtypes.KnownStderr:
+		os.Stderr.Write(buf.Bytes())
+	default:
+		sl.out.Write(buf.Bytes())
+	}
 }
