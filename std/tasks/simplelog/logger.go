@@ -37,7 +37,7 @@ type logger struct {
 	maxLevel int // Only display actions at this level or below (all actions are still computed).
 }
 
-func (sl logger) shouldLog(ev tasks.EventData) bool {
+func (sl *logger) shouldLog(ev tasks.EventData) bool {
 	// Don't emit logs for "compute.wait".
 	if ev.AnchorID != "" {
 		return false
