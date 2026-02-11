@@ -6,6 +6,7 @@ package cluster
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -654,26 +655,47 @@ func parseGitConfigKeyValue(line string) (bool, string, string) {
 
 // Parses a "git config" submodule key such as "submodule.<submodule-config-key>.subkey"
 // returning (ok, submodule-config-key, subkey)
+// The submodule config key itself may contain dots (e.g. "submodule.foo-1.0.path"),
+// so we split on the first and last dot only.
 func parseSubmoduleConfigKey(key string) (bool, string, string) {
-	split := strings.Split(key, ".")
-	if len(split) != 3 {
+	firstDot := strings.IndexByte(key, '.')
+	lastDot := strings.LastIndexByte(key, '.')
+	if firstDot < 0 || firstDot == lastDot {
 		return false, "", ""
 	}
-	if split[0] != "submodule" {
+	prefix := key[:firstDot]
+	if prefix != "submodule" {
 		return false, "", ""
 	}
-	return true, split[1], split[2]
+	submoduleConfigKey := key[firstDot+1 : lastDot]
+	submoduleAttrName := key[lastDot+1:]
+	if submoduleConfigKey == "" || submoduleAttrName == "" {
+		return false, "", ""
+	}
+	return true, submoduleConfigKey, submoduleAttrName
 }
 
 func runAndPrintIfFails(ctx context.Context, cmd *exec.Cmd) (string, error) {
 	fmt.Fprintf(console.Info(ctx), "exec: %s\n", strings.Join(cmd.Args, " "))
-	output, err := cmd.CombinedOutput()
+
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	cmd.Stderr = &buf
+
+	err := cmd.Run()
+	output := buf.String()
+
 	if err != nil {
-		fmt.Fprintf(console.Errors(ctx), "failed: %s\n", strings.Join(cmd.Args, " "))
-		fmt.Fprintln(console.Errors(ctx), string(output))
-		return string(output), err
+		errOut := console.Errors(ctx)
+		fmt.Fprintf(errOut, "failed: %s\n", strings.Join(cmd.Args, " "))
+		for _, line := range strings.Split(output, "\n") {
+			if line != "" {
+				fmt.Fprintln(errOut, line)
+			}
+		}
+		return output, err
 	}
-	return string(output), nil
+	return output, nil
 }
 
 // Filters submoduleMap: Only retains entries that point to a "commit" git object.
