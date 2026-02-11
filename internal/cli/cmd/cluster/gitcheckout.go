@@ -6,7 +6,6 @@ package cluster
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -677,25 +676,13 @@ func parseSubmoduleConfigKey(key string) (bool, string, string) {
 
 func runAndPrintIfFails(ctx context.Context, cmd *exec.Cmd) (string, error) {
 	fmt.Fprintf(console.Info(ctx), "exec: %s\n", strings.Join(cmd.Args, " "))
-
-	var buf bytes.Buffer
-	cmd.Stdout = &buf
-	cmd.Stderr = &buf
-
-	err := cmd.Run()
-	output := buf.String()
-
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		errOut := console.Errors(ctx)
-		fmt.Fprintf(errOut, "failed: %s\n", strings.Join(cmd.Args, " "))
-		for _, line := range strings.Split(output, "\n") {
-			if line != "" {
-				fmt.Fprintln(errOut, line)
-			}
-		}
-		return output, err
+		fmt.Fprintf(console.Errors(ctx), "failed: %s\n", strings.Join(cmd.Args, " "))
+		fmt.Fprintln(console.Errors(ctx), string(output))
+		return string(output), err
 	}
-	return output, nil
+	return string(output), nil
 }
 
 // Filters submoduleMap: Only retains entries that point to a "commit" git object.
