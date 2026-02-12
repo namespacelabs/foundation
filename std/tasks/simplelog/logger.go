@@ -8,7 +8,9 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"sync"
+	"time"
 
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -49,6 +51,8 @@ func (sl *logger) Waiting(ra *tasks.RunningAction) {
 }
 
 func (sl *logger) write(b []byte) {
+	sl.mu.Lock()
+	defer sl.mu.Unlock()
 	_, _ = sl.out.Write(b)
 }
 
@@ -115,4 +119,36 @@ func (sl *logger) AttachmentsUpdated(tasks.ActionID, *tasks.ResultData) { /* not
 
 func (sl *logger) Output(name, contentType string, outputType idtypes.CatOutputType) io.Writer {
 	return nil
+}
+
+func (sl *logger) WriteLines(_ idtypes.IdAndHash, name string, cat idtypes.CatOutputType, _ tasks.ActionID, _ time.Time, lines [][]byte) {
+	var buf bytes.Buffer
+	for _, line := range lines {
+		switch name {
+		case idtypes.KnownStdout, idtypes.KnownStderr:
+			fmt.Fprintf(&buf, "%s\n", line)
+		default:
+			fmt.Fprintf(&buf, "%s: %s\n", name, line)
+		}
+	}
+
+	// preserve default from consoleOutputFromCtx
+	var w io.Writer = os.Stdout
+
+	switch name {
+	case idtypes.KnownStdout:
+		w = os.Stdout
+
+	case idtypes.KnownStderr:
+		w = sl.out
+	}
+
+	switch cat {
+	case idtypes.CatOutputDebug, idtypes.CatOutputInfo, idtypes.CatOutputWarnings, idtypes.CatOutputErrors:
+		w = sl.out
+	}
+
+	sl.mu.Lock()
+	defer sl.mu.Unlock()
+	w.Write(buf.Bytes())
 }
