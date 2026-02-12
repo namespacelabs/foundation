@@ -61,6 +61,12 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(cluster.NewBazelCmd())
 	root.AddCommand(cluster.NewGradleCmd())
 	root.AddCommand(cluster.NewPantsCmd())
+	cacheCmd := &cobra.Command{Use: "cache", Short: "Build cache related functionality."}
+	cacheCmd.AddCommand(cluster.NewSccacheCmd())
+	cacheCmd.AddCommand(cluster.NewGradleCacheCmd())
+	cacheCmd.AddCommand(cluster.NewBazelCacheCmd())
+	cacheCmd.AddCommand(cluster.NewPantsCacheCmd())
+	root.AddCommand(cacheCmd)
 	root.AddCommand(cluster.NewArtifactCmd()) // nsc artifact
 
 	root.AddCommand(sdk.NewSdkCmd(true))

@@ -1,9 +1,9 @@
-buf.build/gen/go/namespace/cloud/connectrpc/go v1.19.1-20260126170837-18fd3dc306e3.2 h1:s5d/VkA9SLniWD8ghO/C2+v4XulT68gTcUKp2OrGaAM=
-buf.build/gen/go/namespace/cloud/connectrpc/go v1.19.1-20260126170837-18fd3dc306e3.2/go.mod h1:WxkZDjOPKKXYMkN6YpnKGsHJ5BX1fbrhNgz8W8dmAYk=
+buf.build/gen/go/namespace/cloud/connectrpc/go v1.19.1-20260212004106-290ae81f8d6d.2 h1:XaeFtt6yN8G5q2uYoiTjyshOyai1Q+GzwfEKlxrTzVw=
+buf.build/gen/go/namespace/cloud/connectrpc/go v1.19.1-20260212004106-290ae81f8d6d.2/go.mod h1:QvCL7PUDMFotMXVUoWMeRClEEnCbh7S51xHy39mO+H4=
 buf.build/gen/go/namespace/cloud/grpc/go v1.6.0-20251207125149-931ce9589bd8.1 h1:e2vtAk9xps4Cg9Jom+pQMVzBxVowYR65XbnGmsV4mW0=
 buf.build/gen/go/namespace/cloud/grpc/go v1.6.0-20251207125149-931ce9589bd8.1/go.mod h1:DtCvgtjGxZqjPjhDeX1sJYZXr0nbinUHqa37KtMDXvE=
-buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20260126170837-18fd3dc306e3.1 h1:/gUYm1epQiOD/oCH46I1U9F6/m6oOmEfVAt8vhAU0so=
-buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20260126170837-18fd3dc306e3.1/go.mod h1:Il2wpJNQB40Yj3Rmuhg5xKJPSXaZVwij+Q30d1PNuNY=
+buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20260212004106-290ae81f8d6d.1 h1:xTgPJaOj5QNRPAA3nxW3fTz01aAOLr/6SG7C4Iqxm54=
+buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20260212004106-290ae81f8d6d.1/go.mod h1:Il2wpJNQB40Yj3Rmuhg5xKJPSXaZVwij+Q30d1PNuNY=
 c2sp.org/CCTV/age v0.0.0-20240306222714-3ec4d716e805 h1:u2qwJeEvnypw+OCPUHmoZE3IqwfuN5kgDfo5MLzpNM0=
 c2sp.org/CCTV/age v0.0.0-20240306222714-3ec4d716e805/go.mod h1:FomMrUJ2Lxt5jCLmZkG3FHa72zUprnhd3v/Z18Snm4w=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=

@@ -43,6 +43,19 @@ func NewBazelCmd() *cobra.Command {
 	return cmd
 }
 
+// NewBazelCacheCmd returns a "bazel" command with setup directly
+// underneath, for use under "nsc cache bazel setup".
+func NewBazelCacheCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "bazel",
+		Short: "Bazel cache related functionality.",
+	}
+
+	cmd.AddCommand(newSetupCacheCmd())
+
+	return cmd
+}
+
 func newSetupCacheCmd() *cobra.Command {
 	var bazelRcPath, output, certPath string
 	var sendBuildEvents, useAbsoluteCredHelperPath, static bool
