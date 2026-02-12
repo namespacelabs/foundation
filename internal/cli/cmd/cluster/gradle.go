@@ -19,7 +19,6 @@ import (
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/framework/atomic"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -27,9 +26,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
-	"namespacelabs.dev/go-ids"
-	"namespacelabs.dev/integrations/api/iam"
-	"namespacelabs.dev/integrations/auth"
 )
 
 const gradleCachePathBase = "gradle"
@@ -42,7 +38,7 @@ func NewGradleCmd() *cobra.Command {
 
 	cache := &cobra.Command{Use: "cache", Short: "Gradle cache related functionality."}
 	cache.AddCommand(newSetupGradleCacheCmd())
-	cache.AddCommand(newCreateTokenCmd())
+	cache.AddCommand(newGradleCreateTokenCmd())
 
 	cmd.AddCommand(cache)
 
@@ -58,7 +54,7 @@ func NewGradleCacheCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newSetupGradleCacheCmd())
-	cmd.AddCommand(newCreateTokenCmd())
+	cmd.AddCommand(newGradleCreateTokenCmd())
 
 	return cmd
 }
@@ -230,107 +226,28 @@ Or by placing it in ~/.gradle/init.d/ to apply to all builds.`,
 	})
 }
 
-func newCreateTokenCmd() *cobra.Command {
-	var name string
-	var expiresIn time.Duration
-	var tokenFile, scope string
+func newGradleCreateTokenCmd() *cobra.Command {
+	return newCreateCacheTokenCmd(createTokenConfig{
+		Short:       "Create a revokable token for accessing the Gradle cache.",
+		CacheLabel:  "Gradle",
+		TokenPrefix: "gradle-cache",
+		SetupCmd:    "nsc cache gradle setup",
+		GetRequiredPerms: func(ctx context.Context, cacheName string) ([]*iamv1beta.Permission, error) {
+			gradleClient, err := fnapi.NewGradleCacheServiceClient(ctx)
+			if err != nil {
+				return nil, err
+			}
 
-	return fncobra.Cmd(&cobra.Command{
-		Use:   "create-token",
-		Short: "Create a revokable token for accessing the Gradle cache.",
-	}).WithFlags(func(flags *pflag.FlagSet) {
-		flags.StringVar(&name, "cache_name", "", "Select a Gradle cache to grant access to. By default, all Gradle caches can be accessed.")
-		fncobra.DurationVar(flags, &expiresIn, "expires_in", 24*time.Hour, "Duration until the token expires (max 90 days).")
-		flags.StringVar(&tokenFile, "token", "token.json", "Write token to this file in JSON format.")
-		flags.StringVar(&scope, "scope", "user", "Set the scope of the generated access token. Valid options: `tenant`, `user`. Tokens with user scope are bound to the tenant membership of the current user.")
-	}).Do(func(ctx context.Context) error {
-		gradleClient, err := fnapi.NewGradleCacheServiceClient(ctx)
-		if err != nil {
-			return err
-		}
+			policyResp, err := gradleClient.GetAccessPolicy(ctx, connect.NewRequest(&gradlev1beta.GetAccessPolicyRequest{
+				Name: cacheName,
+			}))
+			if err != nil {
+				return nil, fnerrors.Newf("failed to get access policy: %w", err)
+			}
 
-		policyResp, err := gradleClient.GetAccessPolicy(ctx, connect.NewRequest(&gradlev1beta.GetAccessPolicyRequest{
-			Name: name,
-		}))
-		if err != nil {
-			return fnerrors.Newf("failed to get access policy: %w", err)
-		}
-
-		requiredPerms := policyResp.Msg.GetRequiredPermission()
-		if len(requiredPerms) == 0 {
-			return fnerrors.New("no permissions required for this cache (unexpected)")
-		}
-
-		tokenSource, err := auth.LoadDefaults()
-		if err != nil {
-			return fnerrors.InvocationError("gradle", "failed to get authentication token: %w", err)
-		}
-
-		iamClient, err := iam.NewClient(ctx, tokenSource)
-		if err != nil {
-			return fnerrors.InvocationError("gradle", "failed to create IAM client: %w", err)
-		}
-		defer iamClient.Close()
-
-		suffix := ids.NewRandomBase32ID(4)
-		tokenName := fmt.Sprintf("gradle-cache-%s-%s", name, suffix)
-		expiresAt := time.Now().Add(expiresIn)
-
-		req := &iamv1beta.CreateRevokableTokenRequest{
-			Name:        tokenName,
-			Description: fmt.Sprintf("Gradle cache access token for cache %q", name),
-			ExpiresAt:   timestamppb.New(expiresAt),
-			Access: &iamv1beta.AccessPolicy{
-				Grants: requiredPerms,
-			},
-		}
-
-		switch scope {
-		case "tenant":
-			req.Scope = iamv1beta.RevokableToken_TENANT_SCOPE
-
-		case "user":
-			req.Scope = iamv1beta.RevokableToken_TENANT_MEMBERSHIP_SCOPE
-		}
-
-		resp, err := iamClient.Tokens.CreateRevokableToken(ctx, req)
-		if err != nil {
-			return fnerrors.InvocationError("token", "failed to create token: %w", err)
-		}
-
-		fmt.Fprintf(console.Stdout(ctx), "Token ID:    %s\n", resp.Token.GetTokenId())
-		fmt.Fprintf(console.Stdout(ctx), "Name:        %s\n", resp.Token.GetName())
-		fmt.Fprintf(console.Stdout(ctx), "Expires At:  %s\n", expiresAt.Format(time.RFC3339))
-
-		if err := writeGradleTokenToFile(tokenFile, resp.BearerToken); err != nil {
-			return fnerrors.InvocationError("token", "failed to write token to file: %w", err)
-		}
-
-		fmt.Fprintf(console.Stdout(ctx), "You can set up your gradle cache config with:\n")
-
-		style := colors.Ctx(ctx)
-		cmd := fmt.Sprintf("nsc gradle cache setup --token %s", tokenFile)
-		if name != "" {
-			cmd = fmt.Sprintf("%s --name %s", cmd, name)
-		}
-
-		fmt.Fprintf(console.Stdout(ctx), "  %s\n", style.Highlight.Apply(cmd))
-
-		return nil
+			return policyResp.Msg.GetRequiredPermission(), nil
+		},
 	})
-}
-
-func writeGradleTokenToFile(path string, bearerToken string) error {
-	tokenData := map[string]string{
-		"bearer_token": bearerToken,
-	}
-
-	bb, err := json.MarshalIndent(tokenData, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(path, bb, 0600)
 }
 
 func toGradleInitScript(out gradleSetup) ([]byte, error) {
