@@ -46,16 +46,19 @@ sleep 3
 tmux capture-pane -t NsSSHSession -p | grep "Linux $CLUSTER_ID"
 tmux send-keys -t NsSSHSession "exit" Enter
 
+# Spawn an nginx pod to generate application logs.
+$NSC_BIN kubectl $CLUSTER_ID run nginx --image=nginx --restart=Never
+
 # Test ns cluster logs
 s=1
-for i in $(seq 1 10); do
-    LOGS=$($NSC_BIN logs $CLUSTER_ID | wc -l)
-    if [[ $(($LOGS)) -gt 0 ]]; then
+for i in $(seq 1 20); do
+    LOGS=$($NSC_BIN logs $CLUSTER_ID --all | wc -l)
+    if [[ $(($LOGS)) -gt 10 ]]; then
         echo "Found cluster logs!"
         s=0
         break
     fi
-    echo "Still no logs from cluster..."
+    echo "Still no logs from cluster... (attempt $i, got $LOGS lines)"
     sleep 5
 done
 if [[ $s -gt 0 ]]; then
