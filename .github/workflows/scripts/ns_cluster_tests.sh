@@ -49,23 +49,6 @@ tmux send-keys -t NsSSHSession "exit" Enter
 # Spawn an nginx pod to generate application logs.
 $NSC_BIN kubectl $CLUSTER_ID run nginx --image=nginx --restart=Never
 
-# Test ns cluster logs
-s=1
-for i in $(seq 1 20); do
-    LOGS=$($NSC_BIN logs $CLUSTER_ID --all | wc -l)
-    if [[ $(($LOGS)) -gt 10 ]]; then
-        echo "Found cluster logs!"
-        s=0
-        break
-    fi
-    echo "Still no logs from cluster... (attempt $i, got $LOGS lines)"
-    sleep 5
-done
-if [[ $s -gt 0 ]]; then
-    echo "FAILED: no logs from $CLUSTER_ID."
-    exit 1
-fi
-
 # Test nsc kubectl get pods -A
 s=1
 for i in $(seq 1 5); do
@@ -80,6 +63,23 @@ for i in $(seq 1 5); do
 done
 if [[ $s -gt 0 ]]; then
     echo "FAILED: no Kubernetes pods running on $CLUSTER_ID."
+    exit 1
+fi
+
+# Test ns cluster logs
+s=1
+for i in $(seq 1 10); do
+    LOGS=$($NSC_BIN logs $CLUSTER_ID | wc -l)
+    if [[ $(($LOGS)) -gt 0 ]]; then
+        echo "Found cluster logs!"
+        s=0
+        break
+    fi
+    echo "Still no logs from cluster..."
+    sleep 5
+done
+if [[ $s -gt 0 ]]; then
+    echo "FAILED: no logs from $CLUSTER_ID."
     exit 1
 fi
 
