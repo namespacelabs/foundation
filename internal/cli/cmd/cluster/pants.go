@@ -37,6 +37,19 @@ func NewPantsCmd() *cobra.Command {
 	return cmd
 }
 
+// NewPantsCacheCmd returns a "pants" command with setup directly
+// underneath, for use under "nsc cache pants setup".
+func NewPantsCacheCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "pants",
+		Short: "Pants cache related functionality.",
+	}
+
+	cmd.AddCommand(newSetupPantsCacheCmd())
+
+	return cmd
+}
+
 func newSetupPantsCacheCmd() *cobra.Command {
 	var pantsTomlPath string
 

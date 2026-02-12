@@ -49,11 +49,26 @@ func NewGradleCmd() *cobra.Command {
 	return cmd
 }
 
+// NewGradleCacheCmd returns a "gradle" command with setup/create-token directly
+// underneath, for use under "nsc cache gradle {setup|create-token}".
+func NewGradleCacheCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "gradle",
+		Short: "Gradle cache related functionality.",
+	}
+
+	cmd.AddCommand(newSetupGradleCacheCmd())
+	cmd.AddCommand(newCreateTokenCmd())
+
+	return cmd
+}
+
 func newSetupGradleCacheCmd() *cobra.Command {
 	var initGradlePath, output string
 	var push, user bool
 	var name, site string
 	var tokenFile string
+	var flags *pflag.FlagSet
 
 	return fncobra.Cmd(&cobra.Command{
 		Use:   "setup",
@@ -67,15 +82,22 @@ The generated init.gradle can be used with:
   gradle --init-script=/path/to/init.gradle build
 
 Or by placing it in ~/.gradle/init.d/ to apply to all builds.`,
-	}).WithFlags(func(flags *pflag.FlagSet) {
-		flags.StringVar(&initGradlePath, "init-gradle", "", "If specified, write the init.gradle to this path.")
-		flags.StringVarP(&output, "output", "o", "plain", "One of plain or json.")
-		flags.BoolVar(&push, "push", true, "Whether to enable pushing to the cache (default: true).")
-		flags.StringVar(&name, "name", "default", "A name for the cache.")
-		flags.StringVar(&site, "site", "", "Site preference (e.g., 'iad', 'fra'). If not set, determined automatically.")
-		flags.BoolVar(&user, "user", false, "If set, write the init.gradle to ~/.gradle/init.d/namespace.cache.gradle.")
-		flags.StringVar(&tokenFile, "token", "", "Use the bearer token stored at this location for authentication instead of the default.")
+	}).WithFlags(func(f *pflag.FlagSet) {
+		flags = f
+		f.StringVar(&initGradlePath, "init-gradle", "", "If specified, write the init.gradle to this path.")
+		f.StringVarP(&output, "output", "o", "plain", "One of plain or json.")
+		f.BoolVar(&push, "push", true, "Whether to enable pushing to the cache (default: true).")
+		f.StringVar(&name, "cache_name", "default", "A name for the cache.")
+		f.StringVar(&name, "name", "default", "Deprecated: use --cache_name instead.")
+		f.MarkHidden("name")
+		f.StringVar(&site, "site", "", "Site preference (e.g., 'iad', 'fra'). If not set, determined automatically.")
+		f.BoolVar(&user, "user", false, "If set, write the init.gradle to ~/.gradle/init.d/namespace.cache.gradle.")
+		f.StringVar(&tokenFile, "token", "", "Use the bearer token stored at this location for authentication instead of the default.")
 	}).Do(func(ctx context.Context) error {
+		if flags.Changed("name") {
+			fmt.Fprintf(console.Warnings(ctx), "--name is deprecated; use --cache_name\n")
+		}
+
 		if user && initGradlePath != "" {
 			return fnerrors.New("--user and --init-gradle are mutually exclusive")
 		}
