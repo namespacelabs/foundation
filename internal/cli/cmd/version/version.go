@@ -13,6 +13,7 @@ import (
 
 	"github.com/kr/text"
 	"github.com/spf13/cobra"
+	"golang.org/x/mod/semver"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/cli/nsboot"
 	"namespacelabs.dev/foundation/internal/cli/version"
@@ -53,6 +54,51 @@ func NewVersionCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&buildInfo, "build_info", buildInfo, "Output all of build info.")
 
 	cmd.AddCommand(newUpdateCmd())
+	cmd.AddCommand(newEnsureCmd())
+
+	return cmd
+}
+
+func newEnsureCmd() *cobra.Command {
+	var atLeast string
+
+	cmd := &cobra.Command{
+		Use:   "ensure",
+		Short: "Ensures the current binary is at least a given version, updating if needed.",
+		Args:  cobra.NoArgs,
+
+		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			if atLeast == "" {
+				return fnerrors.New("--at_least is required")
+			}
+
+			current := version.Tag
+			if current == version.DevelopmentBuildVersion {
+				fmt.Fprintf(console.Stdout(ctx), "Development build, skipping version check.\n")
+				return nil
+			}
+
+			currentV := current
+			if currentV != "" && currentV[0] != 'v' {
+				currentV = "v" + currentV
+			}
+
+			requiredV := atLeast
+			if requiredV != "" && requiredV[0] != 'v' {
+				requiredV = "v" + requiredV
+			}
+
+			if semver.Compare(currentV, requiredV) >= 0 {
+				fmt.Fprintf(console.Stdout(ctx), "Already up to date (version %s satisfies >= %s).\n", current, atLeast)
+				return nil
+			}
+
+			fmt.Fprintf(console.Stdout(ctx), "Version %s is older than %s, updating...\n", current, atLeast)
+			return nsboot.ForceUpdate(ctx, "nsc")
+		}),
+	}
+
+	cmd.Flags().StringVar(&atLeast, "at_least", "", "Minimum required version (e.g. 0.0.481).")
 
 	return cmd
 }
