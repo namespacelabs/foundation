@@ -43,7 +43,7 @@ func newCreateCacheTokenCmd(cfg createTokenConfig) *cobra.Command {
 		Short: cfg.Short,
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		flags.StringVar(&name, "cache_name", "", fmt.Sprintf("Select a %s cache to grant access to. By default, all %s caches can be accessed.", cfg.CacheLabel, cfg.CacheLabel))
-		fncobra.DurationVar(flags, &expiresIn, "expires_in", 24*time.Hour, "Duration until the token expires (max 90 days).")
+		fncobra.DurationVar(flags, &expiresIn, "expires_in", 90*24*time.Hour, "Duration until the token expires.")
 		flags.StringVar(&tokenFile, "token", "token.json", "Write token to this file in JSON format.")
 		flags.StringVar(&scope, "scope", "user", "Set the scope of the generated access token. Valid options: `tenant`, `user`. Tokens with user scope are bound to the tenant membership of the current user.")
 	}).Do(func(ctx context.Context) error {
@@ -101,7 +101,7 @@ func newCreateCacheTokenCmd(cfg createTokenConfig) *cobra.Command {
 			return fnerrors.InvocationError("token", "failed to write token to file: %w", err)
 		}
 
-		fmt.Fprintf(console.Stdout(ctx), "Wrote token contents to %q\n", tokenFile)
+		fmt.Fprintf(console.Stdout(ctx), "\nWrote token contents to %q\n\n", tokenFile)
 		fmt.Fprintf(console.Stdout(ctx), "You can set up your %s config with:\n", cfg.CacheLabel)
 
 		style := colors.Ctx(ctx)
