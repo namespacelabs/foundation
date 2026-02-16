@@ -83,16 +83,22 @@ do_install() {
 
   echo "Detected ${architecture} as the platform architecture"
 
-  # Determine bin_dir
+  # Determine old_bin_dir for compatibility with existing installations
   case "$os" in
-    darwin) bin_dir="$HOME/Library/Application Support/ns/bin" ;;
-    linux) bin_dir="$HOME/.ns/bin" ;;
+    darwin) old_bin_dir="$HOME/Library/Application Support/ns/bin" ;;
+    linux) old_bin_dir="$HOME/.ns/bin" ;;
   esac
+
+  # Default to ~/.local/bin, use old path only for compatibility
+  bin_dir="$HOME/.local/bin"
 
   if [ ! -z "${NS_ROOT:-}" ]; then
     bin_dir="$NS_ROOT/bin"
   elif [ ! -z "${NS_INSTALL_DIR:-}" ]; then
     bin_dir="$NS_INSTALL_DIR"
+  elif [ -x "$old_bin_dir/$tool_name" ]; then
+    # Compatibility: use old path if there's an existing installation
+    bin_dir="$old_bin_dir"
   fi
 
   # If no version specified, query the latest version
