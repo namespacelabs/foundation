@@ -55,6 +55,7 @@ func NewCreateCmd() *cobra.Command {
 
 	duration := fncobra.Duration(cmd.Flags(), "duration", 0, "For how long to run the ephemeral environment.")
 
+	enable := cmd.Flags().StringSlice("enable", nil, "Enable a feature, e.g. --enable=kubernetes:1.33")
 	waitKubeSystem := cmd.Flags().Bool("wait_kube_system", false, "If true, wait until kube-system resources (e.g. coredns and local-path-provisioner) are ready.")
 	waitTimeout := fncobra.Duration(cmd.Flags(), "wait_timeout", time.Minute, "For how long to wait until the instance becomes ready.")
 
@@ -76,14 +77,15 @@ func NewCreateCmd() *cobra.Command {
 		}
 
 		opts := api.CreateClusterOpts{
-			MachineType: *machineType,
-			KeepAtExit:  true,
-			Purpose:     *purpose,
-			Features:    *features,
-			Labels:      *labels,
-			UniqueTag:   *tag,
-			SecretIDs:   *availableSecrets,
-			Duration:    *duration,
+			MachineType:  *machineType,
+			KeepAtExit:   true,
+			Purpose:      *purpose,
+			Features:     *features,
+			Labels:       *labels,
+			UniqueTag:    *tag,
+			SecretIDs:    *availableSecrets,
+			Duration:     *duration,
+			Experimental: map[string]any{},
 		}
 
 		if len(opts.Labels) == 0 {
@@ -115,10 +117,6 @@ func NewCreateCmd() *cobra.Command {
 		}
 
 		if *internalExtra != "" {
-			if opts.Experimental == nil {
-				opts.Experimental = map[string]any{}
-			}
-
 			opts.Experimental["internal_extra"] = *internalExtra
 		}
 
@@ -133,9 +131,6 @@ func NewCreateCmd() *cobra.Command {
 		}
 
 		if *selectors != nil {
-			if opts.Experimental == nil {
-				opts.Experimental = map[string]any{}
-			}
 			sels := []*api.LabelEntry{}
 			for k, v := range *selectors {
 				sels = append(sels, &api.LabelEntry{Name: k, Value: v})
@@ -157,13 +152,30 @@ func NewCreateCmd() *cobra.Command {
 		}
 
 		if !*bare && !strings.HasPrefix(*machineType, "mac") && !strings.HasPrefix(*machineType, "windows") {
-			if opts.Experimental == nil {
-				opts.Experimental = map[string]any{}
-			}
-
 			// XXX for backwards compatibility, add k3s on Linux by default.
 			if _, ok := opts.Experimental["k3s"]; !ok {
 				opts.Experimental["k3s"] = private.K3sCfg
+			}
+		}
+
+		for _, feat := range *enable {
+			parts := strings.SplitN(feat, ":", 2)
+			switch parts[0] {
+			case "kubernetes":
+				if len(parts) != 2 {
+					return fnerrors.Newf("expected Kubernetes version spec %q", feat)
+				}
+
+				if _, ok := opts.Experimental["k3s"]; !ok {
+					// Fill default
+					opts.Experimental["k3s"] = private.K3sCfg
+				}
+
+				cfg := opts.Experimental["k3s"].(map[string]any)
+				cfg["kubernetes_version"] = parts[1]
+
+			default:
+				return fnerrors.Newf("unknown feature option %q", parts[0])
 			}
 		}
 
