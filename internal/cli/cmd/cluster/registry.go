@@ -42,9 +42,21 @@ func NewRegistryCmd() *cobra.Command {
 	cmd.AddCommand(newRegistryShareCmd())
 	cmd.AddCommand(newRegistryUpdateImageExpirationCmd())
 
+	policyCommand := &cobra.Command{
+		Use:   "policy",
+		Short: "Manage registry policies.",
+	}
+
+	policyCommand.AddCommand(newRegistryPolicyGetCmd())
+	policyCommand.AddCommand(newRegistryPolicySetCmd())
+
+	cmd.AddCommand(policyCommand)
+
+	// Deprecated: use `nsc registry policy` instead.
 	defaultExpiryCommand := &cobra.Command{
-		Use:   "default-expiration",
-		Short: "Manage the default expiration of all registry images.",
+		Use:    "default-expiration",
+		Short:  "Manage the default expiration of all registry images.",
+		Hidden: true,
 	}
 
 	defaultExpiryCommand.AddCommand(newRegistryGetDefaultExpirationCmd())
@@ -720,47 +732,8 @@ func newRegistryGetDefaultExpirationCmd() *cobra.Command {
 	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		tokenSource, err := auth.LoadDefaults()
-		if err != nil {
-			return fnerrors.InvocationError("registry", "failed to get authentication token: %w", err)
-		}
-
-		client, err := registryapi.NewClient(ctx, tokenSource)
-		if err != nil {
-			return fnerrors.InvocationError("registry", "failed to create registry client: %w", err)
-		}
-		defer client.Close()
-
-		res, err := client.ContainerRegistry.GetDefaultPolicy(ctx, nil)
-		if err != nil {
-			return err
-		}
-
-		switch *output {
-		case "json":
-			bb, err := protojson.MarshalOptions{UseProtoNames: true, Multiline: true}.Marshal(res)
-			if err != nil {
-				return err
-			}
-
-			fmt.Fprintln(console.Stdout(ctx), string(bb))
-			return nil
-
-		case "table":
-			stdout := console.Stdout(ctx)
-			fmt.Fprintf(stdout, "Revision:             %d\n", res.Revision)
-
-			expiration := "Never"
-			if res.DefaultExpiration != nil {
-				expiration = res.DefaultExpiration.AsDuration().String()
-			}
-
-			fmt.Fprintf(stdout, "Default Expiration:   %s\n", expiration)
-			return nil
-
-		default:
-			return fnerrors.BadInputError("invalid output format: %s", *output)
-		}
+		fmt.Fprintln(console.Stdout(ctx), "Command \"nsc registry default-expiration\" is deprecated, use \"nsc registry policy\" instead.")
+		return getPolicy(ctx, "", *output)
 	})
 
 	return cmd
@@ -781,49 +754,200 @@ func newRegistrySetDefaultExpirationCmd() *cobra.Command {
 	cmd.MarkFlagsMutuallyExclusive("expiration", "no-expiration")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		tokenSource, err := auth.LoadDefaults()
-		if err != nil {
-			return fnerrors.InvocationError("registry", "failed to get authentication token: %w", err)
-		}
+		fmt.Fprintln(console.Stdout(ctx), "Command \"nsc registry default-expiration\" is deprecated, use \"nsc registry policy\" instead.")
+		return setPolicy(ctx, "", *expiration, *noExpiration)
+	})
 
-		client, err := registryapi.NewClient(ctx, tokenSource)
-		if err != nil {
-			return fnerrors.InvocationError("registry", "failed to create registry client: %w", err)
-		}
-		defer client.Close()
+	return cmd
+}
 
-		res, err := client.ContainerRegistry.GetDefaultPolicy(ctx, nil)
+func getPolicy(ctx context.Context, repository, output string) error {
+	tokenSource, err := auth.LoadDefaults()
+	if err != nil {
+		return fnerrors.InvocationError("registry", "failed to get authentication token: %w", err)
+	}
+
+	client, err := registryapi.NewClient(ctx, tokenSource)
+	if err != nil {
+		return fnerrors.InvocationError("registry", "failed to create registry client: %w", err)
+	}
+	defer client.Close()
+
+	if repository != "" {
+		res, err := client.ContainerRegistry.GetRepositoryPolicy(ctx, &registryv1beta.GetRepositoryPolicyRequest{
+			Repository: repository,
+		})
 		if err != nil {
 			return err
 		}
 
-		var newExpiry *durationpb.Duration
-
-		if !*noExpiration {
-			if *expiration > 0 {
-				newExpiry = durationpb.New(*expiration)
+		switch output {
+		case "json":
+			bb, err := protojson.MarshalOptions{UseProtoNames: true, Multiline: true}.Marshal(res)
+			if err != nil {
+				return err
 			}
 
-			if newExpiry.AsDuration() == 0 {
-				return fnerrors.InvocationError("registry", "Provided expiration is 0. Use --no-expiration instead.")
+			fmt.Fprintln(console.Stdout(ctx), string(bb))
+			return nil
+
+		case "table":
+			stdout := console.Stdout(ctx)
+			fmt.Fprintf(stdout, "Repository:   %s\n", repository)
+			fmt.Fprintf(stdout, "Revision:     %d\n", res.Revision)
+
+			expiration := "Never"
+			if res.Expiration != nil {
+				expiration = res.Expiration.AsDuration().String()
 			}
+
+			fmt.Fprintf(stdout, "Expiration:   %s\n", expiration)
+			return nil
+
+		default:
+			return fnerrors.BadInputError("invalid output format: %s", output)
+		}
+	}
+
+	res, err := client.ContainerRegistry.GetDefaultPolicy(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	switch output {
+	case "json":
+		bb, err := protojson.MarshalOptions{UseProtoNames: true, Multiline: true}.Marshal(res)
+		if err != nil {
+			return err
 		}
 
-		if _, err := client.ContainerRegistry.UpdateDefaultPolicy(ctx, &registryv1beta.UpdateDefaultPolicyRequest{
-			Revision:          res.Revision,
-			DefaultExpiration: newExpiry,
+		fmt.Fprintln(console.Stdout(ctx), string(bb))
+		return nil
+
+	case "table":
+		stdout := console.Stdout(ctx)
+		fmt.Fprintf(stdout, "Revision:             %d\n", res.Revision)
+
+		expiration := "Never"
+		if res.DefaultExpiration != nil {
+			expiration = res.DefaultExpiration.AsDuration().String()
+		}
+
+		fmt.Fprintf(stdout, "Default Expiration:   %s\n", expiration)
+		return nil
+
+	default:
+		return fnerrors.BadInputError("invalid output format: %s", output)
+	}
+}
+
+func setPolicy(ctx context.Context, repository string, expiration time.Duration, noExpiration bool) error {
+	tokenSource, err := auth.LoadDefaults()
+	if err != nil {
+		return fnerrors.InvocationError("registry", "failed to get authentication token: %w", err)
+	}
+
+	client, err := registryapi.NewClient(ctx, tokenSource)
+	if err != nil {
+		return fnerrors.InvocationError("registry", "failed to create registry client: %w", err)
+	}
+	defer client.Close()
+
+	var newExpiry *durationpb.Duration
+
+	if !noExpiration {
+		if expiration > 0 {
+			newExpiry = durationpb.New(expiration)
+		}
+
+		if newExpiry.AsDuration() == 0 {
+			return fnerrors.InvocationError("registry", "Provided expiration is 0. Use --no-expiration instead.")
+		}
+	}
+
+	if repository != "" {
+		res, err := client.ContainerRegistry.GetRepositoryPolicy(ctx, &registryv1beta.GetRepositoryPolicyRequest{
+			Repository: repository,
+		})
+		if err != nil {
+			return err
+		}
+
+		if _, err := client.ContainerRegistry.UpdateRepositoryPolicy(ctx, &registryv1beta.UpdateRepositoryPolicyRequest{
+			Repository: repository,
+			Revision:   res.Revision,
+			Expiration: newExpiry,
 		}); err != nil {
 			return err
 		}
 
 		stdout := console.Stdout(ctx)
 		if newExpiry == nil {
-			fmt.Fprintf(stdout, "Default configuration has been updated to never expire images.\n")
+			fmt.Fprintf(stdout, "Repository %q has been updated to never expire images.\n", repository)
 		} else {
-			fmt.Fprintf(stdout, "Default configuration has been updated to expire images after %s.\n", newExpiry.AsDuration().String())
+			fmt.Fprintf(stdout, "Repository %q has been updated to expire images after %s.\n", repository, newExpiry.AsDuration().String())
 		}
 
 		return nil
+	}
+
+	res, err := client.ContainerRegistry.GetDefaultPolicy(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	if _, err := client.ContainerRegistry.UpdateDefaultPolicy(ctx, &registryv1beta.UpdateDefaultPolicyRequest{
+		Revision:          res.Revision,
+		DefaultExpiration: newExpiry,
+	}); err != nil {
+		return err
+	}
+
+	stdout := console.Stdout(ctx)
+	if newExpiry == nil {
+		fmt.Fprintf(stdout, "Default configuration has been updated to never expire images.\n")
+	} else {
+		fmt.Fprintf(stdout, "Default configuration has been updated to expire images after %s.\n", newExpiry.AsDuration().String())
+	}
+
+	return nil
+}
+
+func newRegistryPolicyGetCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "get",
+		Short: "Gets the current policy settings.",
+		Args:  cobra.NoArgs,
+		Long:  `Gets the policy settings that are currently configured. If --repository is specified, gets the policy for that repository.`,
+	}
+
+	repository := cmd.Flags().String("repository", "", "Get the policy for a specific repository.")
+	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		return getPolicy(ctx, *repository, *output)
+	})
+
+	return cmd
+}
+
+func newRegistryPolicySetCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "set",
+		Short: "Sets policy settings.",
+		Args:  cobra.NoArgs,
+		Long:  `Sets the policy settings. If --repository is specified, sets the policy for that repository, otherwise sets the default policy.`,
+	}
+
+	repository := cmd.Flags().String("repository", "", "Set the policy for a specific repository.")
+	expiration := fncobra.Duration(cmd.Flags(), "default_expiration", 0, "The expiration duration applied to new images (e.g., 168h for 7 days). Needs to be at least 4h.")
+	noExpiration := cmd.Flags().Bool("no-expiration", false, "Set images to never expire.")
+
+	cmd.MarkFlagsOneRequired("default_expiration", "no-expiration")
+	cmd.MarkFlagsMutuallyExclusive("default_expiration", "no-expiration")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		return setPolicy(ctx, *repository, *expiration, *noExpiration)
 	})
 
 	return cmd
