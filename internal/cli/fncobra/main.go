@@ -21,7 +21,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/framework/console/termios"
 	"namespacelabs.dev/foundation/framework/ulimit"
 	"namespacelabs.dev/foundation/internal/clerk"
@@ -145,8 +144,8 @@ func doMain(opts MainOpts) (colors.Style, error) {
 
 		ctx := cmd.Context()
 
-		// This is a bit of an hack. But don't run version checks when doing an update.
-		if opts.NotifyOnNewVersion && !slices.Contains(cmd.Aliases, "update-ns") {
+		// Don't run version checks for commands that opt out (e.g. update, check).
+		if opts.NotifyOnNewVersion && cmd.Annotations["ns.skip-version-check"] == "" {
 			DeferCheckVersion(ctx, opts.Name)
 		}
 
