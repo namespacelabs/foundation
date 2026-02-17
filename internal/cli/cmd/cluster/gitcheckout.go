@@ -59,6 +59,9 @@ func newUpdateSubmodulesCmd(mirrorBaseDir *string) *cobra.Command {
 	maxRecurseDepth := cmd.Flags().Int("max-recurse-depth", 20, "max depth of recursion into subdirectories")
 	cmd.Flags().MarkHidden("max-recurse-depth")
 
+	maxAttempts := cmd.Flags().Int("max-attempts", 3, "maximum number of attempts for each git command")
+	cmd.Flags().MarkHidden("max-attempts")
+
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		p := &processor{
 			repoPath:          *repositoryPath,
@@ -70,6 +73,7 @@ func newUpdateSubmodulesCmd(mirrorBaseDir *string) *cobra.Command {
 			numWorkers:        *numWorkers,
 			repoBufLen:        *repoBufLen,
 			maxRecurseDepth:   *maxRecurseDepth,
+			maxAttempts:       maxAttempts,
 		}
 		return p.updateSubmodules(ctx)
 	})
@@ -97,6 +101,7 @@ type processor struct {
 	numWorkers      int
 	repoBufLen      int
 	maxRecurseDepth int
+	maxAttempts     *int
 
 	processRepoJobQueue         chan processRepoJob
 	doProcessRepoJobQueue       chan processRepoJob
@@ -201,17 +206,24 @@ func (p *processor) updateSubmodules(ctx context.Context) error {
 		})
 	}
 
-	p.scheduleProcessRepo(ctx, p.repoPath, 0)
+	if err := p.scheduleProcessRepo(groupCtx, p.repoPath, 0); err != nil {
+		return err
+	}
 
 	return group.Wait()
 }
 
-func (p *processor) scheduleProcessRepo(ctx context.Context, repoPath string, recursionDepth int) {
+func (p *processor) scheduleProcessRepo(ctx context.Context, repoPath string, recursionDepth int) error {
 	fmt.Fprintf(console.Debug(ctx), "N%d: In %s: scheduled processing\n", recursionDepth, repoPath)
 
-	p.processRepoJobQueue <- processRepoJob{
+	select {
+	case p.processRepoJobQueue <- processRepoJob{
 		repoPath:       repoPath,
 		recursionDepth: recursionDepth,
+	}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 
@@ -290,7 +302,9 @@ func (p *processor) doProcessRepo(ctx context.Context, job processRepoJob) error
 	mirrorReadyChan := make(chan ensureMirrorResult, len(submodules))
 	for _, submod := range submodules {
 		fmt.Fprintf(console.Info(ctx), "N%d: In %s: Found submodule %s -> %s\n", job.recursionDepth, job.repoPath, submod.relativePath, submod.remoteUrl)
-		p.scheduleEnsureMirror(submod, mirrorReadyChan)
+		if err := p.scheduleEnsureMirror(ctx, submod, mirrorReadyChan); err != nil {
+			return err
+		}
 	}
 
 	// The actual "update" operations for submodules must be performed sequentially
@@ -333,22 +347,28 @@ func (p *processor) doUpdateSubmodule(ctx context.Context, repoPath string, recu
 		submoduleUpdateArgs = append(submoduleUpdateArgs, "--filter", p.filter)
 	}
 	submoduleUpdateArgs = append(submoduleUpdateArgs, submod.relativePath)
-	cmd := inRepoGit(repoPath, submoduleUpdateArgs...)
-	_, err := runAndPrintIfFails(ctx, cmd)
-	if err != nil {
+
+	if err := p.runGitWithRetries(ctx, repoPath, submoduleUpdateArgs...); err != nil {
 		return fmt.Errorf("could not update submodule '%s': %v", submod.relativePath, err)
 	}
 
 	if p.recurseSubmodules {
 		recursePath := filepath.Join(repoPath, submod.relativePath)
-		p.scheduleProcessRepo(ctx, recursePath, recursionDepth+1)
+		if err := p.scheduleProcessRepo(ctx, recursePath, recursionDepth+1); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func (p *processor) scheduleEnsureMirror(submod submodule, resultChan chan ensureMirrorResult) {
-	p.ensureMirrorJobQueue <- ensureMirrorJob{submod: submod, resultChan: resultChan}
+func (p *processor) scheduleEnsureMirror(ctx context.Context, submod submodule, resultChan chan ensureMirrorResult) error {
+	select {
+	case p.ensureMirrorJobQueue <- ensureMirrorJob{submod: submod, resultChan: resultChan}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (p *processor) ensureMirrorCoordinator(ctx context.Context) error {
@@ -477,7 +497,7 @@ func (p *processor) workerForDoEnsureMirror(ctx context.Context) error {
 
 func (p *processor) doEnsureMirror(ctx context.Context, job doEnsureMirrorJob) error {
 	fmt.Fprintf(console.Info(ctx), "fetching or cloning mirror for %s at %s\n", job.remoteUrl, job.mirrorDir)
-	err := ensureMirrorWork(ctx, job.remoteUrl, job.mirrorDir)
+	err := p.ensureMirrorWork(ctx, job.remoteUrl, job.mirrorDir)
 
 	select {
 	case p.doEnsureMirrorDoneNotification <- doEnsureMirrorResult{remoteUrl: job.remoteUrl, mirrorDir: job.mirrorDir, err: err}:
@@ -487,33 +507,39 @@ func (p *processor) doEnsureMirror(ctx context.Context, job doEnsureMirrorJob) e
 	}
 }
 
-func ensureMirrorWork(ctx context.Context, remoteUrl string, mirrorDir string) error {
+func (p *processor) ensureMirrorWork(ctx context.Context, remoteUrl string, mirrorDir string) error {
 	if err := os.MkdirAll(mirrorDir, os.ModePerm); err != nil {
 		return fmt.Errorf("can not create '%s' for '%s': %v", mirrorDir, remoteUrl, err)
 	}
 
-	if isMirrorRepo(mirrorDir) {
+	if isMirrorRepo(ctx, mirrorDir) {
 		// Make sure the mirror is up to date
-		cmd := inRepoGit(mirrorDir, "fetch", "--no-recurse-submodules", "origin")
-		_, err := runAndPrintIfFails(ctx, cmd)
-		if err != nil {
+		if err := p.runGitWithRetries(ctx, mirrorDir, "fetch", "--no-recurse-submodules", "origin"); err != nil {
 			return fmt.Errorf("could not git fetch '%s' in '%s': %v", remoteUrl, mirrorDir, err)
 		}
 	} else {
 		// Create new mirror
-		cmd := exec.Command("git", "clone", "--mirror", "--", remoteUrl, mirrorDir)
-		_, err := runAndPrintIfFails(ctx, cmd)
-		if err != nil {
+		if err := p.runGitCmdWithRetries(ctx, func() (*exec.Cmd, error) {
+			// Clean up any partial clone from a previous failed attempt
+			// so git clone doesn't fail with "directory already exists".
+			if err := os.RemoveAll(mirrorDir); err != nil {
+				return nil, fmt.Errorf("could not clean up '%s': %v", mirrorDir, err)
+			}
+			if err := os.MkdirAll(mirrorDir, os.ModePerm); err != nil {
+				return nil, fmt.Errorf("could not create '%s': %v", mirrorDir, err)
+			}
+			return exec.CommandContext(ctx, "git", "clone", "--mirror", "--", remoteUrl, mirrorDir), nil
+		}); err != nil {
 			return fmt.Errorf("could not git clone '%s' to '%s': %v", remoteUrl, mirrorDir, err)
 		}
 	}
 	return nil
 }
 
-func isMirrorRepo(mirrorDir string) bool {
+func isMirrorRepo(ctx context.Context, mirrorDir string) bool {
 	// Mirror repos are bare repositories, so check for that.
 	// This not failing implies that mirrorDir is a git repository in the first place.
-	err := inRepoGit(mirrorDir, "rev-parse", "--is-bare-repository").Run()
+	err := inRepoGit(ctx, mirrorDir, "rev-parse", "--is-bare-repository").Run()
 	return err == nil
 }
 
@@ -538,18 +564,19 @@ func checkIsDir(repoPath string) error {
 	return nil
 }
 
-// Executes "git" as if it ran in "repoPath" in a different way :-)
-// Becuase git submodule doesn't seem to support --work-tree.
-func inRepoGit(repoPath string, args ...string) *exec.Cmd {
+// Executes "git" as if it ran in "repoPath".
+// Because git submodule doesn't seem to support --work-tree.
+// The command is killed when the context is cancelled.
+func inRepoGit(ctx context.Context, repoPath string, args ...string) *exec.Cmd {
 	allArgs := append(
 		[]string{"-C", repoPath},
 		args...)
 
-	return exec.Command("git", allArgs...)
+	return exec.CommandContext(ctx, "git", allArgs...)
 }
 
 func getRepoRemoteOrigin(ctx context.Context, repoPath string) (string, error) {
-	cmd := inRepoGit(repoPath, "config", "--get", "remote.origin.url")
+	cmd := inRepoGit(ctx, repoPath, "config", "--get", "remote.origin.url")
 	output, err := runAndPrintIfFails(ctx, cmd)
 	if err != nil {
 		return "", err
@@ -575,7 +602,7 @@ func resolveRelativeRemoteUrls(submodules []submodule, originRemoteUrl string) (
 }
 
 func getSubmodules(ctx context.Context, repoPath string) ([]submodule, error) {
-	cmd := inRepoGit(repoPath, "config", "--file", ".gitmodules", "--get-regexp", "submodule\\.")
+	cmd := inRepoGit(ctx, repoPath, "config", "--file", ".gitmodules", "--get-regexp", "submodule\\.")
 	fmt.Fprintf(console.Debug(ctx), "exec: %s\n", strings.Join(cmd.Args, " "))
 
 	stdout, err := cmd.StdoutPipe()
@@ -685,6 +712,45 @@ func runAndPrintIfFails(ctx context.Context, cmd *exec.Cmd) (string, error) {
 	return string(output), nil
 }
 
+// runGitWithRetries runs a git command in repoPath, retrying up to max-attempts times on failure.
+func (p *processor) runGitWithRetries(ctx context.Context, repoPath string, args ...string) error {
+	return p.runGitCmdWithRetries(ctx, func() (*exec.Cmd, error) {
+		return inRepoGit(ctx, repoPath, args...), nil
+	})
+}
+
+// runGitCmdWithRetries runs a git command created by makeCmd, retrying up to max-attempts times on failure.
+// makeCmd is called for each attempt because exec.Cmd cannot be reused.
+func (p *processor) runGitCmdWithRetries(ctx context.Context, makeCmd func() (*exec.Cmd, error)) error {
+	maxAttempts := 1
+	if p.maxAttempts != nil && *p.maxAttempts > 1 {
+		maxAttempts = *p.maxAttempts
+	}
+
+	var lastErr error
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		if attempt > 1 {
+			delay := time.Duration(attempt-1) * time.Second
+			fmt.Fprintf(console.Warnings(ctx), "command failed (attempt %d/%d), retrying in %v: %v\n", attempt-1, maxAttempts, delay, lastErr)
+			select {
+			case <-time.After(delay):
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+
+		cmd, err := makeCmd()
+		if err != nil {
+			return err
+		}
+		_, lastErr = runAndPrintIfFails(ctx, cmd)
+		if lastErr == nil {
+			return nil
+		}
+	}
+	return lastErr
+}
+
 // Filters submoduleMap: Only retains entries that point to a "commit" git object.
 // submoduleMap is modified in place.
 func filterSubmodules(ctx context.Context, repoPath string, submoduleMap map[string]*submodule) error {
@@ -704,7 +770,7 @@ func filterSubmodules(ctx context.Context, repoPath string, submoduleMap map[str
 		args = append(args, submodule.relativePath)
 	}
 
-	cmd := inRepoGit(repoPath, args...)
+	cmd := inRepoGit(ctx, repoPath, args...)
 	fmt.Fprintf(console.Debug(ctx), "exec: %s\n", strings.Join(cmd.Args, " "))
 
 	stdout, err := cmd.StdoutPipe()
