@@ -46,28 +46,46 @@ type commonOpts struct {
 }
 
 var (
-	metrics = []struct {
+	gaugeMetrics = []struct {
 		Key   string
 		Value func(*pgxpool.Stat) float64
 	}{
-		{"acquire_count", func(s *pgxpool.Stat) float64 { return float64(s.AcquireCount()) }},
 		{"acquired_conns", func(s *pgxpool.Stat) float64 { return float64(s.AcquiredConns()) }},
-		{"canceled_acquire_count", func(s *pgxpool.Stat) float64 { return float64(s.CanceledAcquireCount()) }},
-		{"acquire_duration_ms", func(s *pgxpool.Stat) float64 { return float64(s.AcquireDuration().Milliseconds()) }},
 		{"constructing_conns", func(s *pgxpool.Stat) float64 { return float64(s.ConstructingConns()) }},
-		{"empty_acquire_count", func(s *pgxpool.Stat) float64 { return float64(s.EmptyAcquireCount()) }},
 		{"idle_conns", func(s *pgxpool.Stat) float64 { return float64(s.IdleConns()) }},
 		{"max_conns", func(s *pgxpool.Stat) float64 { return float64(s.MaxConns()) }},
 		{"total_conns", func(s *pgxpool.Stat) float64 { return float64(s.TotalConns()) }},
 	}
-	cols []*prometheus.GaugeVec
+	counterMetrics = []struct {
+		Key   string
+		Value func(*pgxpool.Stat) float64
+	}{
+		{"acquire_count", func(s *pgxpool.Stat) float64 { return float64(s.AcquireCount()) }},
+		{"canceled_acquire_count", func(s *pgxpool.Stat) float64 { return float64(s.CanceledAcquireCount()) }},
+		{"acquire_duration_ms", func(s *pgxpool.Stat) float64 { return float64(s.AcquireDuration().Milliseconds()) }},
+		{"empty_acquire_count", func(s *pgxpool.Stat) float64 { return float64(s.EmptyAcquireCount()) }},
+		{"new_conns_count", func(s *pgxpool.Stat) float64 { return float64(s.NewConnsCount()) }},
+		{"max_lifetime_destroy_count", func(s *pgxpool.Stat) float64 { return float64(s.MaxLifetimeDestroyCount()) }},
+		{"max_idle_destroy_count", func(s *pgxpool.Stat) float64 { return float64(s.MaxIdleDestroyCount()) }},
+	}
+
+	gaugeVecs   []*prometheus.GaugeVec
+	counterVecs []*prometheus.CounterVec
 )
 
 func init() {
-	cols = make([]*prometheus.GaugeVec, len(metrics))
-	for k, def := range metrics {
-		cols[k] = prometheus.NewGaugeVec(prometheus.GaugeOpts{Subsystem: "pgx_pool", Name: def.Key}, []string{"address", "database", "client"})
-		prometheus.MustRegister(cols[k])
+	labels := []string{"address", "database", "client"}
+
+	gaugeVecs = make([]*prometheus.GaugeVec, len(gaugeMetrics))
+	for k, def := range gaugeMetrics {
+		gaugeVecs[k] = prometheus.NewGaugeVec(prometheus.GaugeOpts{Subsystem: "pgx_pool", Name: def.Key}, labels)
+		prometheus.MustRegister(gaugeVecs[k])
+	}
+
+	counterVecs = make([]*prometheus.CounterVec, len(counterMetrics))
+	for k, def := range counterMetrics {
+		counterVecs[k] = prometheus.NewCounterVec(prometheus.CounterOpts{Subsystem: "pgx_pool", Name: def.Key}, labels)
+		prometheus.MustRegister(counterVecs[k])
 	}
 }
 
@@ -100,6 +118,8 @@ func newDatabase(instance DBInstance, conn *pgxpool.Pool, tracer trace.Tracer, c
 			t := time.NewTicker(5 * time.Second)
 			defer t.Stop()
 
+			prevCounters := make([]float64, len(counterMetrics))
+
 			for {
 				select {
 				case <-ctx.Done():
@@ -108,8 +128,17 @@ func newDatabase(instance DBInstance, conn *pgxpool.Pool, tracer trace.Tracer, c
 				case <-t.C:
 					stats := conn.Stat()
 
-					for k, def := range metrics {
-						cols[k].WithLabelValues(db.opts.clusterAddr, db.opts.databaseName, client).Set(def.Value(stats))
+					for k, def := range gaugeMetrics {
+						gaugeVecs[k].WithLabelValues(db.opts.clusterAddr, db.opts.databaseName, client).Set(def.Value(stats))
+					}
+
+					for k, def := range counterMetrics {
+						v := def.Value(stats)
+						delta := v - prevCounters[k]
+						if delta > 0 {
+							counterVecs[k].WithLabelValues(db.opts.clusterAddr, db.opts.databaseName, client).Add(delta)
+						}
+						prevCounters[k] = v
 					}
 				}
 			}
