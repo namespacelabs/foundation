@@ -20,6 +20,7 @@ type CreateInstanceRequest struct {
 	Feature           []string                               `json:"feature,omitempty"`
 	AvailableSecrets  []*SecretRef                           `json:"available_secrets,omitempty"`
 	Experimental      map[string]any                         `json:"experimental,omitempty"`
+	Features          any                                    `json:"features,omitempty"` // Internal API extension.
 
 	Container []*ContainerRequest `json:"container,omitempty"`
 

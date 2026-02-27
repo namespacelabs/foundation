@@ -206,14 +206,15 @@ type CreateClusterOpts struct {
 	// This is typically needed if you want to execute multiple ns commands on an ephemeral cluster.
 	KeepAtExit bool
 
-	Purpose      string
-	Features     []string
-	UniqueTag    string
-	Labels       map[string]string
-	Duration     time.Duration
-	Experimental map[string]any
-	Volumes      []VolumeSpec
-	SecretIDs    []string
+	Purpose                      string
+	Features                     []string
+	UniqueTag                    string
+	Labels                       map[string]string
+	Duration                     time.Duration
+	Experimental                 map[string]any
+	ExperimentalInstanceFeatures any
+	Volumes                      []VolumeSpec
+	SecretIDs                    []string
 
 	WaitClusterOpts
 }
@@ -245,6 +246,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Creat
 				Feature:           opts.Features,
 				UniqueTag:         opts.UniqueTag,
 				Experimental:      opts.Experimental,
+				Features:          opts.ExperimentalInstanceFeatures,
 			}
 
 			if len(opts.Volumes) > 0 {

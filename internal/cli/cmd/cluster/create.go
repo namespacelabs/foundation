@@ -52,6 +52,8 @@ func NewCreateCmd() *cobra.Command {
 	cmd.Flags().MarkHidden("ssh_key")
 	experimental := cmd.Flags().String("experimental", "", "JSON definition of experimental features.")
 	experimentalFrom := cmd.Flags().String("experimental_from", "", "Load experimental definitions from the specified file.")
+	experimentalInstanceFeatures := cmd.Flags().String("experimental_instance_features", "", "Raw JSON for internal CreateInstanceRequest.features.")
+	cmd.Flags().MarkHidden("experimental_instance_features")
 
 	duration := fncobra.Duration(cmd.Flags(), "duration", 0, "For how long to run the ephemeral environment.")
 
@@ -86,6 +88,15 @@ func NewCreateCmd() *cobra.Command {
 			SecretIDs:    *availableSecrets,
 			Duration:     *duration,
 			Experimental: map[string]any{},
+		}
+
+		if *experimentalInstanceFeatures != "" {
+			var features any
+			if err := json.Unmarshal([]byte(*experimentalInstanceFeatures), &features); err != nil {
+				return fnerrors.Newf("failed to parse --experimental_instance_features: %w", err)
+			}
+
+			opts.ExperimentalInstanceFeatures = features
 		}
 
 		if len(opts.Labels) == 0 {
