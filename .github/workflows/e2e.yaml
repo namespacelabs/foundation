@@ -90,7 +90,7 @@ jobs:
 
       # Required by buildkit gha cache.
       - name: Expose GitHub Runtime
-        uses: crazy-max/ghaction-github-runtime@v3
+        uses: crazy-max/ghaction-github-runtime@v4
 
       - name: Set up Go
         uses: actions/setup-go@v6
