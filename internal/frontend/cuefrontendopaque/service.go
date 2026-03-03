@@ -23,7 +23,7 @@ import (
 // Needs to be consistent with JSON names of cueService fields.
 var serviceFields = []string{
 	"kind", "port", "ports", "exportedPort", "hostPort", "ingress", "annotations", "probe", "probes", "protocol",
-	"headless", "externalTrafficPolicy",
+	"headless", "externalTrafficPolicy", "loadBalancerClass",
 }
 
 type cueService struct {
@@ -36,6 +36,7 @@ type cueService struct {
 	Ingress               cueIngress       `json:"ingress"`
 	Headless              bool             `json:"headless"` // Kubernertes headless service, e.g. clusterIP=None.
 	ExternalTrafficPolicy string           `json:"externalTrafficPolicy"`
+	LoadBalancerClass     string           `json:"loadBalancerClass"`
 
 	Annotations map[string]string `json:"annotations,omitempty"`
 
@@ -194,6 +195,10 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 		default:
 			return nil, nil, fnerrors.Newf("unsupported external traffic policy %q", svc.ExternalTrafficPolicy)
 		}
+	}
+
+	if svc.LoadBalancerClass != "" {
+		parsed.LoadBalancerClass = svc.LoadBalancerClass
 	}
 
 	for k, p := range svc.Ports {

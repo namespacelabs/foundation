@@ -103,6 +103,7 @@ message Server {
         bool                      headless            = 13;
 
         Endpoint.ServiceTrafficPolicy external_traffic_policy = 14;
+        string                        load_balancer_class    = 15;
     }
 
     message URLMapEntry {
