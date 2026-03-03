@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/trace"
 )
 
 const DefaultEnvKey = "FOUNDATION_TRACE_SKIP_SPANS"
@@ -32,13 +31,7 @@ type sampler struct {
 }
 
 func (s sampler) ShouldSample(params sdktrace.SamplingParameters) sdktrace.SamplingResult {
-	parent := trace.SpanContextFromContext(params.ParentContext)
-
-	// If the parent is valid and sampled, inherit
-	if parent.IsValid() && parent.IsSampled() {
-		return sdktrace.SamplingResult{Decision: sdktrace.RecordAndSample}
-	}
-
+	// Check the drop list first, regardless of parent sampling decision.
 	if _, shouldDrop := s.drop[params.Name]; shouldDrop {
 		return sdktrace.SamplingResult{Decision: sdktrace.Drop}
 	}
