@@ -223,15 +223,33 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 
 	deps.Interceptors.HandlerForClient(clih)
 
-	httpFilter := func(r *http.Request) bool { return true } // By default we trace every HTTP path
+	httpFilter := func(r *http.Request) bool { return true }
+	// FOUNDATION_HTTP_TRACE_SKIP_CONTENT_TYPES is a comma-separated list of Content-Type prefixes
+	// to exclude from HTTP-level tracing. gRPC and Connect requests are already traced by their own
+	// interceptors (otelgrpc, otelconnect), so the otelhttp spans are redundant for those protocols.
+	// Recommended value: "application/grpc,application/proto,application/connect+"
+	if skipStr := os.Getenv("FOUNDATION_HTTP_TRACE_SKIP_CONTENT_TYPES"); skipStr != "" {
+		skipPrefixes := strings.Split(skipStr, ",")
+		base := httpFilter
+		httpFilter = func(r *http.Request) bool {
+			ct := r.Header.Get("Content-Type")
+			for _, prefix := range skipPrefixes {
+				if strings.HasPrefix(ct, prefix) {
+					return false
+				}
+			}
+			return base(r)
+		}
+	}
+
 	if skipStr := os.Getenv("FOUNDATION_HTTP_TRACE_SKIP_PATHS"); skipStr != "" {
 		skipPaths := strings.Split(skipStr, ",")
+		base := httpFilter
 		httpFilter = func(r *http.Request) bool {
 			if slices.Contains(skipPaths, r.URL.Path) {
 				return false
 			}
-
-			return true
+			return base(r)
 		}
 	}
 
