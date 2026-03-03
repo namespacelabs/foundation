@@ -233,6 +233,7 @@ func ServiceSpecToEndpoint(planner runtime.Planner, srv *schema.Server, spec *sc
 		IngressProvider:       spec.IngressProvider,
 		Headless:              spec.GetHeadless(),
 		ExternalTrafficPolicy: spec.GetExternalTrafficPolicy(),
+		LoadBalancerClass:     spec.GetLoadBalancerClass(),
 	}
 
 	ingressSpec := &schema.Endpoint_IngressSpec{}

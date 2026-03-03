@@ -1228,6 +1228,10 @@ func deployEndpoint(ctx context.Context, r BoundNamespace, deployable runtime.De
 		serviceSpec.WithExternalTrafficPolicy(corev1.ServiceExternalTrafficPolicyCluster)
 	}
 
+	if endpoint.LoadBalancerClass != "" {
+		serviceSpec.WithLoadBalancerClass(endpoint.LoadBalancerClass)
+	}
+
 	serviceAnnotations, err := kubedef.MakeServiceAnnotations(endpoint)
 	if err != nil {
 		return err
