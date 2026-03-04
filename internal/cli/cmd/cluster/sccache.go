@@ -41,7 +41,7 @@ func newSetupSccacheCacheCmd() *cobra.Command {
 	var name, site string
 	var tokenFile string
 
-	return fncobra.Cmd(&cobra.Command{
+	cmd := fncobra.Cmd(&cobra.Command{
 		Use:   "setup",
 		Short: "Set up a remote sccache cache and output the required environment variables.",
 		Long: `Set up a remote sccache cache and output the required environment variables.
@@ -133,6 +133,9 @@ The output includes:
 
 		return nil
 	})
+
+	_ = cmd.MarkFlagRequired("cache_name")
+	return cmd
 }
 
 func newCreateSccacheTokenCmd() *cobra.Command {
