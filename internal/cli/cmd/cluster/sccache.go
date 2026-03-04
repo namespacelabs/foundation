@@ -41,7 +41,7 @@ func newSetupSccacheCacheCmd() *cobra.Command {
 	var name, site string
 	var tokenFile string
 
-	cmd := fncobra.Cmd(&cobra.Command{
+	return fncobra.Cmd(&cobra.Command{
 		Use:   "setup",
 		Short: "Set up a remote sccache cache and output the required environment variables.",
 		Long: `Set up a remote sccache cache and output the required environment variables.
@@ -59,6 +59,10 @@ The output includes:
 		flags.StringVar(&site, "site", "", "Site preference (e.g., 'iad', 'fra'). If not set, determined automatically.")
 		flags.StringVar(&tokenFile, "token", "", "Use the bearer token stored at this location for authentication instead of the default.")
 	}).Do(func(ctx context.Context) error {
+		if strings.TrimSpace(name) == "" {
+			return fnerrors.Newf("--cache_name is required")
+		}
+
 		var client httpcachev1betaconnect.HttpCacheServiceClient
 		if tokenFile != "" {
 			tokenSource, err := loadTokenFromFile(tokenFile)
@@ -133,9 +137,6 @@ The output includes:
 
 		return nil
 	})
-
-	_ = cmd.MarkFlagRequired("cache_name")
-	return cmd
 }
 
 func newCreateSccacheTokenCmd() *cobra.Command {
