@@ -128,17 +128,32 @@ func CreateResource(ctx context.Context, serverInfo *types.ServerInfo, detectors
 }
 
 func CreateProvider(ctx context.Context, serverInfo *types.ServerInfo, exporters []sdktrace.SpanExporter, detectors []resource.Detector) (t.TracerProvider, core.CtxCloseable, error) {
-	if len(exporters) == 0 {
-		if os.Getenv("FOUNDATION_TRACE_TO_STDOUT") != "1" {
-			return noop.NewTracerProvider(), nil, nil
-		}
-
+	if os.Getenv("FOUNDATION_TRACE_TO_STDOUT") == "1" {
 		out, err := stdouttrace.New()
 		if err != nil {
 			return nil, nil, err
 		}
 
 		exporters = append(exporters, out)
+	}
+
+	if traceToFile := strings.TrimSpace(os.Getenv("FOUNDATION_TRACE_TO_FILE")); traceToFile != "" {
+		f, err := os.OpenFile(traceToFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to open FOUNDATION_TRACE_TO_FILE target: %w", err)
+		}
+
+		out, err := stdouttrace.New(stdouttrace.WithWriter(f))
+		if err != nil {
+			_ = f.Close()
+			return nil, nil, err
+		}
+
+		exporters = append(exporters, fileExporter{SpanExporter: out, file: f})
+	}
+
+	if len(exporters) == 0 {
+		return noop.NewTracerProvider(), nil, nil
 	}
 
 	var opts []sdktrace.TracerProviderOption
@@ -382,6 +397,15 @@ func MustTracer(pkg *core.Package, p DeferredTracerProvider) oteltrace.Tracer {
 	}
 
 	return t
+}
+
+type fileExporter struct {
+	sdktrace.SpanExporter
+	file *os.File
+}
+
+func (f fileExporter) Shutdown(ctx context.Context) error {
+	return errors.Join(f.SpanExporter.Shutdown(ctx), f.file.Close())
 }
 
 func Propagators() propagation.TextMapPropagator {
