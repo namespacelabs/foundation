@@ -242,6 +242,25 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 		}
 	}
 
+	// FOUNDATION_HTTP_TRACE_SKIP_HEADERS is a comma-separated list of header names. If any of these
+	// headers are present in the request, the HTTP-level span is skipped.
+	// This is useful for protocols that use standard Content-Types (e.g. application/json) but
+	// include a distinguishing header. For example, Connect unary RPCs with JSON encoding
+	// send "Connect-Protocol-Version: 1".
+	// Recommended value: "Connect-Protocol-Version"
+	if skipStr := os.Getenv("FOUNDATION_HTTP_TRACE_SKIP_HEADERS"); skipStr != "" {
+		skipHeaders := strings.Split(skipStr, ",")
+		base := httpFilter
+		httpFilter = func(r *http.Request) bool {
+			for _, h := range skipHeaders {
+				if r.Header.Get(h) != "" {
+					return false
+				}
+			}
+			return base(r)
+		}
+	}
+
 	if skipStr := os.Getenv("FOUNDATION_HTTP_TRACE_SKIP_PATHS"); skipStr != "" {
 		skipPaths := strings.Split(skipStr, ",")
 		base := httpFilter
