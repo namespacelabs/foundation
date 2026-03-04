@@ -59,6 +59,10 @@ The output includes:
 		flags.StringVar(&site, "site", "", "Site preference (e.g., 'iad', 'fra'). If not set, determined automatically.")
 		flags.StringVar(&tokenFile, "token", "", "Use the bearer token stored at this location for authentication instead of the default.")
 	}).Do(func(ctx context.Context) error {
+		if strings.TrimSpace(name) == "" {
+			return fnerrors.Newf("--cache_name is required")
+		}
+
 		var client httpcachev1betaconnect.HttpCacheServiceClient
 		if tokenFile != "" {
 			tokenSource, err := loadTokenFromFile(tokenFile)
