@@ -268,3 +268,25 @@ func TestWriteArtifactDescribeNotFoundInvalidOutput(t *testing.T) {
 		t.Fatalf("expected bad input error, got: %T (%v)", err, err)
 	}
 }
+
+func TestArtifactDescribeNotFoundErrorRetainsExitCode(t *testing.T) {
+	for _, output := range []string{"plain", "json"} {
+		t.Run(output, func(t *testing.T) {
+			var buf bytes.Buffer
+
+			err := artifactDescribeNotFoundError(&buf, output, "foo/bar", "main")
+			if err == nil {
+				t.Fatalf("expected not-found error")
+			}
+
+			exitErr, ok := err.(fnerrors.ExitError)
+			if !ok {
+				t.Fatalf("expected fnerrors.ExitError, got %T (%v)", err, err)
+			}
+
+			if code := exitErr.ExitCode(); code != 2 {
+				t.Fatalf("expected exit code 2, got %d", code)
+			}
+		})
+	}
+}

@@ -624,6 +624,15 @@ func writeArtifactDescribeNotFound(w io.Writer, output, path, namespace string) 
 	return msg, nil
 }
 
+func artifactDescribeNotFoundError(w io.Writer, output, path, namespace string) error {
+	msg, err := writeArtifactDescribeNotFound(w, output, path, namespace)
+	if err != nil {
+		return err
+	}
+
+	return fnerrors.ExitWithCode(errors.New(msg), 2)
+}
+
 func newArtifactDescribeCmd() *cobra.Command {
 	var namespace string
 	var output string
@@ -658,11 +667,7 @@ func newArtifactDescribeCmd() *cobra.Command {
 		})
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
-				msg, err := writeArtifactDescribeNotFound(console.Stdout(ctx), output, path, namespace)
-				if err != nil {
-					return err
-				}
-				return fnerrors.ExitWithCode(errors.New(msg), 2)
+				return artifactDescribeNotFoundError(console.Stdout(ctx), output, path, namespace)
 			}
 			return err
 		}
@@ -670,11 +675,7 @@ func newArtifactDescribeCmd() *cobra.Command {
 		desc := res.GetDescription()
 
 		if desc.GetStatus() == storagev1beta.Artifact_EXPIRED {
-			msg, err := writeArtifactDescribeNotFound(console.Stdout(ctx), output, path, namespace)
-			if err != nil {
-				return err
-			}
-			return fnerrors.ExitWithCode(errors.New(msg), 2)
+			return artifactDescribeNotFoundError(console.Stdout(ctx), output, path, namespace)
 		}
 
 		switch output {
