@@ -581,6 +581,58 @@ func writeArtifactWithResume(ctx context.Context, cli storage.Client, namespace,
 	return downloader.Download(ctx, dest, opts)
 }
 
+type artifactDescribeJSONOutput struct {
+	ID        string            `json:"id"`
+	Path      string            `json:"path"`
+	Namespace string            `json:"namespace"`
+	Size      int64             `json:"size"`
+	Status    string            `json:"status"`
+	CreatedAt *time.Time        `json:"created_at,omitempty"`
+	ExpiresAt *time.Time        `json:"expires_at,omitempty"`
+	Labels    map[string]string `json:"labels,omitempty"`
+	WebURL    string            `json:"web_url,omitempty"`
+}
+
+type artifactDescribeErrorJSONOutput struct {
+	Error     string `json:"error"`
+	Path      string `json:"path"`
+	Namespace string `json:"namespace"`
+}
+
+func writeArtifactDescribeNotFound(w io.Writer, output, path, namespace string) (string, error) {
+	msg := fmt.Sprintf("%s doesn't exist", path)
+
+	switch output {
+	case "json":
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(artifactDescribeErrorJSONOutput{
+			Error:     msg,
+			Path:      path,
+			Namespace: namespace,
+		}); err != nil {
+			return "", err
+		}
+	case "plain":
+		if _, err := fmt.Fprintf(w, "%s\n", msg); err != nil {
+			return "", err
+		}
+	default:
+		return "", fnerrors.BadInputError("invalid output format: %s", output)
+	}
+
+	return msg, nil
+}
+
+func artifactDescribeNotFoundError(w io.Writer, output, path, namespace string) error {
+	msg, err := writeArtifactDescribeNotFound(w, output, path, namespace)
+	if err != nil {
+		return err
+	}
+
+	return fnerrors.ExitWithCode(errors.New(msg), 2)
+}
+
 func newArtifactDescribeCmd() *cobra.Command {
 	var namespace string
 	var output string
@@ -594,6 +646,9 @@ func newArtifactDescribeCmd() *cobra.Command {
 		flags.StringVarP(&output, "output", "o", "plain", "Output format: plain, json")
 	}).DoWithArgs(func(ctx context.Context, args []string) error {
 		path := args[0]
+		if output != "plain" && output != "json" {
+			return fnerrors.BadInputError("invalid output format: %s", output)
+		}
 
 		token, err := auth.LoadDefaults()
 		if err != nil {
@@ -612,8 +667,7 @@ func newArtifactDescribeCmd() *cobra.Command {
 		})
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
-				fmt.Fprintf(console.Stdout(ctx), "%s doesn't exist\n", path)
-				return fnerrors.ExitWithCode(fmt.Errorf("%s doesn't exist", path), 2)
+				return artifactDescribeNotFoundError(console.Stdout(ctx), output, path, namespace)
 			}
 			return err
 		}
@@ -621,25 +675,12 @@ func newArtifactDescribeCmd() *cobra.Command {
 		desc := res.GetDescription()
 
 		if desc.GetStatus() == storagev1beta.Artifact_EXPIRED {
-			fmt.Fprintf(console.Stdout(ctx), "%s doesn't exist\n", path)
-			return fnerrors.ExitWithCode(fmt.Errorf("%s doesn't exist", path), 2)
+			return artifactDescribeNotFoundError(console.Stdout(ctx), output, path, namespace)
 		}
 
 		switch output {
 		case "json":
-			type jsonOutput struct {
-				ID        string            `json:"id"`
-				Path      string            `json:"path"`
-				Namespace string            `json:"namespace"`
-				Size      int64             `json:"size"`
-				Status    string            `json:"status"`
-				CreatedAt *time.Time        `json:"created_at,omitempty"`
-				ExpiresAt *time.Time        `json:"expires_at,omitempty"`
-				Labels    map[string]string `json:"labels,omitempty"`
-				WebURL    string            `json:"web_url,omitempty"`
-			}
-
-			out := jsonOutput{
+			out := artifactDescribeJSONOutput{
 				ID:        desc.GetId(),
 				Path:      desc.GetPath(),
 				Namespace: desc.GetNamespace(),
