@@ -7,10 +7,13 @@ package cluster
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 func TestZipFiles(t *testing.T) {
@@ -205,5 +208,63 @@ func TestZipFilesWithSymlinks(t *testing.T) {
 	}
 	if dirTarget != "subdir" {
 		t.Errorf("Expected symlink target 'subdir', got %q", dirTarget)
+	}
+}
+
+func TestWriteArtifactDescribeNotFoundJSON(t *testing.T) {
+	var buf bytes.Buffer
+
+	msg, err := writeArtifactDescribeNotFound(&buf, "json", "foo/bar", "main")
+	if err != nil {
+		t.Fatalf("writeArtifactDescribeNotFound returned error: %v", err)
+	}
+
+	if msg != "foo/bar doesn't exist" {
+		t.Fatalf("unexpected message: %q", msg)
+	}
+
+	var parsed artifactDescribeErrorJSONOutput
+	if err := json.Unmarshal(buf.Bytes(), &parsed); err != nil {
+		t.Fatalf("failed to parse JSON output: %v", err)
+	}
+
+	if parsed.Error != msg {
+		t.Errorf("unexpected error in JSON output: got %q, want %q", parsed.Error, msg)
+	}
+	if parsed.Path != "foo/bar" {
+		t.Errorf("unexpected path in JSON output: got %q", parsed.Path)
+	}
+	if parsed.Namespace != "main" {
+		t.Errorf("unexpected namespace in JSON output: got %q", parsed.Namespace)
+	}
+}
+
+func TestWriteArtifactDescribeNotFoundPlain(t *testing.T) {
+	var buf bytes.Buffer
+
+	msg, err := writeArtifactDescribeNotFound(&buf, "plain", "foo/bar", "main")
+	if err != nil {
+		t.Fatalf("writeArtifactDescribeNotFound returned error: %v", err)
+	}
+
+	if msg != "foo/bar doesn't exist" {
+		t.Fatalf("unexpected message: %q", msg)
+	}
+
+	if got, want := buf.String(), "foo/bar doesn't exist\n"; got != want {
+		t.Fatalf("unexpected plain output: got %q, want %q", got, want)
+	}
+}
+
+func TestWriteArtifactDescribeNotFoundInvalidOutput(t *testing.T) {
+	var buf bytes.Buffer
+
+	_, err := writeArtifactDescribeNotFound(&buf, "yaml", "foo/bar", "main")
+	if err == nil {
+		t.Fatalf("expected error for invalid output format")
+	}
+
+	if !fnerrors.IsOfKind(err, fnerrors.Kind_BADINPUT) {
+		t.Fatalf("expected bad input error, got: %T (%v)", err, err)
 	}
 }
