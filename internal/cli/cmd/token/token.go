@@ -14,10 +14,13 @@ import (
 
 	v1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/iam/v1beta"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/integrations/api/iam"
@@ -151,6 +154,9 @@ func NewCreateCmd() *cobra.Command {
 
 		resp, err := client.Tokens.CreateRevokableToken(ctx, req)
 		if err != nil {
+			if errIsTokenCreateDenied(err) {
+				fmt.Fprintf(console.Stderr(ctx), "%s Only workspace administrators can create tenant-wide tokens. To create a user-scoped token, specify --user instead.\n", colors.Ctx(ctx).LogCategory.Apply("Note:"))
+			}
 			return fnerrors.InvocationError("token", "failed to create revokable token: %w", err)
 		}
 
@@ -337,4 +343,22 @@ func ParseGrants(grants []string) ([]*v1beta.Permission, error) {
 	}
 
 	return permissions, nil
+}
+
+// errIsTokenCreateDenied returns true if the error is a PermissionDenied error that says it's mission the creation action for resource token/revokable
+func errIsTokenCreateDenied(err error) bool {
+	st, ok := status.FromError(err)
+	if !ok || st.Code() != codes.PermissionDenied {
+		return false
+	}
+	for _, detail := range st.Details() {
+		if permDenied, ok := detail.(*v1beta.PermissionDeniedError); ok {
+			for _, access := range permDenied.GetMissingAccessPermissions() {
+				if access.GetResourceType() == "token/revokable" && access.GetAction() == "create" {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
