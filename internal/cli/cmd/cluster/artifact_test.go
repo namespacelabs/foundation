@@ -211,6 +211,80 @@ func TestZipFilesWithSymlinks(t *testing.T) {
 	}
 }
 
+func TestZipFilesWithEmptyDirs(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "emptydir-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(wd)
+
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a structure with an empty directory.
+	// output/
+	//   data/
+	//     file.txt
+	//   empty/
+	if err := os.MkdirAll("output/data", 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile("output/data/file.txt", []byte("hello"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll("output/empty", 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	count, err := zipFiles(context.Background(), "output/**", &buf)
+	if err != nil {
+		t.Fatalf("zipFiles failed: %v", err)
+	}
+
+	// Expect: output/data/file.txt + output/empty/ (only empty dirs are added).
+	if count != 2 {
+		t.Errorf("Expected 2 entries (1 file + 1 empty dir), got %d", count)
+	}
+
+	// Write zip and unzip to verify the empty directory is present.
+	zipPath := filepath.Join(tmpDir, "test.zip")
+	if err := os.WriteFile(zipPath, buf.Bytes(), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	destDir := filepath.Join(tmpDir, "dest")
+	if err := unzipArtifact(context.Background(), zipPath, destDir); err != nil {
+		t.Fatalf("unzipArtifact failed: %v", err)
+	}
+
+	// Verify the empty directory was recreated.
+	emptyDir := filepath.Join(destDir, "output", "empty")
+	info, err := os.Stat(emptyDir)
+	if err != nil {
+		t.Fatalf("Empty directory not found after unzip: %v", err)
+	}
+	if !info.IsDir() {
+		t.Errorf("Expected %q to be a directory", emptyDir)
+	}
+
+	// Verify the regular file is still there.
+	content, err := os.ReadFile(filepath.Join(destDir, "output", "data", "file.txt"))
+	if err != nil {
+		t.Fatalf("Failed to read file.txt: %v", err)
+	}
+	if string(content) != "hello" {
+		t.Errorf("Expected 'hello', got %q", string(content))
+	}
+}
+
 func TestWriteArtifactDescribeNotFoundJSON(t *testing.T) {
 	var buf bytes.Buffer
 
