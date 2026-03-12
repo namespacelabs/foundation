@@ -233,12 +233,41 @@ func zipFiles(ctx context.Context, pattern string, w io.Writer) (int, error) {
 		return nil
 	}
 
+	addDir := func(path string, info os.FileInfo) error {
+		if seen[path] {
+			return nil
+		}
+		seen[path] = true
+
+		// Only add empty directories; non-empty ones are implied by their file entries.
+		entries, err := os.ReadDir(path)
+		if err != nil {
+			return fnerrors.Newf("failed to read directory %q: %w", path, err)
+		}
+		if len(entries) > 0 {
+			return nil
+		}
+
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return fnerrors.Newf("failed to create zip header for %q: %w", path, err)
+		}
+		// Ensure directory names end with a slash.
+		header.Name = path + "/"
+
+		if _, err := zw.CreateHeader(header); err != nil {
+			return fnerrors.Newf("failed to create zip writer for %q: %w", path, err)
+		}
+		count++
+		return nil
+	}
+
 	addEntry := func(path string, info os.FileInfo) error {
 		if info.Mode()&os.ModeSymlink != 0 {
 			return addSymlink(path, info)
 		}
 		if info.IsDir() {
-			return nil
+			return addDir(path, info)
 		}
 		return addFile(path, info)
 	}
