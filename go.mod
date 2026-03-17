@@ -4,8 +4,8 @@ go 1.25.0
 
 require (
 	buf.build/gen/go/namespace/cloud/connectrpc/go v1.19.1-20260217110915-95c70bf07e4d.2
-	buf.build/gen/go/namespace/cloud/grpc/go v1.6.1-20260217110915-95c70bf07e4d.1
-	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20260217110915-95c70bf07e4d.1
+	buf.build/gen/go/namespace/cloud/grpc/go v1.6.1-20260317123200-bf3966121321.1
+	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20260317123200-bf3966121321.1
 	cloud.google.com/go/artifactregistry v1.14.7
 	cloud.google.com/go/container v1.31.0
 	connectrpc.com/connect v1.19.1
@@ -145,7 +145,7 @@ require (
 	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397
 	namespacelabs.dev/go-filenotify v0.0.0-20220511192020-53ea11be7eaa
 	namespacelabs.dev/go-ids v0.0.0-20221124082625-9fc72ee06af7
-	namespacelabs.dev/integrations v0.0.11-0.20260204211624-e14e65bed4c0
+	namespacelabs.dev/integrations v0.0.11-0.20260317123517-720502abe7c1
 	sigs.k8s.io/yaml v1.6.0
 )
 

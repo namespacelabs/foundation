@@ -797,7 +797,7 @@ func getPolicy(ctx context.Context, repository, output string) error {
 			fmt.Fprintf(stdout, "Revision:     %d\n", res.Revision)
 
 			expiration := "Never"
-			if res.Expiration != nil {
+			if res.ExpirationEnforcement != registryv1beta.ExpirationEnforcement_EXPIRATION_ENFORCEMENT_DO_NOT_ENFORCE && res.Expiration != nil {
 				expiration = res.Expiration.AsDuration().String()
 			}
 
@@ -829,7 +829,7 @@ func getPolicy(ctx context.Context, repository, output string) error {
 		fmt.Fprintf(stdout, "Revision:             %d\n", res.Revision)
 
 		expiration := "Never"
-		if res.DefaultExpiration != nil {
+		if res.ExpirationEnforcement != registryv1beta.ExpirationEnforcement_EXPIRATION_ENFORCEMENT_DO_NOT_ENFORCE && res.DefaultExpiration != nil {
 			expiration = res.DefaultExpiration.AsDuration().String()
 		}
 
@@ -854,8 +854,11 @@ func setPolicy(ctx context.Context, repository string, expiration time.Duration,
 	defer client.Close()
 
 	var newExpiry *durationpb.Duration
+	var enforcement registryv1beta.ExpirationEnforcement
 
-	if !noExpiration {
+	if noExpiration {
+		enforcement = registryv1beta.ExpirationEnforcement_EXPIRATION_ENFORCEMENT_DO_NOT_ENFORCE
+	} else {
 		if expiration > 0 {
 			newExpiry = durationpb.New(expiration)
 		}
@@ -863,6 +866,8 @@ func setPolicy(ctx context.Context, repository string, expiration time.Duration,
 		if newExpiry.AsDuration() == 0 {
 			return fnerrors.InvocationError("registry", "Provided expiration is 0. Use --no-expiration instead.")
 		}
+
+		enforcement = registryv1beta.ExpirationEnforcement_EXPIRATION_ENFORCEMENT_ENFORCE
 	}
 
 	if repository != "" {
@@ -874,15 +879,16 @@ func setPolicy(ctx context.Context, repository string, expiration time.Duration,
 		}
 
 		if _, err := client.ContainerRegistry.UpdateRepositoryPolicy(ctx, &registryv1beta.UpdateRepositoryPolicyRequest{
-			Repository: repository,
-			Revision:   res.Revision,
-			Expiration: newExpiry,
+			Repository:            repository,
+			Revision:              res.Revision,
+			Expiration:            newExpiry,
+			ExpirationEnforcement: enforcement,
 		}); err != nil {
 			return err
 		}
 
 		stdout := console.Stdout(ctx)
-		if newExpiry == nil {
+		if noExpiration {
 			fmt.Fprintf(stdout, "Repository %q has been updated to never expire images.\n", repository)
 		} else {
 			fmt.Fprintf(stdout, "Repository %q has been updated to expire images after %s.\n", repository, newExpiry.AsDuration().String())
@@ -897,14 +903,15 @@ func setPolicy(ctx context.Context, repository string, expiration time.Duration,
 	}
 
 	if _, err := client.ContainerRegistry.UpdateDefaultPolicy(ctx, &registryv1beta.UpdateDefaultPolicyRequest{
-		Revision:          res.Revision,
-		DefaultExpiration: newExpiry,
+		Revision:              res.Revision,
+		DefaultExpiration:     newExpiry,
+		ExpirationEnforcement: enforcement,
 	}); err != nil {
 		return err
 	}
 
 	stdout := console.Stdout(ctx)
-	if newExpiry == nil {
+	if noExpiration {
 		fmt.Fprintf(stdout, "Default configuration has been updated to never expire images.\n")
 	} else {
 		fmt.Fprintf(stdout, "Default configuration has been updated to expire images after %s.\n", newExpiry.AsDuration().String())
