@@ -71,7 +71,7 @@ func NewSshCmd() *cobra.Command {
 				return fnerrors.BadInputError("--container_name is not compatible with --tag")
 			}
 
-			opts := api.CreateClusterOpts{
+			opts := api.CreateInstanceOpts{
 				KeepAtExit:      true,
 				Purpose:         fmt.Sprintf("Manually created for ssh (%s)", *tag),
 				UniqueTag:       *tag,
@@ -91,7 +91,7 @@ func NewSshCmd() *cobra.Command {
 				return fnerrors.BadInputError("--container_name is not compatible with --oneshot")
 			}
 
-			opts := api.CreateClusterOpts{
+			opts := api.CreateInstanceOpts{
 				KeepAtExit: false,
 				Purpose:    "Temporary instance for SSH",
 				WaitClusterOpts: api.WaitClusterOpts{

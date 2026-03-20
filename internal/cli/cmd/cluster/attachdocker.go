@@ -233,7 +233,7 @@ func ensureDockerCluster(ctx context.Context, instanceId, machineType string, ba
 	}
 
 	featuresList := []string{"EXP_DISABLE_KUBERNETES"}
-	resp, err := api.CreateAndWaitCluster(ctx, api.Methods, time.Minute, api.CreateClusterOpts{
+	resp, err := api.CreateAndWaitCluster(ctx, api.Methods, time.Minute, api.CreateInstanceOpts{
 		Purpose:     "Docker environment",
 		Features:    featuresList,
 		KeepAtExit:  background,
