@@ -168,7 +168,7 @@ func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose stri
 }
 
 func createCluster(ctx context.Context, purpose string, labels map[string]string) (*api.CreateInstanceResponse, error) {
-	opts := api.CreateClusterOpts{
+	opts := api.CreateInstanceOpts{
 		MachineType: defaultMachineType,
 		Purpose:     purpose,
 		Labels:      labels,

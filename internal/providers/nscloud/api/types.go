@@ -11,16 +11,23 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+type Permission struct {
+	ResourceType string   `json:"resource_type,omitempty"`
+	ResourceId   string   `json:"resource_id,omitempty"`
+	Actions      []string `json:"actions,omitempty"`
+}
+
 type CreateInstanceRequest struct {
-	RegionSelection   *CreateInstanceRequest_RegionSelection `json:"region_selection,omitempty"`
-	UniqueTag         string                                 `json:"unique_tag,omitempty"`
-	MachineType       string                                 `json:"machine_type,omitempty"`
-	DocumentedPurpose string                                 `json:"documented_purpose,omitempty"`
-	Label             []*LabelEntry                          `json:"label,omitempty"`
-	Feature           []string                               `json:"feature,omitempty"`
-	AvailableSecrets  []*SecretRef                           `json:"available_secrets,omitempty"`
-	Experimental      map[string]any                         `json:"experimental,omitempty"`
-	Features          any                                    `json:"features,omitempty"` // Internal API extension.
+	RegionSelection               *CreateInstanceRequest_RegionSelection `json:"region_selection,omitempty"`
+	UniqueTag                     string                                 `json:"unique_tag,omitempty"`
+	MachineType                   string                                 `json:"machine_type,omitempty"`
+	DocumentedPurpose             string                                 `json:"documented_purpose,omitempty"`
+	Label                         []*LabelEntry                          `json:"label,omitempty"`
+	Feature                       []string                               `json:"feature,omitempty"`
+	AvailableSecrets              []*SecretRef                           `json:"available_secrets,omitempty"`
+	Experimental                  map[string]any                         `json:"experimental,omitempty"`
+	Features                      any                                    `json:"features,omitempty"` // Internal API extension.
+	AdditionalWorkloadPermissions []*Permission                          `json:"additional_workload_permissions,omitempty"`
 
 	Container []*ContainerRequest `json:"container,omitempty"`
 

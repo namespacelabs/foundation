@@ -42,7 +42,7 @@ func PrepareNewNamespaceCluster(ctx context.Context, env cfg.Context, machineTyp
 	var mainMessages, buildMessages []proto.Message
 
 	eg.Go(func(ctx context.Context) error {
-		cfg, err := api.CreateAndWaitCluster(ctx, api.Methods, time.Minute, api.CreateClusterOpts{
+		cfg, err := api.CreateAndWaitCluster(ctx, api.Methods, time.Minute, api.CreateInstanceOpts{
 			MachineType:     machineType,
 			KeepAtExit:      true,
 			Purpose:         env.Environment().Name,

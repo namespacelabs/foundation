@@ -45,7 +45,7 @@ func NewSshCmd() *cobra.Command {
 		fmt.Fprintln(console.Stdout(ctx), "Creating temporary scratch instance...")
 
 		// Create a temporary instance for SSH
-		opts := api.CreateClusterOpts{
+		opts := api.CreateInstanceOpts{
 			MachineType: *machineType,
 			KeepAtExit:  false, // Destroy on exit
 			Purpose:     "Temporary scratch instance for SSH",

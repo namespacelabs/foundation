@@ -52,8 +52,11 @@ func NewCreateCmd() *cobra.Command {
 	cmd.Flags().MarkHidden("ssh_key")
 	experimental := cmd.Flags().String("experimental", "", "JSON definition of experimental features.")
 	experimentalFrom := cmd.Flags().String("experimental_from", "", "Load experimental definitions from the specified file.")
+
 	experimentalInstanceFeatures := cmd.Flags().String("experimental_instance_features", "", "Raw JSON for internal CreateInstanceRequest.features.")
 	cmd.Flags().MarkHidden("experimental_instance_features")
+	experimentalAdditionalWorkloadPermissions := cmd.Flags().String("experimental_additional_workload_permissions", "", "Raw JSON for additional workload permissions.")
+	cmd.Flags().MarkHidden("experimental_additional_workload_permissions")
 
 	duration := fncobra.Duration(cmd.Flags(), "duration", 0, "For how long to run the ephemeral environment.")
 
@@ -78,7 +81,7 @@ func NewCreateCmd() *cobra.Command {
 			fmt.Fprintf(console.Warnings(ctx), "--ephemeral has been removed and does impact the creation request (try --machine_type instead)")
 		}
 
-		opts := api.CreateClusterOpts{
+		opts := api.CreateInstanceOpts{
 			MachineType:  *machineType,
 			KeepAtExit:   true,
 			Purpose:      *purpose,
@@ -91,12 +94,15 @@ func NewCreateCmd() *cobra.Command {
 		}
 
 		if *experimentalInstanceFeatures != "" {
-			var features any
-			if err := json.Unmarshal([]byte(*experimentalInstanceFeatures), &features); err != nil {
+			if err := json.Unmarshal([]byte(*experimentalInstanceFeatures), &opts.ExperimentalInstanceFeatures); err != nil {
 				return fnerrors.Newf("failed to parse --experimental_instance_features: %w", err)
 			}
+		}
 
-			opts.ExperimentalInstanceFeatures = features
+		if *experimentalAdditionalWorkloadPermissions != "" {
+			if err := json.Unmarshal([]byte(*experimentalAdditionalWorkloadPermissions), &opts.AdditionalWorkloadPermissions); err != nil {
+				return fnerrors.Newf("failed to parse --experimental_additional_workload_permissions: %w", err)
+			}
 		}
 
 		if len(opts.Labels) == 0 {

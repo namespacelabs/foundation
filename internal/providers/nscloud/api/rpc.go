@@ -199,22 +199,23 @@ type CreateClusterResult struct {
 	Deadline     *time.Time
 }
 
-type CreateClusterOpts struct {
+type CreateInstanceOpts struct {
 	MachineType string
 
 	// Whether to keep the cluster alive, regardless of it being ephemeral.
 	// This is typically needed if you want to execute multiple ns commands on an ephemeral cluster.
 	KeepAtExit bool
 
-	Purpose                      string
-	Features                     []string
-	UniqueTag                    string
-	Labels                       map[string]string
-	Duration                     time.Duration
-	Experimental                 map[string]any
-	ExperimentalInstanceFeatures any
-	Volumes                      []VolumeSpec
-	SecretIDs                    []string
+	Purpose                       string
+	Features                      []string
+	UniqueTag                     string
+	Labels                        map[string]string
+	Duration                      time.Duration
+	Experimental                  map[string]any
+	ExperimentalInstanceFeatures  any
+	Volumes                       []VolumeSpec
+	SecretIDs                     []string
+	AdditionalWorkloadPermissions []*Permission
 
 	WaitClusterOpts
 }
@@ -237,16 +238,17 @@ func (w WaitClusterOpts) label() string {
 	return w.CreateLabel
 }
 
-func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*CreateInstanceResponse, error) {
+func CreateCluster(ctx context.Context, api API, opts CreateInstanceOpts) (*CreateInstanceResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.cluster-create").HumanReadable(opts.label()), func(ctx context.Context) (*CreateInstanceResponse, error) {
 		tryOnce := func(ctx context.Context) (*CreateInstanceResponse, error) {
 			req := CreateInstanceRequest{
-				DocumentedPurpose: opts.Purpose,
-				MachineType:       opts.MachineType,
-				Feature:           opts.Features,
-				UniqueTag:         opts.UniqueTag,
-				Experimental:      opts.Experimental,
-				Features:          opts.ExperimentalInstanceFeatures,
+				DocumentedPurpose:             opts.Purpose,
+				MachineType:                   opts.MachineType,
+				Feature:                       opts.Features,
+				UniqueTag:                     opts.UniqueTag,
+				Experimental:                  opts.Experimental,
+				Features:                      opts.ExperimentalInstanceFeatures,
+				AdditionalWorkloadPermissions: opts.AdditionalWorkloadPermissions,
 			}
 
 			if len(opts.Volumes) > 0 {
@@ -338,7 +340,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Creat
 	})
 }
 
-func CreateAndWaitCluster(ctx context.Context, api API, waitFor time.Duration, opts CreateClusterOpts) (*CreateClusterResult, error) {
+func CreateAndWaitCluster(ctx context.Context, api API, waitFor time.Duration, opts CreateInstanceOpts) (*CreateClusterResult, error) {
 	cluster, err := CreateCluster(ctx, api, opts)
 	if err != nil {
 		return nil, err
