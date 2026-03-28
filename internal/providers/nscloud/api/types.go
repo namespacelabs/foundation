@@ -344,13 +344,56 @@ type LogBlock struct {
 }
 
 type LogLine struct {
-	Timestamp time.Time `json:"timestamp,omitempty"`
-	Content   string    `json:"content,omitempty"`
-	Stream    string    `json:"stream,omitempty"`
+	Timestamp time.Time         `json:"timestamp,omitempty"`
+	Content   string            `json:"content,omitempty"`
+	Stream    string            `json:"stream,omitempty"`
+	Labels    map[string]string `json:"labels,omitempty"`
+	Source    string            `json:"source,omitempty"`
 }
 
 func (l LogLine) String() string {
 	return fmt.Sprintf("%s stream=%s msg=%s", l.Timestamp.Format(time.RFC3339), l.Stream, l.Content)
+}
+
+type FetchLogsRequest struct {
+	PaginationCursor  []byte             `json:"pagination_cursor,omitempty"`
+	Direction         int32              `json:"direction,omitempty"`
+	LinesPerPage      int32              `json:"lines_per_page,omitempty"`
+	TimestampRange    *TimestampRange    `json:"timestamp_range,omitempty"`
+	MatchInstanceIds  *StringMatcher     `json:"match_instance_ids,omitempty"`
+	MatchSource       *StringMatcher     `json:"match_source,omitempty"`
+	KubernetesMatcher *KubernetesMatcher `json:"kubernetes_matcher,omitempty"`
+	ContainerMatcher  *ContainerMatcher  `json:"container_matcher,omitempty"`
+	MatchMessageRegex *StringMatcher     `json:"match_message_regex,omitempty"`
+	MatchKind         *StringMatcher     `json:"match_kind,omitempty"`
+}
+
+type FetchLogsResponse struct {
+	PaginationCursor []byte    `json:"paginationCursor,omitempty"`
+	LogLine          []LogLine `json:"logLine,omitempty"`
+	RetentionDays    int32     `json:"retentionDays,omitempty"`
+}
+
+type TimestampRange struct {
+	After  *timestamppb.Timestamp `json:"after,omitempty"`
+	Before *timestamppb.Timestamp `json:"before,omitempty"`
+}
+
+type StringMatcher struct {
+	Values []string `json:"values,omitempty"`
+	Op     int32    `json:"op,omitempty"`
+}
+
+type KubernetesMatcher struct {
+	MatchNamespace     *StringMatcher `json:"match_namespace,omitempty"`
+	MatchPodName       *StringMatcher `json:"match_pod_name,omitempty"`
+	MatchContainerName *StringMatcher `json:"match_container_name,omitempty"`
+}
+
+type ContainerMatcher struct {
+	MatchNamespace      *StringMatcher `json:"match_namespace,omitempty"`
+	MatchContainerID    *StringMatcher `json:"match_container_id,omitempty"`
+	MatchContainerNscID *StringMatcher `json:"match_container_nsc_id,omitempty"`
 }
 
 type ImageRegistry struct {
