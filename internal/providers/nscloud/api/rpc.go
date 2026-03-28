@@ -51,6 +51,7 @@ type API struct {
 	GetImageRegistry            fnapi.Call[emptypb.Empty]
 	TailClusterLogs             fnapi.Call[TailLogsRequest]
 	GetClusterLogs              fnapi.Call[GetLogsRequest]
+	FetchClusterLogs            fnapi.Call[FetchLogsRequest]
 	GetProfile                  fnapi.Call[emptypb.Empty]
 	RegisterIngress             fnapi.Call[RegisterIngressRequest]
 	ListIngresses               fnapi.Call[ListIngressesRequest]
@@ -115,6 +116,11 @@ func MakeAPI() API {
 		GetClusterLogs: fnapi.Call[GetLogsRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "nsl.vm.logging.LoggingService/GetLogs",
+		},
+
+		FetchClusterLogs: fnapi.Call[FetchLogsRequest]{
+			IssueBearerToken: fnapi.IssueBearerToken,
+			Method:           "namespace.private.frontend.LoggingService2/FetchLogs",
 		},
 
 		GetProfile: fnapi.Call[emptypb.Empty]{
@@ -756,6 +762,17 @@ func GetClusterLogs(ctx context.Context, api API, opts *LogsOpts) (*GetLogsRespo
 
 		var response GetLogsResponse
 		if err := api.GetClusterLogs.Do(ctx, req, MaybeEndpoint(opts.ApiEndpoint), fnapi.DecodeJSONResponse(&response)); err != nil {
+			return nil, err
+		}
+
+		return &response, nil
+	})
+}
+
+func FetchClusterLogs(ctx context.Context, api API, req FetchLogsRequest) (*FetchLogsResponse, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.fetch-cluster-logs"), func(ctx context.Context) (*FetchLogsResponse, error) {
+		var response FetchLogsResponse
+		if err := api.FetchClusterLogs.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 
