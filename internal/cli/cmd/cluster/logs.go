@@ -247,6 +247,7 @@ type logOutput interface {
 const (
 	namespaceLogLabel  = "namespace"
 	k8sPodNameLogLabel = "kubernetes_pod_name"
+	systemLogLabel     = "system"
 )
 
 var defaultNamespaces = []string{"", "default"}
@@ -263,7 +264,29 @@ func newLogPrinter(useStdout bool) *plainLogPrinter {
 	}
 }
 
-func (lp *plainLogPrinter) writer(ctx context.Context, labels map[string]string, stream string) io.Writer {
+func visibleLogLabel(labels map[string]string, stream, source string) string {
+	if pod, ok := labels[k8sPodNameLogLabel]; ok && pod != "" {
+		label := pod
+
+		if ns, ok := labels[namespaceLogLabel]; ok && !slices.Contains(defaultNamespaces, ns) {
+			label = fmt.Sprintf("%s/%s", ns, label)
+		}
+
+		return label
+	}
+
+	if stream != "" {
+		return stream
+	}
+
+	if system, ok := labels[systemLogLabel]; ok && system != "" {
+		return system
+	}
+
+	return source
+}
+
+func (lp *plainLogPrinter) writer(ctx context.Context, labels map[string]string, stream, source string) io.Writer {
 	if lp.useStdout {
 		return console.Stdout(ctx)
 	}
@@ -272,7 +295,7 @@ func (lp *plainLogPrinter) writer(ctx context.Context, labels map[string]string,
 	keys := maps.Keys(labels)
 	sort.Strings(keys)
 
-	key := stream
+	key := fmt.Sprintf("%s/%s", source, stream)
 	for _, k := range keys {
 		key = fmt.Sprintf("%s/%s:%s", key, k, labels[k])
 	}
@@ -281,16 +304,11 @@ func (lp *plainLogPrinter) writer(ctx context.Context, labels map[string]string,
 		return out
 	}
 
-	// Only use namespace and pod name in user visible label since console space is limited
-	var label string
-	if pod, ok := labels[k8sPodNameLogLabel]; ok {
-		label = pod
-
-		if ns, ok := labels[namespaceLogLabel]; ok && !slices.Contains(defaultNamespaces, ns) {
-			label = fmt.Sprintf("%s/%s", ns, label)
-		}
-	} else {
-		label = stream
+	label := visibleLogLabel(labels, stream, source)
+	if label == "" {
+		out := console.Stdout(ctx)
+		lp.outs[key] = out
+		return out
 	}
 
 	out := console.Output(ctx, label)
@@ -300,14 +318,14 @@ func (lp *plainLogPrinter) writer(ctx context.Context, labels map[string]string,
 
 func (lp *plainLogPrinter) PrintBlock(ctx context.Context, lb api.LogBlock) error {
 	for _, l := range lb.Line {
-		out := lp.writer(ctx, lb.Labels, l.Stream)
+		out := lp.writer(ctx, lb.Labels, l.Stream, l.Source)
 		fmt.Fprintf(out, "%s %s\n", l.Timestamp.Format(time.RFC3339), l.Content)
 	}
 	return nil
 }
 
 func (lp *plainLogPrinter) PrintLine(ctx context.Context, l api.LogLine) error {
-	out := lp.writer(ctx, l.Labels, l.Stream)
+	out := lp.writer(ctx, l.Labels, l.Stream, l.Source)
 	fmt.Fprintf(out, "%s %s\n", l.Timestamp.Format(time.RFC3339), l.Content)
 	return nil
 }
