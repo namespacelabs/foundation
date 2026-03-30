@@ -50,3 +50,47 @@ func TestVisibleLogLabel(t *testing.T) {
 		})
 	}
 }
+
+func TestLogicalLogLines(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    []string
+	}{
+		{
+			name:    "empty",
+			content: "",
+			want:    []string{""},
+		},
+		{
+			name:    "carriage returns become new lines",
+			content: "Receiving 10%\rReceiving 20%\rDone\r",
+			want:    []string{"Receiving 10%", "Receiving 20%", "Done"},
+		},
+		{
+			name:    "mixed newline styles",
+			content: "a\r\nb\nc",
+			want:    []string{"a", "b", "c"},
+		},
+		{
+			name:    "preserve empty interior lines",
+			content: "a\n\nb",
+			want:    []string{"a", "", "b"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := logicalLogLines(tt.content)
+			if len(got) != len(tt.want) {
+				t.Fatalf("logicalLogLines(%q) len=%d, want %d (%q)", tt.content, len(got), len(tt.want), got)
+			}
+
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Fatalf("logicalLogLines(%q)[%d] = %q, want %q", tt.content, i, got[i], tt.want[i])
+				}
+			}
+		})
+	}
+}

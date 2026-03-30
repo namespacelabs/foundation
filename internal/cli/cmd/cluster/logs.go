@@ -13,6 +13,7 @@ import (
 	"os"
 	"slices"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -319,15 +320,37 @@ func (lp *plainLogPrinter) writer(ctx context.Context, labels map[string]string,
 func (lp *plainLogPrinter) PrintBlock(ctx context.Context, lb api.LogBlock) error {
 	for _, l := range lb.Line {
 		out := lp.writer(ctx, lb.Labels, l.Stream, l.Source)
-		fmt.Fprintf(out, "%s %s\n", l.Timestamp.Format(time.RFC3339), l.Content)
+		printLogContent(out, l.Timestamp, l.Content)
 	}
 	return nil
 }
 
 func (lp *plainLogPrinter) PrintLine(ctx context.Context, l api.LogLine) error {
 	out := lp.writer(ctx, l.Labels, l.Stream, l.Source)
-	fmt.Fprintf(out, "%s %s\n", l.Timestamp.Format(time.RFC3339), l.Content)
+	printLogContent(out, l.Timestamp, l.Content)
 	return nil
+}
+
+func printLogContent(out io.Writer, ts time.Time, content string) {
+	for _, line := range logicalLogLines(content) {
+		fmt.Fprintf(out, "%s %s\n", ts.Format(time.RFC3339), line)
+	}
+}
+
+func logicalLogLines(content string) []string {
+	if content == "" {
+		return []string{""}
+	}
+
+	normalized := strings.ReplaceAll(content, "\r\n", "\n")
+	normalized = strings.ReplaceAll(normalized, "\r", "\n")
+
+	parts := strings.Split(normalized, "\n")
+	for len(parts) > 1 && parts[len(parts)-1] == "" {
+		parts = parts[:len(parts)-1]
+	}
+
+	return parts
 }
 
 // jsonLogPrinter outputs each log line as a JSON object (JSONL format).
