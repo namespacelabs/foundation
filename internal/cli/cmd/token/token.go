@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -35,6 +36,7 @@ func NewTokenCmd() *cobra.Command {
 
 	cmd.AddCommand(NewListCmd())
 	cmd.AddCommand(NewCreateCmd())
+	cmd.AddCommand(NewRefreshCmd())
 	cmd.AddCommand(NewRevokeCmd())
 
 	return cmd
@@ -231,6 +233,67 @@ func NewRevokeCmd() *cobra.Command {
 	return cmd
 }
 
+func NewRefreshCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "refresh",
+		Short: "Refresh a token.",
+		Args:  cobra.NoArgs,
+	}
+
+	tokenId := cmd.Flags().String("token_id", "", "The token ID to refresh")
+	minimumDuration := fncobra.Duration(cmd.Flags(), "minimum_duration", 0, "Ensure the token remains valid for at least this duration")
+	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
+
+	cmd.MarkFlagRequired("token_id")
+	cmd.MarkFlagRequired("minimum_duration")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		tokenSource, err := auth.LoadDefaults()
+		if err != nil {
+			return fnerrors.InvocationError("token", "failed to get authentication token: %w", err)
+		}
+
+		client, err := iam.NewClient(ctx, tokenSource)
+		if err != nil {
+			return fnerrors.InvocationError("token", "failed to create iam client: %w", err)
+		}
+		defer client.Close()
+
+		resp, err := client.Tokens.RefreshRevokableToken(ctx, &v1beta.RefreshRevokableTokenRequest{
+			TokenId:         *tokenId,
+			MinimumDuration: durationpb.New(*minimumDuration),
+		})
+		if err != nil {
+			return fnerrors.InvocationError("token", "failed to refresh token: %w", err)
+		}
+
+		switch *output {
+		case "json":
+			bb, err := protojson.MarshalOptions{UseProtoNames: true, Multiline: true}.Marshal(resp)
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintln(console.Stdout(ctx), string(bb))
+			return nil
+
+		case "table":
+			if resp.Token == nil {
+				fmt.Fprintf(console.Stdout(ctx), "Token %s refreshed.\n", *tokenId)
+				return nil
+			}
+
+			fmt.Fprintf(console.Stdout(ctx), "Token %s refreshed.\n\n", resp.Token.TokenId)
+			return printTokenDetails(ctx, resp.Token)
+
+		default:
+			return fnerrors.BadInputError("invalid output format: %s", *output)
+		}
+	})
+
+	return cmd
+}
+
 func printTokensTable(ctx context.Context, tokens []*v1beta.RevokableToken) error {
 	if len(tokens) == 0 {
 		fmt.Fprintf(console.Stdout(ctx), "No tokens found.\n")
@@ -274,22 +337,30 @@ func printTokensTable(ctx context.Context, tokens []*v1beta.RevokableToken) erro
 
 func printTokenCreated(ctx context.Context, resp *v1beta.CreateRevokableTokenResponse, showToken bool) error {
 	if resp.Token != nil {
-		fmt.Fprintf(console.Stdout(ctx), "Token ID:     %s\n", resp.Token.TokenId)
-		fmt.Fprintf(console.Stdout(ctx), "Name:         %s\n", resp.Token.Name)
-		fmt.Fprintf(console.Stdout(ctx), "Description:  %s\n", resp.Token.Description)
-
-		if resp.Token.CreatedAt != nil {
-			fmt.Fprintf(console.Stdout(ctx), "Created At:   %s\n", resp.Token.CreatedAt.AsTime().Format(time.RFC3339))
-		}
-
-		if resp.Token.ExpiresAt != nil {
-			fmt.Fprintf(console.Stdout(ctx), "Expires At:   %s\n", resp.Token.ExpiresAt.AsTime().Format(time.RFC3339))
+		if err := printTokenDetails(ctx, resp.Token); err != nil {
+			return err
 		}
 	}
 
 	if showToken {
 		fmt.Fprintf(console.Stdout(ctx), "\nBearer Token: %s\n", resp.BearerToken)
 		fmt.Fprintf(console.Stdout(ctx), "\n⚠️  Save this token securely - it will not be shown again.\n")
+	}
+
+	return nil
+}
+
+func printTokenDetails(ctx context.Context, token *v1beta.RevokableToken) error {
+	fmt.Fprintf(console.Stdout(ctx), "Token ID:     %s\n", token.TokenId)
+	fmt.Fprintf(console.Stdout(ctx), "Name:         %s\n", token.Name)
+	fmt.Fprintf(console.Stdout(ctx), "Description:  %s\n", token.Description)
+
+	if token.CreatedAt != nil {
+		fmt.Fprintf(console.Stdout(ctx), "Created At:   %s\n", token.CreatedAt.AsTime().Format(time.RFC3339))
+	}
+
+	if token.ExpiresAt != nil {
+		fmt.Fprintf(console.Stdout(ctx), "Expires At:   %s\n", token.ExpiresAt.AsTime().Format(time.RFC3339))
 	}
 
 	return nil
