@@ -247,6 +247,7 @@ type logOutput interface {
 const (
 	namespaceLogLabel  = "namespace"
 	k8sPodNameLogLabel = "kubernetes_pod_name"
+	systemLogLabel     = "system"
 )
 
 var defaultNamespaces = []string{"", "default"}
@@ -281,21 +282,28 @@ func (lp *plainLogPrinter) writer(ctx context.Context, labels map[string]string,
 		return out
 	}
 
-	// Only use namespace and pod name in user visible label since console space is limited
-	var label string
-	if pod, ok := labels[k8sPodNameLogLabel]; ok {
-		label = pod
-
-		if ns, ok := labels[namespaceLogLabel]; ok && !slices.Contains(defaultNamespaces, ns) {
-			label = fmt.Sprintf("%s/%s", ns, label)
-		}
-	} else {
-		label = stream
-	}
-
+	label := visibleLogLabel(labels, stream)
 	out := console.Output(ctx, label)
 	lp.outs[key] = out
 	return out
+}
+
+func visibleLogLabel(labels map[string]string, stream string) string {
+	// Prefer the pod label for Kubernetes logs, then the system-specific label
+	// used by system log aggregation, and finally fall back to the raw stream.
+	if pod, ok := labels[k8sPodNameLogLabel]; ok {
+		if ns, ok := labels[namespaceLogLabel]; ok && !slices.Contains(defaultNamespaces, ns) {
+			return fmt.Sprintf("%s/%s", ns, pod)
+		}
+
+		return pod
+	}
+
+	if system, ok := labels[systemLogLabel]; ok && system != "" {
+		return system
+	}
+
+	return stream
 }
 
 func (lp *plainLogPrinter) PrintBlock(ctx context.Context, lb api.LogBlock) error {
