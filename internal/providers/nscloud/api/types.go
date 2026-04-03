@@ -375,8 +375,8 @@ type FetchLogsResponse struct {
 }
 
 type TimestampRange struct {
-	After  *timestamppb.Timestamp `json:"after,omitempty"`
-	Before *timestamppb.Timestamp `json:"before,omitempty"`
+	After  *time.Time `json:"after,omitempty"`
+	Before *time.Time `json:"before,omitempty"`
 }
 
 type StringMatcher struct {

@@ -17,7 +17,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -28,8 +27,8 @@ import (
 func NewLogsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "logs [instance-id]",
-		Short: "Prints logs for a instance.",
-		Long:  "Prints application logs for a instance. To print all instance logs (including Kubernetes system logs) add --all.",
+		Short: "Print logs for an instance, or across all instances with --all.",
+		Long:  "Print application logs for an instance. Use --all with --since, --after, or --before to query logs across all instances.",
 		Args:  cobra.MaximumNArgs(1),
 	}
 
@@ -43,15 +42,17 @@ func NewLogsCmd() *cobra.Command {
 	container := cmd.Flags().StringP("container", "c", "", "If specified, only display logs of this container.")
 	source := cmd.Flags().StringP("source", "s", "kubernetes", "If specified, display logs from this source. Default: kubernetes")
 	kind := cmd.Flags().StringSliceP("kind", "k", nil, "If specified, only display logs of these kinds (e.g. kubernetes, containers, system, applications). Can be specified multiple times or comma-separated.")
+	matchMessageRegex := cmd.Flags().String("match_message_regex", "", "If specified, only display logs whose message matches this regular expression.")
 	raw := cmd.Flags().Bool("raw", false, "Output raw logs (skipping namespace/pod labels).")
-	all := cmd.Flags().Bool("all", false, "Output all logs (including Kubernetes system logs).")
+	all := cmd.Flags().Bool("all", false, "Search across all instances. Requires --since, --after, or --before.")
 	output := cmd.Flags().StringP("output", "o", "plain", "Output format. Supported values: plain, json (outputs one JSON object per line).")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		queryAllInstances := *all
 		var clusterID string
 		if len(args) == 1 {
 			clusterID = args[0]
-		} else {
+		} else if !queryAllInstances {
 			var err error
 			clusterID, err = selectClusterID(ctx, true /* previousRuns */)
 			if err != nil {
@@ -63,7 +64,7 @@ func NewLogsCmd() *cobra.Command {
 			}
 		}
 
-		if clusterID == "" {
+		if !queryAllInstances && clusterID == "" {
 			return nil
 		}
 
@@ -75,18 +76,30 @@ func NewLogsCmd() *cobra.Command {
 			return fnerrors.Newf("--since flag can't be used with --after or --before flags")
 		}
 
+		if *follow && *matchMessageRegex != "" {
+			return fnerrors.Newf("--match_message_regex flag can't be used with --follow")
+		}
+
+		if queryAllInstances && clusterID != "" {
+			return fnerrors.Newf("--all flag can't be used with an instance-id")
+		}
+
+		if queryAllInstances && *follow {
+			return fnerrors.Newf("--all flag can't be used with --follow")
+		}
+
+		if queryAllInstances && *since == 0 && *after == "" && *before == "" {
+			return fnerrors.Newf("--since, --after, or --before is required with --all")
+		}
+
 		var lp logOutput
 		switch *output {
 		case "json":
 			lp = newJSONLogPrinter()
 		case "plain":
-			lp = newLogPrinter(*raw)
+			lp = newLogPrinter(*raw, queryAllInstances)
 		default:
 			return fnerrors.Newf("unsupported output format %q, supported values: plain, json", *output)
-		}
-
-		if *all {
-			fmt.Fprintf(console.Stderr(ctx), "Warning: --all is deprecated and has no effect.\n")
 		}
 
 		var includeSelector []*api.LogsSelector
@@ -138,18 +151,21 @@ func NewLogsCmd() *cobra.Command {
 		// FORWARD direction returns lines in chronological order, allowing
 		// us to print each page immediately without buffering.
 		req := api.FetchLogsRequest{
-			MatchInstanceIds: &api.StringMatcher{
-				Op:     1, // IS_ANY_OF
-				Values: []string{clusterID},
-			},
 			LinesPerPage: *limit,
 			Direction:    1, // FORWARD
+		}
+
+		if clusterID != "" {
+			req.MatchInstanceIds = &api.StringMatcher{
+				Op:     1, // IS_ANY_OF
+				Values: []string{clusterID},
+			}
 		}
 
 		if *since != 0 {
 			ts := time.Now().In(time.UTC).Add(-1 * *since)
 			req.TimestampRange = &api.TimestampRange{
-				After: timestamppb.New(ts),
+				After: &ts,
 			}
 		}
 
@@ -162,19 +178,25 @@ func NewLogsCmd() *cobra.Command {
 				if err != nil {
 					return fnerrors.Newf("invalid --after timestamp: %w", err)
 				}
-				req.TimestampRange.After = timestamppb.New(t)
+				t = t.UTC()
+				req.TimestampRange.After = &t
 			}
 			if *before != "" {
 				t, err := time.Parse(time.RFC3339, *before)
 				if err != nil {
 					return fnerrors.Newf("invalid --before timestamp: %w", err)
 				}
-				req.TimestampRange.Before = timestamppb.New(t)
+				t = t.UTC()
+				req.TimestampRange.Before = &t
 			}
 		}
 
 		if len(*kind) > 0 {
 			req.MatchKind = &api.StringMatcher{Op: 1, Values: *kind}
+		}
+
+		if *matchMessageRegex != "" {
+			req.MatchMessageRegex = &api.StringMatcher{Op: 1, Values: []string{*matchMessageRegex}}
 		}
 
 		// Build matchers from flags.
@@ -245,6 +267,7 @@ type logOutput interface {
 // plainLogPrinter prints logs in human-readable format with colored labels.
 
 const (
+	instanceIDLogLabel = "instance_id"
 	namespaceLogLabel  = "namespace"
 	k8sPodNameLogLabel = "kubernetes_pod_name"
 	systemLogLabel     = "system"
@@ -253,14 +276,16 @@ const (
 var defaultNamespaces = []string{"", "default"}
 
 type plainLogPrinter struct {
-	outs      map[string]io.Writer
-	useStdout bool
+	outs              map[string]io.Writer
+	useStdout         bool
+	includeInstanceID bool
 }
 
-func newLogPrinter(useStdout bool) *plainLogPrinter {
+func newLogPrinter(useStdout bool, includeInstanceID bool) *plainLogPrinter {
 	return &plainLogPrinter{
-		outs:      make(map[string]io.Writer),
-		useStdout: useStdout,
+		outs:              make(map[string]io.Writer),
+		useStdout:         useStdout,
+		includeInstanceID: includeInstanceID,
 	}
 }
 
@@ -282,28 +307,34 @@ func (lp *plainLogPrinter) writer(ctx context.Context, labels map[string]string,
 		return out
 	}
 
-	label := visibleLogLabel(labels, stream)
+	label := visibleLogLabel(labels, stream, lp.includeInstanceID)
 	out := console.Output(ctx, label)
 	lp.outs[key] = out
 	return out
 }
 
-func visibleLogLabel(labels map[string]string, stream string) string {
+func visibleLogLabel(labels map[string]string, stream string, includeInstanceID bool) string {
 	// Prefer the pod label for Kubernetes logs, then the system-specific label
 	// used by system log aggregation, and finally fall back to the raw stream.
+	baseLabel := stream
+
 	if pod, ok := labels[k8sPodNameLogLabel]; ok {
 		if ns, ok := labels[namespaceLogLabel]; ok && !slices.Contains(defaultNamespaces, ns) {
-			return fmt.Sprintf("%s/%s", ns, pod)
+			baseLabel = fmt.Sprintf("%s/%s", ns, pod)
+		} else {
+			baseLabel = pod
 		}
-
-		return pod
+	} else if system, ok := labels[systemLogLabel]; ok && system != "" {
+		baseLabel = system
 	}
 
-	if system, ok := labels[systemLogLabel]; ok && system != "" {
-		return system
+	if includeInstanceID {
+		if instanceID, ok := labels[instanceIDLogLabel]; ok && instanceID != "" {
+			return fmt.Sprintf("%s/%s", instanceID, baseLabel)
+		}
 	}
 
-	return stream
+	return baseLabel
 }
 
 func (lp *plainLogPrinter) PrintBlock(ctx context.Context, lb api.LogBlock) error {
