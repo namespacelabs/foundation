@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/macos"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/private"
 	"namespacelabs.dev/foundation/internal/cli/cmd/gcp"
+	"namespacelabs.dev/foundation/internal/cli/cmd/integrations"
 	"namespacelabs.dev/foundation/internal/cli/cmd/scratch"
 	"namespacelabs.dev/foundation/internal/cli/cmd/sdk"
 	"namespacelabs.dev/foundation/internal/cli/cmd/token"
@@ -84,6 +85,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(token.NewTokenCmd()) // nsc token
 
 	root.AddCommand(cluster.NewRegistryCmd()) // nsc registry
+	root.AddCommand(integrations.NewIntegrationsCmd())
 
 	root.AddCommand(scratch.NewScratchCmd()) // nsc scratch
 

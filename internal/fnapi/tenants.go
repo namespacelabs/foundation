@@ -255,6 +255,24 @@ type GetTenantResponse struct {
 	Tenant *Tenant `json:"tenant,omitempty"`
 }
 
+type TailscaleSpec struct {
+	OauthClientId string   `json:"oauth_client_id,omitempty"`
+	Tags          []string `json:"tags,omitempty"`
+}
+
+type GetTenantIntegrationsResponse struct {
+	MetadataVersion int64                    `json:"metadata_version,omitempty"`
+	Tailscale       map[string]TailscaleSpec `json:"tailscale,omitempty"`
+}
+
+type UpdateTenantIntegrationsRequest struct {
+	MatchMetadataVersion int64                    `json:"match_metadata_version,omitempty"`
+	UpdateFields         []string                 `json:"update_fields,omitempty"`
+	Tailscale            map[string]TailscaleSpec `json:"tailscale,omitempty"`
+}
+
+const UpdateTenantIntegrationsFieldTailscale = "UPDATE_TAILSCALE"
+
 type StoredTrustRelationship struct {
 	Id           string     `json:"id,omitempty"`
 	CreatorJson  string     `json:"creator_json,omitempty"`
@@ -287,6 +305,40 @@ func GetTenant(ctx context.Context) (GetTenantResponse, error) {
 		Retryable:        true,
 	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
 		return GetTenantResponse{}, err
+	}
+
+	return res, nil
+}
+
+func GetTenantIntegrations(ctx context.Context) (GetTenantIntegrationsResponse, error) {
+	req := struct{}{}
+
+	var res GetTenantIntegrationsResponse
+	if err := (Call[any]{
+		Method:           "nsl.tenants.TenantsService/GetTenantIntegrations",
+		IssueBearerToken: IssueBearerToken,
+		Retryable:        true,
+	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
+		return GetTenantIntegrationsResponse{}, err
+	}
+
+	return res, nil
+}
+
+func UpdateTenantIntegrations(ctx context.Context, metadataVersion int64, tailscale map[string]TailscaleSpec) (GetTenantIntegrationsResponse, error) {
+	req := UpdateTenantIntegrationsRequest{
+		MatchMetadataVersion: metadataVersion,
+		UpdateFields:         []string{UpdateTenantIntegrationsFieldTailscale},
+		Tailscale:            tailscale,
+	}
+
+	var res GetTenantIntegrationsResponse
+	if err := (Call[UpdateTenantIntegrationsRequest]{
+		Method:           "nsl.tenants.TenantsService/UpdateTenantIntegrations",
+		IssueBearerToken: IssueBearerToken,
+		Retryable:        true,
+	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
+		return GetTenantIntegrationsResponse{}, err
 	}
 
 	return res, nil
