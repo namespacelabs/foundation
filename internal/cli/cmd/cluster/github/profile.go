@@ -9,19 +9,20 @@ import (
 	"encoding/json"
 	"fmt"
 	oslib "os"
+	"strings"
 	"time"
 
 	computev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/compute/v1beta"
 	v1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/github/v1beta"
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
-	"namespacelabs.dev/foundation/internal/files"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
@@ -57,6 +58,8 @@ func newProfileCreateCmd() *cobra.Command {
 	machineArch := cmd.Flags().String("machine_arch", "amd64", "Machine architecture (amd64 or arm64).")
 	builderMode := cmd.Flags().String("builder_mode", "USE_REMOTE_BUILDER", "Builder mode (USE_REMOTE_BUILDER, USE_LOCAL_CACHE, NO_CACHING).")
 	emoji := cmd.Flags().String("emoji", "", "Optional emoji to visually identify the profile.")
+	egressPolicy := cmd.Flags().String("egress_policy", "", "Egress policy (DOMAIN_ALLOW_LIST to restrict outbound access, or empty for no filtering).")
+	egressDomainAllowList := cmd.Flags().StringSlice("egress_domain_allow_list", nil, "List of allowed egress domains (supports wildcards, e.g. '*.example.org'). Only valid with --egress_policy=DOMAIN_ALLOW_LIST.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
@@ -64,9 +67,10 @@ func newProfileCreateCmd() *cobra.Command {
 
 		// If spec file is provided, read the entire spec from the file
 		if *specFile != "" {
-			spec = &v1beta.RunnerProfileSpec{}
-			if err := files.ReadJson(*specFile, spec); err != nil {
-				return fnerrors.Newf("failed to read spec file: %w", err)
+			var err error
+			spec, err = readSpecFile(*specFile)
+			if err != nil {
+				return err
 			}
 		} else {
 			// Otherwise, build spec from flags
@@ -99,6 +103,12 @@ func newProfileCreateCmd() *cobra.Command {
 				BuilderMode: v1beta.BuilderMode(builderModeValue),
 				Emoji:       *emoji,
 			}
+
+			np, err := parseNetworkPolicy(*egressPolicy, *egressDomainAllowList)
+			if err != nil {
+				return err
+			}
+			spec.NetworkPolicy = np
 		}
 
 		profile, err := createProfile(ctx, spec)
@@ -277,6 +287,17 @@ func newProfileDescribeCmd() *cobra.Command {
 			fmt.Fprintf(stdout, "\nCache Volumes: %d configured\n", len(profile.Spec.CacheVolumeSettings))
 		}
 
+		if profile.Spec.NetworkPolicy != nil {
+			fmt.Fprintf(stdout, "\nNetwork Policy:\n")
+			fmt.Fprintf(stdout, "  Egress:     %s\n", profile.Spec.NetworkPolicy.Egress.String())
+			if len(profile.Spec.NetworkPolicy.EgressDomainAllowList) > 0 {
+				fmt.Fprintf(stdout, "  Allowed Domains:\n")
+				for _, domain := range profile.Spec.NetworkPolicy.EgressDomainAllowList {
+					fmt.Fprintf(stdout, "    - %s\n", domain)
+				}
+			}
+		}
+
 		if len(profile.Spec.ExperimentalFeatures) > 0 {
 			fmt.Fprintf(stdout, "\nExperimental Features:\n")
 			for _, feature := range profile.Spec.ExperimentalFeatures {
@@ -321,6 +342,8 @@ func newProfileUpdateCmd() *cobra.Command {
 	builderMode := cmd.Flags().String("builder_mode", "", "Builder mode (USE_REMOTE_BUILDER, USE_LOCAL_CACHE, NO_CACHING).")
 	emoji := cmd.Flags().String("emoji", "", "Optional emoji to visually identify the profile.")
 	dockerfile := cmd.Flags().String("dockerfile", "", "Path to Dockerfile for custom runner image.")
+	egressPolicy := cmd.Flags().String("egress_policy", "", "Egress policy (DOMAIN_ALLOW_LIST to restrict outbound access, or NONE to disable filtering).")
+	egressDomainAllowList := cmd.Flags().StringSlice("egress_domain_allow_list", nil, "List of allowed egress domains (supports wildcards, e.g. '*.example.org'). Only valid with --egress_policy=DOMAIN_ALLOW_LIST.")
 	version := cmd.Flags().Int64("version", 0, "Current version of the profile for optimistic concurrency control. If not provided, it will be fetched from the backend.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
@@ -334,9 +357,10 @@ func newProfileUpdateCmd() *cobra.Command {
 
 		// If spec file is provided, read the entire spec from the file
 		if *specFile != "" {
-			spec = &v1beta.RunnerProfileSpec{}
-			if err := files.ReadJson(*specFile, spec); err != nil {
-				return fnerrors.Newf("failed to read spec file: %w", err)
+			var err error
+			spec, err = readSpecFile(*specFile)
+			if err != nil {
+				return err
 			}
 
 			// When using spec_file, version is required since we don't fetch the current profile
@@ -373,18 +397,8 @@ func newProfileUpdateCmd() *cobra.Command {
 			// Store the original spec for comparison
 			originalSpec := currentProfile.Spec
 
-			// Start with a copy of the current spec
-			spec = &v1beta.RunnerProfileSpec{
-				Tag:                   originalSpec.Tag,
-				Description:           originalSpec.Description,
-				Os:                    originalSpec.Os,
-				InstanceShape:         originalSpec.InstanceShape,
-				BuilderMode:           originalSpec.BuilderMode,
-				Emoji:                 originalSpec.Emoji,
-				CacheVolumeSettings:   originalSpec.CacheVolumeSettings,
-				ExperimentalFeatures:  originalSpec.ExperimentalFeatures,
-				CustomRunnerImageSpec: originalSpec.CustomRunnerImageSpec,
-			}
+			// Deep copy so mutations to spec don't affect originalSpec.
+			spec = proto.Clone(originalSpec).(*v1beta.RunnerProfileSpec)
 
 			// Update only the fields that were provided
 			if *tag != "" {
@@ -444,6 +458,33 @@ func newProfileUpdateCmd() *cobra.Command {
 					DockerSpec: &v1beta.DockerBaseImageSpec{
 						DockerfileContent: string(dockerfileBytes),
 					},
+				}
+			}
+
+			// Update network policy if egress flags are provided
+			if cmd.Flags().Changed("egress_policy") || cmd.Flags().Changed("egress_domain_allow_list") {
+				if spec.NetworkPolicy == nil {
+					spec.NetworkPolicy = &v1beta.NetworkPolicy{}
+				}
+
+				if cmd.Flags().Changed("egress_policy") {
+					egress, err := parseEgressPolicy(*egressPolicy)
+					if err != nil {
+						return err
+					}
+					spec.NetworkPolicy.Egress = egress
+
+					// Clear the allow list when switching away from DOMAIN_ALLOW_LIST.
+					if egress != v1beta.NetworkPolicy_EGRESS_POLICY_DOMAIN_ALLOW_LIST {
+						spec.NetworkPolicy.EgressDomainAllowList = nil
+					}
+				}
+
+				if cmd.Flags().Changed("egress_domain_allow_list") {
+					if spec.NetworkPolicy.Egress != v1beta.NetworkPolicy_EGRESS_POLICY_DOMAIN_ALLOW_LIST {
+						return fnerrors.New("--egress_domain_allow_list can only be used with --egress_policy=DOMAIN_ALLOW_LIST")
+					}
+					spec.NetworkPolicy.EgressDomainAllowList = *egressDomainAllowList
 				}
 			}
 
@@ -670,6 +711,16 @@ func transformProfileForOutput(profile *v1beta.RunnerProfileWithStatus) map[stri
 		m["builder_mode"] = profile.Spec.BuilderMode.String()
 	}
 
+	if profile.Spec.NetworkPolicy != nil {
+		np := map[string]any{
+			"egress": profile.Spec.NetworkPolicy.Egress.String(),
+		}
+		if len(profile.Spec.NetworkPolicy.EgressDomainAllowList) > 0 {
+			np["egress_domain_allow_list"] = profile.Spec.NetworkPolicy.EgressDomainAllowList
+		}
+		m["network_policy"] = np
+	}
+
 	if len(profile.Spec.ExperimentalFeatures) > 0 {
 		m["experimental_features"] = profile.Spec.ExperimentalFeatures
 	}
@@ -716,4 +767,60 @@ func transformProfileForOutput(profile *v1beta.RunnerProfileWithStatus) map[stri
 	}
 
 	return m
+}
+
+func parseNetworkPolicy(egressPolicy string, egressDomainAllowList []string) (*v1beta.NetworkPolicy, error) {
+	if egressPolicy == "" && len(egressDomainAllowList) == 0 {
+		return nil, nil
+	}
+
+	np := &v1beta.NetworkPolicy{}
+
+	if egressPolicy != "" {
+		egress, err := parseEgressPolicy(egressPolicy)
+		if err != nil {
+			return nil, err
+		}
+		np.Egress = egress
+	}
+
+	if len(egressDomainAllowList) > 0 {
+		if np.Egress != v1beta.NetworkPolicy_EGRESS_POLICY_DOMAIN_ALLOW_LIST {
+			return nil, fnerrors.New("--egress_domain_allow_list can only be used with --egress_policy=DOMAIN_ALLOW_LIST")
+		}
+		np.EgressDomainAllowList = egressDomainAllowList
+	}
+
+	return np, nil
+}
+
+// parseEgressPolicy accepts both short-form (NONE, DOMAIN_ALLOW_LIST) and
+// full proto enum names (EGRESS_POLICY_NONE, EGRESS_POLICY_DOMAIN_ALLOW_LIST).
+func parseEgressPolicy(s string) (v1beta.NetworkPolicy_EgressPolicy, error) {
+	s = strings.ToUpper(strings.TrimSpace(s))
+
+	if !strings.HasPrefix(s, "EGRESS_POLICY_") {
+		s = "EGRESS_POLICY_" + s
+	}
+
+	v, ok := v1beta.NetworkPolicy_EgressPolicy_value[s]
+	if !ok || v == int32(v1beta.NetworkPolicy_EGRESS_POLICY_UNKNOWN) {
+		return 0, fnerrors.Newf("invalid egress policy %q (valid values: NONE, DOMAIN_ALLOW_LIST)", s)
+	}
+
+	return v1beta.NetworkPolicy_EgressPolicy(v), nil
+}
+
+func readSpecFile(path string) (*v1beta.RunnerProfileSpec, error) {
+	data, err := oslib.ReadFile(path)
+	if err != nil {
+		return nil, fnerrors.Newf("failed to read spec file: %w", err)
+	}
+
+	spec := &v1beta.RunnerProfileSpec{}
+	if err := (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(data, spec); err != nil {
+		return nil, fnerrors.Newf("failed to parse spec file: %w", err)
+	}
+
+	return spec, nil
 }
