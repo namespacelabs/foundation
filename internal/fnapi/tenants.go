@@ -261,12 +261,12 @@ type TailscaleSpec struct {
 }
 
 type GetTenantIntegrationsResponse struct {
-	MetadataVersion int64                    `json:"metadata_version,omitempty"`
+	MetadataVersion int64                    `json:"metadata_version,omitempty,string"`
 	Tailscale       map[string]TailscaleSpec `json:"tailscale,omitempty"`
 }
 
 type UpdateTenantIntegrationsRequest struct {
-	MatchMetadataVersion int64                    `json:"match_metadata_version,omitempty"`
+	MatchMetadataVersion int64                    `json:"match_metadata_version,omitempty,string"`
 	UpdateFields         []string                 `json:"update_fields,omitempty"`
 	Tailscale            map[string]TailscaleSpec `json:"tailscale,omitempty"`
 }
