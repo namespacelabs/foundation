@@ -149,7 +149,7 @@ func NewTopCmd() *cobra.Command {
 			return nil
 		}
 
-		return InlineSsh(ctx, cluster, InlineSshOpts{}, []string{"/bin/sh", "-c", "command -v htop > /dev/null && htop || top"})
+		return InlineSsh(ctx, cluster, InlineSshOpts{ForcePty: true}, []string{"/bin/sh", "-c", "command -v htop > /dev/null && htop || top"})
 	})
 
 	return cmd
