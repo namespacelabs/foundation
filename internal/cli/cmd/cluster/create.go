@@ -38,7 +38,7 @@ func NewCreateCmd() *cobra.Command {
 	tag := cmd.Flags().String("unique_tag", "", "If specified, creates a instance with the specified unique tag.")
 	labels := cmd.Flags().StringToString("label", nil, "Key-values to attach to the new instance. Multiple key-value pairs may be specified.")
 	purpose := cmd.Flags().String("purpose", "Manually created from CLI", "What documented purpose to attach to the created instance.")
-	selectors := cmd.Flags().StringToString("selectors", nil, "Select platform/base image based on specific properties (prop1=value1,prop2=value2).")
+	selectors := cmd.Flags().StringSlice("selectors", nil, "Select platform/base image based on specific properties (prop1=value1,prop2=value2).")
 
 	ingress := cmd.Flags().String("ingress", "", "If set, configures the ingress of this instance. Valid options: wildcard.")
 
@@ -147,9 +147,13 @@ func NewCreateCmd() *cobra.Command {
 			opts.Experimental["authorized_ssh_keys"] = keys
 		}
 
-		if *selectors != nil {
+		if len(*selectors) > 0 {
 			sels := []*api.LabelEntry{}
-			for k, v := range *selectors {
+			for _, s := range *selectors {
+				k, v, ok := strings.Cut(s, "=")
+				if !ok {
+					return fmt.Errorf("invalid selector %q: expected key=value", s)
+				}
 				sels = append(sels, &api.LabelEntry{Name: k, Value: v})
 			}
 			opts.Experimental["image_selectors"] = sels
