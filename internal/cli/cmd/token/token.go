@@ -245,7 +245,6 @@ func NewRefreshCmd() *cobra.Command {
 	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
 
 	cmd.MarkFlagRequired("token_id")
-	cmd.MarkFlagRequired("minimum_duration")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		tokenSource, err := auth.LoadDefaults()
