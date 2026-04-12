@@ -43,6 +43,7 @@ func NewRunCmd() *cobra.Command {
 	wait := run.Flags().Bool("wait", false, "Wait for the container to start running.")
 	waitTimeout := fncobra.Duration(run.Flags(), "wait_timeout", time.Minute, "For how long to wait until the instance becomes ready.")
 	features := run.Flags().StringSlice("features", nil, "A set of features to attach to the instance.")
+	documentedPurpose := run.Flags().String("documented_purpose", "Manually created from CLI", "What documented purpose to attach to the created instance.")
 	ingressRules := run.Flags().StringToString("ingress", map[string]string{}, "Specify ingress rules for ports; specify * to apply rules to any port; separate each rule with ;.")
 	duration := fncobra.Duration(run.Flags(), "duration", 0, "For how long to run the ephemeral environment.")
 	labels := run.Flags().StringToString("label", nil, "Create the environment with a set of labels.")
@@ -92,21 +93,26 @@ func NewRunCmd() *cobra.Command {
 			if *duration > 0 {
 				return fnerrors.Newf("--duration can only be set when creating an environment (i.e. it can't be set when --on is specified)")
 			}
+
+			if run.Flags().Changed("documented_purpose") {
+				return fnerrors.Newf("--documented_purpose can only be set when creating an environment (i.e. it can't be set when --on is specified)")
+			}
 		}
 
 		opts := CreateContainerOpts{
-			Name:            name,
-			Image:           *image,
-			Args:            args,
-			Env:             *env,
-			Features:        *features,
-			Labels:          *labels,
-			InternalExtra:   *internalExtra,
-			EnableDocker:    *enableDocker,
-			ForwardNscState: *forwardNscState,
-			ExposeNscBins:   *exposeNscBins,
-			Network:         *network,
-			User:            *user,
+			Name:              name,
+			Image:             *image,
+			Args:              args,
+			Env:               *env,
+			Features:          *features,
+			DocumentedPurpose: *documentedPurpose,
+			Labels:            *labels,
+			InternalExtra:     *internalExtra,
+			EnableDocker:      *enableDocker,
+			ForwardNscState:   *forwardNscState,
+			ExposeNscBins:     *exposeNscBins,
+			Network:           *network,
+			User:              *user,
 		}
 
 		if *experimental != "" {
@@ -264,6 +270,7 @@ type CreateContainerOpts struct {
 	Flags                        []string
 	ExportedPorts                []exportContainerPort
 	Features                     []string
+	DocumentedPurpose            string
 	Labels                       map[string]string
 	InternalExtra                string
 	EnableDocker                 bool
@@ -337,12 +344,13 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration, 
 
 		resp, err := tasks.Return(ctx, tasks.Action("nscloud.create-containers").HumanReadable(label), func(ctx context.Context) (*CreateContainerResult, error) {
 			req := api.CreateInstanceRequest{
-				MachineType:  machineType,
-				Container:    []*api.ContainerRequest{container},
-				Label:        labels,
-				Feature:      opts.Features,
-				Experimental: opts.InstanceExperimental,
-				Features:     opts.ExperimentalInstanceFeatures,
+				MachineType:       machineType,
+				DocumentedPurpose: opts.DocumentedPurpose,
+				Container:         []*api.ContainerRequest{container},
+				Label:             labels,
+				Feature:           opts.Features,
+				Experimental:      opts.InstanceExperimental,
+				Features:          opts.ExperimentalInstanceFeatures,
 			}
 
 			if duration > 0 {
