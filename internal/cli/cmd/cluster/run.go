@@ -53,6 +53,7 @@ func NewRunCmd() *cobra.Command {
 	network := run.Flags().String("network", "", "The network setting to start the container with.")
 	experimental := run.Flags().String("experimental", "", "A set of experimental settings to pass during creation.")
 	instanceExperimental := run.Flags().String("instance_experimental", "", "A set of experimental instance settings to pass during creation.")
+	experimentalInstanceFeatures := run.Flags().String("experimental_instance_features", "", "Raw JSON for internal CreateInstanceRequest.features.")
 	userSshey := run.Flags().String("ssh_key", "", "Injects the specified ssh public key in the created instance.")
 	volumes := run.Flags().StringSlice("volume", nil, "Attach a volume to the instance, {cache|persistent}:{tag}:{mountpoint}:{size}")
 
@@ -64,6 +65,7 @@ func NewRunCmd() *cobra.Command {
 	run.Flags().MarkHidden("network")
 	run.Flags().MarkHidden("experimental")
 	run.Flags().MarkHidden("instance_experimental")
+	run.Flags().MarkHidden("experimental_instance_features")
 	run.Flags().MarkHidden("expose_nsc_bins")
 	run.Flags().MarkHidden("ssh_key")
 
@@ -119,9 +121,9 @@ func NewRunCmd() *cobra.Command {
 			}
 		}
 
-		if *instanceExperimental != "" {
-			if err := json.Unmarshal([]byte(*instanceExperimental), &opts.InstanceExperimental); err != nil {
-				return fnerrors.Newf("failed to parse: %w", err)
+		if *experimentalInstanceFeatures != "" {
+			if err := json.Unmarshal([]byte(*experimentalInstanceFeatures), &opts.ExperimentalInstanceFeatures); err != nil {
+				return fnerrors.Newf("failed to parse --experimental_instance_features: %w", err)
 			}
 		}
 
@@ -255,22 +257,23 @@ func fillInIngressRules(ports []int32, ingressRules map[string]string) ([]export
 }
 
 type CreateContainerOpts struct {
-	Name                 string
-	Image                string
-	Args                 []string
-	Env                  map[string]string
-	Flags                []string
-	ExportedPorts        []exportContainerPort
-	Features             []string
-	Labels               map[string]string
-	InternalExtra        string
-	EnableDocker         bool
-	ForwardNscState      bool
-	ExposeNscBins        bool
-	Network              string
-	Experimental         map[string]any
-	InstanceExperimental map[string]any
-	User                 string
+	Name                         string
+	Image                        string
+	Args                         []string
+	Env                          map[string]string
+	Flags                        []string
+	ExportedPorts                []exportContainerPort
+	Features                     []string
+	Labels                       map[string]string
+	InternalExtra                string
+	EnableDocker                 bool
+	ForwardNscState              bool
+	ExposeNscBins                bool
+	Network                      string
+	Experimental                 map[string]any
+	InstanceExperimental         map[string]any
+	ExperimentalInstanceFeatures any
+	User                         string
 }
 
 type exportContainerPort struct {
@@ -339,6 +342,7 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration, 
 				Label:        labels,
 				Feature:      opts.Features,
 				Experimental: opts.InstanceExperimental,
+				Features:     opts.ExperimentalInstanceFeatures,
 			}
 
 			if duration > 0 {
