@@ -6,6 +6,7 @@ package cluster
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 
@@ -45,6 +46,8 @@ func newListVolumesCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		lst, err := api.ListVolumes(ctx, api.Methods)
 		if err != nil {
@@ -65,33 +68,63 @@ func newListVolumesCmd() *cobra.Command {
 			latestIdx[vol.Tag] = *vol
 		}
 
-		cols := []tui.Column{
-			{Key: tagColKey, Title: "Tag", MinWidth: 5, MaxWidth: 70},
-			{Key: sizeColKey, Title: "Size", MinWidth: 3, MaxWidth: 20},
-			{Key: attachedToColKey, Title: "Attached To", MinWidth: 5, MaxWidth: 20},
-			{Key: lastUsedColKey, Title: "Last Used", MinWidth: 5, MaxWidth: 30},
-		}
-
 		vols := maps.Values(latestIdx)
 		sort.Slice(vols, func(i, j int) bool {
 			// Reverse sorting.
 			return after(vols[i], vols[j])
 		})
 
+		if *output == "json" {
+			stdout := console.Stdout(ctx)
+			enc := json.NewEncoder(stdout)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(vols); err != nil {
+				return fnerrors.InternalError("failed to encode volume list as JSON output: %w", err)
+			}
+			return nil
+		}
+
+		cols := []tui.Column{
+			{Key: tagColKey, Title: "Tag", MinWidth: 5, MaxWidth: 70},
+			{Key: sizeColKey, Title: "Size (Used / Total)", MinWidth: 20, MaxWidth: 30},
+			{Key: attachedToColKey, Title: "Attached To", MinWidth: 5, MaxWidth: 20},
+			{Key: lastUsedColKey, Title: "Last Used", MinWidth: 5, MaxWidth: 30},
+		}
+
+		type volInfo struct {
+			vol         api.Volume
+			used, total string
+		}
+
+		infos := make([]volInfo, len(vols))
+		maxUsedLen, maxTotalLen := 0, 0
+		for i, vol := range vols {
+			used := humanize.IBytes(uint64(vol.UsedMb) * 1024 * 1024)
+			total := fmt.Sprintf("%d GiB", vol.SizeMb/1024)
+			infos[i] = volInfo{vol: vol, used: used, total: total}
+			if len(used) > maxUsedLen {
+				maxUsedLen = len(used)
+			}
+			if len(total) > maxTotalLen {
+				maxTotalLen = len(total)
+			}
+		}
+
 		rows := []tui.Row{}
-		for _, vol := range vols {
-			attachedTo := vol.AttachedTo
+		for _, info := range infos {
+			attachedTo := info.vol.AttachedTo
 			if attachedTo == "" {
 				attachedTo = "not attached"
 			}
+
 			row := tui.Row{
-				tagColKey:        vol.Tag,
-				sizeColKey:       fmt.Sprintf("%d GB", vol.SizeMb/1024),
+				tagColKey:        info.vol.Tag,
+				sizeColKey:       fmt.Sprintf("%*s / %*s", maxUsedLen, info.used, maxTotalLen, info.total),
 				attachedToColKey: attachedTo,
 			}
 
-			if vol.LastAttachedAt != nil {
-				row[lastUsedColKey] = humanize.Time(*vol.LastAttachedAt)
+			if info.vol.LastAttachedAt != nil {
+				row[lastUsedColKey] = humanize.Time(*info.vol.LastAttachedAt)
 			}
 
 			rows = append(rows, row)
