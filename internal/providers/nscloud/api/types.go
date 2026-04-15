@@ -585,6 +585,7 @@ type Volume struct {
 	Id             string     `json:"id,omitempty"`
 	AttachedTo     string     `json:"attached_to,omitempty"`
 	SizeMb         uint32     `json:"size_mb,omitempty"`
+	UsedMb         uint32     `json:"used_mb,omitempty"`
 	LastAttachedAt *time.Time `json:"last_attached_at,omitempty"`
 	Tag            string     `json:"tag,omitempty"`
 }
