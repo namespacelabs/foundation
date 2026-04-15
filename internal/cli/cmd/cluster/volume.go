@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
@@ -33,10 +34,9 @@ func NewVolumeCmd() *cobra.Command {
 }
 
 const (
-	tagColKey        = "tag"
-	sizeColKey       = "size"
-	attachedToColKey = "attached_to"
-	lastUsedColKey   = "last_used"
+	tagColKey      = "tag"
+	sizeColKey     = "size"
+	lastUsedColKey = "last_used"
 )
 
 func newListVolumesCmd() *cobra.Command {
@@ -54,31 +54,81 @@ func newListVolumesCmd() *cobra.Command {
 			return err
 		}
 
-		latestIdx := map[string]api.Volume{}
+		type tagGroup struct {
+			tag              string
+			latestUnattached *api.Volume // unattached volume with highest LastAttachedAt
+			sizeMb           uint32
+			inUse            bool
+			lastAttachedAt   *time.Time // highest LastAttachedAt across all volumes
+		}
+
+		groups := map[string]*tagGroup{}
 
 		for _, vol := range lst.Volume {
 			if vol == nil {
 				continue
 			}
 
-			if curr, ok := latestIdx[vol.Tag]; ok && after(curr, *vol) {
-				continue
+			g, ok := groups[vol.Tag]
+			if !ok {
+				g = &tagGroup{tag: vol.Tag, sizeMb: vol.SizeMb}
+				groups[vol.Tag] = g
 			}
 
-			latestIdx[vol.Tag] = *vol
+			if vol.AttachedTo != "" {
+				g.inUse = true
+			}
+
+			if vol.LastAttachedAt != nil && (g.lastAttachedAt == nil || vol.LastAttachedAt.After(*g.lastAttachedAt)) {
+				g.lastAttachedAt = vol.LastAttachedAt
+			}
+
+			if vol.AttachedTo == "" {
+				if g.latestUnattached == nil || (vol.LastAttachedAt != nil && (g.latestUnattached.LastAttachedAt == nil || vol.LastAttachedAt.After(*g.latestUnattached.LastAttachedAt))) {
+					g.latestUnattached = vol
+				}
+			}
 		}
 
-		vols := maps.Values(latestIdx)
-		sort.Slice(vols, func(i, j int) bool {
-			// Reverse sorting.
-			return after(vols[i], vols[j])
+		tags := maps.Values(groups)
+		sort.Slice(tags, func(i, j int) bool {
+			if tags[i].inUse != tags[j].inUse {
+				return tags[i].inUse
+			}
+			if tags[i].lastAttachedAt == nil {
+				return false
+			}
+			if tags[j].lastAttachedAt == nil {
+				return true
+			}
+			return tags[i].lastAttachedAt.After(*tags[j].lastAttachedAt)
 		})
 
 		if *output == "json" {
+			type volumeJSON struct {
+				Tag            string     `json:"tag"`
+				UsedMb         *uint32    `json:"used_mb,omitempty"`
+				SizeMb         uint32     `json:"size_mb"`
+				LastAttachedAt *time.Time `json:"last_attached_at,omitempty"`
+			}
+
+			entries := make([]volumeJSON, 0, len(tags))
+			for _, g := range tags {
+				e := volumeJSON{
+					Tag:            g.tag,
+					SizeMb:         g.sizeMb,
+					LastAttachedAt: g.lastAttachedAt,
+				}
+				if g.latestUnattached != nil {
+					e.UsedMb = &g.latestUnattached.UsedMb
+				}
+				entries = append(entries, e)
+			}
+
 			stdout := console.Stdout(ctx)
 			enc := json.NewEncoder(stdout)
 			enc.SetIndent("", "  ")
-			if err := enc.Encode(vols); err != nil {
+			if err := enc.Encode(entries); err != nil {
 				return fnerrors.InternalError("failed to encode volume list as JSON output: %w", err)
 			}
 			return nil
@@ -87,21 +137,25 @@ func newListVolumesCmd() *cobra.Command {
 		cols := []tui.Column{
 			{Key: tagColKey, Title: "Tag", MinWidth: 5, MaxWidth: 70},
 			{Key: sizeColKey, Title: "Size (Used / Total)", MinWidth: 20, MaxWidth: 30},
-			{Key: attachedToColKey, Title: "Attached To", MinWidth: 5, MaxWidth: 20},
 			{Key: lastUsedColKey, Title: "Last Used", MinWidth: 5, MaxWidth: 30},
 		}
 
-		type volInfo struct {
-			vol         api.Volume
+		type fmtTag struct {
+			g           *tagGroup
 			used, total string
 		}
 
-		infos := make([]volInfo, len(vols))
+		formatted := make([]fmtTag, 0, len(tags))
 		maxUsedLen, maxTotalLen := 0, 0
-		for i, vol := range vols {
-			used := humanize.IBytes(uint64(vol.UsedMb) * 1024 * 1024)
-			total := fmt.Sprintf("%d GiB", vol.SizeMb/1024)
-			infos[i] = volInfo{vol: vol, used: used, total: total}
+		for _, g := range tags {
+			var used string
+			if g.latestUnattached != nil {
+				used = humanize.IBytes(uint64(g.latestUnattached.UsedMb) * 1024 * 1024)
+			} else {
+				used = "-"
+			}
+			total := fmt.Sprintf("%d GiB", g.sizeMb/1024)
+			formatted = append(formatted, fmtTag{g: g, used: used, total: total})
 			if len(used) > maxUsedLen {
 				maxUsedLen = len(used)
 			}
@@ -111,22 +165,16 @@ func newListVolumesCmd() *cobra.Command {
 		}
 
 		rows := []tui.Row{}
-		for _, info := range infos {
-			attachedTo := info.vol.AttachedTo
-			if attachedTo == "" {
-				attachedTo = "not attached"
-			}
-
+		for _, f := range formatted {
 			row := tui.Row{
-				tagColKey:        info.vol.Tag,
-				sizeColKey:       fmt.Sprintf("%*s / %*s", maxUsedLen, info.used, maxTotalLen, info.total),
-				attachedToColKey: attachedTo,
+				tagColKey:  f.g.tag,
+				sizeColKey: fmt.Sprintf("%*s / %*s", maxUsedLen, f.used, maxTotalLen, f.total),
 			}
-
-			if info.vol.LastAttachedAt != nil {
-				row[lastUsedColKey] = humanize.Time(*info.vol.LastAttachedAt)
+			if f.g.inUse {
+				row[lastUsedColKey] = "In use"
+			} else if f.g.lastAttachedAt != nil {
+				row[lastUsedColKey] = humanize.Time(*f.g.lastAttachedAt)
 			}
-
 			rows = append(rows, row)
 		}
 
@@ -134,26 +182,6 @@ func newListVolumesCmd() *cobra.Command {
 	})
 
 	return cmd
-}
-
-func after(a, b api.Volume) bool {
-	if a.AttachedTo != "" && b.AttachedTo == "" {
-		return true
-	}
-
-	if a.AttachedTo == "" && b.AttachedTo != "" {
-		return false
-	}
-
-	if a.LastAttachedAt == nil {
-		return false
-	}
-
-	if b.LastAttachedAt == nil {
-		return true
-	}
-
-	return a.LastAttachedAt.After(*b.LastAttachedAt)
 }
 
 func newReleaseVolumesCmd() *cobra.Command {
