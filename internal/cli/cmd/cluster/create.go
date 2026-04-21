@@ -49,7 +49,6 @@ func NewCreateCmd() *cobra.Command {
 	outputRegistryPath := cmd.Flags().String("output_registry_to", "", "If specified, write the registry address to this path.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 	userSshey := cmd.Flags().String("ssh_key", "", "Injects the specified ssh public key in the created instance.")
-	cmd.Flags().MarkHidden("ssh_key")
 	experimental := cmd.Flags().String("experimental", "", "JSON definition of experimental features.")
 	experimentalFrom := cmd.Flags().String("experimental_from", "", "Load experimental definitions from the specified file.")
 
