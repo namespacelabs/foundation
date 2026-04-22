@@ -72,6 +72,7 @@ func newTailscaleSetCmd() *cobra.Command {
 
 	oauthClientID := cmd.Flags().String("oauth-client-id", "", "Tailscale OAuth client ID to attach to the named spec.")
 	tags := cmd.Flags().StringSlice("tag", nil, "Tailscale tags to add to the named spec. Can be specified multiple times or as a comma-separated list.")
+	enableMagicDNS := cmd.Flags().Bool("enable-magic-dns", false, "Enable Tailscale MagicDNS for the named spec.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
 	return fncobra.Cmd(cmd).DoWithArgs(func(ctx context.Context, args []string) error {
@@ -82,8 +83,9 @@ func newTailscaleSetCmd() *cobra.Command {
 		name := args[0]
 		res, err := updateTailscaleIntegrations(ctx, func(tailscale map[string]fnapi.TailscaleSpec) error {
 			tailscale[name] = fnapi.TailscaleSpec{
-				OauthClientId: *oauthClientID,
-				Tags:          append([]string(nil), (*tags)...),
+				OauthClientId:  *oauthClientID,
+				Tags:           append([]string(nil), (*tags)...),
+				EnableMagicDNS: enableMagicDNS,
 			}
 
 			return nil
@@ -197,6 +199,13 @@ func printTailscaleList(ctx context.Context, output string, res fnapi.GetTenantI
 			fmt.Fprintln(stdout, "  Tags: none")
 		} else {
 			fmt.Fprintf(stdout, "  Tags: %s\n", strings.Join(spec.Tags, ", "))
+		}
+		if spec.EnableMagicDNS != nil {
+			if *spec.EnableMagicDNS {
+				fmt.Fprintln(stdout, "  MagicDNS: Enabled")
+			} else {
+				fmt.Fprintln(stdout, "  MagicDNS: Disabled")
+			}
 		}
 		fmt.Fprintln(stdout)
 	}
