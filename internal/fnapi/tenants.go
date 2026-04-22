@@ -256,8 +256,9 @@ type GetTenantResponse struct {
 }
 
 type TailscaleSpec struct {
-	OauthClientId string   `json:"oauth_client_id,omitempty"`
-	Tags          []string `json:"tags,omitempty"`
+	OauthClientId  string   `json:"oauth_client_id,omitempty"`
+	Tags           []string `json:"tags,omitempty"`
+	EnableMagicDNS *bool    `json:"enable_magic_dns,omitempty"`
 }
 
 type GetTenantIntegrationsResponse struct {
