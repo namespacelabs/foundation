@@ -1,14 +1,18 @@
-name: release
+name: publish-installers
+
 on:
   push:
-    tags: ["v*"]
+    branches: ["main"]
+    paths:
+      - "install/install.sh"
+      - "install/install_nsc.sh"
+      - ".github/workflows/publish-installers.yaml"
+      - "tools/release-tigris/**"
   workflow_dispatch:
 
 jobs:
-  goreleaser:
+  publish-installers:
     runs-on: namespace-profile-foundation-releaser
-    permissions:
-      contents: write
     env:
       TIGRIS_ASSETS_BUCKET: nsl-public-assets
       TIGRIS_ENDPOINT: https://t3.storage.dev
@@ -26,11 +30,6 @@ jobs:
         with:
           go-version: 1.25.x
           cache: false
-      - uses: goreleaser/goreleaser-action@v6
-        with:
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
 
-      - name: Publish release artifacts to Tigris
-        run: go run ./tools/release-tigris release --bucket "$TIGRIS_ASSETS_BUCKET" --endpoint "$TIGRIS_ENDPOINT" --dist-dir dist --tag "$GITHUB_REF_NAME"
+      - name: Publish installer scripts to Tigris
+        run: go run ./tools/release-tigris installers --bucket "$TIGRIS_ASSETS_BUCKET" --endpoint "$TIGRIS_ENDPOINT"
