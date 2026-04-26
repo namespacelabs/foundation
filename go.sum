@@ -1484,6 +1484,8 @@ namespacelabs.dev/go-ids v0.0.0-20221124082625-9fc72ee06af7 h1:8NlnfPlzDSJr8TYV/
 namespacelabs.dev/go-ids v0.0.0-20221124082625-9fc72ee06af7/go.mod h1:J+Sd+ngeffnCsaO/M7zgs2bR8Klq/ZBhS0+bbnDEH2M=
 namespacelabs.dev/integrations v0.0.11-0.20260331003432-a64bf395356c h1:fK2ONyaaT2Mv+fGuIW0CRfsRDCoiwJ/apXAj75TkydE=
 namespacelabs.dev/integrations v0.0.11-0.20260331003432-a64bf395356c/go.mod h1:dF38n489mT8w1Gy1J3ilBZZFUnjUY9qYEY6kPRB3n8M=
+namespacelabs.dev/releaser v0.0.0-20260426203604-ce3f4a1d9719 h1:31abpLQVR0ya6A6o0cYrQVur1nBIl2k+Eg+bIT6vXCw=
+namespacelabs.dev/releaser v0.0.0-20260426203604-ce3f4a1d9719/go.mod h1:1ufMKQTcPoPq8AcTedghfOFalJeW+rA7EwFExwtHPxo=
 oras.land/oras-go/v2 v2.6.0 h1:X4ELRsiGkrbeox69+9tzTu492FMUu7zJQW6eJU+I2oc=
 oras.land/oras-go/v2 v2.6.0/go.mod h1:magiQDfG6H1O9APp+rOsvCPcW1GD2MM7vgnKY0Y+u1o=
 rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=
