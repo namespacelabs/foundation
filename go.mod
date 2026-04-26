@@ -146,7 +146,7 @@ require (
 	namespacelabs.dev/go-filenotify v0.0.0-20220511192020-53ea11be7eaa
 	namespacelabs.dev/go-ids v0.0.0-20221124082625-9fc72ee06af7
 	namespacelabs.dev/integrations v0.0.11-0.20260331003432-a64bf395356c
-	namespacelabs.dev/releaser v0.0.0-20260426203604-ce3f4a1d9719
+	namespacelabs.dev/releaser v0.0.0-20260426204818-9c7ef100ea90
 	sigs.k8s.io/yaml v1.6.0
 )
 
