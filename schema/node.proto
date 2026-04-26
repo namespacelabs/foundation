@@ -16,7 +16,7 @@ import "schema/resource.proto";
 import "schema/server.proto";
 import "schema/volume.proto";
 
-// Next ID: 31
+// Next ID: 32
 message Node {
     // The package name (computed).
     string package_name = 1;
@@ -65,6 +65,9 @@ message Node {
     Endpoint.Type ingress = 10;
 
     repeated ServiceMetadata service_metadata = 30;
+
+    // Applies when ingress is LOAD_BALANCER.
+    string load_balancer_class = 31;
 
     // Can't contain multiple initializers with the same "framework".
     // Not a map since "framework" will likely be broken down and converted to a message.

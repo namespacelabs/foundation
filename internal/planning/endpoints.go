@@ -170,6 +170,7 @@ func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, list
 				ServerOwner:        server.GetPackageName(),
 				Type:               n.GetIngress(),
 				ServiceMetadata:    n.GetServiceMetadata(),
+				LoadBalancerClass:  n.GetLoadBalancerClass(),
 				Ports:              []*schema.Endpoint_PortMap{{ExportedPort: exportedPort, Port: listener.Port}},
 			}
 
@@ -193,6 +194,7 @@ func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, list
 				ServerOwner:        server.GetPackageName(),
 				Type:               n.GetIngress(),
 				ServiceMetadata:    n.GetServiceMetadata(),
+				LoadBalancerClass:  n.GetLoadBalancerClass(),
 				Ports:              []*schema.Endpoint_PortMap{{ExportedPort: exportedPort, Port: listener.Port}},
 			}
 

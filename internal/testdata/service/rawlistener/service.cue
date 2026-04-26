@@ -6,10 +6,11 @@ import (
 )
 
 service: fn.#Service & {
-	framework:    "GO"
-	listener:     "second"
-	ingress:      "LOAD_BALANCER"
-	exportedPort: 10000
+	framework:         "GO"
+	listener:          "second"
+	ingress:           "LOAD_BALANCER"
+	loadBalancerClass: "tailscale"
+	exportedPort:      10000
 
 	instantiate: {
 		one: counter.#Exports.Counter & {

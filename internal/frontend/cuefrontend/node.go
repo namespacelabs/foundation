@@ -281,6 +281,16 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 		node.Ingress = schema.Endpoint_Type(schema.Endpoint_Type_value[v])
 	}
 
+	if loadBalancerClass := v.LookupPath("loadBalancerClass"); loadBalancerClass.Exists() {
+		if err := loadBalancerClass.Val.Decode(&node.LoadBalancerClass); err != nil {
+			return err
+		}
+
+		if node.LoadBalancerClass != "" && node.Ingress != schema.Endpoint_LOAD_BALANCER {
+			return fnerrors.NewWithLocation(loc, "loadBalancerClass requires ingress: %q", "LOAD_BALANCER")
+		}
+	}
+
 	if serviceMetadata := v.LookupPath("annotations"); serviceMetadata.Exists() {
 		var m map[string]string
 		if err := serviceMetadata.Val.Decode(&m); err != nil {

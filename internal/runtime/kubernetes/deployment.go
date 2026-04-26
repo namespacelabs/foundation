@@ -1218,18 +1218,18 @@ func deployEndpoint(ctx context.Context, r BoundNamespace, deployable runtime.De
 	}
 
 	if endpoint.Headless {
-		serviceSpec.WithClusterIP("None")
+		serviceSpec = serviceSpec.WithClusterIP("None")
 	}
 
 	switch endpoint.ExternalTrafficPolicy {
 	case schema.Endpoint_LOCAL:
-		serviceSpec.WithExternalTrafficPolicy(corev1.ServiceExternalTrafficPolicyLocal)
+		serviceSpec = serviceSpec.WithExternalTrafficPolicy(corev1.ServiceExternalTrafficPolicyLocal)
 	case schema.Endpoint_CLUSTER:
-		serviceSpec.WithExternalTrafficPolicy(corev1.ServiceExternalTrafficPolicyCluster)
+		serviceSpec = serviceSpec.WithExternalTrafficPolicy(corev1.ServiceExternalTrafficPolicyCluster)
 	}
 
 	if endpoint.LoadBalancerClass != "" {
-		serviceSpec.WithLoadBalancerClass(endpoint.LoadBalancerClass)
+		serviceSpec = serviceSpec.WithLoadBalancerClass(endpoint.LoadBalancerClass)
 	}
 
 	serviceAnnotations, err := kubedef.MakeServiceAnnotations(endpoint)
