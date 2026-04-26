@@ -81,7 +81,8 @@ _#Node: {
 
 	framework: #Framework
 
-	ingress: *"PRIVATE" | "INTERNET_FACING" | "LOAD_BALANCER"
+	ingress:            *"PRIVATE" | "INTERNET_FACING" | "LOAD_BALANCER"
+	loadBalancerClass?: string
 
 	listener?:      string
 	exportedPort?:  int
