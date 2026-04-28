@@ -3,12 +3,12 @@ module namespacelabs.dev/foundation
 go 1.25.0
 
 require (
-	buf.build/gen/go/namespace/cloud/connectrpc/go v1.19.1-20260406182437-40d00f4c0f50.2
+	buf.build/gen/go/namespace/cloud/connectrpc/go v1.19.2-20260428103031-54a76bb6cfa2.1
 	buf.build/gen/go/namespace/cloud/grpc/go v1.6.1-20260406182437-40d00f4c0f50.1
-	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20260406182437-40d00f4c0f50.1
+	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20260428103031-54a76bb6cfa2.1
 	cloud.google.com/go/artifactregistry v1.14.7
 	cloud.google.com/go/container v1.31.0
-	connectrpc.com/connect v1.19.1
+	connectrpc.com/connect v1.19.2
 	cuelang.org/go v0.10.0
 	filippo.io/age v1.2.1
 	github.com/agext/levenshtein v1.2.3
