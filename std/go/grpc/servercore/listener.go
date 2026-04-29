@@ -232,6 +232,24 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 
 		core.ZLog.Info().Msgf("Starting HTTP listen on %v", gwLis.Addr())
 
+		// Register a lameduck hook so SIGTERM triggers HTTP/2 GOAWAY on
+		// open h2c connections (wired up via http2.ConfigureServer in
+		// NewHttp2CapableServer). Calling Shutdown here also closes the
+		// listener; that's intentional: by the time SIGTERM is delivered
+		// the pod is being rolled and Kubernetes is removing us from the
+		// service endpoints, so refusing new TCP connections is fine and
+		// the OnShutdown hooks (which fan out the GOAWAY frames in
+		// goroutines) are what matters for in-flight pooled clients.
+		gogrpc.SetNamedLameduckFunc("servercore.http", func() {
+			// Shutdown blocks until tracked HTTP/1 connections idle out,
+			// so run it asynchronously to keep the lameduck phase short.
+			go func() {
+				if err := httpServer.Shutdown(context.Background()); err != nil && !errors.Is(err, http.ErrServerClosed) {
+					core.ZLog.Error().Err(err).Msg("http server lameduck shutdown failed")
+				}
+			}()
+		})
+
 		eg.Go(func() error { return ListenAndGracefullyShutdownHTTP(egCtx, "http", httpServer, gwLis) })
 	}
 
@@ -306,20 +324,37 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 }
 
 func NewHttp2CapableServer(mux http.Handler, opts HTTPOptions) *http.Server {
-	return &http.Server{
-		Handler: h2c.NewHandler(mux, &http2.Server{
-			MaxConcurrentStreams:         opts.HTTP2MaxConcurrentStreams,
-			MaxReadFrameSize:             opts.HTTP2MaxReadFrameSize,
-			IdleTimeout:                  opts.HTTP2IdleTimeout,
-			MaxUploadBufferPerConnection: opts.HTTP2MaxUploadBufferPerConnection,
-			MaxUploadBufferPerStream:     opts.HTTP2MaxUploadBufferPerStream,
-		}),
+	h2srv := &http2.Server{
+		MaxConcurrentStreams:         opts.HTTP2MaxConcurrentStreams,
+		MaxReadFrameSize:             opts.HTTP2MaxReadFrameSize,
+		IdleTimeout:                  opts.HTTP2IdleTimeout,
+		MaxUploadBufferPerConnection: opts.HTTP2MaxUploadBufferPerConnection,
+		MaxUploadBufferPerStream:     opts.HTTP2MaxUploadBufferPerStream,
+	}
+
+	srv := &http.Server{
+		Handler:           h2c.NewHandler(mux, h2srv),
 		ReadTimeout:       opts.HTTP1ReadTimeout,
 		ReadHeaderTimeout: opts.HTTP1ReadHeaderTimeout,
 		WriteTimeout:      opts.HTTP1WriteTimeout,
 		IdleTimeout:       opts.HTTP1IdleTimeout,
 		MaxHeaderBytes:    opts.HTTP1MaxHeaderBytes,
 	}
+
+	// Wire up HTTP/2 graceful shutdown for h2c. ConfigureServer registers an
+	// OnShutdown handler on srv that, when invoked, sends GOAWAY frames to
+	// every active HTTP/2 connection served by h2srv (h2c hijacks the
+	// underlying net.Conn from the *http.Server and feeds it to
+	// h2srv.ServeConn, so without this call those hijacked connections are
+	// invisible to srv.Shutdown and would never receive GOAWAY).
+	if err := http2.ConfigureServer(srv, h2srv); err != nil {
+		// ConfigureServer only returns errors when the http.Server has an
+		// invalid TLS configuration, which our h2c plaintext server never
+		// has. Treat it as a programmer error.
+		panic(fmt.Errorf("http2.ConfigureServer: %w", err))
+	}
+
+	return srv
 }
 
 func ListenAndGracefullyShutdownGRPC(ctx context.Context, label string, srv *grpc.Server, lis net.Listener) error {
