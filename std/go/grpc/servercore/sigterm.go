@@ -18,6 +18,29 @@ import (
 // How long do we expect it would take Kubernetes to notice that we're no longer ready.
 const readinessPropagationDelay = 15 * time.Second
 
+// runShutdownPhases runs the lameduck phase and then the drain phase. It is
+// extracted from handleGracefulShutdown so it can be unit-tested without
+// having to send a real signal to the process.
+func runShutdownPhases(lameducks map[string]func(), drainFunc func(), drainFuncs map[string]func()) {
+	// Lameduck phase: signal clients that we're going away (e.g. send
+	// HTTP/2 GOAWAY) before we start blocking on in-flight work. This
+	// gives clients a head start to migrate to other backends while the
+	// drain phase below waits for the requests we already have to
+	// complete.
+	for name, f := range lameducks {
+		core.ZLog.Info().Str("name", name).Msg("running lameduck func")
+		f()
+	}
+
+	if drainFunc != nil {
+		drainFunc()
+	}
+
+	for _, f := range drainFuncs {
+		f()
+	}
+}
+
 func handleGracefulShutdown(ctx context.Context, finishShutdown func()) {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
@@ -41,13 +64,7 @@ func handleGracefulShutdown(ctx context.Context, finishShutdown func()) {
 		t := time.Now()
 		core.MarkShutdownStarted()
 
-		if nsgrpc.DrainFunc != nil {
-			nsgrpc.DrainFunc()
-		}
-
-		for _, f := range nsgrpc.DrainFuncsByName {
-			f()
-		}
+		runShutdownPhases(nsgrpc.LameduckFuncsByName, nsgrpc.DrainFunc, nsgrpc.DrainFuncsByName)
 
 		delta := time.Since(t)
 		if delta < readinessPropagationDelay {
