@@ -56,8 +56,10 @@ func NewBazelCacheCmd() *cobra.Command {
 	return cmd
 }
 
+const defaultBazelCommand = "build"
+
 func newSetupCacheCmd() *cobra.Command {
-	var bazelRcPath, output, certPath string
+	var bazelRcPath, output, certPath, bazelCommand string
 	var sendBuildEvents, useAbsoluteCredHelperPath, static bool
 	var version int64
 	var staticDur time.Duration
@@ -74,6 +76,7 @@ func newSetupCacheCmd() *cobra.Command {
 		flags.BoolVar(&static, "static", false, "If specified, use a static bearer token in --remote_header instead of a credential helper.")
 		flags.Int64Var(&version, "version", 1, "Which bazel version to use.")
 		fncobra.DurationVar(flags, &staticDur, "static_token_duration", 4*time.Hour, "The minimum duration of the static token configured (requires --static).")
+		flags.StringVar(&bazelCommand, "command", defaultBazelCommand, "The bazel command to use in the generated bazelrc (e.g., 'build' or 'common').")
 
 		flags.MarkHidden("cred_path")
 		flags.MarkHidden("use_absolute_credentialhelper_path")
@@ -203,9 +206,13 @@ func newSetupCacheCmd() *cobra.Command {
 			out.BuildEventEndpoint = response.GetBuildEventEndpoint()
 		}
 
+		if response.GetRemoteAssetEndpoint() != "" {
+			out.RemoteAssetEndpoint = response.GetRemoteAssetEndpoint()
+		}
+
 		// If set, we always generate a bazelrc file.
 		if bazelRcPath != "" {
-			data, err := toBazelConfig(ctx, out, useAbsoluteCredHelperPath)
+			data, err := toBazelConfig(ctx, out, useAbsoluteCredHelperPath, bazelCommand)
 			if err != nil {
 				return err
 			}
@@ -230,7 +237,7 @@ func newSetupCacheCmd() *cobra.Command {
 
 			// For plain output, flush the state to a temp bazelrc if none is written yet.
 			if bazelRcPath == "" {
-				data, err := toBazelConfig(ctx, out, useAbsoluteCredHelperPath)
+				data, err := toBazelConfig(ctx, out, useAbsoluteCredHelperPath, bazelCommand)
 				if err != nil {
 					return err
 				}
@@ -279,38 +286,44 @@ func writeFile(path string, content []byte) error {
 	return nil
 }
 
-func toBazelConfig(ctx context.Context, out bazelSetup, useAbsoluteCredHelperPath bool) ([]byte, error) {
+func toBazelConfig(ctx context.Context, out bazelSetup, useAbsoluteCredHelperPath bool, command string) ([]byte, error) {
 	var buffer bytes.Buffer
-	if _, err := buffer.WriteString(fmt.Sprintf("build --remote_cache=%s\n", out.Endpoint)); err != nil {
+	if _, err := buffer.WriteString(fmt.Sprintf("%s --remote_cache=%s\n", command, out.Endpoint)); err != nil {
 		return nil, fnerrors.Newf("failed to append cache endpoint: %w", err)
 	}
 
 	if len(out.ServerCaCert) > 0 {
-		if _, err := buffer.WriteString(fmt.Sprintf("build --tls_certificate=%s\n", out.ServerCaCert)); err != nil {
+		if _, err := buffer.WriteString(fmt.Sprintf("%s --tls_certificate=%s\n", command, out.ServerCaCert)); err != nil {
 			return nil, fnerrors.Newf("failed to append tls_certificate config: %w", err)
 		}
 	}
 
 	if len(out.ClientCert) > 0 {
-		if _, err := buffer.WriteString(fmt.Sprintf("build --tls_client_certificate=%s\n", out.ClientCert)); err != nil {
+		if _, err := buffer.WriteString(fmt.Sprintf("%s --tls_client_certificate=%s\n", command, out.ClientCert)); err != nil {
 			return nil, fnerrors.Newf("failed to append tls_client_certificate config: %w", err)
 		}
 	}
 
 	if len(out.ClientKey) > 0 {
-		if _, err := buffer.WriteString(fmt.Sprintf("build --tls_client_key=%s\n", out.ClientKey)); err != nil {
+		if _, err := buffer.WriteString(fmt.Sprintf("%s --tls_client_key=%s\n", command, out.ClientKey)); err != nil {
 			return nil, fnerrors.Newf("failed to append tls_client_key config: %w", err)
 		}
 	}
 
 	if out.BuildEventEndpoint != "" {
-		if _, err := buffer.WriteString(fmt.Sprintf("build --bes_backend=%s\n", out.BuildEventEndpoint)); err != nil {
+		if _, err := buffer.WriteString(fmt.Sprintf("%s --bes_backend=%s\n", command, out.BuildEventEndpoint)); err != nil {
 			return nil, fnerrors.Newf("failed to append bes_backend: %w", err)
 		}
 	}
 
+	if out.RemoteAssetEndpoint != "" {
+		if _, err := buffer.WriteString(fmt.Sprintf("%s --experimental_remote_downloader=%s\n", command, out.RemoteAssetEndpoint)); err != nil {
+			return nil, fnerrors.Newf("failed to append experimental_remote_downloader: %w", err)
+		}
+	}
+
 	if out.StaticToken != "" {
-		if _, err := buffer.WriteString(fmt.Sprintf("build --remote_header=x-nsc-ingress-auth=Bearer\\ %s\n", out.StaticToken)); err != nil {
+		if _, err := buffer.WriteString(fmt.Sprintf("%s --remote_header=x-nsc-ingress-auth=Bearer\\ %s\n", command, out.StaticToken)); err != nil {
 			return nil, fnerrors.Newf("failed to append x-nsc-ingress-auth header: %w", err)
 		}
 	} else if len(out.CredentialHelperDomains) > 0 {
@@ -335,7 +348,7 @@ func toBazelConfig(ctx context.Context, out bazelSetup, useAbsoluteCredHelperPat
 			if useAbsoluteCredHelperPath {
 				credHelper = path
 			}
-			if _, err := buffer.WriteString(fmt.Sprintf("build --credential_helper=*.%s=%s\n", domain, credHelper)); err != nil {
+			if _, err := buffer.WriteString(fmt.Sprintf("%s --credential_helper=*.%s=%s\n", command, domain, credHelper)); err != nil {
 				return nil, fnerrors.Newf("failed to append credential_helper: %w", err)
 			}
 		}
@@ -352,5 +365,6 @@ type bazelSetup struct {
 	ExpiresAt               *time.Time `json:"expires_at,omitempty"`
 	CredentialHelperDomains []string   `json:"credential_helper_domains,omitempty"`
 	BuildEventEndpoint      string     `json:"build_event_endpoint,omitempty"`
+	RemoteAssetEndpoint     string     `json:"remote_asset_endpoint,omitempty"`
 	StaticToken             string     `json:"static_token,omitempty"`
 }
