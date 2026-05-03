@@ -14,7 +14,7 @@
     in {
       devShell = pkgs.mkShell {
         buildInputs = with pkgs; [
-          go_1_24
+          go_1_26
           gopls
           go-outline
           go-tools
