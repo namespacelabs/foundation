@@ -44,8 +44,6 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/exaring/otelpgx v0.6.2
-	github.com/fsnotify/fsevents v0.1.1
-	github.com/fsnotify/fsnotify v1.9.0
 	github.com/getsentry/sentry-go v0.16.0
 	github.com/go-errors/errors v1.4.2
 	github.com/go-redis/redis/extra/redisotel/v8 v8.11.5
@@ -143,7 +141,6 @@ require (
 	k8s.io/apimachinery v0.34.1
 	k8s.io/client-go v0.34.1
 	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397
-	namespacelabs.dev/go-filenotify v0.0.0-20220511192020-53ea11be7eaa
 	namespacelabs.dev/go-ids v0.0.0-20221124082625-9fc72ee06af7
 	namespacelabs.dev/integrations v0.0.11-0.20260331003432-a64bf395356c
 	namespacelabs.dev/releaser v0.0.0-20260426204818-9c7ef100ea90
@@ -217,6 +214,7 @@ require (
 	github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/fvbommel/sortorder v1.1.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
 	github.com/go-gorp/gorp/v3 v3.1.0 // indirect

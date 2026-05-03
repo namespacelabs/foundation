@@ -22,21 +22,10 @@ import (
 // returned as an error by any function.
 var ErrDoneSinking = errors.New("done sinking")
 
-type ObserveNote string
-
-const (
-	ObserveContinuing ObserveNote = "observe.continuing"
-	ObserveDone       ObserveNote = "observe.done"
-)
-
 type Sinkable interface {
 	Inputs() *In
 	Updated(context.Context, Resolved) error
 	Cleanup(context.Context) error
-}
-
-type Versioned interface {
-	Observe(context.Context, func(ResultWithTimestamp[any], ObserveNote)) (func(), error)
 }
 
 type continuousKey string
@@ -319,11 +308,10 @@ type observable struct {
 	inv        *sinkInvocation
 	computable computeInstance
 
-	mu             sync.Mutex
-	observers      []onResult
-	revision       uint64
-	latest         ResultWithTimestamp[any]
-	listenerCancel func() // The value is `Versioned`, and we're listening to new versions.
+	mu        sync.Mutex
+	observers []onResult
+	revision  uint64
+	latest    ResultWithTimestamp[any]
 }
 
 type observableUpdate struct {
@@ -413,35 +401,7 @@ func (o *observable) Loop(ctx context.Context) error {
 
 func (o *observable) newValue(ctx context.Context, latest ResultWithTimestamp[any]) {
 	o.mu.Lock()
-
-	if versioned, ok := latest.Value.(Versioned); ok {
-		if o.listenerCancel != nil {
-			o.listenerCancel()
-			o.listenerCancel = nil
-		}
-		newListener, err := versioned.Observe(ctx, o.newVersion)
-		if err == nil {
-			// XXX report errors back
-			o.listenerCancel = newListener
-		} else {
-			fmt.Fprintln(console.Stderr(ctx), "failed to observe changes to value",
-				reflect.TypeOf(versioned).String(), latest.Digest.String(), err)
-		}
-	}
-
 	broadcast := o.doUpdate(latest)
-	o.mu.Unlock()
-
-	broadcast()
-}
-
-func (o *observable) newVersion(result ResultWithTimestamp[any], node ObserveNote) {
-	o.mu.Lock()
-	// XXX new versions are not cached.
-	broadcast := o.doUpdate(result)
-	if node == ObserveDone {
-		o.listenerCancel = nil
-	}
 	o.mu.Unlock()
 
 	broadcast()
@@ -466,11 +426,6 @@ func (o *observable) doUpdate(result ResultWithTimestamp[any]) func() {
 		if len(handledObservers) != len(observers) {
 			o.mu.Lock()
 			o.observers = handledObservers
-			if len(o.observers) == 0 && o.listenerCancel != nil {
-				// No more observers, cancel the listener.
-				o.listenerCancel()
-				o.listenerCancel = nil
-			}
 			o.mu.Unlock()
 		}
 	}
