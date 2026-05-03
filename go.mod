@@ -1,6 +1,6 @@
 module namespacelabs.dev/foundation
 
-go 1.25.0
+go 1.26.0
 
 require (
 	buf.build/gen/go/namespace/cloud/connectrpc/go v1.19.2-20260428103031-54a76bb6cfa2.1
