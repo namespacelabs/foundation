@@ -44,6 +44,7 @@ var (
 		mu              sync.Mutex
 		initialized     bool
 		exporters       []sdktrace.SpanExporter
+		spanProcessors  []sdktrace.SpanProcessor
 		metricExporters []metric.Exporter
 		detectors       []resource.Detector
 		tracerProvider  t.TracerProvider // We don't use otel's global, to ensure that dependency order is respected.
@@ -82,6 +83,26 @@ func (e Exporter) RegisterMetrics(exp metric.Exporter) error {
 
 func ProvideExporter(_ context.Context, args *ExporterArgs, _ ExtensionDeps) (Exporter, error) {
 	return Exporter{args.Name}, nil
+}
+
+type SpanProcessor struct {
+	name string
+}
+
+func NewSpanProcessor(name string) SpanProcessor {
+	return SpanProcessor{name: name}
+}
+
+func (e SpanProcessor) Register(processor sdktrace.SpanProcessor) error {
+	global.mu.Lock()
+	defer global.mu.Unlock()
+
+	if global.initialized {
+		return errors.New("SpanProcessor.Register after initialization was complete")
+	}
+
+	global.spanProcessors = append(global.spanProcessors, processor)
+	return nil
 }
 
 type Detector struct {
@@ -127,7 +148,7 @@ func CreateResource(ctx context.Context, serverInfo *types.ServerInfo, detectors
 	)
 }
 
-func CreateProvider(ctx context.Context, serverInfo *types.ServerInfo, exporters []sdktrace.SpanExporter, detectors []resource.Detector) (t.TracerProvider, core.CtxCloseable, error) {
+func CreateProvider(ctx context.Context, serverInfo *types.ServerInfo, exporters []sdktrace.SpanExporter, spanProcessors []sdktrace.SpanProcessor, detectors []resource.Detector) (t.TracerProvider, core.CtxCloseable, error) {
 	if os.Getenv("FOUNDATION_TRACE_TO_STDOUT") == "1" {
 		out, err := stdouttrace.New()
 		if err != nil {
@@ -166,6 +187,10 @@ func CreateProvider(ctx context.Context, serverInfo *types.ServerInfo, exporters
 		}
 	}
 
+	for _, processor := range spanProcessors {
+		opts = append(opts, sdktrace.WithSpanProcessor(processor))
+	}
+
 	resource, err := CreateResource(ctx, serverInfo, detectors)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create resource: %w", err)
@@ -183,7 +208,7 @@ func CreateProvider(ctx context.Context, serverInfo *types.ServerInfo, exporters
 }
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
-	provider, closeable, err := CreateProvider(ctx, deps.ServerInfo, consumeExporters(), consumeDetectors())
+	provider, closeable, err := CreateProvider(ctx, deps.ServerInfo, consumeExporters(), consumeSpanProcessors(), consumeDetectors())
 	if err != nil {
 		return err
 	}
@@ -331,6 +356,15 @@ func consumeMetricsExporters() []metric.Exporter {
 	exporters := global.metricExporters
 	global.initialized = true
 	return exporters
+}
+
+func consumeSpanProcessors() []sdktrace.SpanProcessor {
+	global.mu.Lock()
+	defer global.mu.Unlock()
+
+	processors := global.spanProcessors
+	global.initialized = true
+	return processors
 }
 
 func consumeDetectors() []resource.Detector {
