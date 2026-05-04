@@ -17,6 +17,7 @@ import (
 	bbuild "github.com/docker/buildx/build"
 	"github.com/docker/buildx/util/buildflags"
 	"github.com/docker/cli/cli/config"
+	configtypes "github.com/docker/cli/cli/config/types"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/moby/buildkit/client"
@@ -432,7 +433,18 @@ func startSingleBuild(eg *executor.Executor, c *client.Client, mw *progresswrite
 			ErrorLogger: io.Discard,
 			Keychain:    api.DefaultKeychainWithFallback,
 			Fallback: authprovider.NewDockerAuthProvider(authprovider.DockerAuthProviderConfig{
-				ConfigFile: dockerConfig,
+				// buildkit v0.28 removed the ConfigFile field on DockerAuthProviderConfig
+				// and now requires callers to supply the lookup function themselves.
+				// This replicates the DockerHub host remapping + GetAuthConfig call that
+				// buildkit v0.26's authProvider.getAuthConfig used to do internally.
+				// See moby/buildkit v0.26.3 session/auth/authprovider/authprovider.go.
+				AuthConfigProvider: func(_ context.Context, host string, _ []string, _ authprovider.ExpireCachedAuthCheck) (configtypes.AuthConfig, error) {
+					hostKey := host
+					if host == authprovider.DockerHubRegistryHost {
+						hostKey = authprovider.DockerHubConfigfileKey
+					}
+					return dockerConfig.GetAuthConfig(hostKey)
+				},
 			}).(auth.AuthServer),
 		})
 

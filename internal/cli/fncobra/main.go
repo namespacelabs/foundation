@@ -16,7 +16,7 @@ import (
 	"runtime/pprof"
 	"time"
 
-	containerdlog "github.com/containerd/containerd/log"
+	containerdlog "github.com/containerd/log"
 	crlogs "github.com/google/go-containerregistry/pkg/logs"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"

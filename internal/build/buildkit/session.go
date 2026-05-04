@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/docker/cli/cli/config"
+	configtypes "github.com/docker/cli/cli/config/types"
 	"github.com/moby/buildkit/client/llb"
 	"github.com/moby/buildkit/session"
 	"github.com/moby/buildkit/session/auth/authprovider"
@@ -135,7 +136,18 @@ func prepareSession(ctx context.Context, keychain oci.Keychain, src secrets.Grou
 	} else {
 		dockerConfig := config.LoadDefaultConfigFile(console.Stderr(ctx))
 		attachables = append(attachables, authprovider.NewDockerAuthProvider(authprovider.DockerAuthProviderConfig{
-			ConfigFile: dockerConfig,
+			// buildkit v0.28 removed the ConfigFile field on DockerAuthProviderConfig
+			// and now requires callers to supply the lookup function themselves.
+			// This replicates the DockerHub host remapping + GetAuthConfig call that
+			// buildkit v0.26's authProvider.getAuthConfig used to do internally.
+			// See moby/buildkit v0.26.3 session/auth/authprovider/authprovider.go.
+			AuthConfigProvider: func(_ context.Context, host string, _ []string, _ authprovider.ExpireCachedAuthCheck) (configtypes.AuthConfig, error) {
+				hostKey := host
+				if host == authprovider.DockerHubRegistryHost {
+					hostKey = authprovider.DockerHubConfigfileKey
+				}
+				return dockerConfig.GetAuthConfig(hostKey)
+			},
 		}))
 	}
 

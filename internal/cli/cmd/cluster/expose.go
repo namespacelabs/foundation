@@ -15,10 +15,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/namespaces"
-	"github.com/containerd/nerdctl/pkg/labels"
-	"github.com/containerd/nerdctl/pkg/portutil"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/pkg/namespaces"
+	"github.com/containerd/nerdctl/v2/pkg/labels"
+	gocni "github.com/containerd/go-cni"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -406,6 +406,21 @@ func withContainerd(ctx context.Context, cluster *api.KubernetesCluster, callbac
 	return callback(ctx, ctr)
 }
 
+// parsePortsLabel parses the JSON-marshalled `nerdctl/ports` label into the
+// list of CNI port mappings. It is an inlined replacement for
+// nerdctl v1's portutil.ParsePortsLabel which was removed in nerdctl v2.
+func parsePortsLabel(labelMap map[string]string) ([]gocni.PortMapping, error) {
+	portsJSON := labelMap[labels.Ports]
+	if portsJSON == "" {
+		return []gocni.PortMapping{}, nil
+	}
+	var ports []gocni.PortMapping
+	if err := json.Unmarshal([]byte(portsJSON), &ports); err != nil {
+		return nil, fmt.Errorf("failed to parse label %q=%q: %s", labels.Ports, portsJSON, err.Error())
+	}
+	return ports, nil
+}
+
 func selectContainerdPorts(ctx context.Context, cluster *api.KubernetesCluster, filter containerFilter) ([]containerPort, error) {
 	exported := portMap{}
 
@@ -434,7 +449,7 @@ func selectContainerdPorts(ctx context.Context, cluster *api.KubernetesCluster, 
 				return err
 			}
 
-			ports, err := portutil.ParsePortsLabel(l)
+			ports, err := parsePortsLabel(l)
 			if err != nil {
 				return err
 			}

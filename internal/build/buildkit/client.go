@@ -11,7 +11,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/containerd/containerd/platforms"
+	"github.com/containerd/platforms"
 	moby_buildkit_v1 "github.com/moby/buildkit/api/services/control"
 	"github.com/moby/buildkit/client"
 	buildkit "github.com/moby/buildkit/client"
