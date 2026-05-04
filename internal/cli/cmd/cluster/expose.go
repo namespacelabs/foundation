@@ -17,8 +17,8 @@ import (
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/pkg/namespaces"
-	"github.com/containerd/nerdctl/v2/pkg/labels"
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
