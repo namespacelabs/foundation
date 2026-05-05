@@ -7,6 +7,7 @@ package cluster
 import (
 	"context"
 	"encoding/csv"
+	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -14,9 +15,11 @@ import (
 
 	computev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/compute/v1beta"
 	"buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/stdlib"
+	"github.com/araddon/dateparse"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/integrations/api/compute"
 	"namespacelabs.dev/integrations/auth"
@@ -29,8 +32,9 @@ func NewGenerateReportCmd() *cobra.Command {
 		Args:  cobra.NoArgs, // for now
 	}
 
-	start := cmd.Flags().String("start", "", "Start time of the report (RFC3339, e.g. 2024-01-15T10:30:00Z).")
-	end := cmd.Flags().String("end", "", "End time of the report, defaults to now (RFC3339, e.g. 2024-01-15T10:30:00Z).")
+	start := cmd.Flags().String("start", "", "Start time of the report.")
+	end := cmd.Flags().String("end", "", "End time of the report, defaults to now if not provided.")
+	outPath := cmd.Flags().String("out", "", "Output file path. Creates a temporary file in /tmp if not provided. Use '-' for stdout.")
 
 	// Args for filtering. We allow multiple strings per filter type. Each matcher can have
 	// either <matcher>Args or <matcher>ExcArgs nonempty, depending on if the filter should
@@ -73,10 +77,10 @@ func NewGenerateReportCmd() *cobra.Command {
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *start == "" {
-			return fnerrors.Newf("--start is required")
+			return fnerrors.New("--start is required. Example:\n    nsc instance report --start \"2026-01-01\" --end \"2026-01-02\"")
 		}
 
-		startTs, err := time.Parse(time.RFC3339, *start)
+		startTs, err := dateparse.ParseAny(*start)
 		if err != nil {
 			return fnerrors.Newf("invalid --start timestamp: %w", err)
 		}
@@ -85,11 +89,35 @@ func NewGenerateReportCmd() *cobra.Command {
 		if *end == "" {
 			endTs = time.Now()
 		} else {
-			endTs, err = time.Parse(time.RFC3339, *end)
+			endTs, err = dateparse.ParseAny(*end)
 			if err != nil {
 				return fnerrors.Newf("invalid --end timestamp: %w", err)
 			}
 		}
+
+		var outFile *os.File
+		var outName string
+		switch *outPath {
+		case "-":
+			outFile = os.Stdout
+			outName = "stdout"
+		case "":
+			tmp, err := os.CreateTemp("", "nsc-report-*")
+			if err != nil {
+				return fnerrors.Newf("Failed to create temp file: %w", err)
+			}
+			outFile = tmp
+			outName = tmp.Name()
+		default:
+			file, err := os.Create(*outPath)
+			if err != nil {
+				return fnerrors.Newf("Failed to create output file %s: %w", *outPath, err)
+			}
+			outFile = file
+			outName = *outPath
+		}
+
+		fmt.Fprintf(console.Stdout(ctx), "Writing output to path: %s\n", outName)
 
 		filter := &computev1beta.GetUsageTimeSeriesRequest_UsageFilter{}
 
@@ -157,7 +185,7 @@ func NewGenerateReportCmd() *cobra.Command {
 			return fnerrors.Newf("Unable to generate report: %w", err)
 		}
 
-		csvWriter := csv.NewWriter(os.Stdout)
+		csvWriter := csv.NewWriter(outFile)
 
 		header := []string{
 			"instance_id",

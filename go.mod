@@ -13,6 +13,7 @@ require (
 	filippo.io/age v1.2.1
 	github.com/agext/levenshtein v1.2.3
 	github.com/andybalholm/brotli v1.0.4
+	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/aws/aws-sdk-go-v2 v1.41.5
 	github.com/aws/aws-sdk-go-v2/config v1.32.7
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.7
