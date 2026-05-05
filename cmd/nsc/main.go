@@ -30,6 +30,11 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
+const (
+	docsURL = "https://namespace.so/docs"
+	llmsURL = "https://namespace.so/docs/llms.txt"
+)
+
 func main() {
 	// Consider adding auto updates if we frequently change nsc.
 	fncobra.DoMain(fncobra.MainOpts{
@@ -144,6 +149,8 @@ func (re *rpcError) findDetail(target proto.Message) bool {
 }
 
 func formatErr(out io.Writer, style colors.Style, err error) {
+	defer appendHelpFooter(out, style)
+
 	var re *rpcError
 
 	var connectErr *connect.Error
@@ -246,6 +253,22 @@ func formatErr(out io.Writer, style colors.Style, err error) {
 	fmt.Fprintln(ww)
 	_ = ww.Close()
 	_, _ = out.Write(ww.Bytes())
+}
+
+func appendHelpFooter(out io.Writer, style colors.Style) {
+	fmt.Fprintln(out)
+	fmt.Fprint(out,
+		style.Comment.Apply("See "),
+		style.CommentHighlight.Apply(docsURL),
+		style.Comment.Apply(" for more help."),
+	)
+	fmt.Fprintln(out)
+	fmt.Fprint(out,
+		style.Comment.Apply("Agents: fetch "),
+		style.CommentHighlight.Apply(llmsURL),
+		style.Comment.Apply(". Look up the failing command under the CLI section."),
+	)
+	fmt.Fprintln(out)
 }
 
 func appendRid(rid *protocol.RequestID) string {
