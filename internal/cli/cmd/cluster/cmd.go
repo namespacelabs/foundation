@@ -43,6 +43,7 @@ func NewBareClusterCmd(use string, hidden bool) *cobra.Command {
 	cmd.AddCommand(NewExtendDurationCmd("extend-duration"))
 	cmd.AddCommand(NewInstanceDownloadCmd())
 	cmd.AddCommand(NewInstanceUploadCmd())
+	cmd.AddCommand(NewGenerateReportCmd())
 
 	h := &cobra.Command{
 		Use:    "internal",
