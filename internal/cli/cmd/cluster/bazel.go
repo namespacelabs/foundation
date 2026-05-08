@@ -63,7 +63,7 @@ const defaultBazelCommand = "build"
 func newSetupCacheCmd() *cobra.Command {
 	var bazelRcPath, output, certPath, bazelCommand string
 	var experimentalCacheName string
-	var sendBuildEvents, useAbsoluteCredHelperPath, static, experimentalDirect bool
+	var sendBuildEvents, useAbsoluteCredHelperPath, static, experimentalDirect, enableRemoteAssetAPI bool
 	var version int64
 	var staticDur time.Duration
 
@@ -82,6 +82,7 @@ func newSetupCacheCmd() *cobra.Command {
 		flags.Int64Var(&version, "version", 1, "Which bazel version to use.")
 		fncobra.DurationVar(flags, &staticDur, "static_token_duration", 4*time.Hour, "The minimum duration of the static token configured (requires --static).")
 		flags.StringVar(&bazelCommand, "command", defaultBazelCommand, "The bazel command to use in the generated bazelrc (e.g., 'build' or 'common').")
+		flags.BoolVar(&enableRemoteAssetAPI, "enable_remote_asset_api", false, "If specified, opt-in to the remote asset API.")
 
 		flags.MarkHidden("cred_path")
 		flags.MarkHidden("use_absolute_credentialhelper_path")
@@ -101,7 +102,7 @@ func newSetupCacheCmd() *cobra.Command {
 			return fnerrors.Newf("--experimental_direct may not be used with --send_build_events")
 		}
 
-		msg := makeEnsureBazelCacheRequest(version, experimentalDirect, experimentalCacheName)
+		msg := makeEnsureBazelCacheRequest(version, experimentalDirect, enableRemoteAssetAPI, experimentalCacheName)
 
 		req := connect.NewRequest(msg)
 
@@ -317,11 +318,12 @@ func newSetupCacheCmd() *cobra.Command {
 	})
 }
 
-func makeEnsureBazelCacheRequest(version int64, experimentalDirect bool, experimentalCacheName string) *bazelv1beta.EnsureBazelCacheRequest {
+func makeEnsureBazelCacheRequest(version int64, experimentalDirect, enableRemoteAsset bool, experimentalCacheName string) *bazelv1beta.EnsureBazelCacheRequest {
 	msg := &bazelv1beta.EnsureBazelCacheRequest{}
 	msg.SetVersion(version)
 	msg.SetExperimentalDirectMtls(experimentalDirect)
 	msg.SetExperimentalCacheName(experimentalCacheName)
+	msg.SetEnableRemoteAssetApi(enableRemoteAsset)
 
 	return msg
 }

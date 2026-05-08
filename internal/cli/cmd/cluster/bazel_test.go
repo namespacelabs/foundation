@@ -58,13 +58,35 @@ func TestBaseBazelSetup(t *testing.T) {
 func TestMakeEnsureBazelCacheRequest(t *testing.T) {
 	t.Parallel()
 
-	msg := makeEnsureBazelCacheRequest(7, true, "amp-test")
+	msg := makeEnsureBazelCacheRequest(7, true, false, "amp-test")
 
 	if got := msg.GetVersion(); got != 7 {
 		t.Fatalf("unexpected version: %d", got)
 	}
 	if !msg.GetExperimentalDirectMtls() {
 		t.Fatal("expected experimental_direct_mtls to be set")
+	}
+	if msg.GetEnableRemoteAssetApi() {
+		t.Fatal("expected enable_remote_asset to be false")
+	}
+	if got := msg.GetExperimentalCacheName(); got != "amp-test" {
+		t.Fatalf("unexpected experimental cache name: %q", got)
+	}
+}
+
+func TestMakeEnsureBazelCacheRequestWithRemoteAsset(t *testing.T) {
+	t.Parallel()
+
+	msg := makeEnsureBazelCacheRequest(7, true, true, "amp-test")
+
+	if got := msg.GetVersion(); got != 7 {
+		t.Fatalf("unexpected version: %d", got)
+	}
+	if !msg.GetExperimentalDirectMtls() {
+		t.Fatal("expected experimental_direct_mtls to be set")
+	}
+	if !msg.GetEnableRemoteAssetApi() {
+		t.Fatal("expected enable_remote_asset to be set")
 	}
 	if got := msg.GetExperimentalCacheName(); got != "amp-test" {
 		t.Fatalf("unexpected experimental cache name: %q", got)
