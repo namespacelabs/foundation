@@ -102,7 +102,7 @@ func NewGenerateReportCmd() *cobra.Command {
 			outFile = os.Stdout
 			outName = "stdout"
 		case "":
-			tmp, err := os.CreateTemp("", "nsc-report-*")
+			tmp, err := os.CreateTemp("", "nsc-report-*.csv")
 			if err != nil {
 				return fnerrors.Newf("Failed to create temp file: %w", err)
 			}
