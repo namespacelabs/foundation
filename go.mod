@@ -425,3 +425,7 @@ require (
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
 )
+
+// nerdctl/v2 declares a local replace for mod/tigron in its go.mod, but replace directives in dependencies aren't honored.
+// This pins it to a real pseudo-version, see also https://github.com/containerd/nerdctl/issues/4450
+replace github.com/containerd/nerdctl/mod/tigron => github.com/containerd/nerdctl/mod/tigron v0.0.0-20260503153210-0b388bb31d78
