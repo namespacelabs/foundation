@@ -7,7 +7,9 @@ package cluster
 import (
 	"bytes"
 	"context"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"os"
@@ -60,7 +62,8 @@ const defaultBazelCommand = "build"
 
 func newSetupCacheCmd() *cobra.Command {
 	var bazelRcPath, output, certPath, bazelCommand string
-	var sendBuildEvents, useAbsoluteCredHelperPath, static bool
+	var experimentalCacheName string
+	var sendBuildEvents, useAbsoluteCredHelperPath, static, experimentalDirect bool
 	var version int64
 	var staticDur time.Duration
 
@@ -74,6 +77,8 @@ func newSetupCacheCmd() *cobra.Command {
 		flags.BoolVar(&sendBuildEvents, "send_build_events", false, "If specified, send build events to the build event service.")
 		flags.BoolVar(&useAbsoluteCredHelperPath, "use_absolute_credentialhelper_path", false, "If specified, use an absolute path to the credential helper binary.")
 		flags.BoolVar(&static, "static", false, "If specified, use a static bearer token in --remote_header instead of a credential helper.")
+		flags.BoolVar(&experimentalDirect, "experimental_direct", false, "If specified, configure Bazel to connect directly to the cache endpoint with a freshly issued client certificate.")
+		flags.StringVar(&experimentalCacheName, "experimental_cache_name", "", "If specified, request a named experimental Bazel cache backing instance.")
 		flags.Int64Var(&version, "version", 1, "Which bazel version to use.")
 		fncobra.DurationVar(flags, &staticDur, "static_token_duration", 4*time.Hour, "The minimum duration of the static token configured (requires --static).")
 		flags.StringVar(&bazelCommand, "command", defaultBazelCommand, "The bazel command to use in the generated bazelrc (e.g., 'build' or 'common').")
@@ -88,9 +93,17 @@ func newSetupCacheCmd() *cobra.Command {
 			return err
 		}
 
-		req := connect.NewRequest(&bazelv1beta.EnsureBazelCacheRequest{
-			Version: version,
-		})
+		if experimentalDirect && static {
+			return fnerrors.Newf("--experimental_direct may not be used with --static")
+		}
+
+		if experimentalDirect && sendBuildEvents {
+			return fnerrors.Newf("--experimental_direct may not be used with --send_build_events")
+		}
+
+		msg := makeEnsureBazelCacheRequest(version, experimentalDirect, experimentalCacheName)
+
+		req := connect.NewRequest(msg)
 
 		resp, err := client.EnsureBazelCache(ctx, req)
 		if err != nil {
@@ -100,6 +113,15 @@ func newSetupCacheCmd() *cobra.Command {
 		response := resp.Msg
 		if response.GetCacheEndpoint() == "" {
 			return fnerrors.Newf("did not receive a valid cache endpoint")
+		}
+
+		useWorkloadMtls := response.GetUseWorkloadMtls()
+		if useWorkloadMtls && static {
+			return fnerrors.Newf("server requires workload mTLS; --static may not be used")
+		}
+
+		if useWorkloadMtls && sendBuildEvents {
+			return fnerrors.Newf("server requires workload mTLS; --send_build_events may not be used")
 		}
 
 		if certPath != "" {
@@ -114,12 +136,9 @@ func newSetupCacheCmd() *cobra.Command {
 			expiresAt = &t
 		}
 
-		out := bazelSetup{
-			Endpoint:  response.GetCacheEndpoint(),
-			ExpiresAt: expiresAt,
-		}
+		out := baseBazelSetup(response, expiresAt)
 
-		if len(response.GetServerCaPem()) > 0 {
+		if !useWorkloadMtls && len(response.GetServerCaPem()) > 0 {
 			if certPath == "" {
 				loc, err := writeTempFile(bazelCachePathBase, "*.cert", []byte(response.GetServerCaPem()))
 				if err != nil {
@@ -136,7 +155,52 @@ func newSetupCacheCmd() *cobra.Command {
 			}
 		}
 
-		if len(response.GetClientCertPem()) > 0 {
+		if useWorkloadMtls {
+			privateKeyPem, publicKeyPem, err := genPrivAndPublicKeysPEM()
+			if err != nil {
+				return fnerrors.Newf("failed to generate client key pair: %w", err)
+			}
+
+			privateKeyPem, err = convertECPrivateKeyToPKCS8(privateKeyPem)
+			if err != nil {
+				return fnerrors.Newf("failed to encode client key in PKCS#8: %w", err)
+			}
+
+			clientCertPem, err := fetchClientCert(ctx, string(publicKeyPem))
+			if err != nil {
+				return fnerrors.Newf("failed to issue client certificate: %w", err)
+			}
+
+			if certPath == "" {
+				loc, err := writeTempFile(bazelCachePathBase, "*.cert", []byte(clientCertPem))
+				if err != nil {
+					return fnerrors.Newf("failed to create temp file: %w", err)
+				}
+
+				out.ClientCert = loc
+			} else {
+				out.ClientCert = filepath.Join(certPath, "client.cert")
+
+				if err := writeFile(out.ClientCert, []byte(clientCertPem)); err != nil {
+					return err
+				}
+			}
+
+			if certPath == "" {
+				loc, err := writeTempFile(bazelCachePathBase, "*.key", privateKeyPem)
+				if err != nil {
+					return fnerrors.Newf("failed to create temp file: %w", err)
+				}
+
+				out.ClientKey = loc
+			} else {
+				out.ClientKey = filepath.Join(certPath, "client.key")
+
+				if err := writeFile(out.ClientKey, privateKeyPem); err != nil {
+					return err
+				}
+			}
+		} else if len(response.GetClientCertPem()) > 0 {
 			if certPath == "" {
 				loc, err := writeTempFile(bazelCachePathBase, "*.cert", []byte(response.GetClientCertPem()))
 				if err != nil {
@@ -153,7 +217,7 @@ func newSetupCacheCmd() *cobra.Command {
 			}
 		}
 
-		if len(response.GetClientKeyPem()) > 0 {
+		if !useWorkloadMtls && len(response.GetClientKeyPem()) > 0 {
 			if certPath == "" {
 				loc, err := writeTempFile(bazelCachePathBase, "*.key", []byte(response.GetClientKeyPem()))
 				if err != nil {
@@ -167,14 +231,6 @@ func newSetupCacheCmd() *cobra.Command {
 				if err := writeFile(out.ClientKey, []byte(response.GetClientKeyPem())); err != nil {
 					return err
 				}
-			}
-		}
-
-		if len(response.GetCredentialHelperDomains()) > 0 {
-			out = bazelSetup{
-				Endpoint:                response.GetHttpsCacheEndpoint(),
-				ExpiresAt:               expiresAt,
-				CredentialHelperDomains: response.GetCredentialHelperDomains(),
 			}
 		}
 
@@ -259,6 +315,51 @@ func newSetupCacheCmd() *cobra.Command {
 
 		return nil
 	})
+}
+
+func makeEnsureBazelCacheRequest(version int64, experimentalDirect bool, experimentalCacheName string) *bazelv1beta.EnsureBazelCacheRequest {
+	msg := &bazelv1beta.EnsureBazelCacheRequest{}
+	msg.SetVersion(version)
+	msg.SetExperimentalDirectMtls(experimentalDirect)
+	msg.SetExperimentalCacheName(experimentalCacheName)
+
+	return msg
+}
+
+func baseBazelSetup(response *bazelv1beta.EnsureBazelCacheResponse, expiresAt *time.Time) bazelSetup {
+	out := bazelSetup{
+		Endpoint:  response.GetCacheEndpoint(),
+		ExpiresAt: expiresAt,
+	}
+
+	if len(response.GetCredentialHelperDomains()) > 0 && !response.GetUseWorkloadMtls() {
+		out = bazelSetup{
+			Endpoint:                response.GetHttpsCacheEndpoint(),
+			ExpiresAt:               expiresAt,
+			CredentialHelperDomains: response.GetCredentialHelperDomains(),
+		}
+	}
+
+	return out
+}
+
+func convertECPrivateKeyToPKCS8(privateKeyPem []byte) ([]byte, error) {
+	block, _ := pem.Decode(privateKeyPem)
+	if block == nil {
+		return nil, fnerrors.New("failed to decode private key PEM")
+	}
+
+	privateKey, err := x509.ParseECPrivateKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privateKeyBytes}), nil
 }
 
 func writeTempFile(base, pattern string, content []byte) (string, error) {
