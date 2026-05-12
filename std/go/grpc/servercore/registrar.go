@@ -101,7 +101,19 @@ func (s *scopedServer) RegisterListener(handler func(context.Context, net.Listen
 
 func proxyHeaders(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if forwardedFor := r.Header.Get("X-Forwarded-For"); forwardedFor != "" {
+		// Prefer Cloudflare's CF-Connecting-IP when present and the request
+		// actually arrived from a CF edge: for CF-proxied origins
+		// X-Forwarded-For ends up being a CF edge IP, while CF-Connecting-IP
+		// is the real visitor. We only trust CF-Connecting-IP when the TCP
+		// peer is in Cloudflare's published IP ranges so untrusted clients
+		// can't spoof it.
+		cfIP := r.Header.Get("CF-Connecting-IP")
+		forwardedFor := r.Header.Get("X-Forwarded-For")
+
+		switch {
+		case cfIP != "" && isCloudflarePeer(r.RemoteAddr):
+			r.RemoteAddr = cfIP
+		case forwardedFor != "":
 			r.RemoteAddr = forwardedFor
 		}
 
