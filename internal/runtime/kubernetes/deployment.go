@@ -976,11 +976,11 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 				rol := appsv1.RollingUpdateDeployment()
 
 				if us.MaxSurge != "" {
-					rol = rol.WithMaxSurge(intstr.FromString(us.MaxSurge))
+					rol = rol.WithMaxSurge(intstr.Parse(us.MaxSurge))
 				}
 
 				if us.MaxUnavailable != "" {
-					rol = rol.WithMaxUnavailable(intstr.FromString(us.MaxUnavailable))
+					rol = rol.WithMaxUnavailable(intstr.Parse(us.MaxUnavailable))
 				}
 
 				strategy = appsv1.DeploymentStrategy().WithRollingUpdate(rol)
@@ -1042,11 +1042,11 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 				rol := appsv1.RollingUpdateDaemonSet()
 
 				if us.MaxSurge != "" {
-					rol = rol.WithMaxSurge(intstr.FromString(us.MaxSurge))
+					rol = rol.WithMaxSurge(intstr.Parse(us.MaxSurge))
 				}
 
 				if us.MaxUnavailable != "" {
-					rol = rol.WithMaxUnavailable(intstr.FromString(us.MaxUnavailable))
+					rol = rol.WithMaxUnavailable(intstr.Parse(us.MaxUnavailable))
 				}
 
 				updateStrategy = appsv1.DaemonSetUpdateStrategy().WithRollingUpdate(rol)
