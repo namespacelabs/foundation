@@ -139,24 +139,12 @@ func newSetupCacheCmd() *cobra.Command {
 
 		out := baseBazelSetup(response, expiresAt)
 
-		if !useWorkloadMtls && len(response.GetServerCaPem()) > 0 {
-			if certPath == "" {
-				loc, err := writeTempFile(bazelCachePathBase, "*.cert", []byte(response.GetServerCaPem()))
-				if err != nil {
-					return fnerrors.Newf("failed to create temp file: %w", err)
-				}
-
-				out.ServerCaCert = loc
-			} else {
-				out.ServerCaCert = filepath.Join(certPath, "server_ca.cert")
-
-				if err := writeFile(out.ServerCaCert, []byte(response.GetServerCaPem())); err != nil {
-					return err
-				}
-			}
-		}
-
-		if useWorkloadMtls {
+		// The three auth modes below are mutually exclusive: workload mTLS
+		// (client cert issued on the fly), credential helper (auth handled by
+		// an external binary per request), or legacy TLS material returned in
+		// the response. Pick exactly one.
+		switch {
+		case useWorkloadMtls:
 			privateKeyPem, publicKeyPem, err := genPrivAndPublicKeysPEM()
 			if err != nil {
 				return fnerrors.Newf("failed to generate client key pair: %w", err)
@@ -201,36 +189,61 @@ func newSetupCacheCmd() *cobra.Command {
 					return err
 				}
 			}
-		} else if len(response.GetClientCertPem()) > 0 {
-			if certPath == "" {
-				loc, err := writeTempFile(bazelCachePathBase, "*.cert", []byte(response.GetClientCertPem()))
-				if err != nil {
-					return fnerrors.Newf("failed to create temp file: %w", err)
-				}
 
-				out.ClientCert = loc
-			} else {
-				out.ClientCert = filepath.Join(certPath, "client.cert")
+		case len(response.GetCredentialHelperDomains()) > 0:
+			// Credential helper is the sole auth mechanism; baseBazelSetup
+			// already populated CredentialHelperDomains and the HTTPS endpoint.
+			// Do not also emit TLS client cert/key/CA.
 
-				if err := writeFile(out.ClientCert, []byte(response.GetClientCertPem())); err != nil {
-					return err
+		default:
+			if len(response.GetServerCaPem()) > 0 {
+				if certPath == "" {
+					loc, err := writeTempFile(bazelCachePathBase, "*.cert", []byte(response.GetServerCaPem()))
+					if err != nil {
+						return fnerrors.Newf("failed to create temp file: %w", err)
+					}
+
+					out.ServerCaCert = loc
+				} else {
+					out.ServerCaCert = filepath.Join(certPath, "server_ca.cert")
+
+					if err := writeFile(out.ServerCaCert, []byte(response.GetServerCaPem())); err != nil {
+						return err
+					}
 				}
 			}
-		}
 
-		if !useWorkloadMtls && len(response.GetClientKeyPem()) > 0 {
-			if certPath == "" {
-				loc, err := writeTempFile(bazelCachePathBase, "*.key", []byte(response.GetClientKeyPem()))
-				if err != nil {
-					return fnerrors.Newf("failed to create temp file: %w", err)
+			if len(response.GetClientCertPem()) > 0 {
+				if certPath == "" {
+					loc, err := writeTempFile(bazelCachePathBase, "*.cert", []byte(response.GetClientCertPem()))
+					if err != nil {
+						return fnerrors.Newf("failed to create temp file: %w", err)
+					}
+
+					out.ClientCert = loc
+				} else {
+					out.ClientCert = filepath.Join(certPath, "client.cert")
+
+					if err := writeFile(out.ClientCert, []byte(response.GetClientCertPem())); err != nil {
+						return err
+					}
 				}
+			}
 
-				out.ClientKey = loc
-			} else {
-				out.ClientKey = filepath.Join(certPath, "client.key")
+			if len(response.GetClientKeyPem()) > 0 {
+				if certPath == "" {
+					loc, err := writeTempFile(bazelCachePathBase, "*.key", []byte(response.GetClientKeyPem()))
+					if err != nil {
+						return fnerrors.Newf("failed to create temp file: %w", err)
+					}
 
-				if err := writeFile(out.ClientKey, []byte(response.GetClientKeyPem())); err != nil {
-					return err
+					out.ClientKey = loc
+				} else {
+					out.ClientKey = filepath.Join(certPath, "client.key")
+
+					if err := writeFile(out.ClientKey, []byte(response.GetClientKeyPem())); err != nil {
+						return err
+					}
 				}
 			}
 		}
