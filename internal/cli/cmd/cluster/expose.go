@@ -18,7 +18,6 @@ import (
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/pkg/namespaces"
 	gocni "github.com/containerd/go-cni"
-	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -41,6 +40,26 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/ctl"
 	"namespacelabs.dev/foundation/std/tasks"
+)
+
+// Copied from https://github.com/containerd/nerdctl/blob/main/pkg/labels/labels.go
+const (
+	// Prefix is the common prefix of nerdctl labels
+	Prefix = "nerdctl/"
+
+	// Namespace is the containerd namespace such as "default", "k8s.io"
+	Namespace = Prefix + "namespace"
+
+	// Name is a human-friendly name.
+	// WARNING: multiple containers may have same the name label
+	Name = Prefix + "name"
+
+	// DEPRECATED : https://github.com/containerd/nerdctl/pull/4290
+	// Ports is a JSON-marshalled string of []cni.PortMapping.
+	Ports = Prefix + "ports"
+
+	// Platform is the normalized platform string like "linux/ppc64le".
+	Platform = Prefix + "platform"
 )
 
 func NewExposeCmd() *cobra.Command {
@@ -410,13 +429,13 @@ func withContainerd(ctx context.Context, cluster *api.KubernetesCluster, callbac
 // list of CNI port mappings. It is an inlined replacement for
 // nerdctl v1's portutil.ParsePortsLabel which was removed in nerdctl v2.
 func parsePortsLabel(labelMap map[string]string) ([]gocni.PortMapping, error) {
-	portsJSON := labelMap[labels.Ports]
+	portsJSON := labelMap[Ports]
 	if portsJSON == "" {
 		return []gocni.PortMapping{}, nil
 	}
 	var ports []gocni.PortMapping
 	if err := json.Unmarshal([]byte(portsJSON), &ports); err != nil {
-		return nil, fmt.Errorf("failed to parse label %q=%q: %s", labels.Ports, portsJSON, err.Error())
+		return nil, fmt.Errorf("failed to parse label %q=%q: %s", Ports, portsJSON, err.Error())
 	}
 	return ports, nil
 }
@@ -428,7 +447,7 @@ func selectContainerdPorts(ctx context.Context, cluster *api.KubernetesCluster, 
 
 	if filter.containerName != "" {
 		filters = append(filters,
-			fmt.Sprintf("labels.%q==%s", labels.Name, filter.containerName),
+			fmt.Sprintf("labels.%q==%s", Name, filter.containerName),
 			fmt.Sprintf("id~=^%s.*$", regexp.QuoteMeta(filter.containerName)),
 		)
 	}
@@ -454,7 +473,7 @@ func selectContainerdPorts(ctx context.Context, cluster *api.KubernetesCluster, 
 				return err
 			}
 
-			internalName := parseContainerName(l[labels.Name])
+			internalName := parseContainerName(l[Name])
 
 			for _, p := range ports {
 				if p.Protocol == "tcp" && (p.HostIP == "0.0.0.0" || p.HostIP == "::") {
