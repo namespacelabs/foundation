@@ -37,7 +37,6 @@ require (
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/go-cni v1.1.13
 	github.com/containerd/log v0.1.0
-	github.com/containerd/nerdctl/v2 v2.2.2
 	github.com/containerd/platforms v1.0.0-rc.2
 	github.com/containerd/stargz-snapshotter/estargz v0.18.2
 	github.com/creack/pty v1.1.24
