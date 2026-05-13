@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -193,6 +194,23 @@ func NewCreateCmd() *cobra.Command {
 
 				cfg := opts.Experimental["k3s"].(map[string]any)
 				cfg["kubernetes_version"] = parts[1]
+
+			case "kubernetes-max-pods":
+				if len(parts) != 2 {
+					return fnerrors.Newf("expected kubernetes-max-pods value %q", feat)
+				}
+
+				n, err := strconv.ParseInt(parts[1], 10, 32)
+				if err != nil {
+					return fnerrors.Newf("invalid kubernetes-max-pods value %q: %w", parts[1], err)
+				}
+
+				if _, ok := opts.Experimental["k3s"]; !ok {
+					return fnerrors.Newf("kubernetes-max-pods requires Kubernetes to be enabled")
+				}
+
+				cfg := opts.Experimental["k3s"].(map[string]any)
+				cfg["max_pods"] = int32(n)
 
 			default:
 				return fnerrors.Newf("unknown feature option %q", parts[0])
