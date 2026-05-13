@@ -14,10 +14,12 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
+	computev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/compute/v1beta"
 	"github.com/cenkalti/backoff"
 	"github.com/docker/buildx/store"
 	"github.com/docker/buildx/store/storeutil"
@@ -83,6 +85,8 @@ func newSetupBuildxCmd() *cobra.Command {
 	_ = cmd.Flags().MarkHidden("use_server_side_proxy")
 	experimental := cmd.Flags().String("experimental", "", "A set of experimental features to be passed at construction time.")
 	_ = cmd.Flags().MarkHidden("experimental")
+	builderShape := cmd.Flags().String("builder_shape", "", "If set, requests a specific builder shape in the form <vcpu>x<memGB> (e.g. 4x16). Requires builder customization to be enabled for your workspace — reach out to the Namespace team.")
+	_ = cmd.Flags().MarkHidden("builder_shape")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *debugDir != "" && !*background {
@@ -125,10 +129,16 @@ func newSetupBuildxCmd() *cobra.Command {
 		}
 
 		if *useServerSideProxy {
+			shape, err := parseBuilderShape(*builderShape)
+			if err != nil {
+				return err
+			}
+
 			if err := setupServerSideBuildxProxy(ctx, state, *name, *use, *defaultLoad, dockerCli, available, api.BuilderConfiguration{
 				SkipPrespawn: !*createAtStartup,
 				Name:         *tag,
 				Experimental: *experimental,
+				Shape:        shape,
 			}); err != nil {
 				return err
 			}
@@ -790,6 +800,32 @@ func newStatusBuildxCommand() *cobra.Command {
 	})
 
 	return cmd
+}
+
+func parseBuilderShape(spec string) (*computev1beta.InstanceShape, error) {
+	if spec == "" {
+		return nil, nil
+	}
+
+	parts := strings.Split(spec, "x")
+	if len(parts) != 2 {
+		return nil, fnerrors.Newf("invalid --builder_shape %q: expected format <vcpu>x<memGB> (e.g. 4x16)", spec)
+	}
+
+	vcpu, err := strconv.Atoi(parts[0])
+	if err != nil || vcpu <= 0 {
+		return nil, fnerrors.Newf("invalid --builder_shape %q: vcpu must be a positive integer", spec)
+	}
+
+	memGB, err := strconv.Atoi(parts[1])
+	if err != nil || memGB <= 0 {
+		return nil, fnerrors.Newf("invalid --builder_shape %q: memory (GB) must be a positive integer", spec)
+	}
+
+	return &computev1beta.InstanceShape{
+		VirtualCpu:      int32(vcpu),
+		MemoryMegabytes: int32(memGB) * 1024,
+	}, nil
 }
 
 func readRemoteBuilderConfigs(dockerCli *command.DockerCli, name string) ([]BuilderConfig, error) {

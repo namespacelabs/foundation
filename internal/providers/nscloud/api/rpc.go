@@ -14,6 +14,7 @@ import (
 	"time"
 
 	builderv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/builder/v1beta"
+	computev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/compute/v1beta"
 	"github.com/bcicen/jstream"
 	"github.com/cenkalti/backoff"
 	"go.uber.org/atomic"
@@ -365,6 +366,7 @@ type BuilderConfiguration struct {
 	SkipPrespawn bool
 	Name         string
 	Experimental string
+	Shape        *computev1beta.InstanceShape
 }
 
 func GetBuilderConfiguration(ctx context.Context, platform BuildPlatform, conf BuilderConfiguration) (*builderv1beta.GetBuilderConfigurationResponse, error) {
@@ -391,6 +393,7 @@ func GetBuilderConfiguration(ctx context.Context, platform BuildPlatform, conf B
 				SkipBuilderPreSpawn: conf.SkipPrespawn,
 				BuilderName:         conf.Name,
 				Experimental:        conf.Experimental,
+				BuilderShape:        conf.Shape,
 			})
 			if err != nil {
 				return nil, fnerrors.Newf("failed while creating %v build cluster: %w", platform, err)
