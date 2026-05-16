@@ -5,6 +5,7 @@
 package fncobra
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -83,11 +84,15 @@ func shouldNotifyUpdate() bool {
 	if err != nil {
 		return true
 	}
-	info, err := os.Stat(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return true
 	}
-	return time.Since(info.ModTime()) >= updateNotifyInterval
+	last, err := time.Parse(time.RFC3339, string(bytes.TrimSpace(data)))
+	if err != nil {
+		return true
+	}
+	return time.Since(last) >= updateNotifyInterval
 }
 
 func markUpdateNotified() error {
@@ -98,13 +103,7 @@ func markUpdateNotified() error {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
-	now := time.Now()
-	if f, err := os.Create(path); err != nil {
-		return err
-	} else if err := f.Close(); err != nil {
-		return err
-	}
-	return os.Chtimes(path, now, now)
+	return os.WriteFile(path, []byte(time.Now().UTC().Format(time.RFC3339)), 0644)
 }
 
 func RunInContext(ctx context.Context, handler func(context.Context) error) error {
