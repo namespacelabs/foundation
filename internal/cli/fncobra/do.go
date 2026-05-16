@@ -7,6 +7,9 @@ package fncobra
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -14,8 +17,11 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/versioncheck"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/std/tasks"
 )
+
+const updateNotifyInterval = 24 * time.Hour
 
 type CmdHandler func(context.Context, []string) error
 
@@ -41,6 +47,10 @@ func DeferCheckVersion(ctx context.Context, command string) {
 		return
 	}
 
+	if !shouldNotifyUpdate() {
+		return
+	}
+
 	compute.On(ctx).BestEffort(tasks.Action(command+".check-updated"), func(ctx context.Context) error {
 		status, err := versioncheck.CheckRemote(ctx, ver, command)
 		if err != nil {
@@ -54,6 +64,9 @@ func DeferCheckVersion(ctx context.Context, command string) {
 
 		if status.NewVersion {
 			compute.On(ctx).Cleanup(tasks.Action(command+".check-updated.notify").LogLevel(1), func(ctx context.Context) error {
+				if err := markUpdateNotified(); err != nil {
+					fmt.Fprintf(console.Debug(ctx), "failed to record update notification: %v\n", err)
+				}
 				fmt.Fprintf(console.Info(ctx), "\n\n  A new version of %s is available (%s).\n\n", command, status.Version)
 				return nil
 			})
@@ -61,6 +74,39 @@ func DeferCheckVersion(ctx context.Context, command string) {
 
 		return nil
 	})
+}
+
+func updateNotifyPath() (string, error) {
+	return dirs.ConfigSubdir("version-notify")
+}
+
+func shouldNotifyUpdate() bool {
+	path, err := updateNotifyPath()
+	if err != nil {
+		return true
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return true
+	}
+	return time.Since(info.ModTime()) >= updateNotifyInterval
+}
+
+func markUpdateNotified() error {
+	path, err := updateNotifyPath()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return err
+	}
+	now := time.Now()
+	if f, err := os.Create(path); err != nil {
+		return err
+	} else if err := f.Close(); err != nil {
+		return err
+	}
+	return os.Chtimes(path, now, now)
 }
 
 func RunInContext(ctx context.Context, handler func(context.Context) error) error {
