@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/args"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/binary"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing/invariants"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -20,6 +21,7 @@ import (
 type phase1plan struct {
 	owner   pkggraph.Location
 	partial *fncue.Partial
+	loader  pkggraph.PackageLoader
 
 	Value *fncue.CueV
 	Left  []fncue.KeyAndPath // injected values left to be filled.
@@ -60,6 +62,14 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env *schema.Environment,
 	var pdata evalProvisionResult
 
 	pdata.Startup = phase2plan{owner: p1.owner, partial: p1.partial, Value: vv, Left: left}
+
+	if startup := lookupTransition(vv, "startup"); startup.Exists() {
+		if env := startup.LookupPath("env"); env.Exists() {
+			if err := ensureStartupEnvSecretPackagesLoaded(ctx, p1.loader, p1.owner, env.Val); err != nil {
+				return nil, err
+			}
+		}
+	}
 
 	if stackVal := lookupTransition(vv, "stack"); stackVal.Exists() {
 		var stack cueStack
@@ -116,6 +126,41 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env *schema.Environment,
 	}
 
 	return &pdata, nil
+}
+
+func ensureStartupEnvSecretPackagesLoaded(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, env cue.Value) error {
+	var err error
+	env.Walk(func(v cue.Value) bool {
+		if err != nil {
+			return false
+		}
+
+		secret := v.LookupPath(cue.ParsePath("fromSecret"))
+		if !secret.Exists() {
+			return true
+		}
+
+		var ref string
+		ref, err = secret.String()
+		if err != nil {
+			err = fnerrors.NewWithLocation(loc, "startup.env.fromSecret: %w", err)
+			return false
+		}
+
+		var secretRef *schema.PackageRef
+		secretRef, err = schema.ParsePackageRef(loc, ref)
+		if err != nil {
+			return false
+		}
+
+		if err = invariants.EnsurePackageLoaded(ctx, pl, loc, secretRef); err != nil {
+			return false
+		}
+
+		return true
+	}, nil)
+
+	return err
 }
 
 func parseContainers(loc pkggraph.Location, kind string, v cue.Value) ([]*schema.Container, error) {
