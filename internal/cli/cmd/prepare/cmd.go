@@ -63,8 +63,8 @@ func NewPrepareCmd() *cobra.Command {
 	rootCmd.AddCommand(newExistingCmd())
 
 	rootCmd.PersistentFlags().StringVar(&envRef, "env", "dev", "The environment to access.")
-	rootCmd.PersistentFlags().BoolVar(&isCreateEnv, "create_env", isCreateEnv, "Create the environment with a defined parameters and writes it into the workspace file if it is not exists yet.")
-	rootCmd.PersistentFlags().StringVar(&createEnvPurpose, "env_purpose", createEnvPurpose, "The purpose the newly create environment")
+	rootCmd.PersistentFlags().BoolVar(&isCreateEnv, "create_env", isCreateEnv, "Create the environment with the specified parameters and write it into the workspace file if it does not already exist.")
+	rootCmd.PersistentFlags().StringVar(&createEnvPurpose, "env_purpose", createEnvPurpose, "The purpose of the newly created environment.")
 
 	return rootCmd
 }
@@ -338,7 +338,7 @@ func successMessage(env cfg.Context, cmd *cobra.Command) string {
 	case "eks":
 		purpose = fmt.Sprintf("AWS EKS %s", purpose)
 	case "new-cluster":
-		purpose = fmt.Sprintf("Namespace Cloud %s", purpose)
+		purpose = fmt.Sprintf("Namespace %s", purpose)
 	case "existing":
 		purpose = fmt.Sprintf("%s using your existing environment", purpose)
 	}

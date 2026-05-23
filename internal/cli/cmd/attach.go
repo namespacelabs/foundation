@@ -30,7 +30,7 @@ func NewAttachCmd() *cobra.Command {
 	return fncobra.
 		Cmd(&cobra.Command{
 			Use:   "attach [path/to/server]...",
-			Short: "Attaches to the specified environment, of the specified servers.",
+			Short: "Attach the specified servers to the specified environment.",
 			Args:  cobra.ArbitraryArgs}).
 		WithFlags(func(flags *pflag.FlagSet) {
 			flags.StringVarP(&servingAddr, "listen", "H", "", "webui: listen on the specified address.")

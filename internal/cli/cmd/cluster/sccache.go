@@ -141,7 +141,7 @@ The output includes:
 
 func newCreateSccacheTokenCmd() *cobra.Command {
 	return newCreateCacheTokenCmd(createTokenConfig{
-		Short:       "Create a revokable token for accessing the sccache cache.",
+		Short:       "Create a revocable token for accessing the sccache cache.",
 		CacheLabel:  "sccache",
 		TokenPrefix: "sccache",
 		SetupCmd:    "nsc cache sccache setup",

@@ -27,7 +27,7 @@ func NewFnServicesCmd() *cobra.Command {
 
 	mapAddr := fncobra.CmdWithEnv(&cobra.Command{
 		Use:   "naming-map",
-		Short: "Maps a FQDN within Namespace Cloud's scope to a particular target (e.g. CNAME, or IP address).",
+		Short: "Map an FQDN within Namespace-managed scope to a particular target (e.g. CNAME or IP address).",
 		Args:  cobra.NoArgs,
 	}, func(ctx context.Context, env cfg.Context, args []string) error {
 		return fnapi.Map(ctx, fqdn, target)
@@ -43,7 +43,7 @@ func NewFnServicesCmd() *cobra.Command {
 
 	allocateName := fncobra.CmdWithEnv(&cobra.Command{
 		Use:   "naming-allocate-name",
-		Short: "Allocates a TLS certificate within Namespace Cloud's scope.",
+		Short: "Allocate a TLS certificate within Namespace-managed scope.",
 		Args:  cobra.NoArgs,
 	}, func(ctx context.Context, env cfg.Context, args []string) error {
 		if fqdn == "" {

@@ -31,7 +31,7 @@ import (
 func NewTokenCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "token",
-		Short: "Manage revokable tokens.",
+		Short: "Manage revocable tokens.",
 	}
 
 	cmd.AddCommand(NewListCmd())
@@ -45,7 +45,7 @@ func NewTokenCmd() *cobra.Command {
 func NewListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List revokable tokens.",
+		Short: "List revocable tokens.",
 		Args:  cobra.NoArgs,
 	}
 
@@ -70,7 +70,7 @@ func NewListCmd() *cobra.Command {
 
 		resp, err := client.Tokens.ListRevokableTokens(ctx, req)
 		if err != nil {
-			return fnerrors.InvocationError("token", "failed to list revokable tokens: %w", err)
+			return fnerrors.InvocationError("token", "failed to list revocable tokens: %w", err)
 		}
 
 		switch *output {
@@ -107,7 +107,7 @@ func NewListCmd() *cobra.Command {
 func NewCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
-		Short: "Create a revokable token.",
+		Short: "Create a revocable token.",
 		Args:  cobra.NoArgs,
 	}
 
@@ -159,7 +159,7 @@ func NewCreateCmd() *cobra.Command {
 			if errIsTokenCreateDenied(err) {
 				fmt.Fprintf(console.Stderr(ctx), "%s Only workspace administrators can create tenant-wide tokens. To create a user-scoped token, specify --user instead.\n", colors.Ctx(ctx).LogCategory.Apply("Note:"))
 			}
-			return fnerrors.InvocationError("token", "failed to create revokable token: %w", err)
+			return fnerrors.InvocationError("token", "failed to create revocable token: %w", err)
 		}
 
 		if *tokenFile != "" {
@@ -415,7 +415,7 @@ func ParseGrants(grants []string) ([]*v1beta.Permission, error) {
 	return permissions, nil
 }
 
-// errIsTokenCreateDenied returns true if the error is a PermissionDenied error that says it's mission the creation action for resource token/revokable
+// errIsTokenCreateDenied returns true if the error is a PermissionDenied error that says it's missing the creation action for resource token/revokable.
 func errIsTokenCreateDenied(err error) bool {
 	st, ok := status.FromError(err)
 	if !ok || st.Code() != codes.PermissionDenied {

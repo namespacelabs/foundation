@@ -21,7 +21,7 @@ import (
 func NewExchangeGithubTokenCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "exchange-github-token", // TODO find better name & group commands - hidden cmd for now.
-		Short:  "Generate a Namespace Cloud token from a GitHub JWT.",
+		Short:  "Generate a Namespace token from a GitHub JWT.",
 		Args:   cobra.NoArgs,
 		Hidden: true,
 	}

@@ -228,7 +228,7 @@ Or by placing it in ~/.gradle/init.d/ to apply to all builds.`,
 
 func newGradleCreateTokenCmd() *cobra.Command {
 	return newCreateCacheTokenCmd(createTokenConfig{
-		Short:       "Create a revokable token for accessing the Gradle cache.",
+		Short:       "Create a revocable token for accessing the Gradle cache.",
 		CacheLabel:  "Gradle",
 		TokenPrefix: "gradle-cache",
 		SetupCmd:    "nsc cache gradle setup",

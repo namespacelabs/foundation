@@ -21,7 +21,7 @@ import (
 func newDownloadCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "download",
-		Short: "Downloads an URL.",
+		Short: "Download a URL.",
 		Args:  cobra.ArbitraryArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {

@@ -17,7 +17,7 @@ import (
 func NewExchangeOIDCTokenCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "exchange-oidc-token",
-		Short: "Generate a Namespace Cloud token from a OIDC token.",
+		Short: "Generate a Namespace token from an OIDC token.",
 		Args:  cobra.NoArgs,
 	}
 

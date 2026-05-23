@@ -58,8 +58,8 @@ func NewTestCmd() *cobra.Command {
 	)
 
 	flags := cmd.Flags()
-	flags.BoolVar(&testOpts.Debug, "debug", testOpts.Debug, "If true, the testing runtime produces additional information for debugging-purposes.")
-	flags.BoolVar(&ephemeral, "ephemeral", ephemeral, "If true, cleanup any runtime resources created for test (e.g. corresponding Kubernetes namespace).")
+	flags.BoolVar(&testOpts.Debug, "debug", testOpts.Debug, "If true, the testing runtime produces additional information for debugging purposes.")
+	flags.BoolVar(&ephemeral, "ephemeral", ephemeral, "If true, clean up any runtime resources created for the test (e.g. the corresponding Kubernetes namespace).")
 	flags.BoolVar(&allTests, "all", allTests, "If true, runs all tests regardless of tag (e.g. it will also include generated tests).")
 	flags.BoolVar(&parallel, "parallel", parallel, "If true, run tests in parallel.")
 	flags.BoolVar(&parallelWork, "parallel_work", parallelWork, "If true, performs all work in parallel except running the actual test (e.g. builds).")

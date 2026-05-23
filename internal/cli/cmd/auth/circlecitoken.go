@@ -18,7 +18,7 @@ import (
 func NewExchangeCircleCITokenCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "exchange-circleci-token",
-		Short: "Generate a Namespace Cloud token from a CircleCI JWT.",
+		Short: "Generate a Namespace token from a CircleCI JWT.",
 		Args:  cobra.NoArgs,
 	}
 

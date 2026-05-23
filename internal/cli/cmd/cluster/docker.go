@@ -144,7 +144,7 @@ func runDocker(ctx context.Context, socketPath string, args ...string) error {
 func newDockerLoginCmd(hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "login",
-		Short:  "Log into the Namespace Cloud private registry for use with Docker.",
+		Short:  "Log into the Namespace private registry for use with Docker.",
 		Args:   cobra.NoArgs,
 		Hidden: hidden,
 	}

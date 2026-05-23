@@ -23,7 +23,7 @@ func NamespaceCluster(machineType string, ephemeral bool) Stage {
 	return Stage{
 		Pre: func(ch chan *orchestration.Event) {
 			ch <- &orchestration.Event{
-				Category:      "Namespace Cloud",
+				Category:      "Namespace",
 				ResourceId:    "new-cluster",
 				ResourceLabel: "New cluster",
 			}
@@ -64,7 +64,7 @@ func PrepareNewNamespaceCluster(ctx context.Context, env cfg.Context, machineTyp
 	}
 
 	ch <- &orchestration.Event{
-		Category:      "Namespace Cloud",
+		Category:      "Namespace",
 		ResourceId:    "new-cluster",
 		ResourceLabel: "New cluster",
 		Ready:         orchestration.Event_READY,

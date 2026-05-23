@@ -99,8 +99,8 @@ func newExposeContainerCmd(use string, hidden bool) *cobra.Command {
 		if hidden && *output == "plain" {
 			out := console.Warnings(ctx)
 			fmt.Fprintf(out, "`nsc %s` is deprecated. For backwards compatibility it behaves as `nsc expose container [instance-id]`.\n", use)
-			fmt.Fprintln(out, "To expose an exported port on a running container `nsc expose container [instance-id].")
-			fmt.Fprintln(out, "To exponse a Kubernentes Load Balancer use `nsc expose kubernetes [instance-id]`.")
+			fmt.Fprintln(out, "To expose an exported port on a running container, use `nsc expose container [instance-id]`.")
+			fmt.Fprintln(out, "To expose a Kubernetes load balancer, use `nsc expose kubernetes [instance-id]`.")
 		}
 
 		cluster, _, err := SelectRunningCluster(ctx, args)
@@ -532,7 +532,7 @@ func countApps(ctx context.Context, cluster *api.KubernetesCluster) (int, int, e
 func newExposeKubernetesCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "kubernetes [instance-id]",
-		Short: "Opens a public ingress to the specified Kubernentes service load balancer.",
+		Short: "Open a public ingress to the specified Kubernetes service load balancer.",
 		Args:  cobra.MaximumNArgs(1),
 	}
 

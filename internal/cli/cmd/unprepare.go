@@ -27,8 +27,8 @@ func NewUnprepareCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			result, err := tui.Ask(ctx, "Do you want to remove all of Namespace locally managed resources?",
-				`If you've run Namespace before, various resources were setup in your
+			result, err := tui.Ask(ctx, "Do you want to remove all of Namespace's locally managed resources?",
+				`If you've run Namespace before, various resources were set up on your
 workstation, including a result cache, but most importantly a series of
 containers running within your Docker instance.
 

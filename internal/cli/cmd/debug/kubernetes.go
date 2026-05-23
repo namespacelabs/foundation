@@ -67,7 +67,7 @@ func newKubernetesCmd() *cobra.Command {
 		}),
 	}
 
-	systemInfo.Flags().StringVar(&envBound, "env", envBound, "If specified, produce a env-bound sealed schema.")
+	systemInfo.Flags().StringVar(&envBound, "env", envBound, "If specified, produce an env-bound sealed schema.")
 
 	cmd.AddCommand(systemInfo)
 	cmd.AddCommand(newObservePodsCmd())
@@ -111,7 +111,7 @@ func newObservePodsCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.Flags().StringVar(&envBound, "env", envBound, "If specified, produce a env-bound sealed schema.")
+	cmd.Flags().StringVar(&envBound, "env", envBound, "If specified, produce an env-bound sealed schema.")
 	cmd.Flags().StringVar(&group, "group", group, "G out of GVR")
 	cmd.Flags().StringVar(&version, "version", version, "V out of GVR")
 	cmd.Flags().StringVar(&resource, "resource", resource, "R out of GVR")
