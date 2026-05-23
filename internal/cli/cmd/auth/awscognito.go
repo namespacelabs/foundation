@@ -25,7 +25,7 @@ import (
 func newExchangeAwsCognitoCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "exchange-aws-cognito-token",
-		Short: "Generate a Namespace Cloud token from a AWS Cognito JWT.",
+		Short: "Generate a Namespace token from an AWS Cognito JWT.",
 		Args:  cobra.NoArgs,
 	}
 
@@ -111,7 +111,7 @@ func newCognitoClient(ctx context.Context, awsProfile string) (*cognitoidentity.
 func newTrustAwsCognitoCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "trust-aws-cognito-identity-pool",
-		Short: "Trust a AWS Cognito Identity pool.",
+		Short: "Trust an AWS Cognito identity pool.",
 		Args:  cobra.NoArgs,
 	}
 

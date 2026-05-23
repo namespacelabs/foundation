@@ -22,10 +22,10 @@ import (
 func newExistingCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "existing",
-		Short: "Prepares a Namespace enviroment with an existing Kubernetes cluster.",
+		Short: "Prepare a Namespace environment with an existing Kubernetes cluster.",
 	}
 
-	contextName := cmd.Flags().String("context", "", "The name of the kubernetes context to use.")
+	contextName := cmd.Flags().String("context", "", "The name of the Kubernetes context to use.")
 	registryAddr := cmd.Flags().String("registry", "", "Which registry to use for deployed images.")
 	kubeConfig := cmd.Flags().String("kube_config", "~/.kube/config", "Which kubernetes configuration to use.")
 	insecure := cmd.Flags().Bool("insecure", false, "Set to true if the image registry is not accessible via TLS.")
@@ -35,11 +35,11 @@ func newExistingCmd() *cobra.Command {
 
 	cmd.RunE = runPrepare(func(ctx context.Context, env cfg.Context) ([]prepare.Stage, error) {
 		if *contextName == "" {
-			return nil, fnerrors.Newf("--context is required; it's the name of an existing kubernetes context")
+			return nil, fnerrors.Newf("--context is required; it's the name of an existing Kubernetes context")
 		}
 
 		if *registryAddr == "" {
-			return nil, fnerrors.Newf("--registry is required; it's the url of an existing image registry")
+			return nil, fnerrors.Newf("--registry is required; it's the URL of an existing image registry")
 		}
 
 		repo, err := name.NewRepository(*registryAddr)

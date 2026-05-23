@@ -31,7 +31,7 @@ func newSetupAutopushCmd() *cobra.Command {
 
 	cmd := fncobra.CmdWithEnv(&cobra.Command{
 		Use:   "setup-autopush",
-		Short: "Sets up production cluster for automatic deployments to a staging environment.",
+		Short: "Set up a production cluster for automatic deployments to a staging environment.",
 		Args:  cobra.NoArgs,
 	}, func(ctx context.Context, env cfg.Context, args []string) error {
 		cluster, err := runtime.ClusterFor(ctx, env)
@@ -56,7 +56,7 @@ func newSetupAutopushCmd() *cobra.Command {
 		}
 
 		if eksCluster == nil {
-			return fnerrors.Newf("not an eks cluster")
+			return fnerrors.Newf("not an EKS cluster")
 		}
 
 		result, err := eks.SetupAutopush(eksCluster, iamRole, roleArn)
@@ -88,8 +88,8 @@ func newSetupAutopushCmd() *cobra.Command {
 		}
 
 		fmt.Fprintf(stdout, "Success!\nNext steps:\n")
-		fmt.Fprintf(stdout, " 1. Please inform a Namespace Labs dev that %q has been set up for autopush so they can whitelist it for deployment. %s\n", roleArn, colors.Ctx(ctx).Comment.Apply("This step will be automated in future."))
-		fmt.Fprintf(stdout, " 2. Install %s into your Github repository.\n", appURL)
+		fmt.Fprintf(stdout, " 1. Please inform a Namespace Labs dev that %q has been set up for autopush so they can allowlist it for deployment. %s\n", roleArn, colors.Ctx(ctx).Comment.Apply("This step will be automated in the future."))
+		fmt.Fprintf(stdout, " 2. Install %s into your GitHub repository.\n", appURL)
 
 		return nil
 	})

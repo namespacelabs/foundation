@@ -96,7 +96,7 @@ func newListIngressesCmd() *cobra.Command {
 func newGenerateAccessTokenCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "generate-access-token",
-		Short: "Generate a Namespace Cloud token to access a preview for the current workspace.",
+		Short: "Generate a Namespace token to access a preview for the current workspace.",
 		Args:  cobra.NoArgs,
 	}
 

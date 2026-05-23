@@ -18,7 +18,7 @@ import (
 func newGenerateConfigCmd() *cobra.Command {
 	cmd := fncobra.CmdWithEnv(&cobra.Command{
 		Use:   "kube-config",
-		Short: "Generates a EKS kubeconfig.",
+		Short: "Generate an EKS kubeconfig.",
 		Args:  cobra.ExactArgs(1),
 	}, func(ctx context.Context, env cfg.Context, args []string) error {
 		s, err := eks.NewSession(ctx, env.Configuration())

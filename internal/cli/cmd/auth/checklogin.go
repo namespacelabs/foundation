@@ -35,7 +35,7 @@ func NewCheckLoginCmd() *cobra.Command {
 			return err
 		}
 
-		// ok is false for revokable tokens which are validated server-side.
+		// ok is false for revocable tokens which are validated server-side.
 		if ok {
 			// Do an expiry check for non-session tokens only.
 			if expires := time.Until(expiry); expires < *dur && !tok.IsSessionToken() {
@@ -47,7 +47,7 @@ func NewCheckLoginCmd() *cobra.Command {
 			}
 		}
 
-		// For session tokens and revokable tokens we need to try issuing a tenant token
+		// For session tokens and revocable tokens we need to try issuing a tenant token
 		// regardless of expiry, because the session could have been revoked.
 		_, err = tok.IssueToken(ctx, *dur, true)
 		return err

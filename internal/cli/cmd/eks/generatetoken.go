@@ -28,7 +28,7 @@ func newGenerateTokenCmd() *cobra.Command {
 	return fncobra.
 		Cmd(&cobra.Command{
 			Use:   "generate-token",
-			Short: "Generates a EKS session token.",
+			Short: "Generate an EKS session token.",
 			Args:  cobra.ExactArgs(1),
 		}).
 		WithFlags(func(flags *pflag.FlagSet) {

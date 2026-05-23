@@ -176,7 +176,7 @@ func (s *server) Formatting(ctx context.Context, params *protocol.DocumentFormat
 	var formattedContent string
 	if newContent, ok := efs.writes[relPath]; !ok {
 		// If the file is already formatted correctly fncue.Format doesn't
-		// prodece the write. Return immediate success.
+		// produce the write. Return immediate success.
 		return nil, nil
 	} else {
 		formattedContent = string(newContent)

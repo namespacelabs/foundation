@@ -37,7 +37,7 @@ const logo = `
 
 func WelcomeMessage(firstRun bool, cmd string) string {
 	if cmd == "nsc" {
-		return `Thank you for trying Namespace Cloud!
+		return `Thank you for trying Namespace!
 
 Get started at https://cloud.namespace.so/
 `

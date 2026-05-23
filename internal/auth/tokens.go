@@ -57,7 +57,7 @@ type Token struct {
 
 	StoredToken
 
-	revokable bool // Set for revokable tokens that are validated server-side
+	revokable bool // Set for revocable tokens that are validated server-side
 }
 
 func (t *Token) IsSessionToken() bool { return t.SessionToken != "" }
@@ -118,9 +118,9 @@ func extractClaims(token string) (*auth.TokenClaims, error) {
 }
 
 func (t *Token) IssueToken(ctx context.Context, minDur time.Duration, skipCache bool) (string, error) {
-	// Revokable tokens are validated server-side, just return them
+	// Revocable tokens are validated server-side, just return them
 	if t.revokable {
-		fmt.Fprintf(console.Debug(ctx), "Re-using revokable token (server-side validation)...\n")
+		fmt.Fprintf(console.Debug(ctx), "Re-using revocable token (server-side validation)...\n")
 		return t.TenantToken, nil
 	}
 
@@ -328,9 +328,9 @@ func LoadTokenFromPath(ctx context.Context, issue IssueShortTermFunc, path strin
 		return nil, fnerrors.ReauthError("not logged in")
 	}
 
-	// Revokable tokens (nsrt_ prefix) are validated server-side, skip local checks
+	// Revocable tokens (nsrt_ prefix) are validated server-side, skip local checks
 	if strings.HasPrefix(token.TenantToken, "nsrt_") {
-		fmt.Fprintf(console.Debug(ctx), "Using revokable token (server-side validation)\n")
+		fmt.Fprintf(console.Debug(ctx), "Using revocable token (server-side validation)\n")
 		token.revokable = true
 		return token, nil
 	}

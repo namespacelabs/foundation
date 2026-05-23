@@ -57,10 +57,10 @@ var ErrIsNotRemoteDriver = errors.New("buildx node group does not have 'remote' 
 func newSetupBuildxCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "setup",
-		Short: "Setup buildx in the current machine, to use Namespace Remote builders.",
+		Short: "Set up buildx on the current machine to use Namespace Remote builders.",
 	}
 
-	name := cmd.Flags().String("name", defaultBuilder, "The name of the builder we setup.")
+	name := cmd.Flags().String("name", defaultBuilder, "The name of the builder to set up.")
 	tag := cmd.Flags().String("tag", "", "If set, target a specific remote builder.")
 	use := cmd.Flags().Bool("use", false, "If true, changes the current builder to nsc-remote.")
 	background := cmd.Flags().Bool("background", false, "If true, runs the remote builder context in the background.")
@@ -68,20 +68,20 @@ func newSetupBuildxCmd() *cobra.Command {
 	stateDir := cmd.Flags().String("state", "", "If set, stores the remote builder context details in this directory.")
 	debugDir := cmd.Flags().String("background_debug_dir", "", "If set with --background, the tool populates the specified directory with debug log files.")
 	_ = cmd.Flags().MarkHidden("background_debug_dir")
-	useGrpcProxy := cmd.Flags().Bool("use_grpc_proxy", true, "If set, traffic is proxied with transparent grpc proxy instead of raw network proxy")
+	useGrpcProxy := cmd.Flags().Bool("use_grpc_proxy", true, "If set, traffic is proxied with a transparent gRPC proxy instead of a raw network proxy.")
 	_ = cmd.Flags().MarkHidden("use_grpc_proxy")
-	staticWorkerDefFile := cmd.Flags().String("static_worker_definition_path", "", "Injects the gRPC proxy ListWorkers response JSON payload from file")
+	staticWorkerDefFile := cmd.Flags().String("static_worker_definition_path", "", "Injects the gRPC proxy ListWorkers response JSON payload from a file.")
 	_ = cmd.Flags().MarkHidden("static_worker_definition_path")
-	forceCleanup := cmd.Flags().Bool("force_cleanup", false, "If set, it forces a cleanup of any previous buildx proxy running in background.")
-	waitForLogin := cmd.Flags().Bool("wait_for_login", false, "If set, it blocks waiting for user to login.")
+	forceCleanup := cmd.Flags().Bool("force_cleanup", false, "If set, forces cleanup of any previous buildx proxy running in the background.")
+	waitForLogin := cmd.Flags().Bool("wait_for_login", false, "If set, blocks while waiting for the user to log in.")
 	_ = cmd.Flags().MarkHidden("wait_for_login")
-	annotateBuild := cmd.Flags().Bool("annotate_build", true, "If set, it enable builds annotation when running in Namespace instances.")
+	annotateBuild := cmd.Flags().Bool("annotate_build", true, "If set, enables build annotations when running in Namespace instances.")
 	_ = cmd.Flags().MarkHidden("annotate_build")
-	buildkitSockPath := cmd.Flags().String("buildkit_sock_path", "", "If set, the proxy connect to a local unix socket rather than remote builder.")
+	buildkitSockPath := cmd.Flags().String("buildkit_sock_path", "", "If set, the proxy connects to a local Unix socket rather than a remote builder.")
 	_ = cmd.Flags().MarkHidden("buildkit_sock_path")
-	defaultLoad := cmd.Flags().Bool("default_load", false, "If true, load images to the Docker Engine image store if no other output is specified.")
+	defaultLoad := cmd.Flags().Bool("default_load", false, "If true, loads images to the Docker Engine image store if no other output is specified.")
 	_ = cmd.Flags().MarkHidden("default_load")
-	useServerSideProxy := cmd.Flags().Bool("use_server_side_proxy", true, "If set, buildx is setup to use transparent server-side proxy powered by Namespace")
+	useServerSideProxy := cmd.Flags().Bool("use_server_side_proxy", true, "If set, buildx is set up to use a transparent server-side proxy powered by Namespace.")
 	_ = cmd.Flags().MarkHidden("use_server_side_proxy")
 	experimental := cmd.Flags().String("experimental", "", "A set of experimental features to be passed at construction time.")
 	_ = cmd.Flags().MarkHidden("experimental")
@@ -586,11 +586,11 @@ func doClientSideProxyCleanup(ctx context.Context, state string, txn *store.Txn)
 func newWireBuildxCommand(hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "wire",
-		Short:  "Wires a previously setup proxy setup.",
+		Short:  "Wire a previously set up proxy.",
 		Hidden: hidden,
 	}
 
-	name := cmd.Flags().String("name", defaultBuilder, "The name of the builder we setup.")
+	name := cmd.Flags().String("name", defaultBuilder, "The name of the builder to set up.")
 	use := cmd.Flags().Bool("use", false, "If true, changes the current builder to nsc-remote.")
 	stateDir := cmd.Flags().String("state", "", "Where the proxies live.")
 	defaultLoad := cmd.Flags().Bool("default_load", false, "If true, load images to the Docker Engine image store if no other output is specified.")

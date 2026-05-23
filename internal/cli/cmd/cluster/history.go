@@ -25,7 +25,7 @@ func NewListCmd() *cobra.Command {
 
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 	labels := cmd.Flags().StringToString("label", nil, "Constrain list to the specified labels.")
-	all := cmd.Flags().Bool("all", false, "If true, returl all instances, not just manually created ones.")
+	all := cmd.Flags().Bool("all", false, "If true, return all instances, not just manually created ones.")
 
 	cmd.Flags().MarkHidden("label")
 

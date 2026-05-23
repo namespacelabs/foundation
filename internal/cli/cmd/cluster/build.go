@@ -77,7 +77,7 @@ func NewBuildCmd() *cobra.Command {
 	secrets := cmd.Flags().StringArray("secret", nil, `Secret to expose to the build (format: "id=mysecret[,src=/local/secret]")`)
 	outputLocal := cmd.Flags().String("output-local", "", "If set, outputs the build results to the specified directory.")
 
-	useServerSideProxy := cmd.Flags().Bool("use_server_side_proxy", true, "If set, client is setup to use transparent mTLS server-side proxy instead of websockets.")
+	useServerSideProxy := cmd.Flags().Bool("use_server_side_proxy", true, "If set, the client is set up to use a transparent mTLS server-side proxy instead of websockets.")
 	_ = cmd.Flags().MarkHidden("use_server_side_proxy")
 	waitUntilReady := cmd.Flags().Bool("wait_until_ready", true, "If set, wait for build cluster readiness before dialing build connections.")
 	_ = cmd.Flags().MarkHidden("wait_until_ready")

@@ -20,7 +20,7 @@ import (
 func NewGenerateDevTokenCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "generate-dev-token",
-		Short: "Generate a Namespace Cloud token for development purposes.",
+		Short: "Generate a Namespace token for development purposes.",
 		Args:  cobra.NoArgs,
 	}
 
@@ -47,7 +47,7 @@ func NewGenerateDevTokenCmd() *cobra.Command {
 func NewGenerateTokenCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "generate-token",
-		Short:  "Generate a Namespace Cloud token.",
+		Short:  "Generate a Namespace token.",
 		Args:   cobra.NoArgs,
 		Hidden: true,
 	}

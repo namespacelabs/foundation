@@ -63,17 +63,17 @@ func NewGenerateReportCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&purposeArgs, "purpose", nil, "purpose(s) to include (repeatable). Cannot be passed together with --exclude-purpose.")
 	cmd.Flags().StringSliceVar(&purposeExcArgs, "exclude-purpose", nil, "purpose(s) to exclude (repeatable). Cannot be passed together with --purpose.")
 
-	cmd.Flags().StringSliceVar(&repoArgs, "repository", nil, "Github repository/ies to include (repeatable). Cannot be passed together with --exclude-repository.")
-	cmd.Flags().StringSliceVar(&repoExcArgs, "exclude-repository", nil, "Github repository/ies to exclude (repeatable). Cannot be passed together with --repository.")
+	cmd.Flags().StringSliceVar(&repoArgs, "repository", nil, "GitHub repositories to include (repeatable). Cannot be passed together with --exclude-repository.")
+	cmd.Flags().StringSliceVar(&repoExcArgs, "exclude-repository", nil, "GitHub repositories to exclude (repeatable). Cannot be passed together with --repository.")
 
-	cmd.Flags().StringSliceVar(&branchArgs, "branch", nil, "Github branch(es) to include (repeatable). Cannot be passed together with --exclude-branch.")
-	cmd.Flags().StringSliceVar(&branchExcArgs, "exclude-branch", nil, "Github branch(es) to exclude (repeatable). Cannot be passed together with --branch.")
+	cmd.Flags().StringSliceVar(&branchArgs, "branch", nil, "GitHub branches to include (repeatable). Cannot be passed together with --exclude-branch.")
+	cmd.Flags().StringSliceVar(&branchExcArgs, "exclude-branch", nil, "GitHub branches to exclude (repeatable). Cannot be passed together with --branch.")
 
-	cmd.Flags().StringSliceVar(&workflowArgs, "workflow", nil, "Github workflow(s) to include (repeatable). Cannot be passed together with --exclude-workflow.")
-	cmd.Flags().StringSliceVar(&workflowExcArgs, "exclude-workflow", nil, "Github workflow(s) to exclude (repeatable). Cannot be passed together with --workflow.")
+	cmd.Flags().StringSliceVar(&workflowArgs, "workflow", nil, "GitHub workflows to include (repeatable). Cannot be passed together with --exclude-workflow.")
+	cmd.Flags().StringSliceVar(&workflowExcArgs, "exclude-workflow", nil, "GitHub workflows to exclude (repeatable). Cannot be passed together with --workflow.")
 
-	cmd.Flags().StringSliceVar(&jobnameArgs, "jobname", nil, "Github jobname(s) to include (repeatable). Cannot be passed together with --exclude-jobname.")
-	cmd.Flags().StringSliceVar(&jobnameExcArgs, "exclude-jobname", nil, "Github jobname(s) to exclude (repeatable). Cannot be passed together with --jobname.")
+	cmd.Flags().StringSliceVar(&jobnameArgs, "jobname", nil, "GitHub job names to include (repeatable). Cannot be passed together with --exclude-jobname.")
+	cmd.Flags().StringSliceVar(&jobnameExcArgs, "exclude-jobname", nil, "GitHub job names to exclude (repeatable). Cannot be passed together with --jobname.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *start == "" {

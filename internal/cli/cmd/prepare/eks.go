@@ -22,7 +22,7 @@ func newEksCmd() *cobra.Command {
 	// writing the host configuration for the EKS cluster.
 	eksCmd := &cobra.Command{
 		Use:   "eks --cluster={cluster-name} --env={staging|prod} --aws_profile={profile}",
-		Short: "Prepares the Elastic Kubernetes Service host config for production.",
+		Short: "Prepare the Elastic Kubernetes Service host config for production.",
 		Args:  cobra.NoArgs,
 		RunE: runPrepare(func(ctx context.Context, env cfg.Context) ([]prepare.Stage, error) {
 			if ingressClass == "" {

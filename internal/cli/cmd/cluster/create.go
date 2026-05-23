@@ -36,7 +36,7 @@ func NewCreateCmd() *cobra.Command {
 	unusedEphemeral := cmd.Flags().Bool("ephemeral", false, "Create an ephemeral instance.")
 	features := cmd.Flags().StringSlice("features", nil, "A set of features to attach to the instance.")
 	bare := cmd.Flags().Bool("bare", false, "If set to true, creates an environment with the minimal set of services (e.g. no Kubernetes).")
-	tag := cmd.Flags().String("unique_tag", "", "If specified, creates a instance with the specified unique tag.")
+	tag := cmd.Flags().String("unique_tag", "", "If specified, creates an instance with the specified unique tag.")
 	labels := cmd.Flags().StringToString("label", nil, "Key-values to attach to the new instance. Multiple key-value pairs may be specified.")
 	purpose := cmd.Flags().String("purpose", "Manually created from CLI", "What documented purpose to attach to the created instance.")
 	selectors := cmd.Flags().StringSlice("selectors", nil, "Select platform/base image based on specific properties (prop1=value1,prop2=value2).")

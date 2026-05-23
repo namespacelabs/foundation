@@ -19,7 +19,7 @@ import (
 func NewExtendDurationCmd(name string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   name + " [instance-id]",
-		Short: "Extends the duration of a instance.",
+		Short: "Extend the duration of an instance.",
 		Args:  cobra.MaximumNArgs(1),
 	}
 

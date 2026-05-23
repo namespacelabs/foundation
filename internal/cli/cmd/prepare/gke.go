@@ -24,7 +24,7 @@ func newGkeCmd() *cobra.Command {
 	// writing the host configuration for the GKE cluster.
 	gkeCmd := &cobra.Command{
 		Use:   "gke --cluster={cluster-name} --env={staging|prod} --project_id={project_id}",
-		Short: "Prepares the Elastic Kubernetes Service host config for production.",
+		Short: "Prepare the Google Kubernetes Engine host config for production.",
 		Args:  cobra.NoArgs,
 		RunE: runPrepare(func(ctx context.Context, env cfg.Context) ([]prepare.Stage, error) {
 			if experimentalGCLB {
@@ -48,7 +48,7 @@ func newGkeCmd() *cobra.Command {
 
 	gkeCmd.Flags().StringVar(&clusterName, "cluster", "", "The name of the cluster we're configuring.")
 	gkeCmd.Flags().StringVar(&projectId, "project_id", projectId, "Configures the specified GCP project ID.")
-	gkeCmd.Flags().BoolVar(&experimentalGCLB, "experimental_use_gclb", experimentalGCLB, "Use GCLB with GKE, rather than an incluster nginx ingress.")
+	gkeCmd.Flags().BoolVar(&experimentalGCLB, "experimental_use_gclb", experimentalGCLB, "Use GCLB with GKE, rather than an in-cluster NGINX ingress.")
 	gkeCmd.Flags().StringVar(&ingressClass, "ingress_class", "", "Specify the ingress class.")
 
 	_ = cobra.MarkFlagRequired(gkeCmd.Flags(), "cluster")

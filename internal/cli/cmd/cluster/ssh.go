@@ -39,7 +39,7 @@ func NewSshCmd() *cobra.Command {
 		Args:  cobra.ArbitraryArgs,
 	}
 
-	tag := cmd.Flags().String("unique_tag", "", "If specified, creates a instance with the specified unique tag.")
+	tag := cmd.Flags().String("unique_tag", "", "If specified, creates an instance with the specified unique tag.")
 	oneshot := cmd.Flags().Bool("oneshot", false, "If specified, a temporary instance will be created and destroyed upon disconnection.")
 	sshAgent := cmd.Flags().BoolP("ssh_agent", "A", false, "If specified, forwards the local SSH agent.")
 	forcePty := cmd.Flags().BoolP("force-pty", "t", false, "Force pseudo-terminal allocation.")
