@@ -40,7 +40,15 @@ func NewBazelCmd() *cobra.Command {
 	cache := &cobra.Command{Use: "cache", Short: "Bazel cache related functionality."}
 	cache.AddCommand(newSetupCacheCmd())
 
+	execution := &cobra.Command{
+		Use:    "execution",
+		Short:  "Bazel remote execution related functionality.",
+		Hidden: true,
+	}
+	execution.AddCommand(newSetupExecutionCmd())
+
 	cmd.AddCommand(cache)
+	cmd.AddCommand(execution)
 
 	return cmd
 }
