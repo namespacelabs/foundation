@@ -74,9 +74,36 @@ func newSetupExecutionCmd() *cobra.Command {
 			return fnerrors.Newf("received incomplete response (scheduler=%q storage=%q)", endpoints.SchedulerEndpoint, endpoints.StorageEndpoint)
 		}
 
+		privateKeyPem, publicKeyPem, err := genPrivAndPublicKeysPEM()
+		if err != nil {
+			return fnerrors.Newf("failed to generate client key pair: %w", err)
+		}
+
+		privateKeyPem, err = convertECPrivateKeyToPKCS8(privateKeyPem)
+		if err != nil {
+			return fnerrors.Newf("failed to encode client key in PKCS#8: %w", err)
+		}
+
+		clientCertPem, err := fetchClientCert(ctx, string(publicKeyPem))
+		if err != nil {
+			return fnerrors.Newf("failed to issue client certificate: %w", err)
+		}
+
+		clientCertPath, err := writeTempFile(bazelExecutionPathBase, "*.cert", []byte(clientCertPem))
+		if err != nil {
+			return fnerrors.Newf("failed to create client cert temp file: %w", err)
+		}
+
+		clientKeyPath, err := writeTempFile(bazelExecutionPathBase, "*.key", privateKeyPem)
+		if err != nil {
+			return fnerrors.Newf("failed to create client key temp file: %w", err)
+		}
+
 		out := bazelRbeSetup{
 			SchedulerEndpoint:     endpoints.SchedulerEndpoint,
 			StorageEndpoint:       endpoints.StorageEndpoint,
+			ClientCert:            clientCertPath,
+			ClientKey:             clientKeyPath,
 			Jobs:                  jobs,
 			RemoteTimeout:         remoteTimeout,
 			RemoteDownloadOutputs: downloadOutputs,
@@ -134,6 +161,8 @@ func newSetupExecutionCmd() *cobra.Command {
 type bazelRbeSetup struct {
 	SchedulerEndpoint     string        `json:"scheduler_endpoint,omitempty"`
 	StorageEndpoint       string        `json:"storage_endpoint,omitempty"`
+	ClientCert            string        `json:"client_cert,omitempty"`
+	ClientKey             string        `json:"client_key,omitempty"`
 	Jobs                  int32         `json:"jobs,omitempty"`
 	RemoteTimeout         time.Duration `json:"remote_timeout,omitempty"`
 	RemoteDownloadOutputs string        `json:"remote_download_outputs,omitempty"`
@@ -148,6 +177,13 @@ func toBazelExecutionConfig(out bazelRbeSetup, command string) ([]byte, error) {
 		"--spawn_strategy=remote",
 		"--genrule_strategy=remote",
 		"--remote_local_fallback=false",
+	}
+
+	if out.ClientCert != "" {
+		lines = append(lines, fmt.Sprintf("--tls_client_certificate=%s", out.ClientCert))
+	}
+	if out.ClientKey != "" {
+		lines = append(lines, fmt.Sprintf("--tls_client_key=%s", out.ClientKey))
 	}
 
 	if out.RemoteDownloadOutputs != "" {
