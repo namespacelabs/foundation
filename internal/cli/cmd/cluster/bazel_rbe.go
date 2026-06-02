@@ -28,24 +28,12 @@ const (
 	bazelExecutionPathBase = "bazelrbe"
 	defaultBazelRbeCommand = "build"
 
-	// TODO: replace with a generated public-proto Connect client once
-	// EnsureBazelExecutionCluster is added to the public BazelCacheService (or a
-	// dedicated BazelExecutionService). For now we hit the private BazelService
-	// path that bazelcontrol exposes via:
-	//   /namespace.private.bazel.BazelService/EnsureBazelExecutionCluster
+	// TODO: replace with a generated public-proto Connect client
 	bazelExecutionEnsureProcedure = "/namespace.private.bazel.BazelService/EnsureBazelExecutionCluster"
-	bazelExecutionGetProcedure    = "/namespace.private.bazel.BazelService/GetBazelExecutionCluster"
 )
 
-// newSetupExecutionCmd is the remote-execution counterpart of
-// newSetupCacheCmd. It provisions a Bazel RBE cluster (scheduler + storage VMs)
-// via the bazelcontrol service and writes a bazelrc that points
-// --remote_executor and --remote_cache at it.
 func newSetupExecutionCmd() *cobra.Command {
 	var bazelRcPath, output, bazelCommand, key string
-	var jobs int32
-	var remoteTimeout time.Duration
-	var downloadOutputs string
 
 	return fncobra.Cmd(&cobra.Command{
 		Use:    "setup",
@@ -56,9 +44,6 @@ func newSetupExecutionCmd() *cobra.Command {
 		flags.StringVarP(&output, "output", "o", "plain", "One of plain or json.")
 		flags.StringVar(&bazelCommand, "command", defaultBazelRbeCommand, "The bazel command to use in the generated bazelrc (e.g., 'build' or 'common').")
 		flags.StringVar(&key, "key", "", "Stable identifier that disambiguates multiple parallel execution clusters for the same workspace. Defaults to 'default'.")
-		flags.Int32Var(&jobs, "jobs", 32, "Value used for --jobs in the generated bazelrc.")
-		fncobra.DurationVar(flags, &remoteTimeout, "remote_timeout", 5*time.Minute, "Value used for --remote_timeout in the generated bazelrc.")
-		flags.StringVar(&downloadOutputs, "remote_download_outputs", "minimal", "Value used for --remote_download_outputs in the generated bazelrc (minimal|toplevel|all).")
 	}).Do(func(ctx context.Context) error {
 		tok, err := fnapi.FetchToken(ctx)
 		if err != nil {
@@ -104,9 +89,10 @@ func newSetupExecutionCmd() *cobra.Command {
 			StorageEndpoint:       endpoints.StorageEndpoint,
 			ClientCert:            clientCertPath,
 			ClientKey:             clientKeyPath,
-			Jobs:                  jobs,
-			RemoteTimeout:         remoteTimeout,
-			RemoteDownloadOutputs: downloadOutputs,
+			Jobs:                  int32(endpoints.Jobs),
+			RemoteTimeout:         time.Duration(endpoints.RemoteTimeoutSeconds) * time.Second,
+			RemoteLocalFallback:   endpoints.RemoteLocalFallback,
+			RemoteDownloadOutputs: endpoints.RemoteDownloadOutputs,
 		}
 
 		if bazelRcPath != "" {
@@ -165,6 +151,7 @@ type bazelRbeSetup struct {
 	ClientKey             string        `json:"client_key,omitempty"`
 	Jobs                  int32         `json:"jobs,omitempty"`
 	RemoteTimeout         time.Duration `json:"remote_timeout,omitempty"`
+	RemoteLocalFallback   bool          `json:"remote_local_fallback,omitempty"`
 	RemoteDownloadOutputs string        `json:"remote_download_outputs,omitempty"`
 }
 
@@ -176,7 +163,7 @@ func toBazelExecutionConfig(out bazelRbeSetup, command string) ([]byte, error) {
 		fmt.Sprintf("--remote_cache=%s", out.StorageEndpoint),
 		"--spawn_strategy=remote",
 		"--genrule_strategy=remote",
-		"--remote_local_fallback=false",
+		fmt.Sprintf("--remote_local_fallback=%t", out.RemoteLocalFallback),
 	}
 
 	if out.ClientCert != "" {
@@ -210,9 +197,16 @@ type ensureBazelExecutionClusterRequest struct {
 	Key string `json:"key,omitempty"`
 }
 
+// Fields mirror EnsureBazelExecutionClusterResponse in
+// private/proto/service/bazel/service.proto. The server marshals with
+// protojson (UseProtoNames=true), so the wire tags are snake_case.
 type ensureBazelExecutionClusterResponse struct {
-	SchedulerEndpoint string `json:"scheduler_endpoint,omitempty"`
-	StorageEndpoint   string `json:"storage_endpoint,omitempty"`
+	SchedulerEndpoint     string `json:"scheduler_endpoint,omitempty"`
+	StorageEndpoint       string `json:"storage_endpoint,omitempty"`
+	Jobs                  uint32 `json:"jobs,omitempty"`
+	RemoteTimeoutSeconds  uint32 `json:"remote_timeout_seconds,omitempty"`
+	RemoteLocalFallback   bool   `json:"remote_local_fallback,omitempty"`
+	RemoteDownloadOutputs string `json:"remote_download_outputs,omitempty"`
 }
 
 // ensureBazelExecutionCluster posts to the private BazelService path on the
