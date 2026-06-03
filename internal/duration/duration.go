@@ -10,7 +10,7 @@ import (
 )
 
 // Code below here is based on https://cs.opensource.google/go/go/+/refs/tags/go1.25.5:src/time/format.go;l=1621
-// We only add two new units: "d" (day) and "w" (week).
+// We only add three new units: "d" (day), "w" (week), and "y" (year).
 var unitMap = map[string]uint64{
 	"ns": uint64(time.Nanosecond),
 	"us": uint64(time.Microsecond),
@@ -20,8 +20,9 @@ var unitMap = map[string]uint64{
 	"s":  uint64(time.Second),
 	"m":  uint64(time.Minute),
 	"h":  uint64(time.Hour),
-	"d":  uint64(24 * time.Hour),     // Added
-	"w":  uint64(7 * 24 * time.Hour), // Added
+	"d":  uint64(24 * time.Hour),       // Added
+	"w":  uint64(7 * 24 * time.Hour),   // Added
+	"y":  uint64(365 * 24 * time.Hour), // Added
 }
 
 // ParseDuration parses a duration string.
