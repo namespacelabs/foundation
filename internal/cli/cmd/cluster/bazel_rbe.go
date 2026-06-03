@@ -50,13 +50,13 @@ func newSetupExecutionCmd() *cobra.Command {
 			return err
 		}
 
-		endpoints, err := ensureBazelExecutionCluster(ctx, tok, key)
+		res, err := ensureBazelExecutionCluster(ctx, tok, key)
 		if err != nil {
 			return fnerrors.Newf("failed to provision bazel execution cluster: %w", err)
 		}
 
-		if endpoints.SchedulerEndpoint == "" || endpoints.StorageEndpoint == "" {
-			return fnerrors.Newf("received incomplete response (scheduler=%q storage=%q)", endpoints.SchedulerEndpoint, endpoints.StorageEndpoint)
+		if res.SchedulerEndpoint == "" || res.StorageEndpoint == "" {
+			return fnerrors.Newf("received incomplete response (scheduler=%q storage=%q)", res.SchedulerEndpoint, res.StorageEndpoint)
 		}
 
 		privateKeyPem, publicKeyPem, err := genPrivAndPublicKeysPEM()
@@ -85,14 +85,14 @@ func newSetupExecutionCmd() *cobra.Command {
 		}
 
 		out := bazelRbeSetup{
-			SchedulerEndpoint:     endpoints.SchedulerEndpoint,
-			StorageEndpoint:       endpoints.StorageEndpoint,
+			SchedulerEndpoint:     res.SchedulerEndpoint,
+			StorageEndpoint:       res.StorageEndpoint,
 			ClientCert:            clientCertPath,
 			ClientKey:             clientKeyPath,
-			Jobs:                  int32(endpoints.Jobs),
-			RemoteTimeout:         time.Duration(endpoints.RemoteTimeoutSeconds) * time.Second,
-			RemoteLocalFallback:   endpoints.RemoteLocalFallback,
-			RemoteDownloadOutputs: endpoints.RemoteDownloadOutputs,
+			Jobs:                  int32(res.Jobs),
+			RemoteTimeout:         time.Duration(res.RemoteTimeoutSeconds) * time.Second,
+			RemoteLocalFallback:   res.RemoteLocalFallback,
+			RemoteDownloadOutputs: res.RemoteDownloadOutputs,
 		}
 
 		if bazelRcPath != "" {
