@@ -163,7 +163,7 @@ func newSetupCacheCmd() *cobra.Command {
 				return fnerrors.Newf("failed to encode client key in PKCS#8: %w", err)
 			}
 
-			clientCertPem, err := fetchClientCert(ctx, string(publicKeyPem))
+			clientCertPem, err := fetchTenantClientCert(ctx, string(publicKeyPem))
 			if err != nil {
 				return fnerrors.Newf("failed to issue client certificate: %w", err)
 			}

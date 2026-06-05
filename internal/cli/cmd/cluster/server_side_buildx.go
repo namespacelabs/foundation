@@ -329,6 +329,15 @@ func fetchClientCert(ctx context.Context, pubKeyPem string) (string, error) {
 	}
 }
 
+func fetchTenantClientCert(ctx context.Context, pubKeyPem string) (string, error) {
+	tok, err := fnapi.FetchToken(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return fnapi.IssueTenantClientCertFromToken(ctx, tok, pubKeyPem)
+}
+
 type BuilderConfig struct {
 	Platform             string // e.g. "linux/amd64"
 	Arch                 string // e.g. "amd64"
