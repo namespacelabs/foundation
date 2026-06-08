@@ -53,6 +53,8 @@ func NewGenerateReportCmd() *cobra.Command {
 	var workflowExcArgs []string
 	var jobnameArgs []string
 	var jobnameExcArgs []string
+	var profileArgs []string
+	var profileExcArgs []string
 
 	cmd.Flags().StringSliceVar(&platformArgs, "platform", nil, "platform(s) to include (repeatable). Cannot be passed together with --exclude-platform.")
 	cmd.Flags().StringSliceVar(&platformExcArgs, "exclude-platform", nil, "platform(s) to exclude (repeatable). Cannot be passed together with --platform.")
@@ -74,6 +76,9 @@ func NewGenerateReportCmd() *cobra.Command {
 
 	cmd.Flags().StringSliceVar(&jobnameArgs, "jobname", nil, "GitHub job names to include (repeatable). Cannot be passed together with --exclude-jobname.")
 	cmd.Flags().StringSliceVar(&jobnameExcArgs, "exclude-jobname", nil, "GitHub job names to exclude (repeatable). Cannot be passed together with --jobname.")
+
+	cmd.Flags().StringSliceVar(&profileArgs, "profile", nil, "Profiles to include (repeatable). Cannot be passed together with --exclude-profile.")
+	cmd.Flags().StringSliceVar(&profileExcArgs, "exclude-profile", nil, "Profiles to exclude (repeatable). Cannot be passed together with --profile.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *start == "" {
@@ -163,6 +168,12 @@ func NewGenerateReportCmd() *cobra.Command {
 		}
 		filter.GithubJobName = jobnameMatcher
 
+		profileMatcher, err := createMatcher("profile", profileArgs, profileExcArgs)
+		if err != nil {
+			return err
+		}
+		filter.GithubProfile = profileMatcher
+
 		token, err := auth.LoadDefaults()
 		if err != nil {
 			return fnerrors.Newf("Authentication error %w", err)
@@ -196,6 +207,7 @@ func NewGenerateReportCmd() *cobra.Command {
 			"resources_ram_gb",
 			"resources_cpu_actual_max",
 			"resources_ram_gb_actual_max_percent",
+			"cache_volume_hit",
 			"github_job_id",
 			"github_job_name",
 			"github_job_workflow_name",
@@ -204,6 +216,8 @@ func NewGenerateReportCmd() *cobra.Command {
 			"job_created_at",
 			"job_started_at",
 			"job_completed_at",
+			"profile",
+			"repository",
 		}
 
 		csvWriter.Write(header)
@@ -229,6 +243,10 @@ func NewGenerateReportCmd() *cobra.Command {
 }
 
 func entryToRecords(entry *computev1beta.InstanceReportEntry) []string {
+	cacheHit := false
+	for _, v := range entry.GetVolumes() {
+		cacheHit = cacheHit || v.CacheHit
+	}
 	githubJob := entry.GetGithubJob()
 	cols := []string{entry.InstanceId,
 		tsToString(entry.GetCreatedAt()),
@@ -238,6 +256,7 @@ func entryToRecords(entry *computev1beta.InstanceReportEntry) []string {
 		strconv.FormatFloat(float64(entry.GetResourcesRamGb()), 'f', -1, 32),
 		strconv.FormatFloat(float64(entry.GetResourcesCpuActualMax()), 'f', -1, 32),
 		strconv.FormatFloat(float64(entry.GetResourcesRamGbActualMaxPercent()), 'f', -1, 32),
+		strconv.FormatBool(cacheHit),
 		strconv.FormatInt(githubJob.GetJobId(), 10),
 		githubJob.GetJobName(),
 		githubJob.GetWorkflowName(),
@@ -246,6 +265,8 @@ func entryToRecords(entry *computev1beta.InstanceReportEntry) []string {
 		tsToString(githubJob.GetJobCreatedAt()),
 		tsToString(githubJob.GetJobStartedAt()),
 		tsToString(githubJob.GetJobCompletedAt()),
+		githubJob.GetProfile(),
+		githubJob.GetRepository(),
 	}
 	return cols
 }
