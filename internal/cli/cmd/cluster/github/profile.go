@@ -56,6 +56,7 @@ func newProfileCreateCmd() *cobra.Command {
 	os := cmd.Flags().String("os", "ubuntu-24.04", "Operating system label (e.g., 'ubuntu-24.04').")
 	machineType := cmd.Flags().String("machine_type", "4x8", "Machine type in the format 'CPUxMemoryGB' (e.g., '4x8' for 4 vCPU and 8GB memory).")
 	machineArch := cmd.Flags().String("machine_arch", "amd64", "Machine architecture (amd64 or arm64).")
+	swapSizeMb := cmd.Flags().Int32("swap_memory", 4096, "Swap to provision on the runner, in MB. Must not exceed 2x the machine's memory.")
 	builderMode := cmd.Flags().String("builder_mode", "USE_REMOTE_BUILDER", "Builder mode (USE_REMOTE_BUILDER, USE_LOCAL_CACHE, NO_CACHING).")
 	emoji := cmd.Flags().String("emoji", "", "Optional emoji to visually identify the profile.")
 	egressPolicy := cmd.Flags().String("egress_policy", "", "Egress policy (DOMAIN_ALLOW_LIST to restrict outbound access, or empty for no filtering).")
@@ -94,6 +95,7 @@ func newProfileCreateCmd() *cobra.Command {
 				Tag:         *tag,
 				Description: *description,
 				Os:          *os,
+				SwapSizeMb:  *swapSizeMb,
 				InstanceShape: &computev1beta.InstanceShape{
 					VirtualCpu:      vcpu,
 					MemoryMegabytes: memoryMB,
@@ -344,6 +346,7 @@ func newProfileUpdateCmd() *cobra.Command {
 	dockerfile := cmd.Flags().String("dockerfile", "", "Path to Dockerfile for custom runner image.")
 	egressPolicy := cmd.Flags().String("egress_policy", "", "Egress policy (DOMAIN_ALLOW_LIST to restrict outbound access, or NONE to disable filtering).")
 	egressDomainAllowList := cmd.Flags().StringSlice("egress_domain_allow_list", nil, "List of allowed egress domains (supports wildcards, e.g. '*.example.org'). Only valid with --egress_policy=DOMAIN_ALLOW_LIST.")
+	swapSizeMb := cmd.Flags().Int32("swap_memory", 0, "Swap to provision on the runner, in MB. Must not exceed 2x the machine's memory.")
 	version := cmd.Flags().Int64("version", 0, "Current version of the profile for optimistic concurrency control. If not provided, it will be fetched from the backend.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
@@ -445,6 +448,10 @@ func newProfileUpdateCmd() *cobra.Command {
 				if *machineArch != "" {
 					spec.InstanceShape.MachineArch = *machineArch
 				}
+			}
+
+			if cmd.Flags().Changed("swap_memory") {
+				spec.SwapSizeMb = *swapSizeMb
 			}
 
 			// Update custom runner image spec if dockerfile is provided
@@ -687,11 +694,12 @@ func transformProfiles(profiles []*v1beta.RunnerProfileWithStatus) []map[string]
 // transformProfileForOutput creates a validated set of output fields which should not change.
 func transformProfileForOutput(profile *v1beta.RunnerProfileWithStatus) map[string]any {
 	m := map[string]any{
-		"profile_id":  profile.ProfileId,
-		"tag":         profile.Spec.Tag,
-		"description": profile.Spec.Description,
-		"os":          profile.Spec.Os,
-		"version":     profile.Version,
+		"profile_id":   profile.ProfileId,
+		"tag":          profile.Spec.Tag,
+		"description":  profile.Spec.Description,
+		"os":           profile.Spec.Os,
+		"swap_size_mb": profile.Spec.SwapSizeMb,
+		"version":      profile.Version,
 	}
 
 	if profile.Spec.Emoji != "" {
