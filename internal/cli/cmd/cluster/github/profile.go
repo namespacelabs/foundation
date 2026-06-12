@@ -56,7 +56,7 @@ func newProfileCreateCmd() *cobra.Command {
 	os := cmd.Flags().String("os", "ubuntu-24.04", "Operating system label (e.g., 'ubuntu-24.04').")
 	machineType := cmd.Flags().String("machine_type", "4x8", "Machine type in the format 'CPUxMemoryGB' (e.g., '4x8' for 4 vCPU and 8GB memory).")
 	machineArch := cmd.Flags().String("machine_arch", "amd64", "Machine architecture (amd64 or arm64).")
-	swapSizeMb := cmd.Flags().Int32("swap_memory", 4096, "Swap to provision on the runner, in MB. Must not exceed 2x the machine's memory.")
+	swapSizeMb := cmd.Flags().Int32("swap_memory", 0, "Swap to provision on the runner, in MB. Must not exceed 2x the machine's memory.")
 	builderMode := cmd.Flags().String("builder_mode", "USE_REMOTE_BUILDER", "Builder mode (USE_REMOTE_BUILDER, USE_LOCAL_CACHE, NO_CACHING).")
 	emoji := cmd.Flags().String("emoji", "", "Optional emoji to visually identify the profile.")
 	egressPolicy := cmd.Flags().String("egress_policy", "", "Egress policy (DOMAIN_ALLOW_LIST to restrict outbound access, or empty for no filtering).")
@@ -95,7 +95,6 @@ func newProfileCreateCmd() *cobra.Command {
 				Tag:         *tag,
 				Description: *description,
 				Os:          *os,
-				SwapSizeMb:  *swapSizeMb,
 				InstanceShape: &computev1beta.InstanceShape{
 					VirtualCpu:      vcpu,
 					MemoryMegabytes: memoryMB,
@@ -104,6 +103,10 @@ func newProfileCreateCmd() *cobra.Command {
 				},
 				BuilderMode: v1beta.BuilderMode(builderModeValue),
 				Emoji:       *emoji,
+			}
+
+			if cmd.Flags().Changed("swap_memory") {
+				spec.SwapSizeMb = *swapSizeMb
 			}
 
 			np, err := parseNetworkPolicy(*egressPolicy, *egressDomainAllowList)
