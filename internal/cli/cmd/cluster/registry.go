@@ -913,6 +913,7 @@ func setPolicy(ctx context.Context, repository string, expiration time.Duration,
 		} else {
 			fmt.Fprintf(stdout, "Repository %q has been updated to expire images after %s.\n", repository, newExpiry.AsDuration().String())
 		}
+		fmt.Fprintln(stdout, "\nNote: this only applies to images pushed after this change; existing images keep their current expiration.")
 
 		return nil
 	}
@@ -936,6 +937,7 @@ func setPolicy(ctx context.Context, repository string, expiration time.Duration,
 	} else {
 		fmt.Fprintf(stdout, "Default configuration has been updated to expire images after %s.\n", newExpiry.AsDuration().String())
 	}
+	fmt.Fprintln(stdout, "\nNote: this only applies to images pushed after this change; existing images keep their current expiration.")
 
 	return nil
 }
