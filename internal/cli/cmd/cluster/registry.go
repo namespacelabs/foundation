@@ -711,6 +711,7 @@ Alternatively, use --repository and --digest flags.`,
 			}
 			fmt.Fprintln(stdout)
 			fmt.Fprintf(stdout, "Image expiry updated successfully.\n")
+			fmt.Fprintln(stdout, "\nNote: image and tag expirations are tracked separately. This updated the image (manifest); any tags pointing to it keep their own expiration.")
 			return nil
 
 		default:
