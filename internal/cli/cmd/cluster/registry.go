@@ -793,14 +793,34 @@ func getPolicy(ctx context.Context, repository, output string) error {
 
 		case "table":
 			stdout := console.Stdout(ctx)
-			fmt.Fprintf(stdout, "Repository:   %s\n", repository)
-			fmt.Fprintf(stdout, "Revision:     %d\n", res.Revision)
+
+			if res.Revision == 0 {
+				// Revision 0 means no repository-specific policy is set, so new images
+				// inherit the workspace default. Report that effective expiration rather
+				// than the empty repository policy, which would misleadingly read "Never".
+				def, err := client.ContainerRegistry.GetDefaultPolicy(ctx, nil)
+				if err != nil {
+					return err
+				}
+
+				expiration := "Never"
+				if def.ExpirationEnforcement != registryv1beta.ExpirationEnforcement_EXPIRATION_ENFORCEMENT_DO_NOT_ENFORCE && def.DefaultExpiration != nil {
+					expiration = def.DefaultExpiration.AsDuration().String()
+				}
+
+				fmt.Fprintf(stdout, "Repository:           %s\n", repository)
+				fmt.Fprintf(stdout, "Policy:               none (workspace default applies)\n")
+				fmt.Fprintf(stdout, "Default Expiration:   %s\n", expiration)
+				return nil
+			}
 
 			expiration := "Never"
 			if res.ExpirationEnforcement != registryv1beta.ExpirationEnforcement_EXPIRATION_ENFORCEMENT_DO_NOT_ENFORCE && res.Expiration != nil {
 				expiration = res.Expiration.AsDuration().String()
 			}
 
+			fmt.Fprintf(stdout, "Repository:   %s\n", repository)
+			fmt.Fprintf(stdout, "Revision:     %d\n", res.Revision)
 			fmt.Fprintf(stdout, "Expiration:   %s\n", expiration)
 			return nil
 
