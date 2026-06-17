@@ -29,6 +29,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -124,7 +125,9 @@ func buildLocations(ctx context.Context, env cfg.Context, reg registry.Manager, 
 
 	var imgOpts binary.BuildImageOpts
 	imgOpts.UsePrebuilts = false
-	imgOpts.Platforms = []specs.Platform{docker.HostPlatform()}
+	hostPlatform := platform.RuntimePlatform()
+	hostPlatform.OS = "linux"
+	imgOpts.Platforms = []specs.Platform{hostPlatform}
 
 	var images []compute.Computable[Binary]
 	for _, pkg := range pkgs {

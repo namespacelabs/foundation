@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
@@ -48,7 +49,8 @@ func Run(ctx context.Context, io rtypes.IO, args ...string) error {
 		return fnerrors.InternalError("failed to create %q: %w", gcloudDir, err)
 	}
 
-	hostPlatform := docker.HostPlatform()
+	hostPlatform := platform.RuntimePlatform()
+	hostPlatform.OS = "linux"
 
 	const imageName = "gcr.io/google.com/cloudsdktool/google-cloud-cli:412.0.0-alpine"
 	imageRef := oci.ImageP(imageName, &hostPlatform, oci.RegistryAccess{PublicImage: true})

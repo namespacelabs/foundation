@@ -8,17 +8,18 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/docker/docker/api/types"
+	"github.com/moby/moby/api/types/system"
+	"namespacelabs.dev/foundation/internal/runtime/docker"
 )
 
 func TestDockerVersionParsing(t *testing.T) {
 	for _, test := range []struct {
-		ver types.Version
+		ver docker.ServerVersion
 		ok  bool
 	}{
-		{ver: types.Version{Version: "20.10.13"}, ok: false},
-		{ver: types.Version{Version: "20.10.13", Components: []types.ComponentVersion{{Name: "runc", Version: "1.0.3"}}}, ok: true},
-		{ver: types.Version{Version: "20.10.5+dfsg1", Components: []types.ComponentVersion{{Name: "runc", Version: "1.0.0~rc93+ds1"}}}, ok: true},
+		{ver: docker.ServerVersion{Version: "20.10.13"}, ok: false},
+		{ver: docker.ServerVersion{Version: "20.10.13", Components: []system.ComponentVersion{{Name: "runc", Version: "1.0.3"}}}, ok: true},
+		{ver: docker.ServerVersion{Version: "20.10.5+dfsg1", Components: []system.ComponentVersion{{Name: "runc", Version: "1.0.0~rc93+ds1"}}}, ok: true},
 	} {
 		dockerOK, runcOK, _ := validateVersions(test.ver)
 		if (dockerOK && runcOK) != test.ok {

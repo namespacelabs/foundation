@@ -8,10 +8,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/client"
+	"github.com/containerd/errdefs"
 	buildkit "github.com/moby/buildkit/client"
+	"github.com/moby/moby/api/types/mount"
+	"github.com/moby/moby/client"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
@@ -58,7 +58,7 @@ func RemoveBuildkitd(ctx context.Context) error {
 	// Ignore if the container is already removed.
 	ctr, err := dockerclient.ContainerInspect(ctx, DefaultContainerName)
 	if err != nil {
-		if client.IsErrNotFound(err) {
+		if errdefs.IsNotFound(err) {
 			return nil
 		} else {
 			return err
@@ -66,7 +66,7 @@ func RemoveBuildkitd(ctx context.Context) error {
 	}
 
 	// Remove container
-	opts := container.RemoveOptions{Force: true}
+	opts := client.ContainerRemoveOptions{Force: true}
 	if err := dockerclient.ContainerRemove(ctx, ctr.Name, opts); err != nil {
 		return fnerrors.InternalError("failed to remove the buildkitd container: %w", err)
 	}

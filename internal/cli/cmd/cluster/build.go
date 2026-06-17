@@ -44,7 +44,6 @@ import (
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
-	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/go-ids"
 )
@@ -118,7 +117,9 @@ func NewBuildCmd() *cobra.Command {
 
 		if len(*platforms) == 0 {
 			if *dockerLoad {
-				*platforms = []string{platform.FormatPlatform(docker.HostPlatform())}
+				hostPlatform := platform.RuntimePlatform()
+				hostPlatform.OS = "linux"
+				*platforms = []string{platform.FormatPlatform(hostPlatform)}
 			} else {
 				*platforms = []string{"linux/amd64"}
 			}

@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -18,13 +19,12 @@ import (
 
 	configtypes "github.com/docker/cli/cli/config/types"
 	"github.com/docker/cli/cli/connhelper"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/api/types/system"
-	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/tlsconfig"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/image"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/api/types/system"
+	"github.com/moby/moby/client"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
@@ -32,20 +32,35 @@ import (
 // Client implements the Docker client, but only with the bits that Namespace requires.
 // It also performs Namespace-specific error handling
 type Client interface {
-	ServerVersion(ctx context.Context) (types.Version, error)
+	ServerVersion(ctx context.Context) (ServerVersion, error)
 	Info(ctx context.Context) (system.Info, error)
-	ContainerCreate(context.Context, *container.Config, *container.HostConfig, *network.NetworkingConfig, *specs.Platform, string) (container.CreateResponse, error)
-	ContainerAttach(ctx context.Context, container string, options container.AttachOptions) (types.HijackedResponse, error)
-	ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error)
-	ContainerStart(ctx context.Context, containerID string, options container.StartOptions) error
-	ContainerRemove(ctx context.Context, containerID string, options container.RemoveOptions) error
+	ContainerCreate(context.Context, *container.Config, *container.HostConfig, *network.NetworkingConfig, *specs.Platform, string) (client.ContainerCreateResult, error)
+	ContainerAttach(ctx context.Context, container string, options client.ContainerAttachOptions) (client.HijackedResponse, error)
+	ContainerInspect(ctx context.Context, containerID string) (container.InspectResponse, error)
+	ContainerStart(ctx context.Context, containerID string, options client.ContainerStartOptions) error
+	ContainerRemove(ctx context.Context, containerID string, options client.ContainerRemoveOptions) error
 	ContainerWait(ctx context.Context, containerID string, condition container.WaitCondition) (<-chan container.WaitResponse, <-chan error)
-	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
-	ImageLoad(ctx context.Context, input io.Reader, quiet bool) (image.LoadResponse, error)
+	ImageInspectWithRaw(ctx context.Context, imageID string) (image.InspectResponse, []byte, error)
+	ImageLoad(ctx context.Context, input io.Reader, quiet bool) (io.ReadCloser, error)
 	ImageTag(ctx context.Context, source, target string) error
 	VolumeRemove(ctx context.Context, volumeID string, force bool) error
 	ClientVersion() string
 	Close() error
+}
+
+type ServerVersion struct {
+	Platform      client.PlatformInfo       `json:",omitempty"`
+	Version       string                    `json:",omitempty"`
+	APIVersion    string                    `json:",omitempty"`
+	MinAPIVersion string                    `json:",omitempty"`
+	GitCommit     string                    `json:",omitempty"`
+	GoVersion     string                    `json:",omitempty"`
+	Os            string                    `json:",omitempty"`
+	Arch          string                    `json:",omitempty"`
+	KernelVersion string                    `json:",omitempty"`
+	Experimental  bool                      `json:",omitempty"`
+	BuildTime     string                    `json:",omitempty"`
+	Components    []system.ComponentVersion `json:",omitempty"`
 }
 
 func clientConfiguration() *Configuration {
@@ -135,60 +150,82 @@ type wrappedClient struct {
 	cli *client.Client
 }
 
-func (w wrappedClient) ServerVersion(ctx context.Context) (types.Version, error) {
-	v, err := w.cli.ServerVersion(ctx)
-	return v, maybeReplaceErr(err)
+func (w wrappedClient) ServerVersion(ctx context.Context) (ServerVersion, error) {
+	v, err := w.cli.ServerVersion(ctx, client.ServerVersionOptions{})
+	converted := ServerVersion{
+		Platform:      v.Platform,
+		Version:       v.Version,
+		APIVersion:    v.APIVersion,
+		MinAPIVersion: v.MinAPIVersion,
+		Os:            v.Os,
+		Arch:          v.Arch,
+		Experimental:  v.Experimental,
+		Components:    v.Components,
+	}
+	return converted, maybeReplaceErr(err)
 }
 
 func (w wrappedClient) Info(ctx context.Context) (system.Info, error) {
-	v, err := w.cli.Info(ctx)
+	v, err := w.cli.Info(ctx, client.InfoOptions{})
+	return v.Info, maybeReplaceErr(err)
+}
+
+func (w wrappedClient) ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, platform *specs.Platform, containerName string) (client.ContainerCreateResult, error) {
+	v, err := w.cli.ContainerCreate(ctx, client.ContainerCreateOptions{
+		Config:           config,
+		HostConfig:       hostConfig,
+		NetworkingConfig: networkingConfig,
+		Platform:         platform,
+		Name:             containerName,
+	})
 	return v, maybeReplaceErr(err)
 }
 
-func (w wrappedClient) ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, platform *specs.Platform, containerName string) (container.CreateResponse, error) {
-	v, err := w.cli.ContainerCreate(ctx, config, hostConfig, networkingConfig, platform, containerName)
-	return v, maybeReplaceErr(err)
-}
-
-func (w wrappedClient) ContainerAttach(ctx context.Context, container string, options container.AttachOptions) (types.HijackedResponse, error) {
+func (w wrappedClient) ContainerAttach(ctx context.Context, container string, options client.ContainerAttachOptions) (client.HijackedResponse, error) {
 	v, err := w.cli.ContainerAttach(ctx, container, options)
-	return v, maybeReplaceErr(err)
+	return v.HijackedResponse, maybeReplaceErr(err)
 }
 
-func (w wrappedClient) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) {
-	v, err := w.cli.ContainerInspect(ctx, containerID)
-	return v, maybeReplaceErr(err)
+func (w wrappedClient) ContainerInspect(ctx context.Context, containerID string) (container.InspectResponse, error) {
+	v, err := w.cli.ContainerInspect(ctx, containerID, client.ContainerInspectOptions{})
+	return v.Container, maybeReplaceErr(err)
 }
 
-func (w wrappedClient) ContainerStart(ctx context.Context, containerID string, options container.StartOptions) error {
-	return maybeReplaceErr(w.cli.ContainerStart(ctx, containerID, options))
+func (w wrappedClient) ContainerStart(ctx context.Context, containerID string, options client.ContainerStartOptions) error {
+	_, err := w.cli.ContainerStart(ctx, containerID, options)
+	return maybeReplaceErr(err)
 }
 
-func (w wrappedClient) ContainerRemove(ctx context.Context, containerID string, options container.RemoveOptions) error {
-	return maybeReplaceErr(w.cli.ContainerRemove(ctx, containerID, options))
+func (w wrappedClient) ContainerRemove(ctx context.Context, containerID string, options client.ContainerRemoveOptions) error {
+	_, err := w.cli.ContainerRemove(ctx, containerID, options)
+	return maybeReplaceErr(err)
 }
 
 func (w wrappedClient) ContainerWait(ctx context.Context, containerID string, condition container.WaitCondition) (<-chan container.WaitResponse, <-chan error) {
 	// XXX we assume wrapping errors is not necessary here as ContainerWait is not used in isolation.
-	return w.cli.ContainerWait(ctx, containerID, condition)
+	res := w.cli.ContainerWait(ctx, containerID, client.ContainerWaitOptions{Condition: condition})
+	return res.Result, res.Error
 }
 
-func (w wrappedClient) ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error) {
-	i, b, err := w.cli.ImageInspectWithRaw(ctx, imageID)
-	return i, b, maybeReplaceErr(err)
+func (w wrappedClient) ImageInspectWithRaw(ctx context.Context, imageID string) (image.InspectResponse, []byte, error) {
+	var raw bytes.Buffer
+	i, err := w.cli.ImageInspect(ctx, imageID, client.ImageInspectWithRawResponse(&raw))
+	return i.InspectResponse, raw.Bytes(), maybeReplaceErr(err)
 }
 
-func (w wrappedClient) ImageLoad(ctx context.Context, input io.Reader, quiet bool) (image.LoadResponse, error) {
+func (w wrappedClient) ImageLoad(ctx context.Context, input io.Reader, quiet bool) (io.ReadCloser, error) {
 	v, err := w.cli.ImageLoad(ctx, input, client.ImageLoadWithQuiet(quiet))
 	return v, maybeReplaceErr(err)
 }
 
 func (w wrappedClient) ImageTag(ctx context.Context, source, target string) error {
-	return maybeReplaceErr(w.cli.ImageTag(ctx, source, target))
+	_, err := w.cli.ImageTag(ctx, client.ImageTagOptions{Source: source, Target: target})
+	return maybeReplaceErr(err)
 }
 
 func (w wrappedClient) VolumeRemove(ctx context.Context, volumeID string, force bool) error {
-	return maybeReplaceErr(w.cli.VolumeRemove(ctx, volumeID, force))
+	_, err := w.cli.VolumeRemove(ctx, volumeID, client.VolumeRemoveOptions{Force: force})
+	return maybeReplaceErr(err)
 }
 
 func (w wrappedClient) ClientVersion() string {

@@ -23,8 +23,8 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	nsplatform "namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
-	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/schema"
@@ -232,7 +232,9 @@ func buildRemotely(conf cfg.Configuration, platform *specs.Platform) bool {
 	}
 
 	target := formatPlatformOrDefault(platform)
-	host := platforms.Format(docker.HostPlatform())
+	hostPlatform := nsplatform.RuntimePlatform()
+	hostPlatform.OS = "linux"
+	host := platforms.Format(hostPlatform)
 
 	if BuildOnNamespaceCloudUnlessHost.Get(conf) && target != host {
 		return true
@@ -246,7 +248,9 @@ func formatPlatformOrDefault(p *specs.Platform) string {
 		return platforms.Format(*p)
 	}
 
-	return platforms.Format(docker.HostPlatform())
+	hostPlatform := nsplatform.RuntimePlatform()
+	hostPlatform.OS = "linux"
+	return platforms.Format(hostPlatform)
 }
 
 func parsePlatformOrDefault(p *specs.Platform) (api.BuildPlatform, error) {
@@ -254,7 +258,9 @@ func parsePlatformOrDefault(p *specs.Platform) (api.BuildPlatform, error) {
 		return api.ParseBuildPlatform(p.Architecture)
 	}
 
-	return api.ParseBuildPlatform(docker.HostPlatform().Architecture)
+	hostPlatform := nsplatform.RuntimePlatform()
+	hostPlatform.OS = "linux"
+	return api.ParseBuildPlatform(hostPlatform.Architecture)
 }
 
 func useRemoteCluster(ctx context.Context, cluster *api.KubernetesCluster, port int) (*GatewayClient, error) {

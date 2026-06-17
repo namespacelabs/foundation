@@ -82,8 +82,8 @@ func writeImage(ctx context.Context, client Client, tag name.Tag, img v1.Image) 
 	if err != nil {
 		return "", fnerrors.InvocationError("docker", "failed to load image: %w", err)
 	}
-	defer resp.Body.Close()
-	b, err := io.ReadAll(resp.Body)
+	defer resp.Close()
+	b, err := io.ReadAll(resp)
 	response := string(b)
 	if err != nil {
 		return response, fnerrors.InvocationError("docker", "error reading load response body: %w", err)

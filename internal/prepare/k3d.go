@@ -8,10 +8,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
+	"github.com/containerd/errdefs"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/client"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/build/registry"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -126,7 +126,7 @@ type k3dPrepare struct {
 func (p *k3dPrepare) createOrRestartRegistry(ctx context.Context, registryName string) (string, error) {
 	registryCtr, err := p.dockerclient.ContainerInspect(ctx, registryName)
 	if err != nil {
-		if !client.IsErrNotFound(err) {
+		if !errdefs.IsNotFound(err) {
 			return "", err
 		}
 
@@ -141,7 +141,7 @@ func (p *k3dPrepare) createOrRestartRegistry(ctx context.Context, registryName s
 	}
 
 	if !registryCtr.State.Running {
-		if err := p.dockerclient.ContainerStart(ctx, registryName, container.StartOptions{}); err != nil {
+		if err := p.dockerclient.ContainerStart(ctx, registryName, client.ContainerStartOptions{}); err != nil {
 			return "", fnerrors.InternalError("failed to restart registry %q: %w", registryName, err)
 		}
 
@@ -203,10 +203,15 @@ func (p *k3dPrepare) createOrRestartCluster(ctx context.Context, clusterName str
 	return nil
 }
 
-func findPort(ctr types.ContainerJSON, port string) []nat.PortBinding {
+func findPort(ctr container.InspectResponse, port string) []network.PortBinding {
 	if ctr.NetworkSettings == nil {
 		return nil
 	}
 
-	return ctr.NetworkSettings.Ports[nat.Port(port)]
+	parsed, err := network.ParsePort(port)
+	if err != nil {
+		return nil
+	}
+
+	return ctr.NetworkSettings.Ports[parsed]
 }

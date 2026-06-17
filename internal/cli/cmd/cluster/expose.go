@@ -17,10 +17,10 @@ import (
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/pkg/namespaces"
+	"github.com/containerd/errdefs"
 	gocni "github.com/containerd/go-cni"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
@@ -322,63 +322,64 @@ func selectDockerPorts(ctx context.Context, cluster *api.KubernetesCluster, filt
 	return buildContainersPortMap(ctx, data...)
 }
 
-func dockerFilterToContainers(ctx context.Context, docker *client.Client, filter containerFilter) ([]types.ContainerJSON, error) {
+func dockerFilterToContainers(ctx context.Context, docker *client.Client, filter containerFilter) ([]container.InspectResponse, error) {
 	if filter.all {
-		list, err := docker.ContainerList(ctx, container.ListOptions{})
+		list, err := docker.ContainerList(ctx, client.ContainerListOptions{})
 		if err != nil {
 			return nil, err
 		}
 
-		actual := make([]types.ContainerJSON, len(list))
-		for k, l := range list {
-			res, err := docker.ContainerInspect(ctx, l.ID)
+		actual := make([]container.InspectResponse, len(list.Items))
+		for k, l := range list.Items {
+			res, err := docker.ContainerInspect(ctx, l.ID, client.ContainerInspectOptions{})
 			if err != nil {
 				return nil, err
 			}
-			actual[k] = res
+			actual[k] = res.Container
 		}
 
 		return actual, nil
 	}
 
-	data, err := docker.ContainerInspect(ctx, filter.containerName)
+	data, err := docker.ContainerInspect(ctx, filter.containerName, client.ContainerInspectOptions{})
 	if err != nil {
-		if client.IsErrNotFound(err) {
+		if errdefs.IsNotFound(err) {
 			return nil, nil
 		}
 
 		return nil, err
 	}
 
-	return []types.ContainerJSON{data}, nil
+	return []container.InspectResponse{data.Container}, nil
 }
 
-func buildContainersPortMap(ctx context.Context, data ...types.ContainerJSON) ([]containerPort, error) {
+func buildContainersPortMap(ctx context.Context, data ...container.InspectResponse) ([]containerPort, error) {
 	exported := portMap{}
 	for _, data := range data {
 		internalName := parseContainerName(data.Name)
 
 		for port, mapping := range data.NetworkSettings.Ports {
+			portNum := port.Num()
 			if port.Proto() == "tcp" {
 				for _, m := range mapping {
-					if m.HostIP == "0.0.0.0" || m.HostIP == "::" {
+					if m.HostIP.IsUnspecified() {
 						parsedPort, err := strconv.ParseInt(m.HostPort, 10, 32)
 						if err != nil {
 							return nil, err
 						}
 
-						exported[port.Int()] = containerPort{
+						exported[int(portNum)] = containerPort{
 							ContainerID:   data.ID,
 							ContainerName: internalName,
-							ContainerPort: int32(port.Int()),
+							ContainerPort: int32(portNum),
 							ExportedPort:  int32(parsedPort),
 						}
 					} else {
-						fmt.Fprintf(console.Warnings(ctx), "%s: Skipping %d/%s exported to %s (unsupported)\n", data.Name, port.Int(), port.Proto(), m.HostIP)
+						fmt.Fprintf(console.Warnings(ctx), "%s: Skipping %d/%s exported to %s (unsupported)\n", data.Name, portNum, port.Proto(), m.HostIP)
 					}
 				}
 			} else {
-				fmt.Fprintf(console.Warnings(ctx), "%s: Skipping unsupported protocol %q, port %d\n", data.Name, port.Proto(), port.Int())
+				fmt.Fprintf(console.Warnings(ctx), "%s: Skipping unsupported protocol %q, port %d\n", data.Name, port.Proto(), portNum)
 			}
 		}
 	}
