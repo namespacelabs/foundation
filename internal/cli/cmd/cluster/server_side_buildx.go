@@ -22,8 +22,6 @@ import (
 	"strings"
 
 	builderv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/builder/v1beta"
-	"github.com/docker/buildx/store"
-	"github.com/docker/buildx/util/dockerutil"
 	"github.com/docker/cli/cli/command"
 	controlapi "github.com/moby/buildkit/api/services/control"
 	"github.com/natefinch/atomic"
@@ -34,6 +32,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+	store "namespacelabs.dev/foundation/internal/cli/cmd/cluster/buildxstore"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
@@ -453,7 +452,7 @@ func wireRemoteBuildxProxy(dockerCli *command.DockerCli, name string, use, defau
 		}
 
 		if use {
-			ep, err := dockerutil.GetCurrentEndpoint(dockerCli)
+			ep, err := store.GetCurrentEndpoint(dockerCli)
 			if err != nil {
 				return err
 			}
