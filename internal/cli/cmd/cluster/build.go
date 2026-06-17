@@ -14,8 +14,6 @@ import (
 	"strings"
 	"time"
 
-	bbuild "github.com/docker/buildx/build"
-	"github.com/docker/buildx/util/buildflags"
 	"github.com/docker/cli/cli/config"
 	configtypes "github.com/docker/cli/cli/config/types"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -125,9 +123,9 @@ func NewBuildCmd() *cobra.Command {
 			}
 		}
 
-		var parsedSecrets buildflags.Secrets
+		var parsedSecrets []buildSecret
 		if len(*secrets) > 0 {
-			parsed, err := buildflags.ParseSecretSpecs(*secrets)
+			parsed, err := parseSecretSpecs(*secrets)
 			if err != nil {
 				return err
 			}
@@ -353,7 +351,7 @@ type BuildFragment struct {
 	BuildArgs          map[string]string
 	Platform           specs.Platform
 	Exports            []client.ExportEntry
-	Secrets            buildflags.Secrets
+	Secrets            []buildSecret
 }
 
 func StartBuilds(ctx context.Context, fragments []BuildFragment, makeClient func(context.Context, specs.Platform) (*client.Client, error)) ([]*client.SolveResponse, error) {
@@ -450,7 +448,7 @@ func startSingleBuild(eg *executor.Executor, c *client.Client, mw *progresswrite
 		})
 
 		if len(bf.Secrets) > 0 {
-			secrets, err := bbuild.CreateSecrets(bf.Secrets)
+			secrets, err := createSecretsProvider(bf.Secrets)
 			if err != nil {
 				return err
 			}

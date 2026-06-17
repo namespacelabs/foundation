@@ -21,9 +21,6 @@ import (
 
 	computev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/compute/v1beta"
 	"github.com/cenkalti/backoff"
-	"github.com/docker/buildx/store"
-	"github.com/docker/buildx/store/storeutil"
-	"github.com/docker/buildx/util/dockerutil"
 	"github.com/docker/cli/cli/command"
 	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/muesli/reflow/wordwrap"
@@ -33,6 +30,7 @@ import (
 	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
+	store "namespacelabs.dev/foundation/internal/cli/cmd/cluster/buildxstore"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -444,7 +442,7 @@ func wireBuildx(dockerCli *command.DockerCli, name string, use, defaultLoad bool
 		}
 
 		if use {
-			ep, err := dockerutil.GetCurrentEndpoint(dockerCli)
+			ep, err := store.GetCurrentEndpoint(dockerCli)
 			if err != nil {
 				return err
 			}
@@ -683,7 +681,7 @@ func bold[X any](style colors.Style, values []X) []string {
 }
 
 func withStore(dockerCli *command.DockerCli, f func(*store.Txn) error) error {
-	txn, release, err := storeutil.GetStore(dockerCli)
+	txn, release, err := store.GetStore(dockerCli)
 	if err != nil {
 		return err
 	}
