@@ -19,6 +19,7 @@ import (
 	"github.com/moby/patternmatcher"
 	"github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/tonistiigi/fsutil"
 	"namespacelabs.dev/foundation/framework/secrets"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -184,9 +185,14 @@ func (l *baseRequest[V]) solve(ctx context.Context, c *GatewayClient, deps compu
 	fmt.Fprintf(console.Debug(ctx), "buildkit/%s: exports.attrs: %v\n", sid, attrs)
 
 	if len(l.localDirs) > 0 {
-		solveOpt.LocalDirs = map[string]string{}
+		solveOpt.LocalMounts = map[string]fsutil.FS{}
 		for _, local := range l.localDirs {
-			solveOpt.LocalDirs[local.Abs()] = filepath.Join(local.Module.Abs(), local.Path)
+			localFS, err := fsutil.NewFS(filepath.Join(local.Module.Abs(), local.Path))
+			if err != nil {
+				return res, err
+			}
+
+			solveOpt.LocalMounts[local.Abs()] = localFS
 
 			if !PreDigestLocalInputs {
 				if SkipExpectedMaxWorkspaceSizeCheck {
