@@ -21,11 +21,6 @@ import (
 
 	computev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/compute/v1beta"
 	"github.com/cenkalti/backoff"
-	"github.com/docker/buildx/store"
-	"github.com/docker/buildx/store/storeutil"
-	"github.com/docker/buildx/util/dockerutil"
-	"github.com/docker/cli/cli/command"
-	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/muesli/reflow/wordwrap"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -52,7 +47,6 @@ const (
 )
 
 var ErrBuildxNodeGroupNotFound = errors.New("buildx node group not found")
-var ErrIsNotRemoteDriver = errors.New("buildx node group does not have 'remote' driver")
 
 func newSetupBuildxCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -105,15 +99,6 @@ func newSetupBuildxCmd() *cobra.Command {
 			}
 		}
 
-		dockerCli, err := command.NewDockerCli()
-		if err != nil {
-			return err
-		}
-
-		if err := dockerCli.Initialize(cliflags.NewClientOptions()); err != nil {
-			return err
-		}
-
 		available, err := determineAvailable(ctx)
 		if err != nil {
 			return err
@@ -134,7 +119,7 @@ func newSetupBuildxCmd() *cobra.Command {
 				return err
 			}
 
-			if err := setupServerSideBuildxProxy(ctx, state, *name, *use, *defaultLoad, dockerCli, available, api.BuilderConfiguration{
+			if err := setupServerSideBuildxProxy(ctx, state, *name, *use, *defaultLoad, available, api.BuilderConfiguration{
 				SkipPrespawn: !*createAtStartup,
 				Name:         *tag,
 				Experimental: *experimental,
@@ -151,11 +136,9 @@ func newSetupBuildxCmd() *cobra.Command {
 		fmt.Fprintf(console.Debug(ctx), "Using state path %q\n", state)
 
 		// We don't need to clean up a server-side proxy based builder - overwriting it later is good enough.
-		if clientSideProxyStateExists(state) {
+		if clientSideProxyStateRunning(state) {
 			if *forceCleanup {
-				if err := withStore(dockerCli, func(txn *store.Txn) error {
-					return doClientSideProxyCleanup(ctx, state, txn)
-				}); err != nil {
+				if err := doClientSideProxyCleanup(ctx, state); err != nil {
 					console.SetStickyContent(ctx, "build", existingProxyMessage(*stateDir))
 					return err
 				}
@@ -281,7 +264,7 @@ func newSetupBuildxCmd() *cobra.Command {
 			}
 		}
 
-		if err := wireBuildx(dockerCli, *name, *use, *defaultLoad, md); err != nil {
+		if err := wireBuildx(ctx, *name, *use, *defaultLoad, md); err != nil {
 			return multierr.New(err, eg.CancelAndWait())
 		}
 
@@ -297,9 +280,7 @@ func newSetupBuildxCmd() *cobra.Command {
 		}
 
 		fmt.Fprintf(console.Debug(ctx), "Cleaning up docker buildx context.\n")
-		if err := withStore(dockerCli, func(txn *store.Txn) error {
-			return txn.Remove(*name)
-		}); err != nil {
+		if err := buildxRemove(ctx, *name); err != nil {
 			return err
 		}
 
@@ -317,6 +298,18 @@ func newSetupBuildxCmd() *cobra.Command {
 func clientSideProxyStateExists(stateDir string) bool {
 	_, err := os.Stat(filepath.Join(stateDir, metadataFile))
 	return !os.IsNotExist(err)
+}
+
+// clientSideProxyStateRunning reports whether there is state describing
+// client-side background proxies (as opposed to a server-side proxy builder,
+// which has no local proxy instances).
+func clientSideProxyStateRunning(stateDir string) bool {
+	md, found, err := readBuildxMetadata(stateDir)
+	if err != nil || !found {
+		return false
+	}
+
+	return len(md.Instances) > 0
 }
 
 func existingProxyMessage(customStateDir string) string {
@@ -397,6 +390,10 @@ func ensureLogDir(dir string) (string, error) {
 type buildxMetadata struct {
 	NodeGroupName string                   `json:"node_group_name"`
 	Instances     []buildxInstanceMetadata `json:"instances"`
+	// BuilderConfigs is populated for server-side proxy builders, so that
+	// status/cleanup/dump can read back the remote endpoints and credentials
+	// without querying the buildx store.
+	BuilderConfigs []BuilderConfig `json:"builder_configs,omitempty"`
 }
 
 type buildxInstanceMetadata struct {
@@ -407,59 +404,38 @@ type buildxInstanceMetadata struct {
 	ControlSocketPath string            `json:"control_socket_path"`
 }
 
-func wireBuildx(dockerCli *command.DockerCli, name string, use, defaultLoad bool, md buildxMetadata) error {
-	return withStore(dockerCli, func(txn *store.Txn) error {
-		ng, err := txn.NodeGroupByName(name)
-		if err != nil {
-			if !os.IsNotExist(errors.Cause(err)) {
-				return err
-			}
+func wireBuildx(ctx context.Context, name string, use, defaultLoad bool, md buildxMetadata) error {
+	const driver = "remote"
+
+	// Start from a clean slate so that re-running setup produces a deterministic
+	// builder, regardless of any pre-existing nodes. Tolerate the builder not
+	// existing yet.
+	_ = buildxRemove(ctx, name)
+
+	do := map[string]string{}
+	if defaultLoad {
+		// Supported starting with v0.14.0
+		do["default-load"] = "true"
+	}
+
+	for i, p := range md.Instances {
+		var platforms []string
+		if p.Platform == "arm64" {
+			platforms = []string{"linux/arm64"}
 		}
 
-		const driver = "remote"
-
-		if ng == nil {
-			ng = &store.NodeGroup{
-				Name:   name,
-				Driver: driver,
-			}
-		}
-
-		do := map[string]string{}
-
-		if defaultLoad {
-			// Supported starting with v0.14.0
-			do["default-load"] = "true"
-		}
-
-		for _, p := range md.Instances {
-			var platforms []string
-			if p.Platform == "arm64" {
-				platforms = []string{"linux/arm64"}
-			}
-
-			if err := ng.Update(string(p.Platform), "unix://"+p.SocketPath, platforms, true, true, nil, "", do); err != nil {
-				return err
-			}
-		}
-
-		if use {
-			ep, err := dockerutil.GetCurrentEndpoint(dockerCli)
-			if err != nil {
-				return err
-			}
-
-			if err := txn.SetCurrent(ep, name, false, false); err != nil {
-				return err
-			}
-		}
-
-		if err := txn.Save(ng); err != nil {
+		if err := buildxCreateNode(ctx, name, driver, string(p.Platform), "unix://"+p.SocketPath, platforms, do, i > 0); err != nil {
 			return err
 		}
+	}
 
-		return nil
-	})
+	if use {
+		if err := buildxUse(ctx, name); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func newCleanupBuildxCommand() *cobra.Command {
@@ -472,47 +448,53 @@ func newCleanupBuildxCommand() *cobra.Command {
 	stateDir := cmd.Flags().String("state", "", "If set, looks for the remote builder context in this directory.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		dockerCli, err := command.NewDockerCli()
+		state, err := DetermineStateDir(*stateDir, BuildkitProxyPath)
 		if err != nil {
 			return err
 		}
 
-		if err := dockerCli.Initialize(cliflags.NewClientOptions()); err != nil {
+		md, found, err := readBuildxMetadata(state)
+		if err != nil {
 			return err
 		}
 
-		return withStore(dockerCli, func(txn *store.Txn) error {
-			cleanedUpSomething := false
+		cleanedUpSomething := false
 
-			if isServerSideProxy(txn, *name) {
-				txn.Remove(*name)
-
-				cleanedUpSomething = true
-				fmt.Fprintf(console.Stderr(ctx), "Removed buildx node group %q.\n", *name)
-			}
-
-			state, err := DetermineStateDir(*stateDir, BuildkitProxyPath)
-			if err != nil {
+		// Stop any client-side background proxies and remove their state file.
+		if found && len(md.Instances) > 0 {
+			if err := doClientSideProxyCleanup(ctx, state); err != nil {
 				return err
 			}
 
-			if clientSideProxyStateExists(state) {
-				if err := doClientSideProxyCleanup(ctx, state, txn); err != nil {
-					return err
-				}
+			cleanedUpSomething = true
+		} else if found {
+			// Server-side proxy builder: drop the state file.
+			_ = os.Remove(filepath.Join(state, metadataFile))
+		}
 
-				cleanedUpSomething = true
-			}
+		// Remove the buildx builder itself. This covers both client- and
+		// server-side builders, as well as builders created by an older nsc
+		// that did not persist a state file.
+		builderName := *name
+		if found && md.NodeGroupName != "" {
+			builderName = md.NodeGroupName
+		}
 
-			if cleanedUpSomething {
-				fmt.Fprintf(console.Stderr(ctx), "Cleanup complete.\n")
-			} else {
-				console.SetStickyContent(ctx, "build", "State file not found. Nothing to cleanup.")
-			}
+		if err := buildxRemove(ctx, builderName); err != nil {
+			// The builder may not exist; treat removal as best-effort.
+			fmt.Fprintf(console.Debug(ctx), "buildx rm %q: %v\n", builderName, err)
+		} else {
+			fmt.Fprintf(console.Stderr(ctx), "Removed buildx builder %q.\n", builderName)
+			cleanedUpSomething = true
+		}
 
-			return nil
+		if cleanedUpSomething {
+			fmt.Fprintf(console.Stderr(ctx), "Cleanup complete.\n")
+		} else {
+			console.SetStickyContent(ctx, "build", "State file not found. Nothing to cleanup.")
+		}
 
-		})
+		return nil
 	})
 
 	return cmd
@@ -527,22 +509,7 @@ func isNamespaceBuildkitEndpoint(endpoint string) bool {
 	return strings.Contains(endpoint, "namespaceapis.com")
 }
 
-func isServerSideProxy(txn *store.Txn, name string) bool {
-	configs, err := readRemoteBuilderConfigsTxn(txn, name)
-	if err != nil {
-		return false
-	}
-
-	for _, cfg := range configs {
-		if isNamespaceBuildkitEndpoint(cfg.FullBuildkitEndpoint) {
-			return true
-		}
-	}
-
-	return false
-}
-
-func doClientSideProxyCleanup(ctx context.Context, state string, txn *store.Txn) error {
+func doClientSideProxyCleanup(ctx context.Context, state string) error {
 	metadataPath := filepath.Join(state, metadataFile)
 
 	var md buildxMetadata
@@ -573,11 +540,11 @@ func doClientSideProxyCleanup(ctx context.Context, state string, txn *store.Txn)
 	fmt.Fprintf(console.Debug(ctx), "Removed local state file %q.\n", metadataPath)
 
 	if md.NodeGroupName != "" {
-		if err := txn.Remove(md.NodeGroupName); err != nil {
+		if err := buildxRemove(ctx, md.NodeGroupName); err != nil {
 			return err
 		}
 
-		fmt.Fprintf(console.Stderr(ctx), "Removed buildx node group %q.\n", md.NodeGroupName)
+		fmt.Fprintf(console.Stderr(ctx), "Removed buildx builder %q.\n", md.NodeGroupName)
 	}
 
 	return nil
@@ -601,21 +568,12 @@ func newWireBuildxCommand(hidden bool) *cobra.Command {
 			return fnerrors.Newf("--state is required")
 		}
 
-		dockerCli, err := command.NewDockerCli()
-		if err != nil {
-			return err
-		}
-
-		if err := dockerCli.Initialize(cliflags.NewClientOptions()); err != nil {
-			return err
-		}
-
 		var md buildxMetadata
 		if err := files.ReadJson(filepath.Join(*stateDir, metadataFile), &md); err != nil {
 			return err
 		}
 
-		return wireBuildx(dockerCli, *name, *use, *defaultLoad, md)
+		return wireBuildx(ctx, *name, *use, *defaultLoad, md)
 	})
 
 	return cmd
@@ -682,16 +640,6 @@ func bold[X any](style colors.Style, values []X) []string {
 	return result
 }
 
-func withStore(dockerCli *command.DockerCli, f func(*store.Txn) error) error {
-	txn, release, err := storeutil.GetStore(dockerCli)
-	if err != nil {
-		return err
-	}
-	defer release()
-
-	return f(txn)
-}
-
 func buildxContextNotConfigured() string {
 	return `Docker buildx context is not configured for Namespace remote builders.
 Try running:
@@ -731,16 +679,7 @@ func newStatusBuildxCommand() *cobra.Command {
 	name := cmd.Flags().String("name", defaultBuilder, "The name of the buildx builder to check.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		dockerCli, err := command.NewDockerCli()
-		if err != nil {
-			return err
-		}
-
-		if err := dockerCli.Initialize(cliflags.NewClientOptions()); err != nil {
-			return err
-		}
-
-		sspDescs, err := determineServerSideProxyStatus(ctx, dockerCli, *name)
+		sspDescs, err := determineServerSideProxyStatus(ctx, *stateDir, *name)
 		if err != nil {
 			return err
 		}
@@ -828,65 +767,32 @@ func parseBuilderShape(spec string) (*computev1beta.InstanceShape, error) {
 	}, nil
 }
 
-func readRemoteBuilderConfigs(dockerCli *command.DockerCli, name string) ([]BuilderConfig, error) {
-	var res []BuilderConfig
-
-	err := withStore(dockerCli, func(txn *store.Txn) error {
-		r, err := readRemoteBuilderConfigsTxn(txn, name)
-		if err != nil {
-			return err
-		}
-
-		res = r
-		return nil
-	})
-
-	return res, err
-}
-
-func readRemoteBuilderConfigsTxn(txn *store.Txn, name string) ([]BuilderConfig, error) {
-	var configs []BuilderConfig
-
-	ng, err := txn.NodeGroupByName(name)
+// readRemoteBuilderConfigs returns the remote builder configurations we
+// persisted at setup time. stateDir is the raw --state flag value.
+func readRemoteBuilderConfigs(stateDir, name string) ([]BuilderConfig, error) {
+	resolved, err := DetermineStateDir(stateDir, BuildkitProxyPath)
 	if err != nil {
-		if os.IsNotExist(errors.Cause(err)) {
-			return configs, ErrBuildxNodeGroupNotFound
-		}
-
-		return configs, fmt.Errorf("can not query buildx node group '%s': %v", name, err)
+		return nil, err
 	}
 
-	if ng.Driver != "remote" {
-		return configs, ErrIsNotRemoteDriver
+	md, found, err := readBuildxMetadata(resolved)
+	if err != nil {
+		return nil, err
 	}
 
-	for _, node := range ng.Nodes {
-		for _, plat := range node.Platforms {
-			endpoint := BuilderConfig{
-				Platform:             plat.OS + "/" + plat.Architecture,
-				Arch:                 plat.Architecture,
-				FullBuildkitEndpoint: node.Endpoint,
-			}
-
-			if node.DriverOpts != nil {
-				endpoint.ServerCAPath = node.DriverOpts["cacert"]
-				endpoint.ClientCertPath = node.DriverOpts["cert"]
-				endpoint.ClientKeyPath = node.DriverOpts["key"]
-			}
-
-			configs = append(configs, endpoint)
-		}
+	if !found || md.NodeGroupName != name {
+		return nil, ErrBuildxNodeGroupNotFound
 	}
 
-	return configs, nil
+	return md.BuilderConfigs, nil
 }
 
-func determineServerSideProxyStatus(ctx context.Context, dockerCli *command.DockerCli, name string) ([]StatusData, error) {
+func determineServerSideProxyStatus(ctx context.Context, stateDir, name string) ([]StatusData, error) {
 	descs := []StatusData{}
 
-	configs, err := readRemoteBuilderConfigs(dockerCli, name)
+	configs, err := readRemoteBuilderConfigs(stateDir, name)
 	if err != nil {
-		if err == ErrBuildxNodeGroupNotFound || err == ErrIsNotRemoteDriver {
+		if errors.Is(err, ErrBuildxNodeGroupNotFound) {
 			return nil, nil
 		}
 
@@ -959,19 +865,11 @@ func newDumpListWorkersBuildxCommand() *cobra.Command {
 	}
 
 	name := cmd.Flags().String("name", defaultBuilder, "The name of the buildx builder to dump ListWorkers for.")
+	stateDir := cmd.Flags().String("state", "", "If set, looks for the remote builder context in this directory.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		dockerCli, err := command.NewDockerCli()
-		if err != nil {
-			return err
-		}
-
-		if err := dockerCli.Initialize(cliflags.NewClientOptions()); err != nil {
-			return err
-		}
-
 		// Currently only implemented for our remote builders.
-		configs, err := readRemoteBuilderConfigs(dockerCli, *name)
+		configs, err := readRemoteBuilderConfigs(*stateDir, *name)
 		if err != nil {
 			return err
 		}

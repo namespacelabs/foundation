@@ -22,9 +22,6 @@ import (
 	"strings"
 
 	builderv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/builder/v1beta"
-	"github.com/docker/buildx/store"
-	"github.com/docker/buildx/util/dockerutil"
-	"github.com/docker/cli/cli/command"
 	controlapi "github.com/moby/buildkit/api/services/control"
 	"github.com/natefinch/atomic"
 	"github.com/pkg/errors"
@@ -34,6 +31,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"namespacelabs.dev/foundation/internal/files"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
@@ -181,14 +179,26 @@ func CreateGrpcClientConn(bc BuilderConfig) (*grpc.ClientConn, error) {
 	return cl, nil
 }
 
-func setupServerSideBuildxProxy(ctx context.Context, stateDir, builderName string, use, defaultLoad bool, dockerCli *command.DockerCli, platforms []api.BuildPlatform, conf api.BuilderConfiguration) error {
+func setupServerSideBuildxProxy(ctx context.Context, stateDir, builderName string, use, defaultLoad bool, platforms []api.BuildPlatform, conf api.BuilderConfiguration) error {
 	builderConfigs, err := PrepareServerSideBuildxProxy(ctx, stateDir, platforms, conf)
 	if err != nil {
 		return err
 	}
 
 	// Create buildx builders
-	if err := wireRemoteBuildxProxy(dockerCli, builderName, use, defaultLoad, builderConfigs); err != nil {
+	if err := wireRemoteBuildxProxy(ctx, builderName, use, defaultLoad, builderConfigs); err != nil {
+		return err
+	}
+
+	// Persist the builder configuration so that status, cleanup and
+	// dump-list-workers can read back the remote endpoints and credentials
+	// without querying the buildx store.
+	md := buildxMetadata{
+		NodeGroupName:  builderName,
+		BuilderConfigs: builderConfigs,
+	}
+
+	if err := files.WriteJson(filepath.Join(stateDir, metadataFile), md, 0644); err != nil {
 		return err
 	}
 
@@ -415,58 +425,38 @@ func writeAtomicFile(content []byte, targetpath string, mode os.FileMode) error 
 	return atomic.ReplaceFile(tmpfile.Name(), targetpath)
 }
 
-func wireRemoteBuildxProxy(dockerCli *command.DockerCli, name string, use, defaultLoad bool, builderConfigs []BuilderConfig) error {
-	return withStore(dockerCli, func(txn *store.Txn) error {
-		ng, err := txn.NodeGroupByName(name)
-		if err != nil {
-			if !os.IsNotExist(errors.Cause(err)) {
-				return err
-			}
+func wireRemoteBuildxProxy(ctx context.Context, name string, use, defaultLoad bool, builderConfigs []BuilderConfig) error {
+	const driver = "remote"
+
+	// Start from a clean slate so that re-running setup produces a deterministic
+	// builder, regardless of any pre-existing nodes. Tolerate the builder not
+	// existing yet.
+	_ = buildxRemove(ctx, name)
+
+	for i, bc := range builderConfigs {
+		platforms := []string{bc.Platform}
+
+		driverOpts := map[string]string{
+			"cert":   bc.ClientCertPath,
+			"key":    bc.ClientKeyPath,
+			"cacert": bc.ServerCAPath,
 		}
 
-		const driver = "remote"
-
-		if ng == nil {
-			ng = &store.NodeGroup{
-				Name:   name,
-				Driver: driver,
-			}
+		if defaultLoad {
+			// Supported starting with v0.14.0
+			driverOpts["default-load"] = "true"
 		}
 
-		for _, bc := range builderConfigs {
-			platforms := []string{bc.Platform}
-
-			driverOpts := map[string]string{
-				"cert":   bc.ClientCertPath,
-				"key":    bc.ClientKeyPath,
-				"cacert": bc.ServerCAPath,
-			}
-
-			if defaultLoad {
-				// Supported starting with v0.14.0
-				driverOpts["default-load"] = "true"
-			}
-
-			if err := ng.Update(bc.Arch, bc.FullBuildkitEndpoint, platforms, true, true, nil, "", driverOpts); err != nil {
-				return err
-			}
-		}
-
-		if use {
-			ep, err := dockerutil.GetCurrentEndpoint(dockerCli)
-			if err != nil {
-				return err
-			}
-
-			if err := txn.SetCurrent(ep, name, false, false); err != nil {
-				return err
-			}
-		}
-
-		if err := txn.Save(ng); err != nil {
+		if err := buildxCreateNode(ctx, name, driver, bc.Arch, bc.FullBuildkitEndpoint, platforms, driverOpts, i > 0); err != nil {
 			return err
 		}
+	}
 
-		return nil
-	})
+	if use {
+		if err := buildxUse(ctx, name); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
