@@ -15,7 +15,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/docker/docker/api/types"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/mod/semver"
 	"namespacelabs.dev/foundation/internal/artifacts"
@@ -156,7 +155,7 @@ func ValidateDocker(ctx context.Context, cli docker.Client) error {
 	return nil
 }
 
-func validateVersions(ver types.Version) (bool, bool, string) {
+func validateVersions(ver docker.ServerVersion) (bool, bool, string) {
 	dockerOK := semver.Compare("v"+ver.Version, "v"+minimumDockerVer) >= 0
 	runcOK := false
 

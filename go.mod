@@ -42,7 +42,6 @@ require (
 	github.com/creack/pty v1.1.24
 	github.com/docker/buildx v0.32.1
 	github.com/docker/cli v29.2.1+incompatible
-	github.com/docker/docker v28.5.2+incompatible
 	github.com/docker/go-connections v0.6.0
 	github.com/docker/go-units v0.5.0
 	github.com/dustin/go-humanize v1.0.1
@@ -79,6 +78,8 @@ require (
 	github.com/miekg/dns v1.1.57
 	github.com/minio/minio-go/v7 v7.0.47
 	github.com/moby/buildkit v0.28.1
+	github.com/moby/moby/api v1.53.0
+	github.com/moby/moby/client v0.2.2
 	github.com/moby/patternmatcher v0.6.1
 	github.com/morikuni/aec v1.1.0
 	github.com/muesli/cancelreader v0.2.2
@@ -221,6 +222,7 @@ require (
 	github.com/digitorus/timestamp v0.0.0-20231217203849-220c5c2851b7 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
+	github.com/docker/docker v28.5.2+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.5 // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
 	github.com/evanphx/json-patch v5.9.11+incompatible // indirect
@@ -319,8 +321,6 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/locker v1.0.1 // indirect
-	github.com/moby/moby/api v1.53.0 // indirect
-	github.com/moby/moby/client v0.2.2 // indirect
 	github.com/moby/policy-helpers v0.0.0-20260211190020-824747bfdd3c // indirect
 	github.com/moby/spdystream v0.5.1 // indirect
 	github.com/moby/sys/atomicwriter v0.1.0 // indirect

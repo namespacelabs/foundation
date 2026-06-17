@@ -10,6 +10,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -42,7 +43,10 @@ func (pi *publishImage) Compute(ctx context.Context, deps compute.Resolved) (oci
 
 	tasks.Attachments(ctx).AddResult("repository", tag.Repository)
 
-	img, err := resolvable.ImageForPlatform(HostPlatform())
+	hostPlatform := platform.RuntimePlatform()
+	hostPlatform.OS = "linux"
+
+	img, err := resolvable.ImageForPlatform(hostPlatform)
 	if err != nil {
 		return oci.ImageID{}, fnerrors.InternalError("docker: %w", err)
 	}

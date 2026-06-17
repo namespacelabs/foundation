@@ -11,15 +11,15 @@ import (
 	"io"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"strings"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/api/types/strslice"
-	"github.com/docker/docker/client"
-	dockernames "github.com/docker/docker/daemon/names"
-	"github.com/docker/docker/errdefs"
-	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/containerd/errdefs"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/api/types/strslice"
+	"github.com/moby/moby/client"
 	"github.com/muesli/cancelreader"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
@@ -31,6 +31,8 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/go-ids"
 )
+
+var restrictedDockerNamePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]+$`)
 
 type ToolRuntime struct{}
 
@@ -63,14 +65,10 @@ func (r ToolRuntime) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, o
 		})
 }
 
-func HostPlatform() specs.Platform {
+func (r ToolRuntime) HostPlatform(context.Context) (specs.Platform, error) {
 	p := platform.RuntimePlatform()
 	p.OS = "linux" // We always run on linux.
-	return p
-}
-
-func (r ToolRuntime) HostPlatform(context.Context) (specs.Platform, error) {
-	return HostPlatform(), nil
+	return p, nil
 }
 
 func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error {
@@ -194,7 +192,7 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 		label := strings.Join(opts.Command, "-")
 		label = strings.ReplaceAll(label, "/", "")
 
-		if dockernames.RestrictedNamePattern.MatchString(label) {
+		if restrictedDockerNamePattern.MatchString(label) {
 			// generate unique ID to avoid collisions
 			id := ids.NewRandomBase32ID(6)
 
@@ -213,19 +211,19 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 		created.ID, containerConfig.Image, containerConfig.Cmd)
 
 	compute.On(ctx).Cleanup(tasks.Action("docker.container.remove"), func(ctx context.Context) error {
-		if err := cli.ContainerRemove(ctx, created.ID, container.RemoveOptions{}); err != nil {
+		if err := cli.ContainerRemove(ctx, created.ID, client.ContainerRemoveOptions{}); err != nil {
 			// If the docker daemon is already removing the container, because
 			// e.g. it has returned from execution, then we may observe a
 			// conflict with `removal of container XYZ is already in progress`.
 			// We ignore that error here.
-			if !client.IsErrNotFound(err) && !errdefs.IsConflict(err) {
+			if !errdefs.IsNotFound(err) && !errdefs.IsConflict(err) {
 				return fnerrors.Newf("failed to remove container: %w", err)
 			}
 		}
 		return nil
 	})
 
-	resp, err := cli.ContainerAttach(ctx, created.ID, container.AttachOptions{
+	resp, err := cli.ContainerAttach(ctx, created.ID, client.ContainerAttachOptions{
 		Stream: true,
 		Stdin:  containerConfig.AttachStdin,
 		Stdout: containerConfig.AttachStdout,
@@ -235,7 +233,7 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 		return fnerrors.Newf("failed to attach to container: %w", err)
 	}
 
-	if err := cli.ContainerStart(ctx, created.ID, container.StartOptions{}); err != nil {
+	if err := cli.ContainerStart(ctx, created.ID, client.ContainerStartOptions{}); err != nil {
 		return fnerrors.Newf("failed to start container: %w", err)
 	}
 
@@ -317,7 +315,7 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 			// code 0, we should still not return an error.
 			return fnerrors.ExitWithCode(fmt.Errorf("docker: container exit code %d", result.StatusCode), int(result.StatusCode))
 		case err := <-errs:
-			if client.IsErrNotFound(err) {
+			if errdefs.IsNotFound(err) {
 				// We schedule containers with AutoRemove so they might disappear before we get a chance to wait for them.
 				return nil
 			}

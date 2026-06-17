@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/moby/moby/api/types/network"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
@@ -55,14 +56,19 @@ func Register() {
 				return nil, fnerrors.InternalError("missing network configuration in k3d registry container")
 			}
 
-			if len(inspected.NetworkSettings.Ports["5000/tcp"]) == 0 {
+			registryPort, err := network.ParsePort("5000/tcp")
+			if err != nil {
+				return nil, err
+			}
+
+			if len(inspected.NetworkSettings.Ports[registryPort]) == 0 {
 				return nil, fnerrors.InternalError("missing port configuration in k3d registry container")
 			}
 
 			return &k3dRegistry{
 				ContainerName:      conf.RegistryContainerName,
-				PublicPort:         inspected.NetworkSettings.Ports["5000/tcp"][0].HostPort,
-				ContainerIPAddress: inspected.NetworkSettings.Networks["bridge"].IPAddress,
+				PublicPort:         inspected.NetworkSettings.Ports[registryPort][0].HostPort,
+				ContainerIPAddress: inspected.NetworkSettings.Networks["bridge"].IPAddress.String(),
 			}, nil
 		})
 	})

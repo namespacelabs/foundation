@@ -12,10 +12,9 @@ import (
 	"strings"
 	"time"
 
-	dockertypes "github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/system"
 	"github.com/kr/text"
 	"github.com/moby/buildkit/client/llb"
+	"github.com/moby/moby/api/types/system"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/go-ids"
@@ -36,6 +35,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
@@ -61,7 +61,7 @@ type DoctorResults struct {
 }
 
 type DoctorResults_DockerInfo struct {
-	dockertypes.Version
+	docker.ServerVersion
 	system.Info
 }
 
@@ -142,17 +142,17 @@ func NewDoctorCmd() *cobra.Command {
 			printDiagnostic(ctx, "Docker", dockerI, &errCount, func(w io.Writer, info DoctorResults_DockerInfo) {
 				info.ID = "" // Clear IDs.
 				results.DockerInfo = &info
-				fmt.Fprintf(w, "version=%s (commit=%s) for %s-%s\n", info.Version.Version, info.Version.GitCommit, info.Version.Os, info.Version.Arch)
-				fmt.Fprintf(w, "api version=%s (min=%s)\n", info.Version.APIVersion, info.Version.MinAPIVersion)
-				fmt.Fprintf(w, "kernel version=%s\n", info.Version.KernelVersion)
+				fmt.Fprintf(w, "version=%s (commit=%s) for %s-%s\n", info.ServerVersion.Version, info.ServerVersion.GitCommit, info.ServerVersion.Os, info.ServerVersion.Arch)
+				fmt.Fprintf(w, "api version=%s (min=%s)\n", info.ServerVersion.APIVersion, info.ServerVersion.MinAPIVersion)
+				fmt.Fprintf(w, "kernel version=%s\n", info.ServerVersion.KernelVersion)
 				fmt.Fprintf(w, "ncpu=%d mem_total=%d\n", info.Info.NCPU, info.Info.MemTotal)
 				fmt.Fprintf(w, "containers total=%d running=%d paused=%d stopped=%d images=%d\n", info.Info.Containers, info.Info.ContainersRunning,
 					info.Info.ContainersPaused, info.Info.ContainersStopped, info.Info.Images)
 				fmt.Fprintf(w, "driver=%s logging_driver=%s cgroup_driver=%s cgroup_version=%s\n", info.Info.Driver, info.Info.LoggingDriver,
 					info.Info.CgroupDriver, info.Info.CgroupVersion)
-				fmt.Fprintf(w, "containerd expected=%s present=%s\n", info.Info.ContainerdCommit.Expected, info.Info.ContainerdCommit.ID)
-				fmt.Fprintf(w, "runc expected=%s present=%s\n", info.Info.RuncCommit.Expected, info.Info.RuncCommit.ID)
-				fmt.Fprintf(w, "init expected=%s present=%s\n", info.Info.InitCommit.Expected, info.Info.InitCommit.ID)
+				fmt.Fprintf(w, "containerd present=%s\n", info.Info.ContainerdCommit.ID)
+				fmt.Fprintf(w, "runc present=%s\n", info.Info.RuncCommit.ID)
+				fmt.Fprintf(w, "init present=%s\n", info.Info.InitCommit.ID)
 				if len(info.Info.Warnings) > 0 {
 					fmt.Fprintln(w, "Warnings:")
 					for _, wn := range info.Info.Warnings {
@@ -174,7 +174,10 @@ func NewDoctorCmd() *cobra.Command {
 		if filterIncludes(testFilter, "docker-run") {
 			dockerRunI := runDiagnostic(ctx, "doctor.docker-run", func(ctx context.Context) (DoctorResults_DockerRun, error) {
 				t := time.Now()
-				image, err := compute.GetValue(ctx, oci.ResolveImage(pins.Image("hello-world"), docker.HostPlatform()).Image())
+				hostPlatform := platform.RuntimePlatform()
+				hostPlatform.OS = "linux"
+
+				image, err := compute.GetValue(ctx, oci.ResolveImage(pins.Image("hello-world"), hostPlatform).Image())
 				if err != nil {
 					return DoctorResults_DockerRun{}, err
 				}
@@ -212,7 +215,8 @@ func NewDoctorCmd() *cobra.Command {
 						if err != nil {
 							return DoctorResults_BuildkitResults{}, err
 						}
-						hostPlatform := docker.HostPlatform()
+						hostPlatform := platform.RuntimePlatform()
+						hostPlatform.OS = "linux"
 						state := llb.Scratch().File(llb.Mkfile("/hello", 0644, []byte("cachehit")))
 						conf := build.NewBuildTarget(&hostPlatform).WithSourceLabel("doctor.hello-world")
 						var r DoctorResults_BuildkitResults

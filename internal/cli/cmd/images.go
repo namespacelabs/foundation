@@ -32,7 +32,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/parsing"
-	"namespacelabs.dev/foundation/internal/runtime/docker"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -258,9 +258,10 @@ func resolveImage(ctx context.Context, image string, env cfg.Context, pl *parsin
 		image = strings.TrimPrefix(image, "insecure:")
 	}
 
-	platform := docker.HostPlatform()
+	hostPlatform := platform.RuntimePlatform()
+	hostPlatform.OS = "linux"
 
-	return compute.GetValue(ctx, oci.ImageP(image, &platform, oci.RegistryAccess{InsecureRegistry: insecure}))
+	return compute.GetValue(ctx, oci.ImageP(image, &hostPlatform, oci.RegistryAccess{InsecureRegistry: insecure}))
 }
 
 func matchAny(files []string, path string) bool {

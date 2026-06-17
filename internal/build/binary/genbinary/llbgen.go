@@ -36,7 +36,8 @@ type llbBinary struct {
 }
 
 func (l llbBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	hostPlatform := docker.HostPlatform()
+	hostPlatform := platform.RuntimePlatform()
+	hostPlatform.OS = "linux"
 
 	bin, err := l.bin.BuildImage(ctx, env, build.NewBuildTarget(&hostPlatform).WithWorkspace(l.module))
 	if err != nil {

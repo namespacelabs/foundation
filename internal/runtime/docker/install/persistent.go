@@ -8,15 +8,18 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/netip"
+	"strconv"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
+	"github.com/containerd/errdefs"
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/client"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -74,7 +77,7 @@ func (p PersistentSpec) Ensure(ctx context.Context, progress io.Writer) error {
 func (p PersistentSpec) start(ctx context.Context, cli docker.Client) error {
 	fmt.Fprintf(console.Debug(ctx), "Starting %s version %s\n", p.Name, p.Version)
 
-	if err := cli.ContainerStart(ctx, p.ContainerName, container.StartOptions{}); err != nil {
+	if err := cli.ContainerStart(ctx, p.ContainerName, client.ContainerStartOptions{}); err != nil {
 		return err
 	}
 
@@ -90,7 +93,10 @@ func (p PersistentSpec) install(ctx context.Context, cli docker.Client, progress
 	imageID.Repository = p.Image
 	imageID.Tag = p.Version
 
-	image, err := compute.GetValue(ctx, oci.ResolveImage(imageID.ImageRef(), docker.HostPlatform()).Image())
+	hostPlatform := platform.RuntimePlatform()
+	hostPlatform.OS = "linux"
+
+	image, err := compute.GetValue(ctx, oci.ResolveImage(imageID.ImageRef(), hostPlatform).Image())
 	if err != nil {
 		return err
 	}
@@ -114,17 +120,18 @@ func (p PersistentSpec) install(ctx context.Context, cli docker.Client, progress
 		Privileged:    p.Privileged,
 	}
 
-	host.PortBindings = map[nat.Port][]nat.PortBinding{}
+	host.PortBindings = network.PortMap{}
 
 	for hostPort, containerPort := range p.Ports {
-		parsed, err := nat.ParsePortSpec(fmt.Sprintf("127.0.0.1:%d:%d", hostPort, containerPort))
-		if err != nil {
-			return err
+		port, ok := network.PortFrom(uint16(containerPort), network.TCP)
+		if !ok {
+			return fmt.Errorf("invalid container port %d", containerPort)
 		}
 
-		for _, p := range parsed {
-			host.PortBindings[p.Port] = append(host.PortBindings[p.Port], p.Binding)
-		}
+		host.PortBindings[port] = append(host.PortBindings[port], network.PortBinding{
+			HostIP:   netip.MustParseAddr("127.0.0.1"),
+			HostPort: strconv.Itoa(hostPort),
+		})
 	}
 
 	for name, target := range p.Volumes {
@@ -135,7 +142,7 @@ func (p PersistentSpec) install(ctx context.Context, cli docker.Client, progress
 		host.NetworkMode = container.NetworkMode("host")
 	}
 
-	created, err := tasks.Return(ctx, tasks.Action("docker.container.create").Arg("name", p.ContainerName), func(ctx context.Context) (container.CreateResponse, error) {
+	created, err := tasks.Return(ctx, tasks.Action("docker.container.create").Arg("name", p.ContainerName), func(ctx context.Context) (client.ContainerCreateResult, error) {
 		return cli.ContainerCreate(ctx, config, host, &network.NetworkingConfig{}, nil, p.ContainerName)
 	})
 	if err != nil {
@@ -143,7 +150,7 @@ func (p PersistentSpec) install(ctx context.Context, cli docker.Client, progress
 	}
 
 	if err := tasks.Action("docker.container.start").Arg("name", p.ContainerName).Arg("id", created.ID).Run(ctx, func(ctx context.Context) error {
-		return cli.ContainerStart(ctx, created.ID, container.StartOptions{})
+		return cli.ContainerStart(ctx, created.ID, client.ContainerStartOptions{})
 	}); err != nil {
 		return err
 	}
@@ -156,8 +163,8 @@ func (p PersistentSpec) install(ctx context.Context, cli docker.Client, progress
 }
 
 func (p PersistentSpec) remove(ctx context.Context, cli docker.Client) error {
-	err := cli.ContainerRemove(ctx, p.ContainerName, container.RemoveOptions{RemoveVolumes: true, Force: true})
-	if client.IsErrNotFound(err) {
+	err := cli.ContainerRemove(ctx, p.ContainerName, client.ContainerRemoveOptions{RemoveVolumes: true, Force: true})
+	if errdefs.IsNotFound(err) {
 		return nil
 	}
 	return err
@@ -166,7 +173,7 @@ func (p PersistentSpec) remove(ctx context.Context, cli docker.Client) error {
 func (p PersistentSpec) running(ctx context.Context, cli docker.Client) (*PersistentInformation, error) {
 	res, err := cli.ContainerInspect(ctx, p.ContainerName)
 	if err != nil {
-		if client.IsErrNotFound(err) {
+		if errdefs.IsNotFound(err) {
 			return &PersistentInformation{Installed: false}, nil
 		}
 
