@@ -27,8 +27,6 @@ func NewListCmd() *cobra.Command {
 	labels := cmd.Flags().StringToString("label", nil, "Constrain list to the specified labels.")
 	all := cmd.Flags().Bool("all", false, "If true, return all instances, not just manually created ones.")
 
-	cmd.Flags().MarkHidden("label")
-
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		history := false
 		clusters, err := api.ListClusters(ctx, api.Methods, api.ListOpts{
@@ -107,8 +105,6 @@ func newHistoryCmd() *cobra.Command {
 	since := fncobra.Duration(cmd.Flags(), "since", time.Hour*24*7, "Contrain list to selected duration.")
 	all := cmd.Flags().Bool("all", false, "If true, return all instances, not just manually created ones.")
 	maxEntries := cmd.Flags().Int64("max_entries", 100, "Maximum number of instances to return.")
-
-	cmd.Flags().MarkHidden("label")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		history := true
