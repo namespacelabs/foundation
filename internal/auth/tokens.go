@@ -28,6 +28,7 @@ const (
 	GithubJWTAudience = "nscloud.dev/inline-token"
 
 	defaultTokenLoc = "token.json"
+	tokenCacheLoc   = "token.cache"
 )
 
 var Workspace string
@@ -148,7 +149,7 @@ func (t *Token) IssueToken(ctx context.Context, minDur time.Duration, skipCache 
 	}
 
 	if t.path != "" {
-		cachePath := filepath.Join(filepath.Dir(t.path), "token.cache")
+		cachePath := tokenCachePath(t.path)
 		cacheContents, err := os.ReadFile(cachePath)
 		if err != nil {
 			if !os.IsNotExist(err) {
@@ -181,7 +182,7 @@ func (t *Token) IssueToken(ctx context.Context, minDur time.Duration, skipCache 
 
 	newToken, err := t.ReIssue(ctx, t, dur)
 	if err == nil && t.path != "" {
-		cachePath := filepath.Join(filepath.Dir(t.path), "token.cache")
+		cachePath := tokenCachePath(t.path)
 		if err := os.WriteFile(cachePath, []byte(newToken), 0600); err != nil {
 			fmt.Fprintf(console.Warnings(ctx), "Failed to write token cache: %v\n", err)
 		}
@@ -198,6 +199,22 @@ func (t *Token) ExchangeForSessionClientCert(ctx context.Context, publicKeyPem s
 	}
 
 	return issueFromSession(ctx, t.SessionToken, publicKeyPem)
+}
+
+// tokenCachePath returns the location of the derived tenant-token cache that
+// sits next to the given token file.
+func tokenCachePath(tokenPath string) string {
+	return filepath.Join(filepath.Dir(tokenPath), tokenCacheLoc)
+}
+
+// invalidateTokenCache removes the derived tenant-token cache that sits next to
+// the given token file, if it exists. A missing cache is not an error.
+func invalidateTokenCache(tokenPath string) error {
+	if err := os.Remove(tokenCachePath(tokenPath)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+
+	return nil
 }
 
 func StoreTenantToken(token string) error {
@@ -257,6 +274,14 @@ func StoreToken(token StoredToken) error {
 		return fnerrors.Newf("failed to write token data: %w", err)
 	}
 
+	// A freshly stored session/tenant token may carry different permissions
+	// than before (e.g. after a role change, switching workspace, or logging
+	// in as a different identity), so any tenant token previously derived from
+	// the old credentials and cached next to it is now stale.
+	if err := invalidateTokenCache(p); err != nil {
+		return fnerrors.Newf("failed to invalidate token cache: %w", err)
+	}
+
 	return nil
 }
 
@@ -267,6 +292,13 @@ func DeleteStoredToken() error {
 	}
 
 	conf := filepath.Join(dir, tokenLoc())
+
+	// Always drop the derived tenant-token cache, even when the token file
+	// itself is already gone, so a stale token can't outlive logout.
+	if err := invalidateTokenCache(conf); err != nil {
+		return err
+	}
+
 	if _, err := os.Stat(conf); err == nil {
 		return os.Remove(conf)
 	}
