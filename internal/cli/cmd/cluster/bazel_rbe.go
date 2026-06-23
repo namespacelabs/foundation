@@ -34,6 +34,8 @@ const (
 
 func newSetupExecutionCmd() *cobra.Command {
 	var bazelRcPath, output, bazelCommand, key string
+	var staticDur time.Duration
+	var static bool
 
 	return fncobra.Cmd(&cobra.Command{
 		Use:    "setup",
@@ -44,13 +46,20 @@ func newSetupExecutionCmd() *cobra.Command {
 		flags.StringVarP(&output, "output", "o", "plain", "One of plain or json.")
 		flags.StringVar(&bazelCommand, "command", defaultBazelRbeCommand, "The bazel command to use in the generated bazelrc (e.g., 'build' or 'common').")
 		flags.StringVar(&key, "key", "", "Stable identifier that disambiguates multiple parallel execution clusters for the same workspace. Defaults to 'default'.")
+		flags.BoolVar(&static, "static", false, "If specified, authenticate using a static bearer token in --remote_header against the public endpoints instead of issuing an mTLS client certificate.")
+		fncobra.DurationVar(flags, &staticDur, "static_token_duration", 4*time.Hour, "The minimum duration of the static token configured (requires --static).")
 	}).Do(func(ctx context.Context) error {
 		tok, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return err
 		}
 
-		res, err := ensureBazelExecutionCluster(ctx, tok, key)
+		authMode := bazelExecutionAuthModeMTLS
+		if static {
+			authMode = bazelExecutionAuthModeStatic
+		}
+
+		res, err := ensureBazelExecutionCluster(ctx, tok, key, authMode)
 		if err != nil {
 			return fnerrors.Newf("failed to provision bazel execution cluster: %w", err)
 		}
@@ -59,40 +68,56 @@ func newSetupExecutionCmd() *cobra.Command {
 			return fnerrors.Newf("received incomplete response (scheduler=%q storage=%q)", res.SchedulerEndpoint, res.StorageEndpoint)
 		}
 
-		privateKeyPem, publicKeyPem, err := genPrivAndPublicKeysPEM()
-		if err != nil {
-			return fnerrors.Newf("failed to generate client key pair: %w", err)
-		}
-
-		privateKeyPem, err = convertECPrivateKeyToPKCS8(privateKeyPem)
-		if err != nil {
-			return fnerrors.Newf("failed to encode client key in PKCS#8: %w", err)
-		}
-
-		clientCertPem, err := fetchTenantClientCert(ctx, string(publicKeyPem))
-		if err != nil {
-			return fnerrors.Newf("failed to issue client certificate: %w", err)
-		}
-
-		clientCertPath, err := writeTempFile(bazelExecutionPathBase, "*.cert", []byte(clientCertPem))
-		if err != nil {
-			return fnerrors.Newf("failed to create client cert temp file: %w", err)
-		}
-
-		clientKeyPath, err := writeTempFile(bazelExecutionPathBase, "*.key", privateKeyPem)
-		if err != nil {
-			return fnerrors.Newf("failed to create client key temp file: %w", err)
-		}
-
 		out := bazelRbeSetup{
 			SchedulerEndpoint:     res.SchedulerEndpoint,
 			StorageEndpoint:       res.StorageEndpoint,
-			ClientCert:            clientCertPath,
-			ClientKey:             clientKeyPath,
 			Jobs:                  int32(res.Jobs),
 			RemoteTimeout:         time.Duration(res.RemoteTimeoutSeconds) * time.Second,
 			RemoteLocalFallback:   res.RemoteLocalFallback,
 			RemoteDownloadOutputs: res.RemoteDownloadOutputs,
+		}
+
+		if static {
+			// In static mode the server returns the public, bearer-authenticated
+			// endpoints (and deliberately does not expose the mTLS endpoints). A
+			// bearer token (e.g. a revocable token) can be revoked server-side,
+			// whereas a client certificate minted from it cannot be easily
+			// revoked, so we authenticate with the token itself via the ingress
+			// auth header instead of issuing a client certificate.
+			bearerToken, err := tok.IssueToken(ctx, staticDur, false)
+			if err != nil {
+				return fnerrors.Newf("failed to issue bearer token: %w", err)
+			}
+
+			out.IngressAuthToken = bearerToken
+		} else {
+			privateKeyPem, publicKeyPem, err := genPrivAndPublicKeysPEM()
+			if err != nil {
+				return fnerrors.Newf("failed to generate client key pair: %w", err)
+			}
+
+			privateKeyPem, err = convertECPrivateKeyToPKCS8(privateKeyPem)
+			if err != nil {
+				return fnerrors.Newf("failed to encode client key in PKCS#8: %w", err)
+			}
+
+			clientCertPem, err := fetchTenantClientCert(ctx, string(publicKeyPem))
+			if err != nil {
+				return fnerrors.Newf("failed to issue client certificate: %w", err)
+			}
+
+			clientCertPath, err := writeTempFile(bazelExecutionPathBase, "*.cert", []byte(clientCertPem))
+			if err != nil {
+				return fnerrors.Newf("failed to create client cert temp file: %w", err)
+			}
+
+			clientKeyPath, err := writeTempFile(bazelExecutionPathBase, "*.key", privateKeyPem)
+			if err != nil {
+				return fnerrors.Newf("failed to create client key temp file: %w", err)
+			}
+
+			out.ClientCert = clientCertPath
+			out.ClientKey = clientKeyPath
 		}
 
 		if bazelRcPath != "" {
@@ -149,6 +174,7 @@ type bazelRbeSetup struct {
 	StorageEndpoint       string        `json:"storage_endpoint,omitempty"`
 	ClientCert            string        `json:"client_cert,omitempty"`
 	ClientKey             string        `json:"client_key,omitempty"`
+	IngressAuthToken      string        `json:"ingress_auth_token,omitempty"`
 	Jobs                  int32         `json:"jobs,omitempty"`
 	RemoteTimeout         time.Duration `json:"remote_timeout,omitempty"`
 	RemoteLocalFallback   bool          `json:"remote_local_fallback,omitempty"`
@@ -172,6 +198,9 @@ func toBazelExecutionConfig(out bazelRbeSetup, command string) ([]byte, error) {
 	if out.ClientKey != "" {
 		lines = append(lines, fmt.Sprintf("--tls_client_key=%s", out.ClientKey))
 	}
+	if out.IngressAuthToken != "" {
+		lines = append(lines, fmt.Sprintf("--remote_header=x-nsc-ingress-auth=Bearer\\ %s", out.IngressAuthToken))
+	}
 
 	if out.RemoteDownloadOutputs != "" {
 		lines = append(lines, fmt.Sprintf("--remote_download_outputs=%s", out.RemoteDownloadOutputs))
@@ -193,8 +222,20 @@ func toBazelExecutionConfig(out bazelRbeSetup, command string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// BazelExecutionAuthMode mirrors the enum in
+// private/proto/service/bazel/service.proto. The server determines which
+// endpoints to return based on the requested mode.
+const (
+	bazelExecutionAuthModeMTLS   = "BAZEL_EXECUTION_AUTH_MODE_MTLS"
+	bazelExecutionAuthModeStatic = "BAZEL_EXECUTION_AUTH_MODE_STATIC"
+)
+
 type ensureBazelExecutionClusterRequest struct {
 	Key string `json:"key,omitempty"`
+	// AuthMode tells the server which authentication mode the client intends to
+	// use; it returns the matching endpoints. Static mode returns the public
+	// bearer-authenticated endpoints and never exposes the mTLS endpoints.
+	AuthMode string `json:"auth_mode,omitempty"`
 }
 
 // Fields mirror EnsureBazelExecutionClusterResponse in
@@ -213,13 +254,13 @@ type ensureBazelExecutionClusterResponse struct {
 // global API endpoint using the connect-json protocol. Once the public proto
 // has the same RPC, replace this with a generated Connect client (mirroring
 // fnapi.NewBazelCacheServiceClient).
-func ensureBazelExecutionCluster(ctx context.Context, tok *auth.Token, key string) (*ensureBazelExecutionClusterResponse, error) {
+func ensureBazelExecutionCluster(ctx context.Context, tok *auth.Token, key, authMode string) (*ensureBazelExecutionClusterResponse, error) {
 	bearer, err := tok.IssueToken(ctx, 5*time.Minute, false)
 	if err != nil {
 		return nil, err
 	}
 
-	body, err := json.Marshal(ensureBazelExecutionClusterRequest{Key: key})
+	body, err := json.Marshal(ensureBazelExecutionClusterRequest{Key: key, AuthMode: authMode})
 	if err != nil {
 		return nil, err
 	}
