@@ -218,6 +218,8 @@ func NewGenerateReportCmd() *cobra.Command {
 			"job_completed_at",
 			"profile",
 			"repository",
+			"branch",
+			"conclusion",
 		}
 
 		csvWriter.Write(header)
@@ -267,6 +269,8 @@ func entryToRecords(entry *computev1beta.InstanceReportEntry) []string {
 		tsToString(githubJob.GetJobCompletedAt()),
 		githubJob.GetProfile(),
 		githubJob.GetRepository(),
+		githubJob.GetBranch(),
+		githubJob.GetConclusion(),
 	}
 	return cols
 }
