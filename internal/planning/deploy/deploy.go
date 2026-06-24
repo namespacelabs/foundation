@@ -130,7 +130,7 @@ func PrepareDeployStackOpts(ctx context.Context, planner planning.Planner, stack
 		ingressFragments: fragmentsOnly,
 	}
 
-	if AlsoDeployIngress {
+	if AlsoDeployIngress && opts.Mode != PrepareProvisionOnly {
 		g.ingressPlan = PlanIngressDeployment(planner.Runtime, ingressResult)
 	}
 
@@ -171,7 +171,10 @@ func (m *makeDeployGraph) Inputs() *compute.In {
 	in := compute.Inputs().Computable("prepare", m.prepare).Indigestible("stack", m.stack)
 	// TODO predeploy orchestration server already from here?
 	if m.ingressFragments != nil {
-		in = in.Computable("ingress", m.ingressFragments).Computable("ingressPlan", m.ingressPlan)
+		in = in.Computable("ingress", m.ingressFragments)
+	}
+	if m.ingressPlan != nil {
+		in = in.Computable("ingressPlan", m.ingressPlan)
 	}
 	return in
 }
@@ -343,6 +346,12 @@ func prepareBuildAndDeployment(ctx context.Context, planner planning.Planner, st
 				deploymentSpec.Specs = append(deploymentSpec.Specs, spec)
 			}
 
+			if opts.Mode == PrepareProvisionOnly {
+				// Provision resources without rolling out the requested servers; keep
+				// only the servers that resources require (e.g. a colocated database).
+				deploymentSpec.Specs = keepProvisionOnlyServers(deploymentSpec.Specs, resourcePlan.RequiredServers)
+			}
+
 			deploymentPlan, err := planner.Runtime.PlanDeployment(ctx, deploymentSpec)
 			if err != nil {
 				return prepareAndBuildResult{}, err
@@ -354,6 +363,16 @@ func prepareBuildAndDeployment(ctx context.Context, planner planning.Planner, st
 			}
 			ops = append(ops, resourcePlan.ExecutionInvocations...)
 			ops = append(ops, deploymentPlan.Definitions...)
+
+			if opts.Mode == PrepareProvisionOnly {
+				sink, err := provisionOnlyOutputSink(resourcePlan.ProducedInstanceIDs)
+				if err != nil {
+					return prepareAndBuildResult{}, err
+				}
+				if sink != nil {
+					ops = append(ops, sink)
+				}
+			}
 
 			return prepareAndBuildResult{
 				HandlerResult:      compute.MustGetDepValue(deps, stackDef, "stackAndDefs"),
