@@ -118,7 +118,12 @@ func prepareImage(ctx context.Context, env pkggraph.SealedContext, plan build.Pl
 		})
 	}
 
-	img := oci.MakeImageIndex(iwp...)
+	// When the build is destined for a registry, skip the local content
+	// cache for the assembled index. Otherwise the cache write forces every
+	// per-platform image's layers to be pulled to disk.
+	img := oci.MakeImageIndexOpts(oci.MakeImageIndexOptions{
+		NoCache: plan.PublishName != nil,
+	}, iwp...)
 
 	return img, nil
 }
