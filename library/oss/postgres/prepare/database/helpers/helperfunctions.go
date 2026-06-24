@@ -6,6 +6,8 @@ package helpers
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"math/rand"
@@ -15,6 +17,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/jackc/pgx/v5"
 	"namespacelabs.dev/foundation/library/oss/postgres"
+	"namespacelabs.dev/foundation/schema"
 	universepg "namespacelabs.dev/foundation/universe/db/postgres"
 )
 
@@ -310,29 +313,146 @@ func ApplyWithHelpers(ctx context.Context, intent *postgres.DatabaseIntent, db *
 		}
 	}
 
-	for _, oneSchema := range intent.GetSchema() {
+	if !intent.GetTrackSchemaChecksums() {
+		for _, oneSchema := range intent.GetSchema() {
+			if err := applyWithRetry(ctx, db, string(oneSchema.Contents)); err != nil {
+				return fmt.Errorf("unable to apply schema %q: %w", oneSchema.Path, err)
+			}
+		}
+		return nil
+	}
+
+	return applyTrackedSchema(ctx, db, intent.GetSchema())
+}
+
+func applyTrackedSchema(ctx context.Context, db *universepg.DB, schemas []*schema.FileContents) error {
+	if len(schemas) == 0 {
+		return nil
+	}
+
+	if err := validateSchemaPaths(schemas); err != nil {
+		return err
+	}
+
+	if err := ensureChecksumLedger(ctx, db); err != nil {
+		return fmt.Errorf("unable to ensure checksum ledger: %w", err)
+	}
+
+	paths := make([]string, len(schemas))
+	for i, oneSchema := range schemas {
+		paths[i] = oneSchema.Path
+	}
+
+	stored, err := storedChecksums(ctx, db, paths)
+	if err != nil {
+		return fmt.Errorf("unable to read schema checksums: %w", err)
+	}
+
+	for _, oneSchema := range schemas {
+		checksum := schemaChecksum(oneSchema.Contents)
+		if stored[oneSchema.Path] == checksum {
+			continue
+		}
+
+		log.Printf("applying schema %q", oneSchema.Path)
+
 		if err := applyWithRetry(ctx, db, string(oneSchema.Contents)); err != nil {
 			return fmt.Errorf("unable to apply schema %q: %w", oneSchema.Path, err)
+		}
+
+		if err := recordChecksum(ctx, db, oneSchema.Path, checksum); err != nil {
+			return fmt.Errorf("unable to record checksum for %q: %w", oneSchema.Path, err)
 		}
 	}
 
 	return nil
 }
 
-func applyWithRetry(ctx context.Context, db *universepg.DB, sql string) error {
+func validateSchemaPaths(schemas []*schema.FileContents) error {
+	seen := make(map[string]struct{}, len(schemas))
+	for _, oneSchema := range schemas {
+		if oneSchema.Path == "" {
+			return fmt.Errorf("schema file has empty path")
+		}
+		if _, ok := seen[oneSchema.Path]; ok {
+			return fmt.Errorf("duplicate schema path %q", oneSchema.Path)
+		}
+		seen[oneSchema.Path] = struct{}{}
+	}
+	return nil
+}
+
+func schemaChecksum(contents []byte) string {
+	sum := sha256.Sum256(contents)
+	return "sha256:" + hex.EncodeToString(sum[:])
+}
+
+func ensureChecksumLedger(ctx context.Context, db *universepg.DB) error {
+	if err := applyWithRetry(ctx, db, `CREATE SCHEMA IF NOT EXISTS foundation`); err != nil {
+		return err
+	}
+
+	return applyWithRetry(ctx, db, `CREATE TABLE IF NOT EXISTS foundation.schema_checksums (
+	path TEXT PRIMARY KEY,
+	checksum TEXT NOT NULL,
+	updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+)`)
+}
+
+func storedChecksums(ctx context.Context, db *universepg.DB, paths []string) (map[string]string, error) {
+	return backoff.RetryWithData(func() (map[string]string, error) {
+		rows, err := db.Query(ctx, `SELECT path, checksum FROM foundation.schema_checksums WHERE path = ANY($1)`, paths)
+		if err != nil {
+			if !universepg.ErrorIsRetryable(err) {
+				return nil, backoff.Permanent(err)
+			}
+			return nil, err
+		}
+		defer rows.Close()
+
+		result := make(map[string]string, len(paths))
+		for rows.Next() {
+			var path, checksum string
+			if err := rows.Scan(&path, &checksum); err != nil {
+				return nil, backoff.Permanent(err)
+			}
+			result[path] = checksum
+		}
+		if err := rows.Err(); err != nil {
+			if !universepg.ErrorIsRetryable(err) {
+				return nil, backoff.Permanent(err)
+			}
+			return nil, err
+		}
+		return result, nil
+	}, schemaBackOff())
+}
+
+func recordChecksum(ctx context.Context, db *universepg.DB, path, checksum string) error {
+	return applyWithRetry(ctx, db,
+		`INSERT INTO foundation.schema_checksums (path, checksum, updated_at) VALUES ($1, $2, now())
+		 ON CONFLICT (path) DO UPDATE SET checksum = excluded.checksum, updated_at = now()`,
+		path, checksum)
+}
+
+func applyWithRetry(ctx context.Context, db *universepg.DB, sql string, args ...any) error {
 	return backoff.Retry(func() error {
-		_, err := db.Exec(ctx, sql)
+		_, err := db.Exec(ctx, sql, args...)
 
 		if !universepg.ErrorIsRetryable(err) {
 			return backoff.Permanent(err)
 		}
 
 		return err
-	}, BackOff{
+	}, schemaBackOff())
+}
+
+func schemaBackOff() BackOff {
+	return BackOff{
 		Interval: 100 * time.Millisecond,
 		Deadline: time.Now().Add(15 * time.Second),
 		Jitter:   100 * time.Millisecond,
-	})
+	}
 }
 
 func EnsureDatabase(ctx context.Context, cluster postgres.ClusterInstance, name string, extraArgs string) (bool, error) {
