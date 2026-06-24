@@ -313,16 +313,17 @@ func ApplyWithHelpers(ctx context.Context, intent *postgres.DatabaseIntent, db *
 		}
 	}
 
-	if !intent.GetTrackSchemaChecksums() {
-		for _, oneSchema := range intent.GetSchema() {
-			if err := applyWithRetry(ctx, db, string(oneSchema.Contents)); err != nil {
-				return fmt.Errorf("unable to apply schema %q: %w", oneSchema.Path, err)
-			}
-		}
-		return nil
+	if intent.GetTrackSchemaChecksums() {
+		return applyTrackedSchema(ctx, db, intent.GetSchema())
 	}
 
-	return applyTrackedSchema(ctx, db, intent.GetSchema())
+	for _, oneSchema := range intent.GetSchema() {
+		if err := applyWithRetry(ctx, db, string(oneSchema.Contents)); err != nil {
+			return fmt.Errorf("unable to apply schema %q: %w", oneSchema.Path, err)
+		}
+	}
+
+	return nil
 }
 
 func applyTrackedSchema(ctx context.Context, db *universepg.DB, schemas []*schema.FileContents) error {
@@ -400,12 +401,9 @@ func ensureChecksumLedger(ctx context.Context, db *universepg.DB) error {
 }
 
 func storedChecksums(ctx context.Context, db *universepg.DB, paths []string) (map[string]string, error) {
-	return backoff.RetryWithData(func() (map[string]string, error) {
-		rows, err := db.Query(ctx, `SELECT path, checksum FROM foundation.schema_checksums WHERE path = ANY($1)`, paths)
+	return universepg.ReturnFromReadWriteTx(ctx, db, schemaBackOff(), func(ctx context.Context, tx pgx.Tx) (map[string]string, error) {
+		rows, err := tx.Query(ctx, `SELECT path, checksum FROM foundation.schema_checksums WHERE path = ANY($1)`, paths)
 		if err != nil {
-			if !universepg.ErrorIsRetryable(err) {
-				return nil, backoff.Permanent(err)
-			}
 			return nil, err
 		}
 		defer rows.Close()
@@ -414,18 +412,12 @@ func storedChecksums(ctx context.Context, db *universepg.DB, paths []string) (ma
 		for rows.Next() {
 			var path, checksum string
 			if err := rows.Scan(&path, &checksum); err != nil {
-				return nil, backoff.Permanent(err)
+				return nil, err
 			}
 			result[path] = checksum
 		}
-		if err := rows.Err(); err != nil {
-			if !universepg.ErrorIsRetryable(err) {
-				return nil, backoff.Permanent(err)
-			}
-			return nil, err
-		}
-		return result, nil
-	}, schemaBackOff())
+		return result, rows.Err()
+	})
 }
 
 func recordChecksum(ctx context.Context, db *universepg.DB, path, checksum string) error {
