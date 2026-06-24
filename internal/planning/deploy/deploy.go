@@ -87,7 +87,27 @@ func PrepareDeployServers(ctx context.Context, planner planning.Planner, focus .
 	return PrepareDeployStack(ctx, planner, stack)
 }
 
+// PrepareDeployMode selects what a deployment plan should act upon.
+type PrepareDeployMode int
+
+const (
+	// PrepareFullDeploy provisions resources and rolls out the requested servers.
+	PrepareFullDeploy PrepareDeployMode = iota
+	// PrepareProvisionOnly provisions resources (and the servers they require, e.g.
+	// a colocated database) but does not roll out the requested servers or ingress.
+	PrepareProvisionOnly
+)
+
+// PrepareDeployOptions tunes how a deployment plan is assembled.
+type PrepareDeployOptions struct {
+	Mode PrepareDeployMode
+}
+
 func PrepareDeployStack(ctx context.Context, planner planning.Planner, stack *planning.Stack, prepared ...compute.Computable[PreparedDeployable]) (compute.Computable[*Plan], error) {
+	return PrepareDeployStackOpts(ctx, planner, stack, PrepareDeployOptions{}, prepared...)
+}
+
+func PrepareDeployStackOpts(ctx context.Context, planner planning.Planner, stack *planning.Stack, opts PrepareDeployOptions, prepared ...compute.Computable[PreparedDeployable]) (compute.Computable[*Plan], error) {
 	def, err := prepareHandlerInvocations(ctx, planner, stack)
 	if err != nil {
 		return nil, err
@@ -95,7 +115,7 @@ func PrepareDeployStack(ctx context.Context, planner planning.Planner, stack *pl
 
 	ingressResult := computeIngressWithHandlerResult(planner, stack, ingressesFromHandlerResult(def))
 
-	prepare, err := prepareBuildAndDeployment(ctx, planner, stack, def, ingressResult, prepared...)
+	prepare, err := prepareBuildAndDeployment(ctx, planner, stack, opts, def, ingressResult, prepared...)
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +240,7 @@ type prepareAndBuildResult struct {
 	NamespaceReference string
 }
 
-func prepareBuildAndDeployment(ctx context.Context, planner planning.Planner, stack *planning.Stack, stackDef compute.Computable[*handlerResult], ingress compute.Computable[*ComputeIngressResult], prepared ...compute.Computable[PreparedDeployable]) (compute.Computable[prepareAndBuildResult], error) {
+func prepareBuildAndDeployment(ctx context.Context, planner planning.Planner, stack *planning.Stack, opts PrepareDeployOptions, stackDef compute.Computable[*handlerResult], ingress compute.Computable[*ComputeIngressResult], prepared ...compute.Computable[PreparedDeployable]) (compute.Computable[prepareAndBuildResult], error) {
 	packages, images, err := computeStackAndImages(ctx, planner, stack, serverImagesOpts{
 		ProvisionResult:     stackDef,
 		IngressFragments:    ingress,
