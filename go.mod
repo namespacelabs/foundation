@@ -68,7 +68,7 @@ require (
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/jet/kube-webhook-certgen v1.5.2
 	github.com/jhump/protoreflect v1.17.0
-	github.com/jpillora/chisel v1.10.1
+	github.com/jpillora/chisel v1.11.5
 	github.com/keikoproj/aws-auth v0.4.0
 	github.com/klauspost/compress v1.18.5
 	github.com/kr/text v0.2.0
