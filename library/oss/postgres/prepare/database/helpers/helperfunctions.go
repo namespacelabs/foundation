@@ -7,6 +7,7 @@ package helpers
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -16,10 +17,19 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"namespacelabs.dev/foundation/library/oss/postgres"
 	"namespacelabs.dev/foundation/schema"
 	universepg "namespacelabs.dev/foundation/universe/db/postgres"
 )
+
+// schemaExecutor is satisfied by both *universepg.DB and *pgxpool.Conn, letting
+// the checksum ledger run on a pinned connection while holding an advisory lock.
+type schemaExecutor interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+}
 
 const (
 	connBackoff = 1500 * time.Millisecond
@@ -334,7 +344,33 @@ func applyTrackedSchema(ctx context.Context, db *universepg.DB, schemas []*schem
 		return err
 	}
 
-	if err := ensureChecksumLedger(ctx, db); err != nil {
+	// Pin a single connection so the session advisory lock, ledger reads and the
+	// DDL all run on the same backend; pool-returned connections keep their
+	// session, so a held lock must be released (or the session ended) before the
+	// connection goes back to the pool.
+	conn, err := db.PgxPool().Acquire(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to acquire connection: %w", err)
+	}
+
+	lockKey := advisoryLockKey(db.GetName())
+	if err := acquireAdvisoryLock(ctx, conn, lockKey); err != nil {
+		// The lock state is uncertain on error, so end the session instead of
+		// returning a possibly-locked connection to the pool.
+		discardConn(conn)
+		return fmt.Errorf("unable to acquire schema advisory lock: %w", err)
+	}
+	defer func() {
+		if releaseAdvisoryLock(conn, lockKey) {
+			conn.Release()
+		} else {
+			// Unlock failed: end the session so Postgres drops the lock rather
+			// than stranding it on a pooled connection.
+			discardConn(conn)
+		}
+	}()
+
+	if err := ensureChecksumLedger(ctx, conn); err != nil {
 		return fmt.Errorf("unable to ensure checksum ledger: %w", err)
 	}
 
@@ -343,7 +379,7 @@ func applyTrackedSchema(ctx context.Context, db *universepg.DB, schemas []*schem
 		paths[i] = oneSchema.Path
 	}
 
-	stored, err := storedChecksums(ctx, db, paths)
+	stored, err := storedChecksums(ctx, conn, paths)
 	if err != nil {
 		return fmt.Errorf("unable to read schema checksums: %w", err)
 	}
@@ -356,16 +392,60 @@ func applyTrackedSchema(ctx context.Context, db *universepg.DB, schemas []*schem
 
 		log.Printf("applying schema %q", oneSchema.Path)
 
-		if err := applyWithRetry(ctx, db, string(oneSchema.Contents)); err != nil {
+		if err := applyWithRetry(ctx, conn, string(oneSchema.Contents)); err != nil {
 			return fmt.Errorf("unable to apply schema %q: %w", oneSchema.Path, err)
 		}
 
-		if err := recordChecksum(ctx, db, oneSchema.Path, checksum); err != nil {
+		if err := recordChecksum(ctx, conn, oneSchema.Path, checksum); err != nil {
 			return fmt.Errorf("unable to record checksum for %q: %w", oneSchema.Path, err)
 		}
 	}
 
 	return nil
+}
+
+// advisoryLockNamespace scopes our advisory locks to foundation, so they do not
+// collide with other advisory-lock users sharing the same database.
+const advisoryLockNamespace int32 = 0x4e53 // "NS"
+
+// advisoryLockKey derives a stable lock key from the database name. Advisory
+// locks are already scoped to the connected database; the name only keeps the
+// key self-documenting.
+func advisoryLockKey(name string) int32 {
+	sum := sha256.Sum256([]byte(name))
+	return int32(binary.BigEndian.Uint32(sum[:4]))
+}
+
+// acquireAdvisoryLock blocks until the lock is granted or ctx is done. The wait
+// is bounded only by ctx (advisory locks ignore lock_timeout). It is not retried:
+// pg_advisory_lock stacks per session, so a retry could leave a level held, and a
+// failed connection cannot be reused.
+func acquireAdvisoryLock(ctx context.Context, conn *pgxpool.Conn, key int32) error {
+	_, err := conn.Exec(ctx, `SELECT pg_advisory_lock($1, $2)`, advisoryLockNamespace, key)
+	return err
+}
+
+// releaseAdvisoryLock unlocks on a detached context so a cancelled ctx cannot
+// strand the lock. It reports whether the connection is safe to return to the
+// pool; on failure the caller must end the session instead.
+func releaseAdvisoryLock(conn *pgxpool.Conn, key int32) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if _, err := conn.Exec(ctx, `SELECT pg_advisory_unlock($1, $2)`, advisoryLockNamespace, key); err != nil {
+		log.Printf("unable to release schema advisory lock: %v", err)
+		return false
+	}
+	return true
+}
+
+// discardConn ends the session and removes the connection from the pool, which
+// guarantees Postgres releases any advisory lock still held on it.
+func discardConn(conn *pgxpool.Conn) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_ = conn.Hijack().Close(ctx)
 }
 
 func validateSchemaPaths(schemas []*schema.FileContents) error {
@@ -387,21 +467,21 @@ func schemaChecksum(contents []byte) string {
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
-func ensureChecksumLedger(ctx context.Context, db *universepg.DB) error {
-	if err := applyWithRetry(ctx, db, `CREATE SCHEMA IF NOT EXISTS foundation`); err != nil {
+func ensureChecksumLedger(ctx context.Context, exec schemaExecutor) error {
+	if err := applyWithRetry(ctx, exec, `CREATE SCHEMA IF NOT EXISTS foundation`); err != nil {
 		return err
 	}
 
-	return applyWithRetry(ctx, db, `CREATE TABLE IF NOT EXISTS foundation.schema_checksums (
+	return applyWithRetry(ctx, exec, `CREATE TABLE IF NOT EXISTS foundation.schema_checksums (
 	path TEXT PRIMARY KEY,
 	checksum TEXT NOT NULL,
 	updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 )`)
 }
 
-func storedChecksums(ctx context.Context, db *universepg.DB, paths []string) (map[string]string, error) {
+func storedChecksums(ctx context.Context, exec schemaExecutor, paths []string) (map[string]string, error) {
 	return backoff.RetryWithData(func() (map[string]string, error) {
-		rows, err := db.Query(ctx, `SELECT path, checksum FROM foundation.schema_checksums WHERE path = ANY($1)`, paths)
+		rows, err := exec.Query(ctx, `SELECT path, checksum FROM foundation.schema_checksums WHERE path = ANY($1)`, paths)
 		if err != nil {
 			if !universepg.ErrorIsRetryable(err) {
 				return nil, backoff.Permanent(err)
@@ -428,16 +508,16 @@ func storedChecksums(ctx context.Context, db *universepg.DB, paths []string) (ma
 	}, schemaBackOff())
 }
 
-func recordChecksum(ctx context.Context, db *universepg.DB, path, checksum string) error {
-	return applyWithRetry(ctx, db,
+func recordChecksum(ctx context.Context, exec schemaExecutor, path, checksum string) error {
+	return applyWithRetry(ctx, exec,
 		`INSERT INTO foundation.schema_checksums (path, checksum, updated_at) VALUES ($1, $2, now())
 		 ON CONFLICT (path) DO UPDATE SET checksum = excluded.checksum, updated_at = now()`,
 		path, checksum)
 }
 
-func applyWithRetry(ctx context.Context, db *universepg.DB, sql string, args ...any) error {
+func applyWithRetry(ctx context.Context, exec schemaExecutor, sql string, args ...any) error {
 	return backoff.Retry(func() error {
-		_, err := db.Exec(ctx, sql, args...)
+		_, err := exec.Exec(ctx, sql, args...)
 
 		if !universepg.ErrorIsRetryable(err) {
 			return backoff.Permanent(err)
