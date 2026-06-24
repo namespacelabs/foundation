@@ -26,6 +26,16 @@ func TestSchemaChecksum(t *testing.T) {
 	}
 }
 
+func TestAdvisoryLockKey(t *testing.T) {
+	if advisoryLockKey("db") != advisoryLockKey("db") {
+		t.Fatal("advisory lock key is not deterministic")
+	}
+
+	if advisoryLockKey("db_a") == advisoryLockKey("db_b") {
+		t.Fatal("advisory lock key should differ per database")
+	}
+}
+
 func TestValidateSchemaPaths(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
