@@ -8,9 +8,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -120,8 +122,16 @@ func newSetupExecutionCmd() *cobra.Command {
 			out.ClientKey = clientKeyPath
 		}
 
+		// The build event endpoint is a separate, bearer-authenticated host
+		// (the regional API gateway), independent of the scheduler/storage auth
+		// mode. The server only returns it (and the credential helper domains
+		// used to authenticate it in the default mTLS mode) when build event
+		// ingestion is enabled for the workspace.
+		out.BuildEventEndpoint = res.BuildEventEndpoint
+		out.CredentialHelperDomains = res.CredentialHelperDomains
+
 		if bazelRcPath != "" {
-			data, err := toBazelExecutionConfig(out, bazelCommand)
+			data, err := toBazelExecutionConfig(ctx, out, bazelCommand)
 			if err != nil {
 				return err
 			}
@@ -145,7 +155,7 @@ func newSetupExecutionCmd() *cobra.Command {
 			}
 
 			if bazelRcPath == "" {
-				data, err := toBazelExecutionConfig(out, bazelCommand)
+				data, err := toBazelExecutionConfig(ctx, out, bazelCommand)
 				if err != nil {
 					return err
 				}
@@ -170,18 +180,20 @@ func newSetupExecutionCmd() *cobra.Command {
 }
 
 type bazelRbeSetup struct {
-	SchedulerEndpoint     string        `json:"scheduler_endpoint,omitempty"`
-	StorageEndpoint       string        `json:"storage_endpoint,omitempty"`
-	ClientCert            string        `json:"client_cert,omitempty"`
-	ClientKey             string        `json:"client_key,omitempty"`
-	IngressAuthToken      string        `json:"ingress_auth_token,omitempty"`
-	Jobs                  int32         `json:"jobs,omitempty"`
-	RemoteTimeout         time.Duration `json:"remote_timeout,omitempty"`
-	RemoteLocalFallback   bool          `json:"remote_local_fallback,omitempty"`
-	RemoteDownloadOutputs string        `json:"remote_download_outputs,omitempty"`
+	SchedulerEndpoint       string        `json:"scheduler_endpoint,omitempty"`
+	StorageEndpoint         string        `json:"storage_endpoint,omitempty"`
+	ClientCert              string        `json:"client_cert,omitempty"`
+	ClientKey               string        `json:"client_key,omitempty"`
+	IngressAuthToken        string        `json:"ingress_auth_token,omitempty"`
+	Jobs                    int32         `json:"jobs,omitempty"`
+	RemoteTimeout           time.Duration `json:"remote_timeout,omitempty"`
+	RemoteLocalFallback     bool          `json:"remote_local_fallback,omitempty"`
+	RemoteDownloadOutputs   string        `json:"remote_download_outputs,omitempty"`
+	BuildEventEndpoint      string        `json:"build_event_endpoint,omitempty"`
+	CredentialHelperDomains []string      `json:"credential_helper_domains,omitempty"`
 }
 
-func toBazelExecutionConfig(out bazelRbeSetup, command string) ([]byte, error) {
+func toBazelExecutionConfig(ctx context.Context, out bazelRbeSetup, command string) ([]byte, error) {
 	var buf bytes.Buffer
 
 	lines := []string{
@@ -213,13 +225,72 @@ func toBazelExecutionConfig(out bazelRbeSetup, command string) ([]byte, error) {
 		lines = append(lines, fmt.Sprintf("--remote_timeout=%d", int(out.RemoteTimeout.Seconds())))
 	}
 
+	// The build event endpoint is bearer-authenticated and lives on a different
+	// host than the scheduler/storage, so its credentials are configured
+	// independently of the cluster auth mode. In static mode we attach the
+	// already-issued bearer token directly as BES headers; in the default mTLS
+	// mode the client certificate cannot authenticate it, so we rely on the
+	// credential helper (handled after the loop) to mint a bearer token.
+	if out.BuildEventEndpoint != "" {
+		lines = append(lines, fmt.Sprintf("--bes_backend=%s", out.BuildEventEndpoint))
+
+		if out.IngressAuthToken != "" {
+			lines = append(lines,
+				fmt.Sprintf("--bes_header=Authorization=Bearer\\ %s", out.IngressAuthToken),
+				fmt.Sprintf("--bes_header=x-nsc-ingress-auth=Bearer\\ %s", out.IngressAuthToken),
+			)
+		}
+	}
+
 	for _, line := range lines {
 		if _, err := fmt.Fprintf(&buf, "%s %s\n", command, line); err != nil {
 			return nil, fnerrors.Newf("failed to write bazelrc line: %w", err)
 		}
 	}
 
+	if out.BuildEventEndpoint != "" && out.IngressAuthToken == "" {
+		if err := appendExecutionBuildEventCredentialHelper(ctx, &buf, command, out.CredentialHelperDomains); err != nil {
+			return nil, err
+		}
+	}
+
 	return buf.Bytes(), nil
+}
+
+// appendExecutionBuildEventCredentialHelper configures the nsc credential
+// helper for the build event domains returned by the server, mirroring how
+// `nsc bazel cache setup` configures it. This is how the default (mTLS) mode
+// authenticates build event uploads: the client certificate used for the
+// scheduler/storage endpoints cannot authenticate the bearer-only build event
+// host, so bazel calls the credential helper to mint a bearer token per
+// request.
+func appendExecutionBuildEventCredentialHelper(ctx context.Context, buf *bytes.Buffer, command string, domains []string) error {
+	if len(domains) == 0 {
+		return fnerrors.Newf("the credential helper is not enabled but it is required to send build events")
+	}
+
+	if _, err := exec.LookPath(BazelCredHelperBinary); err != nil {
+		stdout := console.Stdout(ctx)
+		style := colors.Ctx(ctx)
+
+		if errors.Is(err, exec.ErrNotFound) {
+			fmt.Fprintln(stdout)
+			fmt.Fprint(stdout, style.Highlight.Apply(fmt.Sprintf("We didn't find %s in your $PATH.", BazelCredHelperBinary)))
+			fmt.Fprintf(stdout, "\nIt's usually installed along-side nsc; so if you have added nsc to the $PATH, %s will also be available.\n", BazelCredHelperBinary)
+			fmt.Fprintf(stdout, "\nWhile your $PATH is not updated, sending build events won't work.\n")
+		}
+		if !errors.Is(err, exec.ErrNotFound) {
+			return fnerrors.Newf("failed to look up %s in $PATH: %w", BazelCredHelperBinary, err)
+		}
+	}
+
+	for _, domain := range domains {
+		if _, err := fmt.Fprintf(buf, "%s --credential_helper=*.%s=%s\n", command, domain, BazelCredHelperBinary); err != nil {
+			return fnerrors.Newf("failed to append credential_helper: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // BazelExecutionAuthMode mirrors the enum in
@@ -242,12 +313,14 @@ type ensureBazelExecutionClusterRequest struct {
 // private/proto/service/bazel/service.proto. The server marshals with
 // protojson (UseProtoNames=true), so the wire tags are snake_case.
 type ensureBazelExecutionClusterResponse struct {
-	SchedulerEndpoint     string `json:"scheduler_endpoint,omitempty"`
-	StorageEndpoint       string `json:"storage_endpoint,omitempty"`
-	Jobs                  uint32 `json:"jobs,omitempty"`
-	RemoteTimeoutSeconds  uint32 `json:"remote_timeout_seconds,omitempty"`
-	RemoteLocalFallback   bool   `json:"remote_local_fallback,omitempty"`
-	RemoteDownloadOutputs string `json:"remote_download_outputs,omitempty"`
+	SchedulerEndpoint       string   `json:"scheduler_endpoint,omitempty"`
+	StorageEndpoint         string   `json:"storage_endpoint,omitempty"`
+	Jobs                    uint32   `json:"jobs,omitempty"`
+	RemoteTimeoutSeconds    uint32   `json:"remote_timeout_seconds,omitempty"`
+	RemoteLocalFallback     bool     `json:"remote_local_fallback,omitempty"`
+	RemoteDownloadOutputs   string   `json:"remote_download_outputs,omitempty"`
+	BuildEventEndpoint      string   `json:"build_event_endpoint,omitempty"`
+	CredentialHelperDomains []string `json:"credential_helper_domains,omitempty"`
 }
 
 // ensureBazelExecutionCluster posts to the private BazelService path on the
