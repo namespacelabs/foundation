@@ -37,7 +37,12 @@ func (m StampImage) BuildImage(ctx context.Context, env pkggraph.SealedContext, 
 	}
 
 	named := oci.MakeNamedImage(m.Src.Description(), im)
-	return oci.AnnotateImage(named, anns), nil
+	return oci.AnnotateImageOpts(oci.AnnotateImageOptions{
+		// Skip the local content cache when the build is destined for a
+		// registry, otherwise caching this wrapper forces all layers of the
+		// underlying image to be downloaded.
+		NoCache: conf.PublishName() != nil,
+	}, named, anns), nil
 }
 
 func (m StampImage) PlatformIndependent() bool { return m.Src.PlatformIndependent() }
