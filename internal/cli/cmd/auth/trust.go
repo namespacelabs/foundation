@@ -27,6 +27,7 @@ func NewTrustRelationshipsCmd() *cobra.Command {
 
 	cmd.AddCommand(newTrustAddCmd())
 	cmd.AddCommand(newTrustListCmd())
+	cmd.AddCommand(newTrustUpdateCmd())
 	cmd.AddCommand(newTrustRemoveCmd())
 
 	return cmd
@@ -79,6 +80,57 @@ func newTrustListCmd() *cobra.Command {
 	})
 }
 
+func newTrustUpdateCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "update",
+		Short: "Update an existing trust relationship.",
+		Long:  "Update an existing trust relationship by specifying its ID. Only the fields whose flags are set are changed.",
+		Args:  cobra.NoArgs,
+	}
+
+	id := cmd.Flags().String("id", "", "ID of the trust relationship to update (required).")
+	issuer := cmd.Flags().String("issuer", "", "Token issuer.")
+	subjectMatch := cmd.Flags().String("subject-match", "", "Subject match pattern.")
+	audience := cmd.Flags().String("audience", "", "Expected audience value.")
+	defaultPermissions := cmd.Flags().StringArray("grant", nil, `Grant default permission as JSON object (can be specified multiple times). Replaces all existing grants. Format: {"resource_type":"...","resource_id":"...","actions":["..."]}`)
+	defaultTokenDuration := cmd.Flags().String("default_token_duration", "", `Default token duration (e.g. "3600s").`)
+
+	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
+		if *id == "" {
+			return fnerrors.Newf("--id is required")
+		}
+
+		flags := cmd.Flags()
+
+		var update trustRelationshipUpdate
+		if flags.Changed("issuer") {
+			update.issuer = issuer
+		}
+		if flags.Changed("subject-match") {
+			update.subjectMatch = subjectMatch
+		}
+		if flags.Changed("audience") {
+			update.audience = audience
+		}
+		if flags.Changed("default_token_duration") {
+			update.defaultTokenDuration = defaultTokenDuration
+		}
+		if flags.Changed("grant") {
+			permissions, err := token.ParseGrants(*defaultPermissions)
+			if err != nil {
+				return err
+			}
+			update.defaultPermissions = &permissions
+		}
+
+		if update.issuer == nil && update.subjectMatch == nil && update.audience == nil && update.defaultTokenDuration == nil && update.defaultPermissions == nil {
+			return fnerrors.Newf("nothing to update: specify at least one of --issuer, --subject-match, --audience, --grant, or --default_token_duration")
+		}
+
+		return updateTrustRelationship(ctx, *id, update)
+	})
+}
+
 func newTrustRemoveCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "remove",
@@ -123,6 +175,63 @@ func addTrustRelationship(ctx context.Context, issuer, subjectMatch, audience st
 	}
 
 	fmt.Fprintf(console.Stdout(ctx), "Successfully added trust relationship.\n")
+	return nil
+}
+
+type trustRelationshipUpdate struct {
+	issuer               *string
+	subjectMatch         *string
+	audience             *string
+	defaultPermissions   *[]*v1beta.Permission
+	defaultTokenDuration *string
+}
+
+func updateTrustRelationship(ctx context.Context, id string, update trustRelationshipUpdate) error {
+	current, err := fnapi.ListTrustRelationships(ctx)
+	if err != nil {
+		return err
+	}
+
+	idx := -1
+	for i, tr := range current.TrustRelationships {
+		if tr.Id == id {
+			idx = i
+			break
+		}
+	}
+
+	if idx < 0 {
+		return fnerrors.Newf("trust relationship with ID %q not found", id)
+	}
+
+	tr := current.TrustRelationships[idx]
+	if update.issuer != nil {
+		tr.Issuer = *update.issuer
+	}
+	if update.subjectMatch != nil {
+		tr.SubjectMatch = *update.subjectMatch
+	}
+	if update.audience != nil {
+		tr.Audience = *update.audience
+	}
+	if update.defaultPermissions != nil {
+		tr.DefaultPermissions = *update.defaultPermissions
+	}
+	if update.defaultTokenDuration != nil {
+		tr.DefaultTokenDuration = *update.defaultTokenDuration
+	}
+	current.TrustRelationships[idx] = tr
+
+	fmt.Fprintf(console.Stderr(ctx), "Updating trust relationship...\n")
+	fmt.Fprintf(console.Stderr(ctx), "ID: %s\n", tr.Id)
+	fmt.Fprintf(console.Stderr(ctx), "Issuer: %s\n", tr.Issuer)
+	fmt.Fprintf(console.Stderr(ctx), "Subject Match: %s\n", tr.SubjectMatch)
+
+	if err := fnapi.UpdateTrustRelationships(ctx, current.Generation, current.TrustRelationships); err != nil {
+		return err
+	}
+
+	fmt.Fprintf(console.Stdout(ctx), "Successfully updated trust relationship.\n")
 	return nil
 }
 
