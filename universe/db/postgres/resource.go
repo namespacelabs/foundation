@@ -46,6 +46,7 @@ type ConfigOverrides struct {
 	MaxConnIdleTime                 time.Duration
 	IdleInTransactionSessionTimeout time.Duration
 	StatementTimeout                time.Duration
+	LockTimeout                     time.Duration
 	ConnectTimeout                  time.Duration
 }
 
@@ -81,6 +82,10 @@ func NewDatabaseFromConnectionUriWithOverrides(ctx context.Context, db DBInstanc
 
 		if overrides.StatementTimeout > 0 {
 			config.ConnConfig.RuntimeParams["statement_timeout"] = fmt.Sprintf("%d", overrides.StatementTimeout.Milliseconds())
+		}
+
+		if overrides.LockTimeout > 0 {
+			config.ConnConfig.RuntimeParams["lock_timeout"] = fmt.Sprintf("%d", overrides.LockTimeout.Milliseconds())
 		}
 
 		if overrides.ConnectTimeout > 0 {

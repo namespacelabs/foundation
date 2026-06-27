@@ -22,6 +22,11 @@ const (
 	providerPkg     = "namespacelabs.dev/foundation/library/oss/postgres"
 	connIdleTimeout = 15 * time.Minute
 
+	// schemaApplyLockTimeout bounds how long any statement in a schema apply waits to acquire a lock.
+	// With this, statements fails fast with lock_not_available (55P03),
+	// which is not retryable, so the apply fails loudly and the deploy can be re-run once any blocker clears.
+	schemaApplyLockTimeout = 10 * time.Second
+
 	caCertPath = "/tmp/ca.pem"
 )
 
@@ -82,6 +87,7 @@ func run(ctx context.Context, p *provider.Provider[*postgres.DatabaseIntent]) er
 		client := fmt.Sprintf("provider:%s", p.Intent.Name)
 		db, err := universepg.NewDatabaseFromConnectionUriWithOverrides(ctx, instance, instance.ConnectionUri, nil, client, &universepg.ConfigOverrides{
 			MaxConnIdleTime: connIdleTimeout,
+			LockTimeout:     schemaApplyLockTimeout,
 		})
 		if err != nil {
 			return fmt.Errorf("unable to open connection: %w", err)
