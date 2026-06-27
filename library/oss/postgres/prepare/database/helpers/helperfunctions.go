@@ -154,6 +154,117 @@ END
 $func$;
 `},
 
+		// fn_ensure_index is a lock-friendly replacement for 'CREATE INDEX IF NOT EXISTS'.
+		// A plain 'CREATE INDEX IF NOT EXISTS' acquires a SHARE lock on the table just to run its
+		// existence check; that SHARE lock conflicts with ordinary writes (ROW EXCLUSIVE) and with a
+		// running (anti-wraparound) autovacuum (SHARE UPDATE EXCLUSIVE). When a schema is re-applied
+		// on every startup, that no-op restatement can get parked behind such a lock and head-of-line
+		// block all writes to the table. This function instead checks the catalog first (taking no
+		// lock on the table) and only issues the CREATE INDEX when the index is actually missing, so
+		// the common already-exists path never touches the table's lock.
+		// WARNING: This function translates all names into lowercase (as plain postgres would).
+		// If you want to use lowercase characters, (e.g. through quotation) do not use this function.
+		// NOTE: This function assumes you're working with the 'public' schema.
+		// NOTE: When the index does not yet exist this still issues a non-concurrent CREATE INDEX,
+		// which holds a SHARE lock for the duration of the build (CREATE INDEX CONCURRENTLY cannot run
+		// inside a function/transaction). For large, hot tables build the index out-of-band with
+		// CREATE INDEX CONCURRENTLY first; this function will then see it and do nothing.
+		//
+		// Example usage:
+		//
+		// SELECT fn_ensure_index('volumes_attachedtovm', 'volumes', '(ID, AttachedToVM, IsClone)');
+		// SELECT fn_ensure_index('volumes_active', 'volumes', '(TenantID) WHERE DestroyedAt IS NULL');
+		{
+			provisionSql: `
+CREATE OR REPLACE FUNCTION fn_ensure_index(iname TEXT, tname TEXT, def TEXT)
+  RETURNS void
+  LANGUAGE plpgsql AS
+$func$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public' AND indexname = LOWER(iname)
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS ' || iname || ' ON ' || tname || ' ' || def || ';';
+  END IF;
+END
+$func$;
+`},
+
+		// fn_ensure_unique_index is a lock-friendly replacement for 'CREATE UNIQUE INDEX IF NOT EXISTS'.
+		// It behaves exactly like fn_ensure_index but creates a UNIQUE index: it checks the catalog
+		// first (taking no lock on the table) and only issues the CREATE UNIQUE INDEX when the index
+		// is actually missing, so re-applying a schema on every startup is a no-op that never locks
+		// the table.
+		// WARNING: This function translates all names into lowercase (as plain postgres would).
+		// If you want to use lowercase characters, (e.g. through quotation) do not use this function.
+		// NOTE: This function assumes you're working with the 'public' schema.
+		// NOTE: When the index does not yet exist this still issues a non-concurrent CREATE UNIQUE
+		// INDEX, which holds a SHARE lock for the duration of the build (CREATE INDEX CONCURRENTLY
+		// cannot run inside a function/transaction). For large, hot tables build the index out-of-band
+		// with CREATE UNIQUE INDEX CONCURRENTLY first; this function will then see it and do nothing.
+		//
+		// Example usage:
+		//
+		// SELECT fn_ensure_unique_index('reservations_idx_tenant_uniqueness', 'reservations', '(TenantID, UniquenessKey)');
+		// SELECT fn_ensure_unique_index('integrations_tenant_type_active_idx', 'integrations', '(TenantId, Type) WHERE DeletedAt IS NULL');
+		{
+			provisionSql: `
+CREATE OR REPLACE FUNCTION fn_ensure_unique_index(iname TEXT, tname TEXT, def TEXT)
+  RETURNS void
+  LANGUAGE plpgsql AS
+$func$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public' AND indexname = LOWER(iname)
+  ) THEN
+    EXECUTE 'CREATE UNIQUE INDEX IF NOT EXISTS ' || iname || ' ON ' || tname || ' ' || def || ';';
+  END IF;
+END
+$func$;
+`},
+
+		// fn_drop_index is a lock-friendly replacement for 'DROP INDEX IF EXISTS'.
+		// A plain 'DROP INDEX' takes an ACCESS EXCLUSIVE lock on the underlying table. On a hot
+		// table that request, if it cannot be granted immediately, queues ahead of all other
+		// statements and head-of-line blocks every read and write until it is granted - the same
+		// cascade a stuck CREATE INDEX causes. This function makes the drop safe in two ways:
+		//   1. It checks the catalog first (taking no lock on the table) and skips entirely when the
+		//      index is already gone, so re-applying a schema on every startup is a no-op.
+		//   2. It bounds lock acquisition with a short lock_timeout, so if the ACCESS EXCLUSIVE lock
+		//      cannot be taken quickly the DROP fails fast (raising lock_not_available) instead of
+		//      queueing and blocking all traffic. That error aborts the schema apply and fails the
+		//      deploy, so the contended drop is surfaced loudly rather than silently skipped.
+		// IMPORTANT: This does NOT make the drop fully lock-free - a successful drop still briefly
+		// holds ACCESS EXCLUSIVE. Only 'DROP INDEX CONCURRENTLY' avoids that entirely, and that
+		// cannot run inside a function/transaction. This helper removes the unbounded-wait cascade,
+		// not the lock itself.
+		// WARNING: This function translates all names into lowercase (as plain postgres would).
+		// If you want to use lowercase characters, (e.g. through quotation) do not use this function.
+		// NOTE: This function assumes you're working with the 'public' schema.
+		//
+		// Example usage:
+		//
+		// SELECT fn_drop_index('virtualmachines_list');
+		{
+			provisionSql: `
+CREATE OR REPLACE FUNCTION fn_drop_index(iname TEXT)
+  RETURNS void
+  LANGUAGE plpgsql
+  SET lock_timeout = '3s' AS
+$func$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public' AND indexname = LOWER(iname)
+  ) THEN
+    EXECUTE 'DROP INDEX IF EXISTS ' || iname || ';';
+  END IF;
+END
+$func$;
+`},
+
 		// fn_ensure_column is a lock-friendly replacement for `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`.
 		// WARNING: This function translates all names into lowercase (as plain postgres would).
 		// If you want to use lowercase characters, (e.g. through quotation) do not use this function.
