@@ -225,12 +225,6 @@ func toBazelExecutionConfig(ctx context.Context, out bazelRbeSetup, command stri
 		lines = append(lines, fmt.Sprintf("--remote_timeout=%d", int(out.RemoteTimeout.Seconds())))
 	}
 
-	// The build event endpoint is bearer-authenticated and lives on a different
-	// host than the scheduler/storage, so its credentials are configured
-	// independently of the cluster auth mode. In static mode we attach the
-	// already-issued bearer token directly as BES headers; in the default mTLS
-	// mode the client certificate cannot authenticate it, so we rely on the
-	// credential helper (handled after the loop) to mint a bearer token.
 	if out.BuildEventEndpoint != "" {
 		lines = append(lines, fmt.Sprintf("--bes_backend=%s", out.BuildEventEndpoint))
 
@@ -248,7 +242,7 @@ func toBazelExecutionConfig(ctx context.Context, out bazelRbeSetup, command stri
 		}
 	}
 
-	if out.BuildEventEndpoint != "" && out.IngressAuthToken == "" {
+	if out.BuildEventEndpoint != "" && out.IngressAuthToken == "" && len(out.CredentialHelperDomains) > 0 {
 		if err := appendExecutionBuildEventCredentialHelper(ctx, &buf, command, out.CredentialHelperDomains); err != nil {
 			return nil, err
 		}
@@ -257,18 +251,7 @@ func toBazelExecutionConfig(ctx context.Context, out bazelRbeSetup, command stri
 	return buf.Bytes(), nil
 }
 
-// appendExecutionBuildEventCredentialHelper configures the nsc credential
-// helper for the build event domains returned by the server, mirroring how
-// `nsc bazel cache setup` configures it. This is how the default (mTLS) mode
-// authenticates build event uploads: the client certificate used for the
-// scheduler/storage endpoints cannot authenticate the bearer-only build event
-// host, so bazel calls the credential helper to mint a bearer token per
-// request.
 func appendExecutionBuildEventCredentialHelper(ctx context.Context, buf *bytes.Buffer, command string, domains []string) error {
-	if len(domains) == 0 {
-		return fnerrors.Newf("the credential helper is not enabled but it is required to send build events")
-	}
-
 	if _, err := exec.LookPath(BazelCredHelperBinary); err != nil {
 		stdout := console.Stdout(ctx)
 		style := colors.Ctx(ctx)
