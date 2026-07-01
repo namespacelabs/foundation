@@ -93,6 +93,8 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(macos.NewMacOSCmd()) // nsc macos [hidden]
 
 	root.AddCommand(devbox.NewDevboxCmd()) // nsc devbox [hidden]
+
+	root.AddCommand(NewCompletionCmd()) // nsc completion
 }
 
 func newGithub() *cobra.Command {
