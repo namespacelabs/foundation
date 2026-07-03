@@ -55,6 +55,7 @@ func newUploadBaseImageCmd() *cobra.Command {
 		}
 
 		var img v1.Image
+		var index v1.ImageIndex
 
 		if *fromFile != "" {
 			fmt.Fprintf(console.Info(ctx), "Loading image from file: %s\n", *fromFile)
@@ -79,10 +80,24 @@ func newUploadBaseImageCmd() *cobra.Command {
 				return fmt.Errorf("failed to fetch %s: %w", sourceImage, err)
 			}
 
-			img, err = desc.Image()
-			if err != nil {
-				return fmt.Errorf("failed to load image from descriptor: %w", err)
+			switch {
+			case desc.MediaType.IsIndex():
+				index, err = desc.ImageIndex()
+				if err != nil {
+					return fmt.Errorf("failed to load image index from descriptor: %w", err)
+				}
+			case desc.MediaType.IsImage():
+				img, err = desc.Image()
+				if err != nil {
+					return fmt.Errorf("failed to load image from descriptor: %w", err)
+				}
+			default:
+				return fmt.Errorf("unsupported media type: %s", desc.MediaType)
 			}
+		}
+
+		if index != nil && len(*annotateWithDigest) > 0 {
+			return fmt.Errorf("--annotate-with-digest cannot be used with an image index source; use a single-platform image instead")
 		}
 
 		annotations, err := makeAnnotations(ctx, img, *annotateWithDigest)
@@ -107,13 +122,23 @@ func newUploadBaseImageCmd() *cobra.Command {
 			return err
 		}
 
-		annotated := mutate.Annotations(img, annotations).(v1.Image)
-		h, err := annotated.Digest()
-		if err != nil {
-			return err
-		}
-		if err := remote.Write(targetRef, annotated, remoteOpts...); err != nil {
-			return err
+		var h v1.Hash
+		if index != nil {
+			annotated := mutate.Annotations(index, annotations).(v1.ImageIndex)
+			if h, err = annotated.Digest(); err != nil {
+				return err
+			}
+			if err = remote.WriteIndex(targetRef, annotated, remoteOpts...); err != nil {
+				return err
+			}
+		} else {
+			annotated := mutate.Annotations(img, annotations).(v1.Image)
+			if h, err = annotated.Digest(); err != nil {
+				return err
+			}
+			if err := remote.Write(targetRef, annotated, remoteOpts...); err != nil {
+				return err
+			}
 		}
 
 		fmt.Fprintf(console.Info(ctx), "%s: %s@%s\n", colors.Ctx(ctx).Highlight.Apply("✔ Uploaded base image"), targetRef, h)
