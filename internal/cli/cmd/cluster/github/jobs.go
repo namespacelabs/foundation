@@ -8,6 +8,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"strconv"
 	"time"
 
 	v1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/github/v1beta"
@@ -24,11 +26,13 @@ import (
 
 func NewJobsCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "jobs",
-		Short: "Manage GitHub Actions jobs.",
+		Use:     "job",
+		Aliases: []string{"jobs"},
+		Short:   "Manage GitHub Actions jobs.",
 	}
 
 	cmd.AddCommand(newJobsListCmd())
+	cmd.AddCommand(newJobsDescribeCmd())
 
 	return cmd
 }
@@ -151,6 +155,99 @@ func newJobsListCmd() *cobra.Command {
 	return cmd
 }
 
+func newJobsDescribeCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "describe <job-id>",
+		Short: "Show details for a specific GitHub Actions job, including the instance it ran on.",
+		Args:  cobra.ExactArgs(1),
+	}
+
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		jobID, err := strconv.ParseInt(args[0], 10, 64)
+		if err != nil {
+			return fnerrors.Newf("invalid job id %q: must be a number", args[0])
+		}
+
+		job, err := describeJob(ctx, jobID)
+		if err != nil {
+			return err
+		}
+
+		stdout := console.Stdout(ctx)
+
+		if *output == "json" {
+			enc := json.NewEncoder(stdout)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(transformJobForOutput(job)); err != nil {
+				return fnerrors.InternalError("failed to encode job as JSON output: %w", err)
+			}
+			return nil
+		}
+
+		printJobDetails(stdout, job)
+		return nil
+	})
+
+	return cmd
+}
+
+func printJobDetails(stdout io.Writer, job *v1beta.Job) {
+	status := job.Conclusion
+	if status == "" {
+		if job.StartedAt != nil {
+			status = "running"
+		} else {
+			status = "pending"
+		}
+	}
+
+	fmt.Fprintf(stdout, "\nJob %d\n\n", job.JobId)
+	fmt.Fprintf(stdout, "Repository:   %s\n", job.Repository)
+	fmt.Fprintf(stdout, "Workflow:     %s\n", job.WorkflowName)
+	fmt.Fprintf(stdout, "Job:          %s\n", job.JobName)
+	fmt.Fprintf(stdout, "Status:       %s\n", status)
+	fmt.Fprintf(stdout, "Sender:       %s\n", job.SenderLogin)
+
+	if job.Ref != "" {
+		fmt.Fprintf(stdout, "Ref:          %s\n", job.Ref)
+	}
+	if job.Profile != nil && job.Profile.Tag != "" {
+		fmt.Fprintf(stdout, "Profile:      %s\n", job.Profile.Tag)
+	}
+	if job.JobUrl != "" {
+		fmt.Fprintf(stdout, "URL:          %s\n", job.JobUrl)
+	}
+
+	if job.CreatedAt != nil {
+		fmt.Fprintf(stdout, "Created At:   %s\n", job.CreatedAt.AsTime().Format(time.RFC3339))
+	}
+	if job.StartedAt != nil {
+		fmt.Fprintf(stdout, "Started At:   %s\n", job.StartedAt.AsTime().Format(time.RFC3339))
+	}
+	if job.CompletedAt != nil {
+		fmt.Fprintf(stdout, "Completed At: %s\n", job.CompletedAt.AsTime().Format(time.RFC3339))
+	}
+
+	if job.Runner != nil {
+		fmt.Fprintf(stdout, "\nRunner:\n")
+		if job.Runner.InstanceId != "" {
+			fmt.Fprintf(stdout, "  Instance ID:    %s\n", job.Runner.InstanceId)
+		}
+		if job.Runner.ContainerName != "" {
+			fmt.Fprintf(stdout, "  Container Name: %s\n", job.Runner.ContainerName)
+		}
+		if job.Runner.RunnerName != "" {
+			fmt.Fprintf(stdout, "  Runner Name:    %s\n", job.Runner.RunnerName)
+		}
+		if job.Runner.RunnerId != 0 {
+			fmt.Fprintf(stdout, "  Runner ID:      %d\n", job.Runner.RunnerId)
+		}
+	}
+	fmt.Fprintln(stdout)
+}
+
 func listJobs(ctx context.Context, req *v1beta.ListJobsRequest) ([]*v1beta.Job, error) {
 	client, err := fnapi.NewJobsServiceClient(ctx)
 	if err != nil {
@@ -163,6 +260,22 @@ func listJobs(ctx context.Context, req *v1beta.ListJobsRequest) ([]*v1beta.Job, 
 	}
 
 	return res.Msg.Jobs, nil
+}
+
+func describeJob(ctx context.Context, jobID int64) (*v1beta.Job, error) {
+	client, err := fnapi.NewJobsServiceClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := client.DescribeJob(ctx, connect.NewRequest(&v1beta.DescribeJobRequest{
+		JobId: jobID,
+	}))
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Msg.Job, nil
 }
 
 func transformJobs(jobs []*v1beta.Job) []map[string]any {
