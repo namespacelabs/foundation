@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"namespacelabs.dev/foundation/framework/io/downloader"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -50,6 +51,7 @@ func NewArtifactCmd() *cobra.Command {
 	cmd.AddCommand(newArtifactDownloadCmd())
 	cmd.AddCommand(newArtifactCacheURLCmd())
 	cmd.AddCommand(newArtifactExpireCmd())
+	cmd.AddCommand(newArtifactExtendCmd())
 	cmd.AddCommand(newArtifactDescribeCmd())
 
 	return cmd
@@ -341,6 +343,82 @@ func newArtifactExpireCmd() *cobra.Command {
 			return err
 		}
 		fmt.Fprintf(console.Stdout(ctx), "Expired %s (namespace %s)\n", path, namespace)
+
+		return nil
+	})
+}
+
+func newArtifactExtendCmd() *cobra.Command {
+	var namespace string
+	var extendBy, ensureMinimum time.Duration
+	var extendByFlag, ensureMinimumFlag *pflag.Flag
+
+	return fncobra.Cmd(&cobra.Command{
+		Use:   "extend [path]",
+		Short: "Extend the expiration of an artifact.",
+		Long: `Extend the expiration of a finalized artifact.
+
+This enables dynamic, access-based retention: create artifacts with a short
+expiration and push it out whenever they are accessed.
+
+At least one of --by or --ensure_minimum must be set. When both are set, --by is
+applied first and --ensure_minimum then acts as a lower bound on the result.`,
+		Args: cobra.ExactArgs(1),
+	}).WithFlags(func(flags *pflag.FlagSet) {
+		flags.StringVar(&namespace, "namespace", mainArtifactNamespace, "Namespace of the artifact.")
+		fncobra.DurationVar(flags, &extendBy, "by", 0, "Extend the current expiration by this duration, relative to the artifact's current expiration.")
+		fncobra.DurationVar(flags, &ensureMinimum, "ensure_minimum", 0, "Ensure the artifact expires no sooner than this duration from now.")
+		extendByFlag = flags.Lookup("by")
+		ensureMinimumFlag = flags.Lookup("ensure_minimum")
+	}).DoWithArgs(func(ctx context.Context, args []string) error {
+		path := args[0]
+
+		if !extendByFlag.Changed && !ensureMinimumFlag.Changed {
+			return fnerrors.BadInputError("at least one of --by or --ensure_minimum must be set")
+		}
+
+		req := &storagev1beta.ExtendArtifactRequest{
+			Path:      path,
+			Namespace: namespace,
+		}
+
+		if extendByFlag.Changed {
+			if extendBy <= 0 {
+				return fnerrors.BadInputError("--by must be positive")
+			}
+			req.ExtendBy = durationpb.New(extendBy)
+		}
+
+		if ensureMinimumFlag.Changed {
+			if ensureMinimum <= 0 {
+				return fnerrors.BadInputError("--ensure_minimum must be positive")
+			}
+			req.EnsureMinimum = durationpb.New(ensureMinimum)
+		}
+
+		token, err := auth.LoadDefaults()
+		if err != nil {
+			return err
+		}
+
+		cli, err := storage.NewClient(ctx, token)
+		if err != nil {
+			return err
+		}
+		defer cli.Close()
+
+		res, err := cli.Artifacts.ExtendArtifact(ctx, req)
+		if err != nil {
+			return err
+		}
+
+		if res.GetExpiresAt() != nil {
+			fmt.Fprintf(console.Stdout(ctx), "Extended %s (namespace %s); now expires %s.\n",
+				path, namespace, res.GetExpiresAt().AsTime().Format(time.RFC3339))
+		} else {
+			fmt.Fprintf(console.Stdout(ctx), "Extended %s (namespace %s); now never expires.\n",
+				path, namespace)
+		}
 
 		return nil
 	})
