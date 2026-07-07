@@ -526,6 +526,7 @@ func generateNameFromImage(image string) string {
 }
 
 type createOutput struct {
+	ReservationId string           `json:"reservation_id,omitempty"`
 	ClusterId     string           `json:"cluster_id,omitempty"`
 	InstanceId    string           `json:"instance_id,omitempty"`
 	ClusterUrl    string           `json:"cluster_url,omitempty"`

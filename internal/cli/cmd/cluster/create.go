@@ -282,61 +282,70 @@ func NewCreateCmd() *cobra.Command {
 			}
 		}
 
-		switch *output {
-		case "json":
-			enc := json.NewEncoder(console.Stdout(ctx))
-			enc.SetIndent("", "  ")
-
-			out := createOutput{
-				ClusterId:  cluster.ClusterId,
-				InstanceId: cluster.ClusterId,
-			}
-
-			if cluster.Cluster != nil {
-				out.ClusterUrl = cluster.Cluster.AppURL
-				out.IngressDomain = cluster.Cluster.IngressDomain
-				out.ApiEndpoint = cluster.Cluster.ApiEndpoint
-			}
-
-			if err := enc.Encode(out); err != nil {
-				return fnerrors.InternalError("failed to encode instance as JSON output: %w", err)
-			}
-
-		default:
-			if *output != "plain" {
-				fmt.Fprintf(console.Warnings(ctx), "defaulting output to plain\n")
-			}
-
-			printNewEnv(ctx, cluster.ClusterId, cluster.Cluster.AppURL)
-
-			if api.ClusterService(cluster.Cluster, "kubernetes") != nil {
-				stdout := console.Stdout(ctx)
-				style := colors.Ctx(ctx)
-				fmt.Fprintln(stdout)
-				fmt.Fprintf(stdout, "  As a next step, try one of:\n\n")
-				fmt.Fprintf(stdout, "    $ nsc kubectl %s get pod -A\n\n", cluster.ClusterId)
-				fmt.Fprintf(stdout, "    $ nsc kubeconfig write %s\n", cluster.ClusterId)
-				fmt.Fprintf(stdout, "      %s\n", style.Comment.Apply("<follow instructions>"))
-				fmt.Fprintf(stdout, "    $ kubectl get pod -A\n\n")
-				fmt.Fprintf(stdout, "  You can also connect to a shell in the new environment:\n\n")
-				fmt.Fprintf(stdout, "    $ nsc ssh %s\n\n", cluster.ClusterId)
-			}
-
-			if cluster.Cluster != nil && len(cluster.Cluster.TlsBackedPort) > 0 {
-				stdout := console.Stdout(ctx)
-				fmt.Fprintln(stdout)
-				fmt.Fprintf(stdout, "  (Experimental) TLS backend ports:\n\n")
-				for _, port := range cluster.Cluster.TlsBackedPort {
-					fmt.Fprintf(stdout, "    %s (%s/%d)\n", port.ServerName, port.Name, port.Port)
-				}
-				fmt.Fprintln(stdout)
-			}
-		}
-
-		return nil
+		return printInstanceCreated(ctx, *output, "", cluster)
 	})
 
 	return cmd
+}
+
+// printInstanceCreated renders the success output for a newly created (and
+// waited-for) instance. It is shared by `nsc instance create` and by
+// `nsc reservation create --wait` so that both emit identical messages. When
+// reservationID is non-empty it is included in the JSON output.
+func printInstanceCreated(ctx context.Context, output, reservationID string, cluster *api.CreateClusterResult) error {
+	switch output {
+	case "json":
+		enc := json.NewEncoder(console.Stdout(ctx))
+		enc.SetIndent("", "  ")
+
+		out := createOutput{
+			ReservationId: reservationID,
+			ClusterId:     cluster.ClusterId,
+			InstanceId:    cluster.ClusterId,
+		}
+
+		if cluster.Cluster != nil {
+			out.ClusterUrl = cluster.Cluster.AppURL
+			out.IngressDomain = cluster.Cluster.IngressDomain
+			out.ApiEndpoint = cluster.Cluster.ApiEndpoint
+		}
+
+		if err := enc.Encode(out); err != nil {
+			return fnerrors.InternalError("failed to encode instance as JSON output: %w", err)
+		}
+
+	default:
+		if output != "plain" {
+			fmt.Fprintf(console.Warnings(ctx), "defaulting output to plain\n")
+		}
+
+		printNewEnv(ctx, cluster.ClusterId, cluster.Cluster.AppURL)
+
+		if api.ClusterService(cluster.Cluster, "kubernetes") != nil {
+			stdout := console.Stdout(ctx)
+			style := colors.Ctx(ctx)
+			fmt.Fprintln(stdout)
+			fmt.Fprintf(stdout, "  As a next step, try one of:\n\n")
+			fmt.Fprintf(stdout, "    $ nsc kubectl %s get pod -A\n\n", cluster.ClusterId)
+			fmt.Fprintf(stdout, "    $ nsc kubeconfig write %s\n", cluster.ClusterId)
+			fmt.Fprintf(stdout, "      %s\n", style.Comment.Apply("<follow instructions>"))
+			fmt.Fprintf(stdout, "    $ kubectl get pod -A\n\n")
+			fmt.Fprintf(stdout, "  You can also connect to a shell in the new environment:\n\n")
+			fmt.Fprintf(stdout, "    $ nsc ssh %s\n\n", cluster.ClusterId)
+		}
+
+		if cluster.Cluster != nil && len(cluster.Cluster.TlsBackedPort) > 0 {
+			stdout := console.Stdout(ctx)
+			fmt.Fprintln(stdout)
+			fmt.Fprintf(stdout, "  (Experimental) TLS backend ports:\n\n")
+			for _, port := range cluster.Cluster.TlsBackedPort {
+				fmt.Fprintf(stdout, "    %s (%s/%d)\n", port.ServerName, port.Name, port.Port)
+			}
+			fmt.Fprintln(stdout)
+		}
+	}
+
+	return nil
 }
 
 func ParseImageSelectors(selectors []string) ([]*api.LabelEntry, error) {

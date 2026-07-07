@@ -32,6 +32,7 @@ func NewBareClusterCmd(use string, hidden bool) *cobra.Command {
 	}
 
 	cmd.AddCommand(NewCreateCmd())
+	cmd.AddCommand(NewReservationCreateCmd("reserve")) // `nsc instance reserve`, alias of `nsc reservation create`
 	cmd.AddCommand(newPortForwardCmd())
 	cmd.AddCommand(NewDestroyCmd())
 	cmd.AddCommand(newWriteKubeconfigCmd("kubeconfig", true)) // Adding hidden command under `cluster` to support old action versions.

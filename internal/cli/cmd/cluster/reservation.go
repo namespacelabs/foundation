@@ -11,12 +11,17 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
 
+	computev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/compute/v1beta"
 	expcompute "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/experimental/compute"
+	"buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/stdlib"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -24,6 +29,8 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/api/private"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/endpoint"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -35,6 +42,7 @@ func NewReservationCmd() *cobra.Command {
 		Short: "Reservation-related activities.",
 	}
 
+	cmd.AddCommand(NewReservationCreateCmd("create"))
 	cmd.AddCommand(NewReservationWaitCmd())
 	cmd.AddCommand(NewReservationListCmd())
 	cmd.AddCommand(NewReservationDescribeCmd())
@@ -44,6 +52,7 @@ func NewReservationCmd() *cobra.Command {
 }
 
 const (
+	methodReserveInstance     = "namespace.experimental.compute.ReservationService/ReserveInstance"
 	methodDescribeReservation = "namespace.experimental.compute.ReservationService/DescribeReservation"
 	methodCancelReservation   = "namespace.experimental.compute.ReservationService/CancelReservation"
 	methodListReservations    = "namespace.experimental.compute.ReservationService/ListReservations"
@@ -315,4 +324,336 @@ func waitReservation(ctx context.Context, reservationID string) (string, error) 
 			}
 		}
 	})
+}
+
+// waitAndPrintReservation implements `nsc reservation create --wait`. It reuses
+// the `nsc reservation wait` code to block until the reservation is fulfilled,
+// then waits for the instance to become ready and prints the same output as
+// `nsc instance create`.
+func waitAndPrintReservation(ctx context.Context, reservationID string, waitTimeout time.Duration, cidfile, output string) error {
+	if waitTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, waitTimeout)
+		defer cancel()
+	}
+
+	instanceID, err := waitReservation(ctx, reservationID)
+	if err != nil {
+		return err
+	}
+
+	if cidfile != "" {
+		if err := os.WriteFile(cidfile, []byte(instanceID), 0644); err != nil {
+			return fnerrors.Newf("failed to write %q: %w", cidfile, err)
+		}
+	}
+
+	// The reservation is fulfilled; wait for the instance to become ready and
+	// fetch its details, reusing the same wait code as `nsc instance create`.
+	// The readiness stream must target the instance's own API endpoint (which
+	// `nsc instance create` gets from its create response), so resolve it first.
+	info, err := api.GetCluster(ctx, api.Methods, instanceID)
+	if err != nil {
+		return fnerrors.Newf("failed to fetch instance %s: %w", instanceID, err)
+	}
+
+	var apiEndpoint string
+	if info.Cluster != nil {
+		apiEndpoint = info.Cluster.ApiEndpoint
+	}
+
+	clusterWaitFor := waitTimeout
+	if clusterWaitFor <= 0 {
+		// waitTimeout == 0 means "wait until the reservation deadline"; the
+		// reservation is already fulfilled here, so bound the readiness wait.
+		clusterWaitFor = 10 * time.Minute
+	}
+
+	cluster, err := api.WaitClusterReady(ctx, api.Methods, instanceID, clusterWaitFor, api.WaitClusterOpts{
+		WaitKind:    "kubernetes",
+		ApiEndpoint: apiEndpoint,
+	})
+	if err != nil {
+		return err
+	}
+
+	return printInstanceCreated(ctx, output, reservationID, cluster)
+}
+
+// NewReservationCreateCmd implements the reservation creation command. It is
+// registered both as `nsc reservation create` and as the `nsc instance reserve`
+// alias. It mirrors the flags of `nsc instance create` but calls the public
+// ReservationService.ReserveInstance API instead of the private InstanceService.
+func NewReservationCreateCmd(use string) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   use,
+		Short: "Reserves a new instance, returning a reservation id.",
+		Args:  cobra.NoArgs,
+	}
+
+	// creation flags
+	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type, in the form [os/arch:]<vcpu>x<memoryGB> (e.g. 4x8 or linux/arm64:2x8). If omitted, the server picks a default shape.")
+	duration := fncobra.Duration(cmd.Flags(), "duration", 0, "For how long to run the instance once it is created.")
+	bare := cmd.Flags().Bool("bare", false, "If set to true, creates an environment with the minimal set of services (e.g. no Kubernetes).")
+	selectors := cmd.Flags().StringSlice("selectors", nil, "Select platform/base image based on specific properties (prop1=value1,prop2=value2).")
+	ingress := cmd.Flags().String("ingress", "", "If set, configures the ingress of this instance. Valid options: wildcard.")
+	volumes := cmd.Flags().StringSlice("volume", nil, "Attach a volume to the instance, {cache|persistent}:{tag}:{mountpoint}:{size}")
+	userSshKey := cmd.Flags().String("ssh_key", "", "Injects the specified ssh public key in the created instance.")
+	enable := cmd.Flags().StringSlice("enable", nil, "Enable a feature, e.g. --enable=kubernetes:1.33")
+	features := cmd.Flags().StringSlice("features", nil, "A set of features to attach to the instance.")
+
+	// Metadata
+	labels := cmd.Flags().StringToString("label", nil, "Key-values to attach to the new instance. Multiple key-value pairs may be specified.")
+	purpose := cmd.Flags().String("purpose", "Manually reserved from CLI", "What documented purpose to attach to the created instance.")
+
+	// Output
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+	cidfile := cmd.Flags().String("cidfile", "", "When --wait is set, write the instance id to this path.")
+
+	// Reservation-specific
+	reservationTimeout := fncobra.Duration(cmd.Flags(), "reservation_timeout", 15*time.Minute, "For how long the server should keep trying to fulfill the reservation before giving up.")
+	wait := cmd.Flags().Bool("wait", false, "If set, waits for the reservation to be fulfilled and the instance to become ready, then prints the instance details.")
+	waitTimeout := fncobra.Duration(cmd.Flags(), "wait_timeout", 10*time.Minute, "When --wait is set, for how long to wait until the reservation is fulfilled and the instance is ready. Set to 0 to wait until the reservation deadline.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		instanceReq, err := buildReservationInstanceRequest(reservationFlags{
+			machineType: *machineType,
+			features:    *features,
+			bare:        *bare,
+			labels:      *labels,
+			purpose:     *purpose,
+			selectors:   *selectors,
+			ingress:     *ingress,
+			sshKey:      *userSshKey,
+			enable:      *enable,
+			volumes:     *volumes,
+			duration:    *duration,
+		})
+		if err != nil {
+			return err
+		}
+
+		if *reservationTimeout <= 0 {
+			return fnerrors.Newf("--reservation_timeout must be greater than zero")
+		}
+
+		req := &expcompute.ReserveInstanceRequest{
+			CreateInstanceReq:   instanceReq,
+			ReservationDeadline: timestamppb.New(time.Now().Add(*reservationTimeout)),
+		}
+
+		resp := &expcompute.ReserveInstanceResponse{}
+		if err := callReservation(ctx, methodReserveInstance, req, resp); err != nil {
+			return fnerrors.Newf("failed to reserve instance: %w", err)
+		}
+
+		if *wait {
+			// Surface the reservation id before blocking, so it is available even
+			// if the wait is interrupted. Skip it for JSON output to keep the
+			// final instance JSON parseable.
+			if *output != "json" {
+				fmt.Fprintf(console.Stdout(ctx), "\n  Created reservation! ID: %s\n", resp.GetReservationId())
+			}
+
+			return waitAndPrintReservation(ctx, resp.GetReservationId(), *waitTimeout, *cidfile, *output)
+		}
+
+		stdout := console.Stdout(ctx)
+
+		switch *output {
+		case "json":
+			out := reserveOutput{ReservationId: resp.GetReservationId()}
+			if md := resp.GetMetadata(); md != nil {
+				if dl := md.GetReservationDeadline(); dl != nil {
+					out.ReservationDeadline = dl.AsTime().Format(time.RFC3339)
+				}
+			}
+
+			enc := json.NewEncoder(stdout)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(out); err != nil {
+				return fnerrors.InternalError("failed to encode reservation as JSON output: %w", err)
+			}
+
+		default:
+			if *output != "plain" {
+				fmt.Fprintf(console.Warnings(ctx), "defaulting output to plain\n")
+			}
+
+			fmt.Fprintf(stdout, "\n  Created reservation! ID: %s\n", resp.GetReservationId())
+			fmt.Fprintf(stdout, "\n  To wait for the reservation to get fulfilled and get the instance id, run:\n  nsc reservation wait %s\n\n", resp.GetReservationId())
+		}
+
+		return nil
+	})
+
+	return cmd
+}
+
+type reservationFlags struct {
+	machineType string
+	features    []string
+	bare        bool
+	labels      map[string]string
+	purpose     string
+	selectors   []string
+	ingress     string
+	sshKey      string
+	enable      []string
+	volumes     []string
+	duration    time.Duration
+}
+
+func buildReservationInstanceRequest(flags reservationFlags) (*computev1beta.CreateInstanceRequest, error) {
+	req := &computev1beta.CreateInstanceRequest{
+		DocumentedPurpose: flags.purpose,
+	}
+
+	exp := &computev1beta.CreateInstanceRequest_ExperimentalFeatures{
+		PrivateFeature: flags.features,
+	}
+
+	// Shape.
+	var shape *computev1beta.InstanceShape
+	if flags.machineType != "" {
+		os, arch, vcpu, memoryMB, err := ParseMachineTypeShape(flags.machineType)
+		if err != nil {
+			return nil, err
+		}
+
+		shape = &computev1beta.InstanceShape{
+			VirtualCpu:      vcpu,
+			MemoryMegabytes: memoryMB,
+			MachineArch:     arch,
+			Os:              os,
+		}
+	}
+
+	for _, s := range flags.selectors {
+		k, v, ok := strings.Cut(s, "=")
+		if !ok {
+			return nil, fnerrors.Newf("invalid selector %q: expected key=value", s)
+		}
+
+		if shape == nil {
+			shape = &computev1beta.InstanceShape{}
+		}
+
+		shape.Selectors = append(shape.Selectors, &stdlib.Label{Name: k, Value: v})
+	}
+
+	req.Shape = shape
+
+	// Labels.
+	labels := flags.labels
+	if len(labels) == 0 {
+		labels = map[string]string{"nsc.source": "nsc"}
+	}
+
+	labelKeys := maps.Keys(labels)
+	slices.Sort(labelKeys)
+	for _, key := range labelKeys {
+		req.Labels = append(req.Labels, &stdlib.Label{Name: key, Value: labels[key]})
+	}
+
+	// SSH keys.
+	keys, err := parseAuthorizedKeys(flags.sshKey)
+	if err != nil {
+		return nil, err
+	}
+	exp.AuthorizedSshKeys = keys
+
+	// Volumes.
+	for _, def := range flags.volumes {
+		spec, err := ParseVolumeFlag(def)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Volumes = append(req.Volumes, &computev1beta.VolumeRequest{
+			MountPoint:      spec.MountPoint,
+			Tag:             spec.Tag,
+			SizeMb:          spec.SizeMb,
+			PersistencyKind: volumePersistencyKind(spec.PersistencyKind),
+		})
+	}
+
+	if flags.bare {
+		exp.PrivateFeature = append(exp.PrivateFeature, "EXP_DISABLE_KUBERNETES")
+	}
+
+	// Default to single-node Kubernetes on Linux, matching `nsc instance create`.
+	if !flags.bare && !strings.HasPrefix(flags.machineType, "mac") && !strings.HasPrefix(flags.machineType, "windows") {
+		req.FeatureConfiguration = &computev1beta.CreateInstanceRequest_FeatureConfiguration{
+			EnableKubernetesVersion: private.K3sVersion,
+		}
+	}
+
+	for _, feat := range flags.enable {
+		parts := strings.SplitN(feat, ":", 2)
+		switch parts[0] {
+		case "kubernetes":
+			if len(parts) != 2 {
+				return nil, fnerrors.Newf("expected Kubernetes version spec %q", feat)
+			}
+
+			if req.FeatureConfiguration == nil {
+				req.FeatureConfiguration = &computev1beta.CreateInstanceRequest_FeatureConfiguration{}
+			}
+			req.FeatureConfiguration.EnableKubernetesVersion = parts[1]
+
+		case "kubernetes-max-pods":
+			if len(parts) != 2 {
+				return nil, fnerrors.Newf("expected kubernetes-max-pods value %q", feat)
+			}
+
+			n, err := strconv.ParseInt(parts[1], 10, 32)
+			if err != nil {
+				return nil, fnerrors.Newf("invalid kubernetes-max-pods value %q: %w", parts[1], err)
+			}
+
+			if req.FeatureConfiguration == nil {
+				return nil, fnerrors.Newf("kubernetes-max-pods requires Kubernetes to be enabled")
+			}
+			req.FeatureConfiguration.KubernetesMaxPods = int32(n)
+
+		default:
+			return nil, fnerrors.Newf("unknown feature option %q", parts[0])
+		}
+	}
+
+	switch flags.ingress {
+	case "":
+		// nothing to do
+
+	case "wildcard":
+		exp.EnableWildcardDomain = true
+
+	default:
+		return nil, fnerrors.Newf("unknown ingress option %q", flags.ingress)
+	}
+
+	if flags.duration > 0 {
+		req.Deadline = timestamppb.New(time.Now().Add(flags.duration))
+	}
+
+	req.Experimental = exp
+
+	return req, nil
+}
+
+func volumePersistencyKind(kind api.VolumeSpec_PersistencyKind) computev1beta.VolumeRequest_PersistencyKind {
+	switch kind {
+	case api.VolumeSpec_PERSISTENT:
+		return computev1beta.VolumeRequest_PERSISTENT
+	case api.VolumeSpec_CACHE:
+		return computev1beta.VolumeRequest_CACHE
+	default:
+		return computev1beta.VolumeRequest_PERSISTENCY_UNKNOWN
+	}
+}
+
+type reserveOutput struct {
+	ReservationId       string `json:"reservation_id,omitempty"`
+	ReservationDeadline string `json:"reservation_deadline,omitempty"`
 }
