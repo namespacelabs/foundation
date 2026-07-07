@@ -37,7 +37,7 @@ const (
 func newSetupExecutionCmd() *cobra.Command {
 	var bazelRcPath, output, bazelCommand, key string
 	var staticDur time.Duration
-	var static bool
+	var static, enableRemoteAssetAPI bool
 
 	return fncobra.Cmd(&cobra.Command{
 		Use:    "setup",
@@ -49,6 +49,7 @@ func newSetupExecutionCmd() *cobra.Command {
 		flags.StringVar(&bazelCommand, "command", defaultBazelRbeCommand, "The bazel command to use in the generated bazelrc (e.g., 'build' or 'common').")
 		flags.StringVar(&key, "key", "", "Stable identifier that disambiguates multiple parallel execution clusters for the same workspace. Defaults to 'default'.")
 		flags.BoolVar(&static, "static", false, "If specified, authenticate using a static bearer token in --remote_header against the public endpoints instead of issuing an mTLS client certificate.")
+		flags.BoolVar(&enableRemoteAssetAPI, "enable_remote_asset_api", false, "If specified, opt-in to the remote asset API and configure bazel's --experimental_remote_downloader.")
 		fncobra.DurationVar(flags, &staticDur, "static_token_duration", 4*time.Hour, "The minimum duration of the static token configured (requires --static).")
 	}).Do(func(ctx context.Context) error {
 		tok, err := fnapi.FetchToken(ctx)
@@ -61,7 +62,7 @@ func newSetupExecutionCmd() *cobra.Command {
 			authMode = bazelExecutionAuthModeStatic
 		}
 
-		res, err := ensureBazelExecutionCluster(ctx, tok, key, authMode)
+		res, err := ensureBazelExecutionCluster(ctx, tok, key, authMode, enableRemoteAssetAPI)
 		if err != nil {
 			return fnerrors.Newf("failed to provision bazel execution cluster: %w", err)
 		}
@@ -73,6 +74,7 @@ func newSetupExecutionCmd() *cobra.Command {
 		out := bazelRbeSetup{
 			SchedulerEndpoint:     res.SchedulerEndpoint,
 			StorageEndpoint:       res.StorageEndpoint,
+			RemoteAssetEndpoint:   res.RemoteAssetEndpoint,
 			Jobs:                  int32(res.Jobs),
 			RemoteTimeout:         time.Duration(res.RemoteTimeoutSeconds) * time.Second,
 			RemoteLocalFallback:   res.RemoteLocalFallback,
@@ -182,6 +184,7 @@ func newSetupExecutionCmd() *cobra.Command {
 type bazelRbeSetup struct {
 	SchedulerEndpoint       string        `json:"scheduler_endpoint,omitempty"`
 	StorageEndpoint         string        `json:"storage_endpoint,omitempty"`
+	RemoteAssetEndpoint     string        `json:"remote_asset_endpoint,omitempty"`
 	ClientCert              string        `json:"client_cert,omitempty"`
 	ClientKey               string        `json:"client_key,omitempty"`
 	IngressAuthToken        string        `json:"ingress_auth_token,omitempty"`
@@ -214,6 +217,9 @@ func toBazelExecutionConfig(ctx context.Context, out bazelRbeSetup, command stri
 		lines = append(lines, fmt.Sprintf("--remote_header=x-nsc-ingress-auth=Bearer\\ %s", out.IngressAuthToken))
 	}
 
+	if out.RemoteAssetEndpoint != "" {
+		lines = append(lines, fmt.Sprintf("--experimental_remote_downloader=%s", out.RemoteAssetEndpoint))
+	}
 	if out.RemoteDownloadOutputs != "" {
 		lines = append(lines, fmt.Sprintf("--remote_download_outputs=%s", out.RemoteDownloadOutputs))
 	}
@@ -290,6 +296,9 @@ type ensureBazelExecutionClusterRequest struct {
 	// use; it returns the matching endpoints. Static mode returns the public
 	// bearer-authenticated endpoints and never exposes the mTLS endpoints.
 	AuthMode string `json:"auth_mode,omitempty"`
+	// EnableRemoteAssetApi opts into the remote asset API; when set the server
+	// returns remote_asset_endpoint in the response.
+	EnableRemoteAssetApi bool `json:"enable_remote_asset_api,omitempty"`
 }
 
 // Fields mirror EnsureBazelExecutionClusterResponse in
@@ -298,6 +307,7 @@ type ensureBazelExecutionClusterRequest struct {
 type ensureBazelExecutionClusterResponse struct {
 	SchedulerEndpoint       string   `json:"scheduler_endpoint,omitempty"`
 	StorageEndpoint         string   `json:"storage_endpoint,omitempty"`
+	RemoteAssetEndpoint     string   `json:"remote_asset_endpoint,omitempty"`
 	Jobs                    uint32   `json:"jobs,omitempty"`
 	RemoteTimeoutSeconds    uint32   `json:"remote_timeout_seconds,omitempty"`
 	RemoteLocalFallback     bool     `json:"remote_local_fallback,omitempty"`
@@ -310,13 +320,13 @@ type ensureBazelExecutionClusterResponse struct {
 // global API endpoint using the connect-json protocol. Once the public proto
 // has the same RPC, replace this with a generated Connect client (mirroring
 // fnapi.NewBazelCacheServiceClient).
-func ensureBazelExecutionCluster(ctx context.Context, tok *auth.Token, key, authMode string) (*ensureBazelExecutionClusterResponse, error) {
+func ensureBazelExecutionCluster(ctx context.Context, tok *auth.Token, key, authMode string, enableRemoteAssetAPI bool) (*ensureBazelExecutionClusterResponse, error) {
 	bearer, err := tok.IssueToken(ctx, 5*time.Minute, false)
 	if err != nil {
 		return nil, err
 	}
 
-	body, err := json.Marshal(ensureBazelExecutionClusterRequest{Key: key, AuthMode: authMode})
+	body, err := json.Marshal(ensureBazelExecutionClusterRequest{Key: key, AuthMode: authMode, EnableRemoteAssetApi: enableRemoteAssetAPI})
 	if err != nil {
 		return nil, err
 	}
