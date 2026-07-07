@@ -29,6 +29,7 @@ func NewSshCmd() *cobra.Command {
 	forcePty := cmd.Flags().BoolP("force-pty", "t", false, "Force pseudo-terminal allocation.")
 	disablePty := cmd.Flags().BoolP("disable-pty", "T", false, "Disable pseudo-terminal allocation.")
 	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type.")
+	selectors := cmd.Flags().StringSlice("selectors", nil, "Select platform/base image based on specific properties (prop1=value1,prop2=value2).")
 	waitTimeout := fncobra.Duration(cmd.Flags(), "wait_timeout", 2*time.Minute, "For how long to wait until the instance becomes ready.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
@@ -54,6 +55,14 @@ func NewSshCmd() *cobra.Command {
 				WaitKind:       "kubernetes",
 			},
 			Duration: 5 * time.Minute, // Initial duration, will be kept alive during SSH session
+		}
+
+		if len(*selectors) > 0 {
+			sels, err := cluster.ParseImageSelectors(*selectors)
+			if err != nil {
+				return err
+			}
+			opts.Experimental = map[string]any{"image_selectors": sels}
 		}
 
 		clusterResp, err := api.CreateAndWaitCluster(ctx, api.Methods, *waitTimeout, opts)
