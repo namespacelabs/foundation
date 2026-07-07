@@ -148,13 +148,9 @@ func NewCreateCmd() *cobra.Command {
 		}
 
 		if len(*selectors) > 0 {
-			sels := []*api.LabelEntry{}
-			for _, s := range *selectors {
-				k, v, ok := strings.Cut(s, "=")
-				if !ok {
-					return fmt.Errorf("invalid selector %q: expected key=value", s)
-				}
-				sels = append(sels, &api.LabelEntry{Name: k, Value: v})
+			sels, err := ParseImageSelectors(*selectors)
+			if err != nil {
+				return err
 			}
 			opts.Experimental["image_selectors"] = sels
 		}
@@ -341,6 +337,18 @@ func NewCreateCmd() *cobra.Command {
 	})
 
 	return cmd
+}
+
+func ParseImageSelectors(selectors []string) ([]*api.LabelEntry, error) {
+	sels := []*api.LabelEntry{}
+	for _, s := range selectors {
+		k, v, ok := strings.Cut(s, "=")
+		if !ok {
+			return nil, fmt.Errorf("invalid selector %q: expected key=value", s)
+		}
+		sels = append(sels, &api.LabelEntry{Name: k, Value: v})
+	}
+	return sels, nil
 }
 
 func ParseVolumeFlag(def string) (api.VolumeSpec, error) {
