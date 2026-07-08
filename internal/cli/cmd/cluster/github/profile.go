@@ -39,6 +39,7 @@ func NewProfileCmd() *cobra.Command {
 	cmd.AddCommand(newProfileUpdateCmd())
 	cmd.AddCommand(newProfileDeleteCmd())
 	cmd.AddCommand(newProfileBuildBaseImageCmd())
+	cmd.AddCommand(newProfileRebuildBaseImageCmd())
 
 	return cmd
 }
@@ -561,6 +562,56 @@ func newProfileDeleteCmd() *cobra.Command {
 	return cmd
 }
 
+func newProfileRebuildBaseImageCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "rebuild-base-image",
+		Short: "Trigger a rebuild of a profile's custom base image.",
+		Args:  cobra.NoArgs,
+	}
+
+	profileId := cmd.Flags().String("profile_id", "", "Profile ID whose base image to rebuild (required).")
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if *profileId == "" {
+			return fnerrors.New("--profile_id is required")
+		}
+
+		status, err := rebuildProfileImage(ctx, *profileId)
+		if err != nil {
+			return err
+		}
+
+		var latest *v1beta.CustomRunnerImage
+		for _, img := range status.GetCustomRunnerImage() {
+			if latest == nil || img.GetImageStatus().GetStartedBuildAt().AsTime().After(latest.GetImageStatus().GetStartedBuildAt().AsTime()) {
+				latest = img
+			}
+		}
+
+		stdout := console.Stdout(ctx)
+
+		if *output == "json" {
+			enc := json.NewEncoder(stdout)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(latest); err != nil {
+				return fnerrors.InternalError("failed to encode status as JSON output: %w", err)
+			}
+			return nil
+		}
+
+		fmt.Fprintf(stdout, "Rebuild triggered for profile %s.\n", *profileId)
+		if latest != nil {
+			st := latest.GetImageStatus()
+			fmt.Fprintf(stdout, "  %-60s %s\n", st.GetImageRef(), st.GetStatus().String())
+		}
+
+		return nil
+	})
+
+	return cmd
+}
+
 func newProfileBuildBaseImageCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "test-build-base-image",
@@ -682,6 +733,24 @@ func deleteProfile(ctx context.Context, profileId string) error {
 
 	_, err = client.DeleteProfile(ctx, req)
 	return err
+}
+
+func rebuildProfileImage(ctx context.Context, profileId string) (*v1beta.RunnerProfileStatus, error) {
+	client, err := fnapi.NewProfileServiceClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	req := connect.NewRequest(&v1beta.RebuildProfileImageRequest{
+		ProfileId: profileId,
+	})
+
+	res, err := client.RebuildProfileImage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Msg.Status, nil
 }
 
 // Transform functions for JSON output
