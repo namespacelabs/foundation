@@ -57,6 +57,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(cluster.NewDescribeCmd())                   // nsc describe
 	root.AddCommand(cluster.NewExecScoped())                    // nsc exec-scoped
 	root.AddCommand(cluster.NewIngressCmd())                    // nsc ingress
+	root.AddCommand(cluster.NewEgressCmd())                     // nsc egress
 	root.AddCommand(cluster.NewVolumeCmd())                     // nsc volume
 	root.AddCommand(cluster.NewGitCheckoutCmd())                // nsc git-checkout [hidden]
 	root.AddCommand(private.NewInternalCmd())                   // nsc internal [hidden]
