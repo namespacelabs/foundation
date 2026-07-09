@@ -63,6 +63,10 @@ func provideDatabase(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps, 
 		overrides.MaxConnIdleTime = db.GetMaxConnsIdleTime().AsDuration()
 	}
 
+	if db.GetMaxConnsIdleTimeMs() > 0 {
+		overrides.MaxConnIdleTime = time.Millisecond * time.Duration(db.GetMaxConnsIdleTimeMs())
+	}
+
 	if db.GetIdleInTransactionSessionTimeoutMs() > 0 {
 		overrides.IdleInTransactionSessionTimeout = time.Millisecond * time.Duration(db.GetIdleInTransactionSessionTimeoutMs())
 	}
