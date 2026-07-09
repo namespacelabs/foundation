@@ -62,6 +62,21 @@ builds:
       - amd64
       - arm64
 
+  - id: windows-nsc
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/nsc
+    binary: nsc
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X namespacelabs.dev/foundation/internal/cli/version.Tag=v{{.Version}}
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
   - id: linux-docker-credential-nsc
     env:
       - CGO_ENABLED=0
@@ -88,6 +103,21 @@ builds:
       - -s -w -X namespacelabs.dev/foundation/internal/cli/version.Tag=v{{.Version}}
     goos:
       - darwin
+    goarch:
+      - amd64
+      - arm64
+
+  - id: windows-docker-credential-nsc
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/docker-credential-nsc
+    binary: docker-credential-nsc
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X namespacelabs.dev/foundation/internal/cli/version.Tag=v{{.Version}}
+    goos:
+      - windows
     goarch:
       - amd64
       - arm64
@@ -122,6 +152,21 @@ builds:
       - amd64
       - arm64
 
+  - id: windows-bazel-credential-nsc
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/bazel-credential-nsc
+    binary: bazel-credential-nsc
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X namespacelabs.dev/foundation/internal/cli/version.Tag=v{{.Version}}
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
 archives:
   - id: ns
     builds:
@@ -137,7 +182,13 @@ archives:
       - macos-nsc
       - macos-docker-credential-nsc
       - macos-bazel-credential-nsc
+      - windows-nsc
+      - windows-docker-credential-nsc
+      - windows-bazel-credential-nsc
     name_template: "nsc_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
 
 # signs:
 #   - signature: "${artifact}_macos.dmg"

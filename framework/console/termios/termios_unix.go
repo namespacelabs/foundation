@@ -22,6 +22,12 @@ func IsTerm(fd uintptr) bool {
 	return true
 }
 
+// EnableVirtualTerminalProcessing is a no-op outside Windows, where terminals
+// interpret ANSI escape sequences natively.
+func EnableVirtualTerminalProcessing(fd uintptr) error {
+	return nil
+}
+
 func TermSize(fd uintptr) (WinSize, error) {
 	uws, err := unix.IoctlGetWinsize(int(fd), unix.TIOCGWINSZ)
 	if err != nil {

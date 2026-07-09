@@ -40,6 +40,7 @@ func NewBuildkitCmd() *cobra.Command {
 		Short:  "Buildkit-related functionality.",
 		Hidden: true,
 	}
+	fncobra.MarkAsNotSupportedOnWindows(cmd)
 
 	cmd.AddCommand(newBuildctlCmd())
 	cmd.AddCommand(newBuildkitProxy())
