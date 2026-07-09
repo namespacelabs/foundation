@@ -16,10 +16,11 @@ message DatabaseArgs {
     string                   resource_ref                           = 3;
     int32                    max_conns                              = 4;  // Set if > 0.
     string                   max_conns_from_env                     = 6;
-    google.protobuf.Duration max_conns_idle_time                    = 5;
+    google.protobuf.Duration max_conns_idle_time                    = 5;  // Deprecated: use max_conns_idle_time_ms; unusable from CUE.
     int32                    idle_in_transaction_session_timeout_ms = 8;
     int32                    statement_timeout_ms                   = 10;
     int32                    connect_timeout_ms                     = 9;
+    int32                    max_conns_idle_time_ms                 = 11;  // Set if > 0.
 }
 
 message DatabaseReferenceArgs {

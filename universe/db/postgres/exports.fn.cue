@@ -14,6 +14,7 @@ package postgres
 		idleInTransactionSessionTimeoutMs?: int
 		statementTimeoutMs?:                int
 		connectTimeoutMs?:                  int
+		maxConnsIdleTimeMs?:                int
 
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/universe/db/postgres"
@@ -53,6 +54,7 @@ package postgres
 		idleInTransactionSessionTimeoutMs?: int
 		statementTimeoutMs?:                int
 		connectTimeoutMs?:                  int
+		maxConnsIdleTimeMs?:                int
 
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/universe/db/postgres"
