@@ -219,6 +219,7 @@ func NewGenerateReportCmd() *cobra.Command {
 			"profile",
 			"repository",
 			"branch",
+			"sender_login",
 			"conclusion",
 		}
 
@@ -270,6 +271,7 @@ func entryToRecords(entry *computev1beta.InstanceReportEntry) []string {
 		githubJob.GetProfile(),
 		githubJob.GetRepository(),
 		githubJob.GetBranch(),
+		githubJob.GetSenderLogin(),
 		githubJob.GetConclusion(),
 	}
 	return cols
