@@ -49,6 +49,7 @@ func NewBazelCmd() *cobra.Command {
 
 	cmd.AddCommand(cache)
 	cmd.AddCommand(execution)
+	cmd.AddCommand(newSetupBazelCmd())
 
 	return cmd
 }

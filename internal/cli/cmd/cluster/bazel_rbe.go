@@ -35,9 +35,18 @@ const (
 )
 
 func newSetupExecutionCmd() *cobra.Command {
+	return newSetupExecutionCmdWithRemoteFlag(false)
+}
+
+func newSetupBazelCmd() *cobra.Command {
+	return newSetupExecutionCmdWithRemoteFlag(true)
+}
+
+func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 	var bazelRcPath, output, bazelCommand, key string
 	var staticDur time.Duration
 	var static, enableRemoteAssetAPI bool
+	remote := true
 
 	return fncobra.Cmd(&cobra.Command{
 		Use:    "setup",
@@ -51,6 +60,9 @@ func newSetupExecutionCmd() *cobra.Command {
 		flags.BoolVar(&static, "static", false, "If specified, authenticate using a static bearer token in --remote_header against the public endpoints instead of issuing an mTLS client certificate.")
 		flags.BoolVar(&enableRemoteAssetAPI, "enable_remote_asset_api", false, "If specified, opt-in to the remote asset API and configure bazel's --experimental_remote_downloader.")
 		fncobra.DurationVar(flags, &staticDur, "static_token_duration", 4*time.Hour, "The minimum duration of the static token configured (requires --static).")
+		if includeRemoteFlag {
+			flags.BoolVar(&remote, "remote", true, "If false, configure remote caching and build events without remote execution.")
+		}
 	}).Do(func(ctx context.Context) error {
 		tok, err := fnapi.FetchToken(ctx)
 		if err != nil {
@@ -133,7 +145,7 @@ func newSetupExecutionCmd() *cobra.Command {
 		out.CredentialHelperDomains = res.CredentialHelperDomains
 
 		if bazelRcPath != "" {
-			data, err := toBazelExecutionConfig(ctx, out, bazelCommand)
+			data, err := toBazelExecutionConfig(ctx, out, bazelCommand, remote)
 			if err != nil {
 				return err
 			}
@@ -157,7 +169,7 @@ func newSetupExecutionCmd() *cobra.Command {
 			}
 
 			if bazelRcPath == "" {
-				data, err := toBazelExecutionConfig(ctx, out, bazelCommand)
+				data, err := toBazelExecutionConfig(ctx, out, bazelCommand, remote)
 				if err != nil {
 					return err
 				}
@@ -170,7 +182,11 @@ func newSetupExecutionCmd() *cobra.Command {
 				bazelRcPath = loc
 			}
 
-			fmt.Fprintf(console.Stdout(ctx), "Wrote bazelrc configuration for remote execution to %s.\n", bazelRcPath)
+			configuration := "remote execution"
+			if !remote {
+				configuration = "remote caching without remote execution"
+			}
+			fmt.Fprintf(console.Stdout(ctx), "Wrote bazelrc configuration for %s to %s.\n", configuration, bazelRcPath)
 
 			style := colors.Ctx(ctx)
 			fmt.Fprintf(console.Stdout(ctx), "\nStart using it by adding:\n")
@@ -196,15 +212,20 @@ type bazelRbeSetup struct {
 	CredentialHelperDomains []string      `json:"credential_helper_domains,omitempty"`
 }
 
-func toBazelExecutionConfig(ctx context.Context, out bazelRbeSetup, command string) ([]byte, error) {
+func toBazelExecutionConfig(ctx context.Context, out bazelRbeSetup, command string, remote bool) ([]byte, error) {
 	var buf bytes.Buffer
 
-	lines := []string{
-		fmt.Sprintf("--remote_executor=%s", out.SchedulerEndpoint),
-		fmt.Sprintf("--remote_cache=%s", out.StorageEndpoint),
-		"--spawn_strategy=remote",
-		"--genrule_strategy=remote",
-		fmt.Sprintf("--remote_local_fallback=%t", out.RemoteLocalFallback),
+	var lines []string
+	if remote {
+		lines = append(lines, fmt.Sprintf("--remote_executor=%s", out.SchedulerEndpoint))
+	}
+	lines = append(lines, fmt.Sprintf("--remote_cache=%s", out.StorageEndpoint))
+	if remote {
+		lines = append(lines,
+			"--spawn_strategy=remote",
+			"--genrule_strategy=remote",
+			fmt.Sprintf("--remote_local_fallback=%t", out.RemoteLocalFallback),
+		)
 	}
 
 	if out.ClientCert != "" {
