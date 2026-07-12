@@ -71,8 +71,9 @@ func runInstallers(ctx context.Context, args []string) error {
 		Endpoint:  *endpoint,
 		KeyPrefix: foundationKeyPrefix,
 		Installers: map[string]string{
-			"install/install.sh":     "install/install.sh",
-			"install/install_nsc.sh": "install/install_nsc.sh",
+			"install/install.sh":      "install/install.sh",
+			"install/install_nsc.sh":  "install/install_nsc.sh",
+			"install/install_nsc.ps1": "install/install_nsc.ps1",
 		},
 	})
 }
