@@ -76,9 +76,62 @@ func NewCreateCmd() *cobra.Command {
 	_ = cmd.Flags().Bool("compute_api", true, "Whether to use the Compute API.")
 	cmd.Flags().MarkHidden("compute_api")
 
+	// Opt-in to the public compute API path (see create_publicapi.go).
+	// usePublicAPIDefault is the single source of truth for the default: flipping
+	// it to true makes the public path the default, and --no_use_public_api the
+	// way to opt back out. Both flags stay hidden while this is experimental.
+	const usePublicAPIDefault = false
+	usePublicAPIFlag := cmd.Flags().Bool("use_public_api", usePublicAPIDefault, "Use the public compute API to create the instance.")
+	noUsePublicAPIFlag := cmd.Flags().Bool("no_use_public_api", false, "Do not use the public compute API to create the instance.")
+	cmd.Flags().MarkHidden("use_public_api")
+	cmd.Flags().MarkHidden("no_use_public_api")
+	cmd.MarkFlagsMutuallyExclusive("use_public_api", "no_use_public_api")
+
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *unusedEphemeral {
 			fmt.Fprintf(console.Warnings(ctx), "--ephemeral has been removed and does impact the creation request (try --machine_type instead)")
+		}
+
+		// The default lives in the flag's default value; --no_use_public_api
+		// inverts it. Mutual exclusivity guarantees at most one is set.
+		usePublicAPI := *usePublicAPIFlag
+		if cmd.Flags().Changed("no_use_public_api") {
+			usePublicAPI = !*noUsePublicAPIFlag
+		}
+
+		if usePublicAPI {
+			if err := ensurePublicAPISupportsFlags(cmd); err != nil {
+				return err
+			}
+
+			cluster, err := createInstanceViaPublicAPI(ctx, createInstanceFlags{
+				machineType: *machineType,
+				features:    *features,
+				bare:        *bare,
+				labels:      *labels,
+				purpose:     *purpose,
+				selectors:   *selectors,
+				ingress:     *ingress,
+				sshKey:      *userSshey,
+				enable:      *enable,
+				volumes:     *volumes,
+				duration:    *duration,
+			}, *waitTimeout)
+			if err != nil {
+				return err
+			}
+
+			if *waitKubeSystem {
+				if err := ctl.WaitKubeSystem(ctx, cluster.Cluster); err != nil {
+					return err
+				}
+			}
+
+			if err := writeInstanceOutputFiles(ctx, cluster, *legacyOutputPath, *cidfile, *outputRegistryPath, *outputJsonPath); err != nil {
+				return err
+			}
+
+			return printInstanceCreated(ctx, *output, cluster)
 		}
 
 		opts := api.CreateInstanceOpts{
@@ -237,106 +290,124 @@ func NewCreateCmd() *cobra.Command {
 			}
 		}
 
-		if *legacyOutputPath != "" {
-			if err := os.WriteFile(*legacyOutputPath, []byte(cluster.ClusterId), 0644); err != nil {
-				return fnerrors.Newf("failed to write %q: %w", *legacyOutputPath, err)
-			}
+		if err := writeInstanceOutputFiles(ctx, cluster, *legacyOutputPath, *cidfile, *outputRegistryPath, *outputJsonPath); err != nil {
+			return err
 		}
 
-		if *cidfile != "" {
-			if err := os.WriteFile(*cidfile, []byte(cluster.ClusterId), 0644); err != nil {
-				return fnerrors.Newf("failed to write %q: %w", *cidfile, err)
-			}
-		}
-
-		if *outputRegistryPath != "" {
-			reg, err := api.GetImageRegistry(ctx, api.Methods)
-			if err != nil {
-				return fnerrors.Newf("failed to fetch registry: %w", err)
-			}
-
-			if err := os.WriteFile(*outputRegistryPath, []byte(reg.NSCR.EndpointAddress), 0644); err != nil {
-				return fnerrors.Newf("failed to write %q: %w", *outputRegistryPath, err)
-			}
-		}
-
-		if *outputJsonPath != "" {
-			if cluster.Cluster == nil {
-				return fnerrors.New("no instance information available with no wait timeout")
-			}
-
-			// Clear out secrets from output.
-			copy := *cluster.Cluster
-			copy.SshPrivateKey = nil
-			copy.CertificateAuthorityData = nil
-			copy.ClientCertificateData = nil
-			copy.ClientKeyData = nil
-
-			serialized, err := json.MarshalIndent(copy, "", "  ")
-			if err != nil {
-				return fnerrors.Newf("failed to serialize: %v", err)
-			}
-
-			if err := os.WriteFile(*outputJsonPath, serialized, 0644); err != nil {
-				return fnerrors.Newf("failed to write %q: %w", *outputJsonPath, err)
-			}
-		}
-
-		switch *output {
-		case "json":
-			enc := json.NewEncoder(console.Stdout(ctx))
-			enc.SetIndent("", "  ")
-
-			out := createOutput{
-				ClusterId:  cluster.ClusterId,
-				InstanceId: cluster.ClusterId,
-			}
-
-			if cluster.Cluster != nil {
-				out.ClusterUrl = cluster.Cluster.AppURL
-				out.IngressDomain = cluster.Cluster.IngressDomain
-				out.ApiEndpoint = cluster.Cluster.ApiEndpoint
-			}
-
-			if err := enc.Encode(out); err != nil {
-				return fnerrors.InternalError("failed to encode instance as JSON output: %w", err)
-			}
-
-		default:
-			if *output != "plain" {
-				fmt.Fprintf(console.Warnings(ctx), "defaulting output to plain\n")
-			}
-
-			printNewEnv(ctx, cluster.ClusterId, cluster.Cluster.AppURL)
-
-			if api.ClusterService(cluster.Cluster, "kubernetes") != nil {
-				stdout := console.Stdout(ctx)
-				style := colors.Ctx(ctx)
-				fmt.Fprintln(stdout)
-				fmt.Fprintf(stdout, "  As a next step, try one of:\n\n")
-				fmt.Fprintf(stdout, "    $ nsc kubectl %s get pod -A\n\n", cluster.ClusterId)
-				fmt.Fprintf(stdout, "    $ nsc kubeconfig write %s\n", cluster.ClusterId)
-				fmt.Fprintf(stdout, "      %s\n", style.Comment.Apply("<follow instructions>"))
-				fmt.Fprintf(stdout, "    $ kubectl get pod -A\n\n")
-				fmt.Fprintf(stdout, "  You can also connect to a shell in the new environment:\n\n")
-				fmt.Fprintf(stdout, "    $ nsc ssh %s\n\n", cluster.ClusterId)
-			}
-
-			if cluster.Cluster != nil && len(cluster.Cluster.TlsBackedPort) > 0 {
-				stdout := console.Stdout(ctx)
-				fmt.Fprintln(stdout)
-				fmt.Fprintf(stdout, "  (Experimental) TLS backend ports:\n\n")
-				for _, port := range cluster.Cluster.TlsBackedPort {
-					fmt.Fprintf(stdout, "    %s (%s/%d)\n", port.ServerName, port.Name, port.Port)
-				}
-				fmt.Fprintln(stdout)
-			}
-		}
-
-		return nil
+		return printInstanceCreated(ctx, *output, cluster)
 	})
 
 	return cmd
+}
+
+// writeInstanceOutputFiles writes the optional instance output files requested
+// via flags (--output_to, --cidfile, --output_registry_to, --output_json_to).
+// It is shared by the public and private create paths.
+func writeInstanceOutputFiles(ctx context.Context, cluster *api.CreateClusterResult, outputToPath, cidfile, outputRegistryPath, outputJsonPath string) error {
+	if outputToPath != "" {
+		if err := os.WriteFile(outputToPath, []byte(cluster.ClusterId), 0644); err != nil {
+			return fnerrors.Newf("failed to write %q: %w", outputToPath, err)
+		}
+	}
+
+	if cidfile != "" {
+		if err := os.WriteFile(cidfile, []byte(cluster.ClusterId), 0644); err != nil {
+			return fnerrors.Newf("failed to write %q: %w", cidfile, err)
+		}
+	}
+
+	if outputRegistryPath != "" {
+		reg, err := api.GetImageRegistry(ctx, api.Methods)
+		if err != nil {
+			return fnerrors.Newf("failed to fetch registry: %w", err)
+		}
+
+		if err := os.WriteFile(outputRegistryPath, []byte(reg.NSCR.EndpointAddress), 0644); err != nil {
+			return fnerrors.Newf("failed to write %q: %w", outputRegistryPath, err)
+		}
+	}
+
+	if outputJsonPath != "" {
+		if cluster.Cluster == nil {
+			return fnerrors.New("no instance information available with no wait timeout")
+		}
+
+		// Clear out secrets from output.
+		copy := *cluster.Cluster
+		copy.SshPrivateKey = nil
+		copy.CertificateAuthorityData = nil
+		copy.ClientCertificateData = nil
+		copy.ClientKeyData = nil
+
+		serialized, err := json.MarshalIndent(copy, "", "  ")
+		if err != nil {
+			return fnerrors.Newf("failed to serialize: %v", err)
+		}
+
+		if err := os.WriteFile(outputJsonPath, serialized, 0644); err != nil {
+			return fnerrors.Newf("failed to write %q: %w", outputJsonPath, err)
+		}
+	}
+
+	return nil
+}
+
+// printInstanceCreated renders the success output for a newly created (and
+// waited-for) instance. It is shared by the public and private create paths so
+// both emit identical messages.
+func printInstanceCreated(ctx context.Context, output string, cluster *api.CreateClusterResult) error {
+	switch output {
+	case "json":
+		enc := json.NewEncoder(console.Stdout(ctx))
+		enc.SetIndent("", "  ")
+
+		out := createOutput{
+			ClusterId:  cluster.ClusterId,
+			InstanceId: cluster.ClusterId,
+		}
+
+		if cluster.Cluster != nil {
+			out.ClusterUrl = cluster.Cluster.AppURL
+			out.IngressDomain = cluster.Cluster.IngressDomain
+			out.ApiEndpoint = cluster.Cluster.ApiEndpoint
+		}
+
+		if err := enc.Encode(out); err != nil {
+			return fnerrors.InternalError("failed to encode instance as JSON output: %w", err)
+		}
+
+	default:
+		if output != "plain" {
+			fmt.Fprintf(console.Warnings(ctx), "defaulting output to plain\n")
+		}
+
+		printNewEnv(ctx, cluster.ClusterId, cluster.Cluster.AppURL)
+
+		if api.ClusterService(cluster.Cluster, "kubernetes") != nil {
+			stdout := console.Stdout(ctx)
+			style := colors.Ctx(ctx)
+			fmt.Fprintln(stdout)
+			fmt.Fprintf(stdout, "  As a next step, try one of:\n\n")
+			fmt.Fprintf(stdout, "    $ nsc kubectl %s get pod -A\n\n", cluster.ClusterId)
+			fmt.Fprintf(stdout, "    $ nsc kubeconfig write %s\n", cluster.ClusterId)
+			fmt.Fprintf(stdout, "      %s\n", style.Comment.Apply("<follow instructions>"))
+			fmt.Fprintf(stdout, "    $ kubectl get pod -A\n\n")
+			fmt.Fprintf(stdout, "  You can also connect to a shell in the new environment:\n\n")
+			fmt.Fprintf(stdout, "    $ nsc ssh %s\n\n", cluster.ClusterId)
+		}
+
+		if cluster.Cluster != nil && len(cluster.Cluster.TlsBackedPort) > 0 {
+			stdout := console.Stdout(ctx)
+			fmt.Fprintln(stdout)
+			fmt.Fprintf(stdout, "  (Experimental) TLS backend ports:\n\n")
+			for _, port := range cluster.Cluster.TlsBackedPort {
+				fmt.Fprintf(stdout, "    %s (%s/%d)\n", port.ServerName, port.Name, port.Port)
+			}
+			fmt.Fprintln(stdout)
+		}
+	}
+
+	return nil
 }
 
 func ParseImageSelectors(selectors []string) ([]*api.LabelEntry, error) {
