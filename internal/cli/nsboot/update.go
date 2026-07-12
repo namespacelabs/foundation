@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/url"
 	"os"
 	"os/exec"
@@ -24,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/download"
 	"namespacelabs.dev/foundation/internal/artifacts/unpack"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
@@ -32,6 +34,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/format"
 	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
+	"namespacelabs.dev/foundation/internal/fnfs/zipfs"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -50,8 +53,17 @@ func versionsJson(command string) string {
 	return fmt.Sprintf("%s-version.json", command)
 }
 
+// hostCommandBinary returns the on-disk binary name for a command on the host
+// OS. On Windows the released binaries carry a .exe suffix.
+func hostCommandBinary(command string) string {
+	if runtime.GOOS == "windows" && !strings.HasSuffix(command, ".exe") {
+		return command + ".exe"
+	}
+	return command
+}
+
 func (p NSPackage) Execute(ctx context.Context) error {
-	proc := exec.CommandContext(ctx, filepath.Join(string(p.Path), p.Command), os.Args[1:]...)
+	proc := exec.CommandContext(ctx, filepath.Join(string(p.Path), hostCommandBinary(p.Command)), os.Args[1:]...)
 	proc.Stdin = os.Stdin
 	proc.Stdout = os.Stdout
 	proc.Stderr = os.Stderr
@@ -323,13 +335,22 @@ func fetchBinary(ctx context.Context, command string, version *toolVersion, valu
 		},
 	}
 
-	fsys := unpack.Unpack(command, tarfs.TarGunzip(download.NamespaceURL(tarRef, values)), unpack.SkipChecksumCheck())
+	fsys := unpack.Unpack(command, decompress(version.URL, download.NamespaceURL(tarRef, values)), unpack.SkipChecksumCheck())
 	unpacked, err := compute.GetValue(ctx, fsys)
 	if err != nil {
 		return "", err
 	}
 
 	return unpacked.Files, nil
+}
+
+// decompress selects the archive extractor based on the artifact URL. Windows
+// releases are distributed as .zip archives, other platforms as .tar.gz.
+func decompress(archiveURL string, contents compute.Computable[bytestream.ByteStream]) compute.Computable[fs.FS] {
+	if strings.HasSuffix(strings.ToLower(archiveURL), ".zip") {
+		return zipfs.Unzip(contents)
+	}
+	return tarfs.TarGunzip(contents)
 }
 
 func findHostTarball(tarballs []*fnapi.Artifact) *fnapi.Artifact {
