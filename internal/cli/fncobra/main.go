@@ -144,6 +144,14 @@ func doMain(opts MainOpts) (colors.Style, error) {
 
 		ctx := cmd.Context()
 
+		// Abort early for commands that are not yet supported on the current
+		// platform (e.g. Windows). The annotation is only ever set on those
+		// platforms, so this is a no-op everywhere else.
+		if isUnsupportedOnWindows(cmd) {
+			fmt.Fprintln(console.Stderr(ctx), notSupportedOnWindowsMessage)
+			os.Exit(1)
+		}
+
 		// Don't run version checks for commands that opt out (e.g. update, check).
 		if opts.NotifyOnNewVersion && cmd.Annotations["ns.skip-version-check"] == "" {
 			DeferCheckVersion(ctx, opts.Name)
@@ -382,6 +390,22 @@ func ensureFnConfig() {
 func StandardConsole() (*os.File, bool) {
 	isStdoutTerm := termios.IsTerm(os.Stdout.Fd())
 	isStderrTerm := termios.IsTerm(os.Stderr.Fd())
+
+	// On Windows, ANSI escapes are only interpreted when virtual terminal
+	// processing is enabled on the console. Enable it; if that fails (e.g. a
+	// legacy console), treat the stream as non-terminal so we don't emit raw
+	// escape sequences. This is a no-op on other platforms.
+	if isStdoutTerm {
+		if err := termios.EnableVirtualTerminalProcessing(os.Stdout.Fd()); err != nil {
+			isStdoutTerm = false
+		}
+	}
+	if isStderrTerm {
+		if err := termios.EnableVirtualTerminalProcessing(os.Stderr.Fd()); err != nil {
+			isStderrTerm = false
+		}
+	}
+
 	return os.Stderr, isStdoutTerm && isStderrTerm
 }
 

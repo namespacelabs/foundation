@@ -28,6 +28,7 @@ func NewExecScoped() *cobra.Command {
 		Short: "Runs the specified command (e.g. a script) with the corresponding environment variables set, based on the services selected (e.g. DOCKER_HOST, KUBECONFIG).",
 		Args:  cobra.MinimumNArgs(1),
 	}
+	fncobra.MarkAsNotSupportedOnWindows(cmd)
 
 	service := cmd.Flags().StringSlice("service", nil, "Which services to inject, any of: docker, kubernetes")
 

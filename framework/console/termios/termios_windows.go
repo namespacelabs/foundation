@@ -7,6 +7,7 @@ package termios
 import (
 	"os"
 
+	"golang.org/x/sys/windows"
 	"golang.org/x/term"
 )
 
@@ -17,6 +18,24 @@ func TermSize(fd uintptr) (WinSize, error) {
 
 func IsTerm(fd uintptr) bool {
 	return term.IsTerminal(int(fd))
+}
+
+// EnableVirtualTerminalProcessing enables ANSI escape sequence interpretation on
+// the given Windows console handle. Without it, escapes are printed verbatim on
+// legacy consoles and older PowerShell hosts.
+func EnableVirtualTerminalProcessing(fd uintptr) error {
+	handle := windows.Handle(fd)
+
+	var mode uint32
+	if err := windows.GetConsoleMode(handle, &mode); err != nil {
+		return err
+	}
+
+	if mode&windows.ENABLE_VIRTUAL_TERMINAL_PROCESSING != 0 {
+		return nil
+	}
+
+	return windows.SetConsoleMode(handle, mode|windows.ENABLE_VIRTUAL_TERMINAL_PROCESSING)
 }
 
 func NotifyWindowSize(ch chan<- os.Signal) {

@@ -40,12 +40,14 @@ func NewDockerCmd() *cobra.Command {
 		Use:   "docker",
 		Short: "Docker-related functionality.",
 	}
+	fncobra.MarkAsNotSupportedOnWindows(cmd)
 
 	cmd.AddCommand(newDockerAttachCmd())     // nsc docker attach-context
 	cmd.AddCommand(newDockerRemoteCmd())     // nsc docker remote
 	cmd.AddCommand(newDockerLoginCmd(false)) // nsc docker login
 
 	buildx := &cobra.Command{Use: "buildx", Short: "Docker Buildx related functionality."}
+	fncobra.MarkAsNotSupportedOnWindows(buildx)
 	buildx.AddCommand(newSetupBuildxCmd())
 	buildx.AddCommand(newCleanupBuildxCommand())
 	buildx.AddCommand(newWireBuildxCommand(true))
