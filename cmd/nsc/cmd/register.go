@@ -35,6 +35,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(version.NewVersionCmd())
 
 	root.AddCommand(cluster.NewBareClusterCmd("instance", false))
+	root.AddCommand(cluster.NewReservationCmd())                // nsc reservation
 	root.AddCommand(cluster.NewBareClusterCmd("cluster", true)) // backwards compatibility
 	root.AddCommand(cluster.NewExtendDurationCmd("extend"))     // nsc extend
 	root.AddCommand(cluster.NewKubectlCmd())                    // nsc kubectl
