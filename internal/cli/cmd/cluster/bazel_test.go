@@ -5,6 +5,7 @@
 package cluster
 
 import (
+	"bytes"
 	"context"
 	"strings"
 	"testing"
@@ -90,6 +91,32 @@ func TestMakeEnsureBazelCacheRequestWithRemoteAsset(t *testing.T) {
 	}
 	if got := msg.GetExperimentalCacheName(); got != "amp-test" {
 		t.Fatalf("unexpected experimental cache name: %q", got)
+	}
+}
+
+func TestWriteBazelInvocationReportRecord(t *testing.T) {
+	t.Parallel()
+
+	record := &bazelv1beta.StreamInvocationReportResponse{
+		BuildToolLogs: []*bazelv1beta.InvocationReportBuildToolLog{{
+			Name: "stdout",
+			Text: "build complete",
+		}},
+	}
+	var output bytes.Buffer
+	if err := writeBazelInvocationReportRecord(&output, record); err != nil {
+		t.Fatalf("writeBazelInvocationReportRecord: %v", err)
+	}
+
+	got := output.String()
+	if !strings.HasSuffix(got, "\n") {
+		t.Fatalf("record is not newline terminated: %q", got)
+	}
+	if !strings.Contains(got, `"build_tool_logs"`) {
+		t.Fatalf("record does not use protobuf field names: %q", got)
+	}
+	if strings.Contains(got, `"buildToolLogs"`) {
+		t.Fatalf("record uses lowerCamelCase JSON field names: %q", got)
 	}
 }
 

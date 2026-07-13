@@ -10,28 +10,26 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"os/exec"
-	"strings"
 	"time"
 
+	bazelv1betagrpc "buf.build/gen/go/namespace/cloud/grpc/go/proto/namespace/cloud/integrations/bazel/v1beta/bazelv1betagrpc"
+	bazelv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/integrations/bazel/v1beta"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"google.golang.org/grpc"
 	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/integrations/nsc/grpcapi"
 )
 
 const (
 	bazelExecutionPathBase = "bazelrbe"
 	defaultBazelRbeCommand = "build"
-
-	// TODO: replace with a generated public-proto Connect client
-	bazelExecutionEnsureProcedure = "/namespace.private.bazel.BazelService/EnsureBazelExecutionCluster"
 )
 
 func newSetupExecutionCmd() *cobra.Command {
@@ -69,9 +67,9 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 			return err
 		}
 
-		authMode := bazelExecutionAuthModeMTLS
+		authMode := bazelv1beta.BazelExecutionAuthMode_BAZEL_EXECUTION_AUTH_MODE_MTLS
 		if static {
-			authMode = bazelExecutionAuthModeStatic
+			authMode = bazelv1beta.BazelExecutionAuthMode_BAZEL_EXECUTION_AUTH_MODE_STATIC
 		}
 
 		res, err := ensureBazelExecutionCluster(ctx, tok, key, authMode, enableRemoteAssetAPI)
@@ -79,18 +77,18 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 			return fnerrors.Newf("failed to provision bazel execution cluster: %w", err)
 		}
 
-		if res.SchedulerEndpoint == "" || res.StorageEndpoint == "" {
-			return fnerrors.Newf("received incomplete response (scheduler=%q storage=%q)", res.SchedulerEndpoint, res.StorageEndpoint)
+		if res.GetSchedulerEndpoint() == "" || res.GetStorageEndpoint() == "" {
+			return fnerrors.Newf("received incomplete response (scheduler=%q storage=%q)", res.GetSchedulerEndpoint(), res.GetStorageEndpoint())
 		}
 
 		out := bazelRbeSetup{
-			SchedulerEndpoint:     res.SchedulerEndpoint,
-			StorageEndpoint:       res.StorageEndpoint,
-			RemoteAssetEndpoint:   res.RemoteAssetEndpoint,
-			Jobs:                  int32(res.Jobs),
-			RemoteTimeout:         time.Duration(res.RemoteTimeoutSeconds) * time.Second,
-			RemoteLocalFallback:   res.RemoteLocalFallback,
-			RemoteDownloadOutputs: res.RemoteDownloadOutputs,
+			SchedulerEndpoint:     res.GetSchedulerEndpoint(),
+			StorageEndpoint:       res.GetStorageEndpoint(),
+			RemoteAssetEndpoint:   res.GetRemoteAssetEndpoint(),
+			Jobs:                  int32(res.GetRecommendedBazelJobs()),
+			RemoteTimeout:         time.Duration(res.GetRecommendedBazelRemoteTimeoutSeconds()) * time.Second,
+			RemoteLocalFallback:   res.GetRecommendedBazelRemoteLocalFallback(),
+			RemoteDownloadOutputs: res.GetRecommendedBazelRemoteDownloadOutputs(),
 		}
 
 		if static {
@@ -141,8 +139,8 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 		// mode. The server only returns it (and the credential helper domains
 		// used to authenticate it in the default mTLS mode) when build event
 		// ingestion is enabled for the workspace.
-		out.BuildEventEndpoint = res.BuildEventEndpoint
-		out.CredentialHelperDomains = res.CredentialHelperDomains
+		out.BuildEventEndpoint = res.GetBuildEventEndpoint()
+		out.CredentialHelperDomains = res.GetCredentialHelperDomains()
 
 		if bazelRcPath != "" {
 			data, err := toBazelExecutionConfig(ctx, out, bazelCommand, remote)
@@ -303,82 +301,26 @@ func appendExecutionBuildEventCredentialHelper(ctx context.Context, buf *bytes.B
 	return nil
 }
 
-// BazelExecutionAuthMode mirrors the enum in
-// private/proto/service/bazel/service.proto. The server determines which
-// endpoints to return based on the requested mode.
-const (
-	bazelExecutionAuthModeMTLS   = "BAZEL_EXECUTION_AUTH_MODE_MTLS"
-	bazelExecutionAuthModeStatic = "BAZEL_EXECUTION_AUTH_MODE_STATIC"
-)
+func ensureBazelExecutionCluster(ctx context.Context, tok *auth.Token, key string, authMode bazelv1beta.BazelExecutionAuthMode, enableRemoteAssetAPI bool) (*bazelv1beta.EnsureClusterResponse, error) {
+	client, conn, err := newBazelServiceClient(ctx, tok)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
 
-type ensureBazelExecutionClusterRequest struct {
-	Key string `json:"key,omitempty"`
-	// AuthMode tells the server which authentication mode the client intends to
-	// use; it returns the matching endpoints. Static mode returns the public
-	// bearer-authenticated endpoints and never exposes the mTLS endpoints.
-	AuthMode string `json:"auth_mode,omitempty"`
-	// EnableRemoteAssetApi opts into the remote asset API; when set the server
-	// returns remote_asset_endpoint in the response.
-	EnableRemoteAssetApi bool `json:"enable_remote_asset_api,omitempty"`
+	req := &bazelv1beta.EnsureClusterRequest{}
+	req.SetKey(key)
+	req.SetAuthMode(authMode)
+	req.SetEnableRemoteAssetApi(enableRemoteAssetAPI)
+
+	return client.EnsureCluster(ctx, req)
 }
 
-// Fields mirror EnsureBazelExecutionClusterResponse in
-// private/proto/service/bazel/service.proto. The server marshals with
-// protojson (UseProtoNames=true), so the wire tags are snake_case.
-type ensureBazelExecutionClusterResponse struct {
-	SchedulerEndpoint       string   `json:"scheduler_endpoint,omitempty"`
-	StorageEndpoint         string   `json:"storage_endpoint,omitempty"`
-	RemoteAssetEndpoint     string   `json:"remote_asset_endpoint,omitempty"`
-	Jobs                    uint32   `json:"jobs,omitempty"`
-	RemoteTimeoutSeconds    uint32   `json:"remote_timeout_seconds,omitempty"`
-	RemoteLocalFallback     bool     `json:"remote_local_fallback,omitempty"`
-	RemoteDownloadOutputs   string   `json:"remote_download_outputs,omitempty"`
-	BuildEventEndpoint      string   `json:"build_event_endpoint,omitempty"`
-	CredentialHelperDomains []string `json:"credential_helper_domains,omitempty"`
-}
-
-// ensureBazelExecutionCluster posts to the private BazelService path on the
-// global API endpoint using the connect-json protocol. Once the public proto
-// has the same RPC, replace this with a generated Connect client (mirroring
-// fnapi.NewBazelCacheServiceClient).
-func ensureBazelExecutionCluster(ctx context.Context, tok *auth.Token, key, authMode string, enableRemoteAssetAPI bool) (*ensureBazelExecutionClusterResponse, error) {
-	bearer, err := tok.IssueToken(ctx, 5*time.Minute, false)
+func newBazelServiceClient(ctx context.Context, tok *auth.Token) (bazelv1betagrpc.BazelServiceClient, *grpc.ClientConn, error) {
+	conn, err := grpcapi.NewConnectionWithEndpoint(ctx, fnapi.GlobalEndpoint(), tok)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	body, err := json.Marshal(ensureBazelExecutionClusterRequest{Key: key, AuthMode: authMode, EnableRemoteAssetApi: enableRemoteAssetAPI})
-	if err != nil {
-		return nil, err
-	}
-
-	url := strings.TrimRight(fnapi.GlobalEndpoint(), "/") + bazelExecutionEnsureProcedure
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+bearer)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	raw, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fnerrors.Newf("EnsureBazelExecutionCluster returned %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))
-	}
-
-	out := &ensureBazelExecutionClusterResponse{}
-	if err := json.Unmarshal(raw, out); err != nil {
-		return nil, fnerrors.Newf("failed to parse response: %w", err)
-	}
-
-	return out, nil
+	return bazelv1betagrpc.NewBazelServiceClient(conn), conn, nil
 }
