@@ -333,6 +333,8 @@ func NewBuildCmd() *cobra.Command {
 		return nil
 	})
 
+	cmd.AddCommand(newBuildLogsCmd())
+
 	return cmd
 }
 
