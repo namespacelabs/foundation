@@ -12,6 +12,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,6 +22,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"google.golang.org/protobuf/encoding/protojson"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -46,12 +48,66 @@ func NewBazelCmd() *cobra.Command {
 		Hidden: true,
 	}
 	execution.AddCommand(newSetupExecutionCmd())
+	invocation := &cobra.Command{Use: "invocation", Short: "Bazel invocation related functionality."}
+	invocation.AddCommand(newBazelInvocationReportCmd())
 
 	cmd.AddCommand(cache)
 	cmd.AddCommand(execution)
+	cmd.AddCommand(invocation)
 	cmd.AddCommand(newSetupBazelCmd())
 
 	return cmd
+}
+
+func newBazelInvocationReportCmd() *cobra.Command {
+	return fncobra.Cmd(&cobra.Command{
+		Use:   "report [invocation-id]",
+		Short: "Stream a JSON report for a Bazel invocation.",
+		Args:  cobra.ExactArgs(1),
+	}).DoWithArgs(func(ctx context.Context, args []string) error {
+		tok, err := fnapi.FetchToken(ctx)
+		if err != nil {
+			return err
+		}
+
+		client, conn, err := newBazelServiceClient(ctx, tok)
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+
+		stream, err := client.StreamInvocationReport(ctx, &bazelv1beta.StreamInvocationReportRequest{InvocationId: args[0]})
+		if err != nil {
+			return fnerrors.Newf("failed to stream Bazel invocation report: %w", err)
+		}
+
+		for {
+			record, err := stream.Recv()
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			if err != nil {
+				return fnerrors.Newf("failed to receive Bazel invocation report: %w", err)
+			}
+
+			if err := writeBazelInvocationReportRecord(console.Stdout(ctx), record); err != nil {
+				return err
+			}
+		}
+	})
+}
+
+func writeBazelInvocationReportRecord(w io.Writer, record *bazelv1beta.StreamInvocationReportResponse) error {
+	encoded, err := (protojson.MarshalOptions{UseProtoNames: true}).Marshal(record)
+	if err != nil {
+		return fnerrors.InternalError("failed to encode Bazel invocation report record: %w", err)
+	}
+
+	if _, err := fmt.Fprintln(w, string(encoded)); err != nil {
+		return fnerrors.InternalError("failed to write Bazel invocation report record: %w", err)
+	}
+
+	return nil
 }
 
 // NewBazelCacheCmd returns a "bazel" command with setup directly
