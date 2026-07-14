@@ -15,9 +15,13 @@ import (
 
 	bazelv1betagrpc "buf.build/gen/go/namespace/cloud/grpc/go/proto/namespace/cloud/integrations/bazel/v1beta/bazelv1betagrpc"
 	bazelv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/integrations/bazel/v1beta"
+	"connectrpc.com/connect"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -28,8 +32,10 @@ import (
 )
 
 const (
-	bazelExecutionPathBase = "bazelrbe"
-	defaultBazelRbeCommand = "build"
+	bazelExecutionPathBase      = "bazelrbe"
+	defaultBazelRbeCommand      = "build"
+	bazelProvisioningMaxRetries = 3
+	bazelProvisioningRetryWait  = 200 * time.Millisecond
 )
 
 func newSetupExecutionCmd() *cobra.Command {
@@ -326,7 +332,43 @@ func ensureBazelExecutionCluster(ctx context.Context, tok api.TokenSource, key s
 	req.SetAuthMode(authMode)
 	req.SetEnableRemoteAssetApi(enableRemoteAssetAPI)
 
-	return client.EnsureCluster(ctx, req)
+	return retryBazelProvisioning(ctx, func() (*bazelv1beta.EnsureClusterResponse, error) {
+		return client.EnsureCluster(ctx, req)
+	})
+}
+
+func retryBazelProvisioning[T any](ctx context.Context, call func() (T, error)) (T, error) {
+	return retryBazelProvisioningWithBackoff(ctx, backoff.NewConstantBackOff(bazelProvisioningRetryWait), call)
+}
+
+func retryBazelProvisioningWithBackoff[T any](ctx context.Context, b backoff.BackOff, call func() (T, error)) (T, error) {
+	var result T
+	err := backoff.Retry(func() error {
+		value, err := call()
+		if err == nil {
+			result = value
+			return nil
+		}
+		if !retryableBazelProvisioningError(err) {
+			return backoff.Permanent(err)
+		}
+		return err
+	}, backoff.WithMaxRetries(backoff.WithContext(b, ctx), bazelProvisioningMaxRetries))
+	return result, err
+}
+
+func retryableBazelProvisioningError(err error) bool {
+	switch connect.CodeOf(err) {
+	case connect.CodeUnavailable, connect.CodeAborted, connect.CodeDeadlineExceeded:
+		return true
+	}
+
+	switch status.Code(err) {
+	case codes.Unavailable, codes.Aborted, codes.DeadlineExceeded:
+		return true
+	default:
+		return false
+	}
 }
 
 func newBazelServiceClient(ctx context.Context, tok api.TokenSource) (bazelv1betagrpc.BazelServiceClient, *grpc.ClientConn, error) {
