@@ -169,9 +169,9 @@ func newSetupCacheCmd() *cobra.Command {
 
 		msg := makeEnsureBazelCacheRequest(version, experimentalDirect, enableRemoteAssetAPI, experimentalCacheName)
 
-		req := connect.NewRequest(msg)
-
-		resp, err := client.EnsureBazelCache(ctx, req)
+		resp, err := retryBazelProvisioning(ctx, func() (*connect.Response[bazelv1beta.EnsureBazelCacheResponse], error) {
+			return client.EnsureBazelCache(ctx, connect.NewRequest(msg))
+		})
 		if err != nil {
 			return fnerrors.Newf("failed to provision bazel cache: %w", err)
 		}

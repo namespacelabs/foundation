@@ -6,9 +6,15 @@ package cluster
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
+
+	"connectrpc.com/connect"
+	"github.com/cenkalti/backoff/v4"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestToBazelExecutionConfigBuildEventsStatic(t *testing.T) {
@@ -159,4 +165,56 @@ func TestNewBazelCmdSetupAlias(t *testing.T) {
 	if executionSetup.Flags().Lookup("remote") != nil {
 		t.Fatal("bazel execution setup must not expose --remote")
 	}
+}
+
+func TestRetryBazelProvisioning(t *testing.T) {
+	t.Parallel()
+
+	t.Run("retries transient failures", func(t *testing.T) {
+		attempts := 0
+		result, err := retryBazelProvisioningWithBackoff(context.Background(), &backoff.ZeroBackOff{}, func() (string, error) {
+			attempts++
+			if attempts <= bazelProvisioningMaxRetries {
+				return "", status.Error(codes.Unavailable, "rolling out")
+			}
+			return "ready", nil
+		})
+		if err != nil {
+			t.Fatalf("retryBazelProvisioningWithBackoff: %v", err)
+		}
+		if result != "ready" {
+			t.Fatalf("result = %q, want ready", result)
+		}
+		if attempts != bazelProvisioningMaxRetries+1 {
+			t.Fatalf("attempts = %d, want %d", attempts, bazelProvisioningMaxRetries+1)
+		}
+	})
+
+	t.Run("stops after maximum retries", func(t *testing.T) {
+		attempts := 0
+		_, err := retryBazelProvisioningWithBackoff(context.Background(), &backoff.ZeroBackOff{}, func() (struct{}, error) {
+			attempts++
+			return struct{}{}, connect.NewError(connect.CodeUnavailable, errors.New("rolling out"))
+		})
+		if connect.CodeOf(err) != connect.CodeUnavailable {
+			t.Fatalf("error code = %v, want unavailable", connect.CodeOf(err))
+		}
+		if attempts != bazelProvisioningMaxRetries+1 {
+			t.Fatalf("attempts = %d, want %d", attempts, bazelProvisioningMaxRetries+1)
+		}
+	})
+
+	t.Run("does not retry permanent failures", func(t *testing.T) {
+		attempts := 0
+		_, err := retryBazelProvisioningWithBackoff(context.Background(), &backoff.ZeroBackOff{}, func() (struct{}, error) {
+			attempts++
+			return struct{}{}, status.Error(codes.InvalidArgument, "invalid")
+		})
+		if status.Code(err) != codes.InvalidArgument {
+			t.Fatalf("error code = %v, want invalid argument", status.Code(err))
+		}
+		if attempts != 1 {
+			t.Fatalf("attempts = %d, want 1", attempts)
+		}
+	})
 }
