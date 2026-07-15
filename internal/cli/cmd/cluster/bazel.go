@@ -29,6 +29,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
+	"namespacelabs.dev/integrations/api"
 )
 
 const bazelCachePathBase = "bazelcache"
@@ -54,6 +55,7 @@ func NewBazelCmd() *cobra.Command {
 	cmd.AddCommand(cache)
 	cmd.AddCommand(execution)
 	cmd.AddCommand(invocation)
+	cmd.AddCommand(newBazelCreateTokenCmd())
 	cmd.AddCommand(newSetupBazelCmd())
 
 	return cmd
@@ -126,7 +128,7 @@ func NewBazelCacheCmd() *cobra.Command {
 const defaultBazelCommand = "build"
 
 func newSetupCacheCmd() *cobra.Command {
-	var bazelRcPath, output, certPath, bazelCommand string
+	var bazelRcPath, output, certPath, bazelCommand, tokenFile string
 	var experimentalCacheName string
 	var sendBuildEvents, useAbsoluteCredHelperPath, static, experimentalDirect, enableRemoteAssetAPI bool
 	var version int64
@@ -141,6 +143,7 @@ func newSetupCacheCmd() *cobra.Command {
 		flags.StringVar(&certPath, "cred_path", "", "If specified, write credentials to this directory. Using this flag also ensures stable file names for all emitted credentials.")
 		flags.BoolVar(&sendBuildEvents, "send_build_events", false, "If specified, send build events to the build event service.")
 		flags.BoolVar(&useAbsoluteCredHelperPath, "use_absolute_credentialhelper_path", false, "If specified, use an absolute path to the credential helper binary.")
+		flags.StringVar(&tokenFile, "token", "", "Use the bearer token stored at this location for authentication instead of the default. Implies --static.")
 		flags.BoolVar(&static, "static", false, "If specified, use a static bearer token in --remote_header instead of a credential helper.")
 		flags.BoolVar(&experimentalDirect, "experimental_direct", false, "If specified, configure Bazel to connect directly to the cache endpoint with a freshly issued client certificate.")
 		flags.StringVar(&experimentalCacheName, "experimental_cache_name", "", "If specified, request a named experimental Bazel cache backing instance.")
@@ -154,10 +157,22 @@ func newSetupCacheCmd() *cobra.Command {
 		flags.MarkHidden("send_build_events")
 		flags.MarkHidden("version")
 	}).Do(func(ctx context.Context) error {
-		client, err := fnapi.NewBazelCacheServiceClient(ctx)
-		if err != nil {
-			return err
+		var tokenSource api.TokenSource
+		if tokenFile != "" {
+			loaded, err := loadTokenFromFile(tokenFile)
+			if err != nil {
+				return fnerrors.Newf("failed to load token from file: %w", err)
+			}
+			tokenSource = loaded
+			static = true
+		} else {
+			loaded, err := fnapi.FetchToken(ctx)
+			if err != nil {
+				return err
+			}
+			tokenSource = loaded
 		}
+		client := fnapi.NewBazelCacheServiceClientWithToken(tokenSource)
 
 		if experimentalDirect && static {
 			return fnerrors.Newf("--experimental_direct may not be used with --static")
@@ -318,7 +333,7 @@ func newSetupCacheCmd() *cobra.Command {
 				return fnerrors.Newf("--static requires HTTPS cache endpoint but it was not provided")
 			}
 
-			token, err := fnapi.IssueToken(ctx, staticDur)
+			token, err := tokenSource.IssueToken(ctx, staticDur, false)
 			if err != nil {
 				return fnerrors.Newf("failed to issue bearer token: %w", err)
 			}

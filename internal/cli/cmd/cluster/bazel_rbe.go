@@ -18,12 +18,12 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc"
-	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/integrations/api"
 	"namespacelabs.dev/integrations/nsc/grpcapi"
 )
 
@@ -41,7 +41,7 @@ func newSetupBazelCmd() *cobra.Command {
 }
 
 func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
-	var bazelRcPath, output, bazelCommand, key string
+	var bazelRcPath, output, bazelCommand, key, tokenFile string
 	var staticDur time.Duration
 	var static, enableRemoteAssetAPI bool
 	remote := true
@@ -55,6 +55,7 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 		flags.StringVarP(&output, "output", "o", "plain", "One of plain or json.")
 		flags.StringVar(&bazelCommand, "command", defaultBazelRbeCommand, "The bazel command to use in the generated bazelrc (e.g., 'build' or 'common').")
 		flags.StringVar(&key, "key", "", "Stable identifier that disambiguates multiple parallel execution clusters for the same workspace. Defaults to 'default'.")
+		flags.StringVar(&tokenFile, "token", "", "Use the bearer token stored at this location for authentication instead of the default. Implies --static.")
 		flags.BoolVar(&static, "static", false, "If specified, authenticate using a static bearer token in --remote_header against the public endpoints instead of issuing an mTLS client certificate.")
 		flags.BoolVar(&enableRemoteAssetAPI, "enable_remote_asset_api", false, "If specified, opt-in to the remote asset API and configure bazel's --experimental_remote_downloader.")
 		fncobra.DurationVar(flags, &staticDur, "static_token_duration", 4*time.Hour, "The minimum duration of the static token configured (requires --static).")
@@ -62,9 +63,20 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 			flags.BoolVar(&remote, "remote", true, "If false, configure remote caching and build events without remote execution.")
 		}
 	}).Do(func(ctx context.Context) error {
-		tok, err := fnapi.FetchToken(ctx)
-		if err != nil {
-			return err
+		var tok api.TokenSource
+		if tokenFile != "" {
+			loaded, err := loadTokenFromFile(tokenFile)
+			if err != nil {
+				return fnerrors.Newf("failed to load token from file: %w", err)
+			}
+			tok = loaded
+			static = true
+		} else {
+			loaded, err := fnapi.FetchToken(ctx)
+			if err != nil {
+				return err
+			}
+			tok = loaded
 		}
 
 		authMode := bazelv1beta.BazelExecutionAuthMode_BAZEL_EXECUTION_AUTH_MODE_MTLS
@@ -301,7 +313,7 @@ func appendExecutionBuildEventCredentialHelper(ctx context.Context, buf *bytes.B
 	return nil
 }
 
-func ensureBazelExecutionCluster(ctx context.Context, tok *auth.Token, key string, authMode bazelv1beta.BazelExecutionAuthMode, enableRemoteAssetAPI bool) (*bazelv1beta.EnsureClusterResponse, error) {
+func ensureBazelExecutionCluster(ctx context.Context, tok api.TokenSource, key string, authMode bazelv1beta.BazelExecutionAuthMode, enableRemoteAssetAPI bool) (*bazelv1beta.EnsureClusterResponse, error) {
 	client, conn, err := newBazelServiceClient(ctx, tok)
 	if err != nil {
 		return nil, err
@@ -316,7 +328,7 @@ func ensureBazelExecutionCluster(ctx context.Context, tok *auth.Token, key strin
 	return client.EnsureCluster(ctx, req)
 }
 
-func newBazelServiceClient(ctx context.Context, tok *auth.Token) (bazelv1betagrpc.BazelServiceClient, *grpc.ClientConn, error) {
+func newBazelServiceClient(ctx context.Context, tok api.TokenSource) (bazelv1betagrpc.BazelServiceClient, *grpc.ClientConn, error) {
 	conn, err := grpcapi.NewConnectionWithEndpoint(ctx, fnapi.GlobalEndpoint(), tok)
 	if err != nil {
 		return nil, nil, err

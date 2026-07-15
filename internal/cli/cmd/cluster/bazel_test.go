@@ -11,8 +11,90 @@ import (
 	"testing"
 	"time"
 
+	iamv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/iam/v1beta"
 	bazelv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/integrations/bazel/v1beta"
 )
+
+func TestNewBazelCreateTokenCmd(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewBazelCmd()
+	createToken, _, err := cmd.Find([]string{"create-token"})
+	if err != nil {
+		t.Fatalf("Find(create-token): %v", err)
+	}
+
+	for name, wantDefault := range map[string]string{
+		"token":      "token.json",
+		"expires_in": "2160h0m0s",
+		"scope":      "user",
+	} {
+		flag := createToken.Flags().Lookup(name)
+		if flag == nil {
+			t.Fatalf("bazel create-token is missing --%s", name)
+		}
+		if flag.DefValue != wantDefault {
+			t.Fatalf("--%s default = %q, want %q", name, flag.DefValue, wantDefault)
+		}
+	}
+	if createToken.Flags().Lookup("name") != nil {
+		t.Fatal("bazel create-token must not expose --name")
+	}
+}
+
+func TestBazelCacheSetupAcceptsToken(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewBazelCmd()
+	setup, _, err := cmd.Find([]string{"cache", "setup"})
+	if err != nil {
+		t.Fatalf("Find(cache setup): %v", err)
+	}
+	if setup.Flags().Lookup("token") == nil {
+		t.Fatal("bazel cache setup is missing --token")
+	}
+}
+
+func TestNewBazelTokenRequest(t *testing.T) {
+	t.Parallel()
+
+	expiresAt := time.Now().Add(30 * 24 * time.Hour)
+	req, err := newBazelTokenRequest("rbe-ci-token", expiresAt, "user")
+	if err != nil {
+		t.Fatalf("newBazelTokenRequest: %v", err)
+	}
+	if req.GetName() != "rbe-ci-token" {
+		t.Fatalf("token name = %q, want rbe-ci-token", req.GetName())
+	}
+	if req.GetScope() != iamv1beta.RevokableToken_TENANT_MEMBERSHIP_SCOPE {
+		t.Fatalf("token scope = %v, want user scope", req.GetScope())
+	}
+
+	grants := req.GetAccess().GetGrants()
+	if len(grants) != 2 {
+		t.Fatalf("grant count = %d, want 2", len(grants))
+	}
+	assertGrant := func(got *iamv1beta.Permission, resourceType, action string) {
+		t.Helper()
+		if got.GetResourceType() != resourceType || got.GetResourceId() != "*" || len(got.GetActions()) != 1 || got.GetActions()[0] != action {
+			t.Fatalf("unexpected grant: %v", got)
+		}
+	}
+	assertGrant(grants[0], "bazel/execution", "ensure")
+	assertGrant(grants[1], "ingress", "access")
+
+	tenantReq, err := newBazelTokenRequest("rbe-ci-token", expiresAt, "tenant")
+	if err != nil {
+		t.Fatalf("newBazelTokenRequest tenant scope: %v", err)
+	}
+	if tenantReq.GetScope() != iamv1beta.RevokableToken_TENANT_SCOPE {
+		t.Fatalf("token scope = %v, want tenant scope", tenantReq.GetScope())
+	}
+
+	if _, err := newBazelTokenRequest("rbe-ci-token", expiresAt, "invalid"); err == nil {
+		t.Fatal("expected invalid token scope error")
+	}
+}
 
 func TestBaseBazelSetup(t *testing.T) {
 	t.Parallel()
