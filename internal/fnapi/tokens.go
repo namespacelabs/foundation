@@ -71,6 +71,18 @@ func FetchToken(ctx context.Context) (*localauth.Token, error) {
 			if specified := os.Getenv("NSC_TOKEN_FILE"); specified != "" {
 				return localauth.LoadTokenFromPath(ctx, IssueTenantTokenFromSession, specified, time.Now())
 			}
+
+			defaultWorkloadToken, err := defaultWorkloadTokenPath()
+			if err != nil {
+				return nil, err
+			}
+			if defaultWorkloadToken != "" {
+				if _, err := os.Stat(defaultWorkloadToken); err == nil {
+					return localauth.LoadTokenFromPath(ctx, IssueTenantTokenFromSession, defaultWorkloadToken, time.Now())
+				} else if !os.IsNotExist(err) {
+					return nil, err
+				}
+			}
 		}
 
 		return localauth.LoadTenantToken(ctx, IssueTenantTokenFromSession)
