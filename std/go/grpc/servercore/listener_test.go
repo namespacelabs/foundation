@@ -11,6 +11,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -20,6 +21,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health/grpc_health_v1"
+	nsgrpc "namespacelabs.dev/foundation/std/go/grpc"
 )
 
 // TestNewHttp2CapableServer_GoawayOnShutdown verifies that
@@ -165,6 +167,8 @@ type blockingHealthServer struct {
 	calls   atomic.Int32
 }
 
+var grpcLameduckTestID atomic.Uint64
+
 func (s *blockingHealthServer) Check(ctx context.Context, _ *grpc_health_v1.HealthCheckRequest) (*grpc_health_v1.HealthCheckResponse, error) {
 	if s.calls.Add(1) == 1 {
 		close(s.started)
@@ -178,7 +182,7 @@ func (s *blockingHealthServer) Check(ctx context.Context, _ *grpc_health_v1.Heal
 	}
 }
 
-func TestGRPCLameduckSendsGoawayWithoutInterruptingInflightRPC(t *testing.T) {
+func TestListenAndGracefullyShutdownGRPC_LameduckThenShutdown(t *testing.T) {
 	srv := grpc.NewServer()
 	health := &blockingHealthServer{
 		started: make(chan struct{}),
@@ -192,8 +196,19 @@ func TestGRPCLameduckSendsGoawayWithoutInterruptingInflightRPC(t *testing.T) {
 	}
 	defer lis.Close()
 
-	serveErr := make(chan error, 1)
-	go func() { serveErr <- srv.Serve(lis) }()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer func() {
+		cancel()
+		select {
+		case <-health.finish:
+		default:
+			close(health.finish)
+		}
+	}()
+
+	label := "test-" + strconv.FormatUint(grpcLameduckTestID.Add(1), 10)
+	shutdownErr := make(chan error, 1)
+	go func() { shutdownErr <- ListenAndGracefullyShutdownGRPC(ctx, label, srv, lis) }()
 
 	conn, err := grpc.NewClient(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -214,10 +229,15 @@ func TestGRPCLameduckSendsGoawayWithoutInterruptingInflightRPC(t *testing.T) {
 		t.Fatal("in-flight RPC did not start")
 	}
 
-	gracefulStop := newGRPCGracefulStop(srv)
+	lameduckName := "servercore.grpc." + label
+	lameduck, ok := nsgrpc.LameduckFuncsByName[lameduckName]
+	if !ok {
+		t.Fatalf("lameduck function %q was not registered", lameduckName)
+	}
+
 	lameduckReturned := make(chan struct{})
 	go func() {
-		gracefulStop.start()
+		runShutdownPhases(map[string]func(){lameduckName: lameduck}, nil, nil)
 		close(lameduckReturned)
 	}()
 	select {
@@ -229,8 +249,8 @@ func TestGRPCLameduckSendsGoawayWithoutInterruptingInflightRPC(t *testing.T) {
 	// Give GOAWAY time to reach the client, then verify that it does not
 	// dispatch another RPC on the draining transport.
 	time.Sleep(200 * time.Millisecond)
-	retryCtx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
-	defer cancel()
+	retryCtx, cancelRetry := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancelRetry()
 	if _, err := client.Check(retryCtx, &grpc_health_v1.HealthCheckRequest{}); err == nil {
 		t.Fatal("RPC unexpectedly succeeded after lameduck")
 	}
@@ -238,14 +258,12 @@ func TestGRPCLameduckSendsGoawayWithoutInterruptingInflightRPC(t *testing.T) {
 		t.Fatalf("expected only the in-flight RPC to reach the server, got %d calls", got)
 	}
 
-	shutdownReturned := make(chan struct{})
-	go func() {
-		gracefulStop.wait()
-		close(shutdownReturned)
-	}()
+	// Final shutdown should wait on the GracefulStop invocation that lameduck
+	// already started, rather than starting a second shutdown lifecycle.
+	cancel()
 	select {
-	case <-shutdownReturned:
-		t.Fatal("shutdown returned before the in-flight RPC finished")
+	case err := <-shutdownErr:
+		t.Fatalf("shutdown returned before the in-flight RPC finished: %v", err)
 	case <-time.After(100 * time.Millisecond):
 	}
 
@@ -259,17 +277,11 @@ func TestGRPCLameduckSendsGoawayWithoutInterruptingInflightRPC(t *testing.T) {
 		t.Fatal("in-flight RPC did not finish")
 	}
 	select {
-	case <-shutdownReturned:
-	case <-time.After(2 * time.Second):
-		t.Fatal("shutdown did not return")
-	}
-
-	select {
-	case err := <-serveErr:
-		if err != nil && !errors.Is(err, grpc.ErrServerStopped) {
-			t.Fatalf("Serve returned: %v", err)
+	case err := <-shutdownErr:
+		if err != nil {
+			t.Fatalf("ListenAndGracefullyShutdownGRPC returned: %v", err)
 		}
 	case <-time.After(2 * time.Second):
-		t.Fatal("Serve did not return")
+		t.Fatal("shutdown did not return")
 	}
 }
