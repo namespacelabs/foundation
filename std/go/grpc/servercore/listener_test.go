@@ -12,10 +12,14 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"golang.org/x/net/http2"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 // TestNewHttp2CapableServer_GoawayOnShutdown verifies that
@@ -149,6 +153,123 @@ func TestNewHttp2CapableServer_GoawayOnShutdown(t *testing.T) {
 			t.Errorf("Serve returned: %v", err)
 		}
 	case <-time.After(5 * time.Second):
+		t.Fatal("Serve did not return")
+	}
+}
+
+type blockingHealthServer struct {
+	grpc_health_v1.UnimplementedHealthServer
+
+	started chan struct{}
+	finish  chan struct{}
+	calls   atomic.Int32
+}
+
+func (s *blockingHealthServer) Check(ctx context.Context, _ *grpc_health_v1.HealthCheckRequest) (*grpc_health_v1.HealthCheckResponse, error) {
+	if s.calls.Add(1) == 1 {
+		close(s.started)
+	}
+
+	select {
+	case <-s.finish:
+		return &grpc_health_v1.HealthCheckResponse{Status: grpc_health_v1.HealthCheckResponse_SERVING}, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+func TestGRPCLameduckSendsGoawayWithoutInterruptingInflightRPC(t *testing.T) {
+	srv := grpc.NewServer()
+	health := &blockingHealthServer{
+		started: make(chan struct{}),
+		finish:  make(chan struct{}),
+	}
+	grpc_health_v1.RegisterHealthServer(srv, health)
+
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	defer lis.Close()
+
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- srv.Serve(lis) }()
+
+	conn, err := grpc.NewClient(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+	defer conn.Close()
+	client := grpc_health_v1.NewHealthClient(conn)
+
+	inflightErr := make(chan error, 1)
+	go func() {
+		_, err := client.Check(context.Background(), &grpc_health_v1.HealthCheckRequest{})
+		inflightErr <- err
+	}()
+
+	select {
+	case <-health.started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("in-flight RPC did not start")
+	}
+
+	gracefulStop := newGRPCGracefulStop(srv)
+	lameduckReturned := make(chan struct{})
+	go func() {
+		gracefulStop.start()
+		close(lameduckReturned)
+	}()
+	select {
+	case <-lameduckReturned:
+	case <-time.After(time.Second):
+		t.Fatal("lameduck blocked on the in-flight RPC")
+	}
+
+	// Give GOAWAY time to reach the client, then verify that it does not
+	// dispatch another RPC on the draining transport.
+	time.Sleep(200 * time.Millisecond)
+	retryCtx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	if _, err := client.Check(retryCtx, &grpc_health_v1.HealthCheckRequest{}); err == nil {
+		t.Fatal("RPC unexpectedly succeeded after lameduck")
+	}
+	if got := health.calls.Load(); got != 1 {
+		t.Fatalf("expected only the in-flight RPC to reach the server, got %d calls", got)
+	}
+
+	shutdownReturned := make(chan struct{})
+	go func() {
+		gracefulStop.wait()
+		close(shutdownReturned)
+	}()
+	select {
+	case <-shutdownReturned:
+		t.Fatal("shutdown returned before the in-flight RPC finished")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	close(health.finish)
+	select {
+	case err := <-inflightErr:
+		if err != nil {
+			t.Fatalf("in-flight RPC failed during lameduck: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("in-flight RPC did not finish")
+	}
+	select {
+	case <-shutdownReturned:
+	case <-time.After(2 * time.Second):
+		t.Fatal("shutdown did not return")
+	}
+
+	select {
+	case err := <-serveErr:
+		if err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+			t.Fatalf("Serve returned: %v", err)
+		}
+	case <-time.After(2 * time.Second):
 		t.Fatal("Serve did not return")
 	}
 }

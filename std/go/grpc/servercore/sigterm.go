@@ -64,7 +64,7 @@ func handleGracefulShutdown(ctx context.Context, finishShutdown func()) {
 		t := time.Now()
 		core.MarkShutdownStarted()
 
-		runShutdownPhases(nsgrpc.LameduckFuncsByName, nsgrpc.DrainFunc, nsgrpc.DrainFuncsByName)
+		runShutdownPhases(nsgrpc.BeginLameduck(), nsgrpc.DrainFunc, nsgrpc.DrainFuncsByName)
 
 		delta := time.Since(t)
 		if delta < readinessPropagationDelay {

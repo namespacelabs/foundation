@@ -5,12 +5,18 @@
 package grpc
 
 import (
+	"maps"
+	"sync"
+
 	"namespacelabs.dev/foundation/std/go/core"
 )
 
 var (
 	DrainFunc        func()
 	DrainFuncsByName = map[string]func(){}
+
+	lameduckMu      sync.Mutex
+	lameduckStarted bool
 
 	// LameduckFuncsByName are invoked after MarkShutdownStarted and before any
 	// drain function. Their purpose is to signal to clients that the server is
@@ -49,9 +55,36 @@ func SetNamedDrainFunc(name string, f func()) {
 // Listen (e.g. by the foundation framework itself once the http server has
 // been constructed).
 func SetNamedLameduckFunc(name string, f func()) {
+	lameduckMu.Lock()
 	if _, ok := LameduckFuncsByName[name]; ok {
+		lameduckMu.Unlock()
 		panic("lameduck func was already set")
 	}
 
 	LameduckFuncsByName[name] = f
+	runNow := lameduckStarted
+	lameduckMu.Unlock()
+
+	// Listener handlers may finish initialization concurrently with signal
+	// handling. If lameduck has already started, run newly registered hooks
+	// immediately so the listener cannot miss the shutdown phase.
+	if runNow {
+		core.ZLog.Info().Str("name", name).Msg("running late lameduck func")
+		f()
+	}
+}
+
+// BeginLameduck marks the start of the lameduck phase and returns a stable
+// snapshot of the registered functions. Functions registered after this call
+// are invoked immediately by SetNamedLameduckFunc.
+func BeginLameduck() map[string]func() {
+	lameduckMu.Lock()
+	defer lameduckMu.Unlock()
+
+	if lameduckStarted {
+		return nil
+	}
+
+	lameduckStarted = true
+	return maps.Clone(LameduckFuncsByName)
 }

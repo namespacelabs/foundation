@@ -17,6 +17,11 @@ import (
 type Registrar interface {
 	grpc.ServiceRegistrar
 
+	// GRPCRegistrar returns a service registrar scoped to a named gRPC
+	// listener configuration. It can be used to register the same service on
+	// the package's default listener and on additional named listeners.
+	GRPCRegistrar(listenerConfiguration string) grpc.ServiceRegistrar
+
 	Handle(path string, p http.Handler) *mux.Route
 	PathPrefix(path string) *mux.Route
 	RegisterListener(func(context.Context, net.Listener) error)
@@ -85,6 +90,14 @@ type scopedServer struct {
 
 func (s *scopedServer) RegisterService(desc *grpc.ServiceDesc, impl interface{}) {
 	s.parent.registerService(s.pkg, s.configurationName, desc, impl)
+}
+
+func (s *scopedServer) GRPCRegistrar(listenerConfiguration string) grpc.ServiceRegistrar {
+	return &scopedServer{
+		pkg:               s.pkg,
+		configurationName: listenerConfiguration,
+		parent:            s.parent,
+	}
 }
 
 func (s *scopedServer) Handle(path string, p http.Handler) *mux.Route {
