@@ -151,6 +151,9 @@ func TestNewBazelCmdSetupAlias(t *testing.T) {
 	if remote.DefValue != "true" {
 		t.Fatalf("--remote default = %q, want true", remote.DefValue)
 	}
+	if setup.Flags().Lookup("token") == nil {
+		t.Fatal("bazel setup is missing --token")
+	}
 
 	executionSetup, _, err := cmd.Find([]string{"execution", "setup"})
 	if err != nil {
@@ -158,5 +161,8 @@ func TestNewBazelCmdSetupAlias(t *testing.T) {
 	}
 	if executionSetup.Flags().Lookup("remote") != nil {
 		t.Fatal("bazel execution setup must not expose --remote")
+	}
+	if executionSetup.Flags().Lookup("token") == nil {
+		t.Fatal("bazel execution setup is missing --token")
 	}
 }

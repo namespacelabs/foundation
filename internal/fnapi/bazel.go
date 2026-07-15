@@ -10,6 +10,7 @@ import (
 
 	"buf.build/gen/go/namespace/cloud/connectrpc/go/proto/namespace/cloud/integrations/bazel/v1beta/bazelv1betaconnect"
 	"connectrpc.com/connect"
+	"namespacelabs.dev/integrations/api"
 )
 
 func NewBazelCacheServiceClient(ctx context.Context) (bazelv1betaconnect.BazelCacheServiceClient, error) {
@@ -18,11 +19,13 @@ func NewBazelCacheServiceClient(ctx context.Context) (bazelv1betaconnect.BazelCa
 		return nil, err
 	}
 
-	client := bazelv1betaconnect.NewBazelCacheServiceClient(
+	return NewBazelCacheServiceClientWithToken(tok), nil
+}
+
+func NewBazelCacheServiceClientWithToken(tok api.TokenSource) bazelv1betaconnect.BazelCacheServiceClient {
+	return bazelv1betaconnect.NewBazelCacheServiceClient(
 		http.DefaultClient,
 		GlobalEndpoint(),
 		connect.WithInterceptors(newAuthInterceptor(tok)),
 	)
-
-	return client, nil
 }
