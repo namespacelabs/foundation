@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -358,12 +359,45 @@ func NewHttp2CapableServer(mux http.Handler, opts HTTPOptions) *http.Server {
 }
 
 func ListenAndGracefullyShutdownGRPC(ctx context.Context, label string, srv *grpc.Server, lis net.Listener) error {
+	gracefulStop := newGRPCGracefulStop(srv)
+
+	gogrpc.SetNamedLameduckFunc("servercore.grpc."+label, func() {
+		gracefulStop.start()
+	})
+
 	return listenAndGracefullyShutdown(ctx, label, func() error {
 		return srv.Serve(lis)
 	}, func() error {
-		srv.GracefulStop()
+		gracefulStop.wait()
 		return nil
 	})
+}
+
+type grpcGracefulStop struct {
+	srv       *grpc.Server
+	startOnce sync.Once
+	done      chan struct{}
+}
+
+func newGRPCGracefulStop(srv *grpc.Server) *grpcGracefulStop {
+	return &grpcGracefulStop{srv: srv, done: make(chan struct{})}
+}
+
+func (s *grpcGracefulStop) start() {
+	// GracefulStop closes the listener and sends GOAWAY to active transports,
+	// but blocks until in-flight RPCs finish. Run it in the background so other
+	// lameduck and drain functions are not blocked.
+	s.startOnce.Do(func() {
+		go func() {
+			s.srv.GracefulStop()
+			close(s.done)
+		}()
+	})
+}
+
+func (s *grpcGracefulStop) wait() {
+	s.start()
+	<-s.done
 }
 
 func ListenAndGracefullyShutdownHTTP(ctx context.Context, label string, srv *http.Server, lis net.Listener) error {
