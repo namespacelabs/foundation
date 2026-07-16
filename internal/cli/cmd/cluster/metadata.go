@@ -18,10 +18,6 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/metadata"
 )
 
-const (
-	defaultMetadataSpecFile = "/var/run/nsc/token.spec"
-)
-
 var supportedMetadataKeys = []string{"id"}
 
 func NewMetadataCmd() *cobra.Command {
@@ -54,7 +50,11 @@ func newReadCmd() *cobra.Command {
 		}
 
 		if spec == "" {
-			s, err := os.ReadFile(defaultMetadataSpecFile)
+			specFile, err := metadata.TokenSpecFile()
+			if err != nil {
+				return err
+			}
+			s, err := os.ReadFile(specFile)
 			if err != nil {
 				return fnerrors.Newf("failed to read metadata spec file: %w", err)
 			}

@@ -11,10 +11,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
-const (
-	defaultMetadataPath = "/var/run/nsc/metadata.json"
-)
-
 type InstanceMetadata struct {
 	Version          string `json:"version,omitempty"`
 	InstanceEndpoint string `json:"instance_endpoint,omitempty"`
@@ -26,10 +22,13 @@ type InstanceMetadata struct {
 }
 
 func InstanceMetadataFromFile() (InstanceMetadata, error) {
-	metadataPath := defaultMetadataPath
-
-	if specified := os.Getenv("NSC_METADATA_FILE"); specified != "" {
-		metadataPath = specified
+	metadataPath := os.Getenv("NSC_METADATA_FILE")
+	if metadataPath == "" {
+		var err error
+		metadataPath, err = MetadataFile()
+		if err != nil {
+			return InstanceMetadata{}, err
+		}
 	}
 
 	var md InstanceMetadata
