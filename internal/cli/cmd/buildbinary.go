@@ -30,6 +30,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/platform"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -59,6 +60,7 @@ func NewBuildBinaryCmd() *cobra.Command {
 			flags.BoolVar(&buildOpts.outputPrebuilts, "output_prebuilts", false, "If true, also outputs a prebuilt configuration which can be embedded in your workspace configuration.")
 			flags.StringVar(&buildOpts.outputPath, "output_to", "", "If set, a list of all binaries is emitted to the specified file.")
 			flags.StringVar(&userTag, "tag", "", "Which tag to attach to each of the built images.")
+			flags.BoolVar(&buildOpts.pushDirectly, "push_directly", false, "If true, the BuildKit builder pushes the resulting image directly to the target repository server-side, skipping the round-trip through this client. Recommended when used with --build_in_nscloud. Not compatible with --docker.")
 		}).
 		With(
 			fncobra.ParseEnv(&env),
@@ -77,6 +79,7 @@ type buildOpts struct {
 	publishToDocker bool
 	outputPrebuilts bool
 	outputPath      string
+	pushDirectly    bool
 }
 
 const orchTool = "namespacelabs.dev/foundation/orchestration/server/tool"
@@ -84,6 +87,10 @@ const orchTool = "namespacelabs.dev/foundation/orchestration/server/tool"
 func buildLocations(ctx context.Context, env cfg.Context, reg registry.Manager, userTag string, locs fncobra.Locations, baseRepository []string, opts buildOpts) error {
 	if opts.outputPrebuilts && len(baseRepository) == 0 {
 		return fnerrors.Newf("at least one repository has to be set when updating prebuilts")
+	}
+
+	if opts.pushDirectly && opts.publishToDocker {
+		return fnerrors.Newf("--push_directly is incompatible with --docker")
 	}
 
 	pl := parsing.NewPackageLoader(env)
@@ -123,19 +130,61 @@ func buildLocations(ctx context.Context, env cfg.Context, reg registry.Manager, 
 
 	sealedCtx := pkggraph.MakeSealedContext(env, pl.Seal())
 
-	var imgOpts binary.BuildImageOpts
-	imgOpts.UsePrebuilts = false
+	var baseImgOpts binary.BuildImageOpts
+	baseImgOpts.UsePrebuilts = false
 	hostPlatform := platform.RuntimePlatform()
 	hostPlatform.OS = "linux"
-	imgOpts.Platforms = []specs.Platform{hostPlatform}
+	baseImgOpts.Platforms = []specs.Platform{hostPlatform}
+
+	// When --push_directly is set the keychain is forwarded into the BuildKit
+	// session so the remote builder can authenticate against the target
+	// registry. For the regular client-side push path we keep the keychain
+	// empty: the registry access used by oci.PublishResolvable already
+	// composes registered domain keychains with the local Docker config.
+	staticAccess := oci.RegistryAccess{}
+	if opts.pushDirectly {
+		// Match nsc build: resolve namespace registry credentials via the
+		// nscloud API and fall back to the local Docker configuration for
+		// everything else.
+		staticAccess.Keychain = api.DefaultKeychainWithFallback
+	}
 
 	var images []compute.Computable[Binary]
 	for _, pkg := range pkgs {
-		var resolvables []compute.Computable[oci.ResolvableImage]
+		var repositories []compute.Computable[oci.RepositoryWithParent]
+		for _, bp := range baseRepository {
+			repositories = append(repositories, registry.StaticRepository(nil, filepath.Join(bp, pkg.PackageName().String()), staticAccess))
+		}
+
+		if len(repositories) == 0 {
+			repositories = append(repositories, reg.AllocateName(pkg.PackageName().String(), userTag))
+		}
 
 		// TODO: allow to choose what binary to build within a package.
 		for _, b := range pkg.Binaries {
-			bin, err := binary.Plan(ctx, pkg, b.Name, sealedCtx, assets.AvailableBuildAssets{}, imgOpts)
+			if opts.pushDirectly {
+				// Plan once per target repository, so the underlying BuildKit
+				// builder can push directly (server-side) to each target.
+				for _, repository := range repositories {
+					imgOpts := baseImgOpts
+					imgOpts.PublishName = repository
+
+					bin, err := binary.Plan(ctx, pkg, b.Name, sealedCtx, assets.AvailableBuildAssets{}, imgOpts)
+					if err != nil {
+						return err
+					}
+
+					image, err := bin.Image(ctx, sealedCtx)
+					if err != nil {
+						return err
+					}
+
+					images = append(images, fromImage(pkg.PackageName(), oci.PublishResolvable(repository, image, nil)))
+				}
+				continue
+			}
+
+			bin, err := binary.Plan(ctx, pkg, b.Name, sealedCtx, assets.AvailableBuildAssets{}, baseImgOpts)
 			if err != nil {
 				return err
 			}
@@ -143,19 +192,6 @@ func buildLocations(ctx context.Context, env cfg.Context, reg registry.Manager, 
 			image, err := bin.Image(ctx, sealedCtx)
 			if err != nil {
 				return err
-			}
-
-			resolvables = append(resolvables, image)
-		}
-
-		for _, image := range resolvables {
-			var repositories []compute.Computable[oci.RepositoryWithParent]
-			for _, bp := range baseRepository {
-				repositories = append(repositories, registry.StaticRepository(nil, filepath.Join(bp, pkg.PackageName().String()), oci.RegistryAccess{}))
-			}
-
-			if len(repositories) == 0 {
-				repositories = append(repositories, reg.AllocateName(pkg.PackageName().String(), userTag))
 			}
 
 			for _, repository := range repositories {
