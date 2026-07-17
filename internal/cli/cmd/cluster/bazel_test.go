@@ -7,12 +7,14 @@ package cluster
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
 
 	iamv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/iam/v1beta"
 	bazelv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/integrations/bazel/v1beta"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestNewBazelCreateTokenCmd(t *testing.T) {
@@ -53,6 +55,98 @@ func TestBazelCacheSetupAcceptsToken(t *testing.T) {
 	if setup.Flags().Lookup("token") == nil {
 		t.Fatal("bazel cache setup is missing --token")
 	}
+}
+
+func TestNewBazelInvocationListCmd(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewBazelCmd()
+	list, _, err := cmd.Find([]string{"invocation", "list"})
+	if err != nil {
+		t.Fatalf("Find(invocation list): %v", err)
+	}
+
+	for name, wantDefault := range map[string]string{
+		"max_entries": "50",
+		"output":      "plain",
+		"since":       "0s",
+	} {
+		flag := list.Flags().Lookup(name)
+		if flag == nil {
+			t.Fatalf("bazel invocation list is missing --%s", name)
+		}
+		if flag.DefValue != wantDefault {
+			t.Fatalf("--%s default = %q, want %q", name, flag.DefValue, wantDefault)
+		}
+	}
+}
+
+func TestWriteBazelInvocationList(t *testing.T) {
+	t.Parallel()
+
+	response := &bazelv1beta.ListInvocationsResponse{
+		Invocations: []*bazelv1beta.InvocationListEntry{
+			{
+				InvocationId: "newest",
+				ProjectId:    "project-b",
+				BuildId:      "build-b",
+				StartedAt:    timestamppb.New(time.Date(2026, time.July, 17, 12, 0, 0, 0, time.UTC)),
+			},
+			{
+				InvocationId: "older",
+				ProjectId:    "project-a",
+				BuildId:      "build-a",
+				StartedAt:    timestamppb.New(time.Date(2026, time.July, 17, 11, 0, 0, 0, time.UTC)),
+				CompletedAt:  timestamppb.New(time.Date(2026, time.July, 17, 11, 5, 0, 0, time.UTC)),
+			},
+		},
+	}
+
+	t.Run("plain", func(t *testing.T) {
+		rows := bazelInvocationRows(response.GetInvocations())
+		if len(rows) != 2 {
+			t.Fatalf("rows = %#v, want two entries", rows)
+		}
+		if rows[0]["invocation_id"] != "newest" || rows[1]["invocation_id"] != "older" {
+			t.Fatalf("rows changed invocation order: %#v", rows)
+		}
+		if rows[0]["completed_at"] != "-" || rows[1]["completed_at"] == "-" {
+			t.Fatalf("completed times = %q, %q, want missing then populated", rows[0]["completed_at"], rows[1]["completed_at"])
+		}
+		if _, ok := rows[0]["project_id"]; ok {
+			t.Fatalf("plain output contains project_id: %#v", rows[0])
+		}
+		if _, ok := rows[0]["build_id"]; ok {
+			t.Fatalf("plain output contains build_id: %#v", rows[0])
+		}
+	})
+
+	t.Run("json", func(t *testing.T) {
+		var output bytes.Buffer
+		if err := writeBazelInvocationListJSON(&output, response.GetInvocations()); err != nil {
+			t.Fatalf("writeBazelInvocationListJSON: %v", err)
+		}
+
+		var got []map[string]any
+		if err := json.Unmarshal(output.Bytes(), &got); err != nil {
+			t.Fatalf("unmarshal JSON output: %v", err)
+		}
+		if len(got) != 2 {
+			t.Fatalf("JSON output = %#v, want two entries", got)
+		}
+		if got[0]["invocation_id"] != "newest" || got[0]["started_at"] != "2026-07-17T12:00:00Z" {
+			t.Fatalf("first invocation = %#v, want newest invocation", got[0])
+		}
+		if _, ok := got[0]["completed_at"]; ok {
+			t.Fatalf("running invocation contains completed_at: %#v", got[0])
+		}
+		if _, ok := got[0]["project_id"]; ok {
+			t.Fatalf("JSON output contains project_id: %#v", got[0])
+		}
+		if _, ok := got[0]["build_id"]; ok {
+			t.Fatalf("JSON output contains build_id: %#v", got[0])
+		}
+	})
 }
 
 func TestNewBazelTokenRequest(t *testing.T) {

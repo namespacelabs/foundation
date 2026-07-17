@@ -4,8 +4,8 @@ go 1.26.0
 
 require (
 	buf.build/gen/go/namespace/cloud/connectrpc/go v1.20.0-20260710132230-2e3db39f86b8.1
-	buf.build/gen/go/namespace/cloud/grpc/go v1.6.2-20260712213844-83c43e91b37d.1
-	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20260712213844-83c43e91b37d.1
+	buf.build/gen/go/namespace/cloud/grpc/go v1.6.2-20260717182942-d535342a07ff.1
+	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20260717182942-d535342a07ff.1
 	cloud.google.com/go/artifactregistry v1.17.2
 	cloud.google.com/go/container v1.45.0
 	connectrpc.com/connect v1.20.0
@@ -157,7 +157,7 @@ require (
 )
 
 require (
-	buf.build/gen/go/bazel/bazel/protocolbuffers/go v1.36.11-20251112223041-697bc75dbe09.1 // indirect
+	buf.build/gen/go/namespace/bazel/protocolbuffers/go v1.36.11-20260717182923-633d56cd145e.1 // indirect
 	cloud.google.com/go v0.121.6 // indirect
 	cloud.google.com/go/auth v0.18.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
