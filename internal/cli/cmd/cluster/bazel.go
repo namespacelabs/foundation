@@ -20,12 +20,15 @@ import (
 
 	bazelv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/integrations/bazel/v1beta"
 	"connectrpc.com/connect"
+	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
@@ -50,6 +53,7 @@ func NewBazelCmd() *cobra.Command {
 	}
 	execution.AddCommand(newSetupExecutionCmd())
 	invocation := &cobra.Command{Use: "invocation", Short: "Bazel invocation related functionality."}
+	invocation.AddCommand(newBazelInvocationListCmd())
 	invocation.AddCommand(newBazelInvocationReportCmd())
 
 	cmd.AddCommand(cache)
@@ -59,6 +63,135 @@ func NewBazelCmd() *cobra.Command {
 	cmd.AddCommand(newSetupBazelCmd())
 
 	return cmd
+}
+
+func newBazelInvocationListCmd() *cobra.Command {
+	var output string
+	var maxEntries int32
+	var since time.Duration
+
+	return fncobra.Cmd(&cobra.Command{
+		Use:   "list",
+		Short: "List recent Bazel invocations.",
+		Args:  cobra.NoArgs,
+	}).WithFlags(func(flags *pflag.FlagSet) {
+		flags.StringVarP(&output, "output", "o", "plain", "One of plain or json.")
+		flags.Int32Var(&maxEntries, "max_entries", 50, "Maximum number of invocations to return (up to 100).")
+		fncobra.DurationVar(flags, &since, "since", 0, "Only list invocations started within this duration.")
+	}).Do(func(ctx context.Context) error {
+		if output != "plain" && output != "json" {
+			return fnerrors.Newf("unsupported output format %q, supported values: plain, json", output)
+		}
+		if maxEntries <= 0 || maxEntries > 100 {
+			return fnerrors.Newf("--max_entries must be between 1 and 100")
+		}
+		if since < 0 {
+			return fnerrors.Newf("--since must not be negative")
+		}
+
+		tok, err := fnapi.FetchToken(ctx)
+		if err != nil {
+			return err
+		}
+
+		client, conn, err := newBazelServiceClient(ctx, tok)
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+
+		req := &bazelv1beta.ListInvocationsRequest{}
+		req.SetMaxEntries(maxEntries)
+		if since > 0 {
+			req.SetNotOlderThan(timestamppb.New(time.Now().Add(-since)))
+		}
+
+		response, err := client.ListInvocations(ctx, req)
+		if err != nil {
+			return fnerrors.Newf("failed to list Bazel invocations: %w", err)
+		}
+
+		return writeBazelInvocationList(ctx, response, output)
+	})
+}
+
+type bazelInvocationView struct {
+	InvocationID string `json:"invocation_id"`
+	StartedAt    string `json:"started_at"`
+	CompletedAt  string `json:"completed_at,omitempty"`
+}
+
+func writeBazelInvocationList(ctx context.Context, response *bazelv1beta.ListInvocationsResponse, output string) error {
+	invocations := response.GetInvocations()
+
+	if output == "json" {
+		return writeBazelInvocationListJSON(console.Stdout(ctx), invocations)
+	}
+
+	if len(invocations) == 0 {
+		if _, err := fmt.Fprintln(console.Stdout(ctx), "No Bazel invocations found."); err != nil {
+			return fnerrors.InternalError("failed to write Bazel invocations: %w", err)
+		}
+		return nil
+	}
+
+	cols := []tui.Column{
+		{Key: "invocation_id", Title: "Invocation ID", MinWidth: 10, MaxWidth: 36},
+		{Key: "started_at", Title: "Started", MinWidth: 10, MaxWidth: 20},
+		{Key: "completed_at", Title: "Completed", MinWidth: 10, MaxWidth: 20},
+	}
+
+	return tui.StaticTable(ctx, cols, bazelInvocationRows(invocations))
+}
+
+func writeBazelInvocationListJSON(w io.Writer, invocations []*bazelv1beta.InvocationListEntry) error {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(bazelInvocationViews(invocations)); err != nil {
+		return fnerrors.InternalError("failed to encode Bazel invocations: %w", err)
+	}
+	return nil
+}
+
+func bazelInvocationViews(invocations []*bazelv1beta.InvocationListEntry) []bazelInvocationView {
+	views := make([]bazelInvocationView, 0, len(invocations))
+	for _, invocation := range invocations {
+		view := bazelInvocationView{
+			InvocationID: invocation.GetInvocationId(),
+			StartedAt:    formatBazelInvocationTime(invocation.GetStartedAt()),
+		}
+		if invocation.GetCompletedAt() != nil {
+			view.CompletedAt = formatBazelInvocationTime(invocation.GetCompletedAt())
+		}
+		views = append(views, view)
+	}
+	return views
+}
+
+func bazelInvocationRows(invocations []*bazelv1beta.InvocationListEntry) []tui.Row {
+	rows := make([]tui.Row, 0, len(invocations))
+	for _, invocation := range invocations {
+		rows = append(rows, tui.Row{
+			"invocation_id": invocation.GetInvocationId(),
+			"started_at":    humanizeBazelInvocationTime(invocation.GetStartedAt()),
+			"completed_at":  humanizeBazelInvocationTime(invocation.GetCompletedAt()),
+		})
+	}
+	return rows
+}
+
+func formatBazelInvocationTime(value *timestamppb.Timestamp) string {
+	if value == nil {
+		return ""
+	}
+	return value.AsTime().Format(time.RFC3339)
+}
+
+func humanizeBazelInvocationTime(value *timestamppb.Timestamp) string {
+	if value == nil {
+		return "-"
+	}
+	return humanize.Time(value.AsTime().Local())
 }
 
 func newBazelInvocationReportCmd() *cobra.Command {
