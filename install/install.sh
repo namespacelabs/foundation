@@ -102,7 +102,8 @@ do_install() {
   fi
 
   cd ${TEMP_DIR}
-  $sh_c "curl $ci_header --fail --location --progress-bar --user-agent install.sh \"${download_uri}\" | tar -xz"
+  $sh_c "curl $ci_header --fail --location --retry 3 --retry-all-errors --progress-bar --user-agent install.sh --output ns.tar.gz \"${download_uri}\""
+  $sh_c "tar -xzf ns.tar.gz"
 
   $sh_c "chmod +x ${tool_name}"
 

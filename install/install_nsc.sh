@@ -107,7 +107,7 @@ do_install() {
     api_os=$(echo "$os" | tr '[:lower:]' '[:upper:]')
     api_arch=$(echo "$architecture" | tr '[:lower:]' '[:upper:]')
 
-    version_response=$(curl --fail --silent --location \
+    version_response=$(curl --fail --silent --location --retry 3 --retry-all-errors \
       -X POST \
       -H "Content-Type: application/json" \
       -d "{\"${tool_name}\":{}}" \
@@ -138,7 +138,8 @@ do_install() {
   trap "rm -rf $TEMP_DIR" EXIT
 
   cd ${TEMP_DIR}
-  $sh_c "curl $ci_header --fail --location --progress-bar --user-agent install_nsc.sh \"${download_uri}\" | tar -xz"
+  $sh_c "curl $ci_header --fail --location --retry 3 --retry-all-errors --progress-bar --user-agent install_nsc.sh --output nsc.tar.gz \"${download_uri}\""
+  $sh_c "tar -xzf nsc.tar.gz"
 
   $sh_c "chmod +x ${tool_name}"
   $sh_c "chmod +x ${docker_cred_helper_name}"
