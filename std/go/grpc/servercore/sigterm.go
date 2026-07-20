@@ -64,14 +64,14 @@ func handleGracefulShutdown(ctx context.Context, finishShutdown func()) {
 		t := time.Now()
 		core.MarkShutdownStarted()
 
-		runShutdownPhases(nsgrpc.BeginLameduck(), nsgrpc.DrainFunc, nsgrpc.DrainFuncsByName)
-
 		delta := time.Since(t)
 		if delta < readinessPropagationDelay {
 			dur := readinessPropagationDelay - delta
-			core.ZLog.Info().Dur("duration", dur).Msg("sleeping before final shutdown")
+			core.ZLog.Info().Dur("duration", dur).Msg("waiting for readiness propagation")
 			time.Sleep(dur)
 		}
+
+		runShutdownPhases(nsgrpc.BeginLameduck(), nsgrpc.DrainFunc, nsgrpc.DrainFuncsByName)
 
 		finishShutdown()
 	case <-ctx.Done():
