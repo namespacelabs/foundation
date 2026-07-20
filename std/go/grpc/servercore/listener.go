@@ -236,11 +236,9 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 		// Register a lameduck hook so SIGTERM triggers HTTP/2 GOAWAY on
 		// open h2c connections (wired up via http2.ConfigureServer in
 		// NewHttp2CapableServer). Calling Shutdown here also closes the
-		// listener; that's intentional: by the time SIGTERM is delivered
-		// the pod is being rolled and Kubernetes is removing us from the
-		// service endpoints, so refusing new TCP connections is fine and
-		// the OnShutdown hooks (which fan out the GOAWAY frames in
-		// goroutines) are what matters for in-flight pooled clients.
+		// listener. The lameduck phase begins only after the readiness
+		// propagation delay, so proxies have time to remove this backend before
+		// it starts refusing new TCP connections.
 		gogrpc.SetNamedLameduckFunc("servercore.http", func() {
 			// Shutdown blocks until tracked HTTP/1 connections idle out,
 			// so run it asynchronously to keep the lameduck phase short.
