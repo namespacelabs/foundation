@@ -18,16 +18,17 @@ import (
 // How long do we expect it would take Kubernetes to notice that we're no longer ready.
 const readinessPropagationDelay = 15 * time.Second
 
-// runShutdownPhases runs the lameduck phase and then the drain phase. It is
-// extracted from handleGracefulShutdown so it can be unit-tested without
-// having to send a real signal to the process.
-func runShutdownPhases(lameducks map[string]func(), drainFunc func(), drainFuncs map[string]func()) {
+// runShutdownPhases waits for readiness propagation, then runs the lameduck
+// phase followed by the drain phase.
+func runShutdownPhases(waitForReadinessPropagation func(), beginLameduck func() map[string]func(), drainFunc func(), drainFuncs map[string]func()) {
+	waitForReadinessPropagation()
+
 	// Lameduck phase: signal clients that we're going away (e.g. send
 	// HTTP/2 GOAWAY) before we start blocking on in-flight work. This
 	// gives clients a head start to migrate to other backends while the
 	// drain phase below waits for the requests we already have to
 	// complete.
-	for name, f := range lameducks {
+	for name, f := range beginLameduck() {
 		core.ZLog.Info().Str("name", name).Msg("running lameduck func")
 		f()
 	}
@@ -64,14 +65,14 @@ func handleGracefulShutdown(ctx context.Context, finishShutdown func()) {
 		t := time.Now()
 		core.MarkShutdownStarted()
 
-		runShutdownPhases(nsgrpc.BeginLameduck(), nsgrpc.DrainFunc, nsgrpc.DrainFuncsByName)
-
-		delta := time.Since(t)
-		if delta < readinessPropagationDelay {
-			dur := readinessPropagationDelay - delta
-			core.ZLog.Info().Dur("duration", dur).Msg("sleeping before final shutdown")
-			time.Sleep(dur)
-		}
+		runShutdownPhases(func() {
+			delta := time.Since(t)
+			if delta < readinessPropagationDelay {
+				dur := readinessPropagationDelay - delta
+				core.ZLog.Info().Dur("duration", dur).Msg("waiting for readiness propagation")
+				time.Sleep(dur)
+			}
+		}, nsgrpc.BeginLameduck, nsgrpc.DrainFunc, nsgrpc.DrainFuncsByName)
 
 		finishShutdown()
 	case <-ctx.Done():

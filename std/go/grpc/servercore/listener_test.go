@@ -237,7 +237,9 @@ func TestListenAndGracefullyShutdownGRPC_LameduckThenShutdown(t *testing.T) {
 
 	lameduckReturned := make(chan struct{})
 	go func() {
-		runShutdownPhases(map[string]func(){lameduckName: lameduck}, nil, nil)
+		runShutdownPhases(func() {}, func() map[string]func() {
+			return map[string]func(){lameduckName: lameduck}
+		}, nil, nil)
 		close(lameduckReturned)
 	}()
 	select {

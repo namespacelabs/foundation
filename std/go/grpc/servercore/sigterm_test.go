@@ -10,9 +10,9 @@ import (
 	"testing"
 )
 
-// TestRunShutdownPhases verifies that all lameduck functions run before any
-// drain function (so clients get the GOAWAY signal before drain phase blocks
-// on in-flight work) and that DrainFunc runs before DrainFuncsByName.
+// TestRunShutdownPhases verifies that readiness propagation completes before
+// lameduck closes listeners, all lameduck functions run before any drain
+// function, and DrainFunc runs before DrainFuncsByName.
 func TestRunShutdownPhases(t *testing.T) {
 	var (
 		mu     sync.Mutex
@@ -36,7 +36,19 @@ func TestRunShutdownPhases(t *testing.T) {
 	}
 	drainFunc := record("drain-singleton")
 
-	runShutdownPhases(lameducks, drainFunc, drainFuncs)
+	runShutdownPhases(
+		record("readiness-propagated"),
+		func() map[string]func() {
+			record("begin-lameduck")()
+			return lameducks
+		},
+		drainFunc,
+		drainFuncs,
+	)
+
+	if len(events) < 2 || events[0] != "readiness-propagated" || events[1] != "begin-lameduck" {
+		t.Fatalf("expected readiness propagation before lameduck, got %v", events)
+	}
 
 	// Map iteration order is non-deterministic, so we only assert the
 	// phase boundaries: every "lame.*" event must come before every
@@ -89,7 +101,10 @@ func TestRunShutdownPhases(t *testing.T) {
 func TestRunShutdownPhases_NilDrainFunc(t *testing.T) {
 	called := []string{}
 	runShutdownPhases(
-		map[string]func(){"l": func() { called = append(called, "l") }},
+		func() {},
+		func() map[string]func() {
+			return map[string]func(){"l": func() { called = append(called, "l") }}
+		},
 		nil,
 		map[string]func(){"d": func() { called = append(called, "d") }},
 	)
