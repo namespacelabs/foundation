@@ -263,7 +263,7 @@ const defaultBazelCommand = "build"
 func newSetupCacheCmd() *cobra.Command {
 	var bazelRcPath, output, certPath, bazelCommand, tokenFile string
 	var experimentalCacheName string
-	var sendBuildEvents, useAbsoluteCredHelperPath, static, experimentalDirect, enableRemoteAssetAPI bool
+	var sendBuildEvents, disableBuildEvents, useAbsoluteCredHelperPath, static, experimentalDirect, enableRemoteAssetAPI bool
 	var version int64
 	var staticDur time.Duration
 
@@ -275,6 +275,7 @@ func newSetupCacheCmd() *cobra.Command {
 		flags.StringVarP(&output, "output", "o", "plain", "One of plain or json.")
 		flags.StringVar(&certPath, "cred_path", "", "If specified, write credentials to this directory. Using this flag also ensures stable file names for all emitted credentials.")
 		flags.BoolVar(&sendBuildEvents, "send_build_events", false, "If specified, send build events to the build event service.")
+		flags.BoolVar(&disableBuildEvents, "disable_build_events", false, "If specified, do not configure Bazel to send build events.")
 		flags.BoolVar(&useAbsoluteCredHelperPath, "use_absolute_credentialhelper_path", false, "If specified, use an absolute path to the credential helper binary.")
 		flags.StringVar(&tokenFile, "token", "", "Use the bearer token stored at this location for authentication instead of the default. Implies --static.")
 		flags.BoolVar(&static, "static", false, "If specified, use a static bearer token in --remote_header instead of a credential helper.")
@@ -495,7 +496,7 @@ func newSetupCacheCmd() *cobra.Command {
 
 		// If set, we always generate a bazelrc file.
 		if bazelRcPath != "" {
-			data, err := toBazelConfig(ctx, out, useAbsoluteCredHelperPath, bazelCommand)
+			data, err := toBazelConfig(ctx, out, useAbsoluteCredHelperPath, bazelCommand, disableBuildEvents)
 			if err != nil {
 				return err
 			}
@@ -520,7 +521,7 @@ func newSetupCacheCmd() *cobra.Command {
 
 			// For plain output, flush the state to a temp bazelrc if none is written yet.
 			if bazelRcPath == "" {
-				data, err := toBazelConfig(ctx, out, useAbsoluteCredHelperPath, bazelCommand)
+				data, err := toBazelConfig(ctx, out, useAbsoluteCredHelperPath, bazelCommand, disableBuildEvents)
 				if err != nil {
 					return err
 				}
@@ -615,7 +616,7 @@ func writeFile(path string, content []byte) error {
 	return nil
 }
 
-func toBazelConfig(ctx context.Context, out bazelSetup, useAbsoluteCredHelperPath bool, command string) ([]byte, error) {
+func toBazelConfig(ctx context.Context, out bazelSetup, useAbsoluteCredHelperPath bool, command string, disableBuildEvents bool) ([]byte, error) {
 	var buffer bytes.Buffer
 	if _, err := buffer.WriteString(fmt.Sprintf("%s --remote_cache=%s\n", command, out.Endpoint)); err != nil {
 		return nil, fnerrors.Newf("failed to append cache endpoint: %w", err)
@@ -639,7 +640,7 @@ func toBazelConfig(ctx context.Context, out bazelSetup, useAbsoluteCredHelperPat
 		}
 	}
 
-	if out.BuildEventEndpoint != "" {
+	if out.BuildEventEndpoint != "" && !disableBuildEvents {
 		if _, err := buffer.WriteString(fmt.Sprintf("%s --bes_backend=%s\n", command, out.BuildEventEndpoint)); err != nil {
 			return nil, fnerrors.Newf("failed to append bes_backend: %w", err)
 		}

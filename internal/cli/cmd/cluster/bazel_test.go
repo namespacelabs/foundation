@@ -55,6 +55,9 @@ func TestBazelCacheSetupAcceptsToken(t *testing.T) {
 	if setup.Flags().Lookup("token") == nil {
 		t.Fatal("bazel cache setup is missing --token")
 	}
+	if setup.Flags().Lookup("disable_build_events") == nil {
+		t.Fatal("bazel cache setup is missing --disable_build_events")
+	}
 }
 
 func TestNewBazelInvocationListCmd(t *testing.T) {
@@ -304,7 +307,7 @@ func TestToBazelConfigExperimentalDirect(t *testing.T) {
 		ServerCaCert: "/tmp/server_ca.cert",
 		ClientCert:   "/tmp/client.cert",
 		ClientKey:    "/tmp/client.key",
-	}, false, "build")
+	}, false, "build", false)
 	if err != nil {
 		t.Fatalf("toBazelConfig: %v", err)
 	}
@@ -323,6 +326,32 @@ func TestToBazelConfigExperimentalDirect(t *testing.T) {
 
 	if strings.Contains(got, "credential_helper") {
 		t.Fatalf("unexpected credential helper config: %q", got)
+	}
+}
+
+func TestToBazelConfigBuildEventsDisabled(t *testing.T) {
+	t.Parallel()
+
+	config, err := toBazelConfig(context.Background(), bazelSetup{
+		Endpoint:           "grpcs://cache.example:444",
+		BuildEventEndpoint: "grpcs://api.us-east1.namespaceapis.com",
+		StaticToken:        "tok123",
+	}, false, "build", true)
+	if err != nil {
+		t.Fatalf("toBazelConfig: %v", err)
+	}
+
+	got := string(config)
+	if strings.Contains(got, "--bes_") {
+		t.Fatalf("disabled build event config contains BES fields: %q", got)
+	}
+	for _, want := range []string{
+		"build --remote_cache=grpcs://cache.example:444\n",
+		"build --remote_header=x-nsc-ingress-auth=Bearer\\ tok123\n",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("missing config line %q in %q", want, got)
+		}
 	}
 }
 
