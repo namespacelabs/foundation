@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"golang.org/x/net/http2"
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -226,6 +227,13 @@ func isRetryableDownloadError(err error) bool {
 	// Don't retry on cancellation/deadline of the caller context.
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return false
+	}
+
+	// HTTP/2 stream failures may occur while reading the response body, after
+	// the request itself has succeeded. A fresh GET can use a new stream.
+	var streamErr http2.StreamError
+	if errors.As(err, &streamErr) {
+		return true
 	}
 
 	// Mid-body truncation — the symptom we're trying to fix here.
