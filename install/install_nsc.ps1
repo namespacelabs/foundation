@@ -46,6 +46,31 @@ $toolName = 'nsc'
 $dockerCredHelperName = 'docker-credential-nsc'
 $bazelCredHelperName = 'bazel-credential-nsc'
 
+function Invoke-WebRequestWithRetry {
+    param(
+        [hashtable]$Parameters,
+        [int]$MaxAttempts = 4
+    )
+
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        try {
+            if ($Parameters.ContainsKey('OutFile')) {
+                Remove-Item -Path $Parameters['OutFile'] -Force -ErrorAction SilentlyContinue
+            }
+            $response = Invoke-WebRequest @Parameters
+            return $response
+        } catch {
+            if ($attempt -eq $MaxAttempts) {
+                throw
+            }
+
+            $delaySeconds = [Math]::Pow(2, $attempt - 1)
+            Write-Warning "Request failed (attempt $attempt of $MaxAttempts): $($_.Exception.Message). Retrying in $delaySeconds seconds..."
+            Start-Sleep -Seconds $delaySeconds
+        }
+    }
+}
+
 function Get-Architecture {
     $procArch = $env:PROCESSOR_ARCHITECTURE
     # 32-bit process on a 64-bit host reports x86; the real arch is in
@@ -107,9 +132,13 @@ if ($Dir) {
 if (-not $Version) {
     Write-Host "Querying latest version..."
     $body = "{`"$toolName`":{}}"
-    $response = Invoke-WebRequest -Method Post -ContentType 'application/json' `
-        -Body $body -Uri 'https://get.namespace.so/nsl.versions.VersionsService/GetLatest' `
-        -UseBasicParsing
+    $response = Invoke-WebRequestWithRetry -Parameters @{
+        Method = 'Post'
+        ContentType = 'application/json'
+        Body = $body
+        Uri = 'https://get.namespace.so/nsl.versions.VersionsService/GetLatest'
+        UseBasicParsing = $true
+    }
     if ($response.Content -match '"version"\s*:\s*"([^"]+)"') {
         $Version = $Matches[1] -replace '^v', ''
     }
@@ -146,7 +175,13 @@ try {
         $headers['CI'] = $env:CI
     }
 
-    Invoke-WebRequest -Uri $downloadUri -OutFile $zipPath -UserAgent 'install_nsc.ps1' -Headers $headers -UseBasicParsing
+    Invoke-WebRequestWithRetry -Parameters @{
+        Uri = $downloadUri
+        OutFile = $zipPath
+        UserAgent = 'install_nsc.ps1'
+        Headers = $headers
+        UseBasicParsing = $true
+    }
     Expand-Archive -Path $zipPath -DestinationPath $tempDir -Force
 
     if (-not (Test-Path $binDir)) {
