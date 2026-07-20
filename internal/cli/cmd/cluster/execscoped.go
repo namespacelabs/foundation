@@ -25,7 +25,7 @@ import (
 func NewExecScoped() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "exec-scoped --service=docker|kubernetes <clusterid> <cmd...>",
-		Short: "Runs the specified command (e.g. a script) with the corresponding environment variables set, based on the services selected (e.g. DOCKER_HOST, KUBECONFIG).",
+		Short: "Run a command with instance service environment variables.",
 		Args:  cobra.MinimumNArgs(1),
 	}
 	fncobra.MarkAsNotSupportedOnWindows(cmd)

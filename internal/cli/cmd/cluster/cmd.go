@@ -27,7 +27,7 @@ var ErrEmptyClusterList = errors.New("no instances")
 func NewBareClusterCmd(use string, hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    use,
-		Short:  "Instance-related activities.",
+		Short:  "Manage instances.",
 		Hidden: hidden,
 	}
 

@@ -27,7 +27,7 @@ const (
 func newAssumeRoleCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "assume-role",
-		Short: "Uses Workload Federation to assume a particular AWS role.",
+		Short: "Assume an AWS role with workload federation.",
 		Args:  cobra.NoArgs,
 	}
 

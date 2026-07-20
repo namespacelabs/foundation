@@ -20,7 +20,7 @@ import (
 func NewImpersonateTenantCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "impersonate-tenant",
-		Short:  "Signs in as a tenant, using a partner account.",
+		Short:  "Sign in as a tenant using a partner account.",
 		Args:   cobra.NoArgs,
 		Hidden: true,
 	}

@@ -9,6 +9,7 @@ import "github.com/spf13/cobra"
 func NewMacOSCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "macos",
+		Short:  "Manage macOS packages.",
 		Args:   cobra.NoArgs,
 		Hidden: true,
 	}

@@ -51,7 +51,7 @@ func (p proxyOutput) MarshalJSON() ([]byte, error) {
 func NewProxyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "proxy [instance-id]",
-		Short: "Provides proxy support for instance services.",
+		Short: "Proxy local requests to instance services.",
 		Args:  cobra.ArbitraryArgs,
 	}
 

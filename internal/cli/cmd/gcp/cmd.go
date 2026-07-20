@@ -9,7 +9,7 @@ import "github.com/spf13/cobra"
 func NewGcpCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "gcp",
-		Short: "Google Cloud Platform Federation related commands.",
+		Short: "Authenticate to Google Cloud with workload federation.",
 	}
 
 	cmd.AddCommand(newImpersonateCmd())

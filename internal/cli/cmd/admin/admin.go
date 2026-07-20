@@ -11,7 +11,7 @@ import (
 func NewAdminCmd(hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "admin",
-		Short:  "Partner administration commands.",
+		Short:  "Manage partner accounts.",
 		Hidden: hidden,
 	}
 

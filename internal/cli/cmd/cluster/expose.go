@@ -75,7 +75,7 @@ func NewExposeCmd() *cobra.Command {
 func newExposeContainerCmd(use string, hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    use,
-		Short:  "Opens a public ingress to the specified exported port.",
+		Short:  "Expose an instance port publicly.",
 		Args:   cobra.MaximumNArgs(1),
 		Hidden: hidden,
 	}

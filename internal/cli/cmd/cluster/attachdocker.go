@@ -31,7 +31,7 @@ import (
 func newDockerAttachCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "attach-context",
-		Short: "Configures a Docker context that uses an ephemeral environment.",
+		Short: "Configure a Docker context backed by an ephemeral instance.",
 		Args:  cobra.NoArgs,
 	}
 

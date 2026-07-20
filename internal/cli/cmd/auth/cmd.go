@@ -16,7 +16,7 @@ import (
 func NewAuthCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "auth",
-		Short: "Authentication related operations (e.g. login).",
+		Short: "Manage authentication.",
 	}
 
 	cmd.AddCommand(NewLoginCmd())

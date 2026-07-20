@@ -40,19 +40,19 @@ const bazelCachePathBase = "bazelcache"
 func NewBazelCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "bazel",
-		Short: "Bazel-related activities.",
+		Short: "Manage Bazel integrations.",
 	}
 
-	cache := &cobra.Command{Use: "cache", Short: "Bazel cache related functionality."}
+	cache := &cobra.Command{Use: "cache", Short: "Manage remote Bazel caches."}
 	cache.AddCommand(newSetupCacheCmd())
 
 	execution := &cobra.Command{
 		Use:    "execution",
-		Short:  "Bazel remote execution related functionality.",
+		Short:  "Manage Bazel remote execution.",
 		Hidden: true,
 	}
 	execution.AddCommand(newSetupExecutionCmd())
-	invocation := &cobra.Command{Use: "invocation", Short: "Bazel invocation related functionality."}
+	invocation := &cobra.Command{Use: "invocation", Short: "Inspect Bazel invocations."}
 	invocation.AddCommand(newBazelInvocationListCmd())
 	invocation.AddCommand(newBazelInvocationReportCmd())
 
@@ -250,7 +250,7 @@ func writeBazelInvocationReportRecord(w io.Writer, record *bazelv1beta.StreamInv
 func NewBazelCacheCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "bazel",
-		Short: "Bazel cache related functionality.",
+		Short: "Manage remote Bazel caches.",
 	}
 
 	cmd.AddCommand(newSetupCacheCmd())
