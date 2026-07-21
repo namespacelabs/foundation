@@ -16,6 +16,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"golang.org/x/net/http2"
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -137,6 +138,12 @@ func TestRetries5xx(t *testing.T) {
 }
 
 func TestErrorClassification(t *testing.T) {
+	streamErr := http2.StreamError{
+		StreamID: 1,
+		Code:     http2.ErrCodeInternal,
+		Cause:    errors.New("received from peer"),
+	}
+
 	cases := []struct {
 		name string
 		err  error
@@ -144,6 +151,8 @@ func TestErrorClassification(t *testing.T) {
 	}{
 		{"unexpected EOF", io.ErrUnexpectedEOF, true},
 		{"plain EOF", io.EOF, true},
+		{"HTTP/2 stream error", streamErr, true},
+		{"wrapped HTTP/2 stream error", fmt.Errorf("reading response body: %w", streamErr), true},
 		{"context canceled", context.Canceled, false},
 		{"context deadline", context.DeadlineExceeded, false},
 		{"http 502", newHTTPStatusError("u", http.StatusBadGateway), true},
