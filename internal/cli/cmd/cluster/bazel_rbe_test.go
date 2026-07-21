@@ -19,7 +19,7 @@ func TestToBazelExecutionConfigBuildEventsStatic(t *testing.T) {
 		StorageEndpoint:    "grpcs://storage.example:443",
 		IngressAuthToken:   "tok123",
 		BuildEventEndpoint: "grpcs://api.us-east1.namespaceapis.com",
-	}, "build", true)
+	}, "build", true, false)
 	if err != nil {
 		t.Fatalf("toBazelExecutionConfig: %v", err)
 	}
@@ -50,7 +50,7 @@ func TestToBazelExecutionConfigBuildEventsMTLS(t *testing.T) {
 		ClientKey:               "/tmp/client.key",
 		BuildEventEndpoint:      "grpcs://api.us-east1.namespaceapis.com",
 		CredentialHelperDomains: []string{"api.us-east1.namespaceapis.com"},
-	}, "build", true)
+	}, "build", true, false)
 	if err != nil {
 		t.Fatalf("toBazelExecutionConfig: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestToBazelExecutionConfigNoBuildEvents(t *testing.T) {
 		StorageEndpoint:   "grpcs://storage.example:444",
 		ClientCert:        "/tmp/client.cert",
 		ClientKey:         "/tmp/client.key",
-	}, "build", true)
+	}, "build", true, false)
 	if err != nil {
 		t.Fatalf("toBazelExecutionConfig: %v", err)
 	}
@@ -86,6 +86,30 @@ func TestToBazelExecutionConfigNoBuildEvents(t *testing.T) {
 	got := string(config)
 	if strings.Contains(got, "--bes_backend") || strings.Contains(got, "credential_helper") {
 		t.Fatalf("must not configure build events when no endpoint is returned: %q", got)
+	}
+}
+
+func TestToBazelExecutionConfigBuildEventsDisabled(t *testing.T) {
+	t.Parallel()
+
+	config, err := toBazelExecutionConfig(context.Background(), bazelRbeSetup{
+		SchedulerEndpoint:       "grpcs://scheduler.example:444",
+		StorageEndpoint:         "grpcs://storage.example:444",
+		BuildEventEndpoint:      "grpcs://api.us-east1.namespaceapis.com",
+		CredentialHelperDomains: []string{"api.us-east1.namespaceapis.com"},
+	}, "build", true, true)
+	if err != nil {
+		t.Fatalf("toBazelExecutionConfig: %v", err)
+	}
+
+	got := string(config)
+	for _, unwanted := range []string{"--bes_backend", "--bes_header", "credential_helper"} {
+		if strings.Contains(got, unwanted) {
+			t.Fatalf("disabled build event config contains %q: %q", unwanted, got)
+		}
+	}
+	if !strings.Contains(got, "build --remote_cache=grpcs://storage.example:444\n") {
+		t.Fatalf("disabled build events removed remote cache config: %q", got)
 	}
 }
 
@@ -101,7 +125,7 @@ func TestToBazelExecutionConfigWithoutRemoteExecution(t *testing.T) {
 		RemoteTimeout:         5 * time.Minute,
 		Jobs:                  32,
 		BuildEventEndpoint:    "grpcs://api.us-east1.namespaceapis.com",
-	}, "build", false)
+	}, "build", false, false)
 	if err != nil {
 		t.Fatalf("toBazelExecutionConfig: %v", err)
 	}
@@ -154,6 +178,9 @@ func TestNewBazelCmdSetupAlias(t *testing.T) {
 	if setup.Flags().Lookup("token") == nil {
 		t.Fatal("bazel setup is missing --token")
 	}
+	if setup.Flags().Lookup("disable_build_events") == nil {
+		t.Fatal("bazel setup is missing --disable_build_events")
+	}
 
 	executionSetup, _, err := cmd.Find([]string{"execution", "setup"})
 	if err != nil {
@@ -164,5 +191,8 @@ func TestNewBazelCmdSetupAlias(t *testing.T) {
 	}
 	if executionSetup.Flags().Lookup("token") == nil {
 		t.Fatal("bazel execution setup is missing --token")
+	}
+	if executionSetup.Flags().Lookup("disable_build_events") == nil {
+		t.Fatal("bazel execution setup is missing --disable_build_events")
 	}
 }

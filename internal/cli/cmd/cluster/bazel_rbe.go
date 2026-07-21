@@ -43,7 +43,7 @@ func newSetupBazelCmd() *cobra.Command {
 func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 	var bazelRcPath, output, bazelCommand, key, tokenFile string
 	var staticDur time.Duration
-	var static, enableRemoteAssetAPI bool
+	var static, enableRemoteAssetAPI, disableBuildEvents bool
 	remote := true
 
 	return fncobra.Cmd(&cobra.Command{
@@ -58,6 +58,7 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 		flags.StringVar(&tokenFile, "token", "", "Use the bearer token stored at this location for authentication instead of the default. Implies --static.")
 		flags.BoolVar(&static, "static", false, "If specified, authenticate using a static bearer token in --remote_header against the public endpoints instead of issuing an mTLS client certificate.")
 		flags.BoolVar(&enableRemoteAssetAPI, "enable_remote_asset_api", false, "If specified, opt-in to the remote asset API and configure bazel's --experimental_remote_downloader.")
+		flags.BoolVar(&disableBuildEvents, "disable_build_events", false, "If specified, do not configure Bazel to send build events.")
 		fncobra.DurationVar(flags, &staticDur, "static_token_duration", 4*time.Hour, "The minimum duration of the static token configured (requires --static).")
 		if includeRemoteFlag {
 			flags.BoolVar(&remote, "remote", true, "If false, configure remote caching and build events without remote execution.")
@@ -155,7 +156,7 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 		out.CredentialHelperDomains = res.GetCredentialHelperDomains()
 
 		if bazelRcPath != "" {
-			data, err := toBazelExecutionConfig(ctx, out, bazelCommand, remote)
+			data, err := toBazelExecutionConfig(ctx, out, bazelCommand, remote, disableBuildEvents)
 			if err != nil {
 				return err
 			}
@@ -179,7 +180,7 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 			}
 
 			if bazelRcPath == "" {
-				data, err := toBazelExecutionConfig(ctx, out, bazelCommand, remote)
+				data, err := toBazelExecutionConfig(ctx, out, bazelCommand, remote, disableBuildEvents)
 				if err != nil {
 					return err
 				}
@@ -222,7 +223,7 @@ type bazelRbeSetup struct {
 	CredentialHelperDomains []string      `json:"credential_helper_domains,omitempty"`
 }
 
-func toBazelExecutionConfig(ctx context.Context, out bazelRbeSetup, command string, remote bool) ([]byte, error) {
+func toBazelExecutionConfig(ctx context.Context, out bazelRbeSetup, command string, remote, disableBuildEvents bool) ([]byte, error) {
 	var buf bytes.Buffer
 
 	var lines []string
@@ -262,7 +263,7 @@ func toBazelExecutionConfig(ctx context.Context, out bazelRbeSetup, command stri
 		lines = append(lines, fmt.Sprintf("--remote_timeout=%d", int(out.RemoteTimeout.Seconds())))
 	}
 
-	if out.BuildEventEndpoint != "" {
+	if out.BuildEventEndpoint != "" && !disableBuildEvents {
 		lines = append(lines, fmt.Sprintf("--bes_backend=%s", out.BuildEventEndpoint))
 
 		if out.IngressAuthToken != "" {
@@ -279,7 +280,7 @@ func toBazelExecutionConfig(ctx context.Context, out bazelRbeSetup, command stri
 		}
 	}
 
-	if out.BuildEventEndpoint != "" && out.IngressAuthToken == "" && len(out.CredentialHelperDomains) > 0 {
+	if out.BuildEventEndpoint != "" && !disableBuildEvents && out.IngressAuthToken == "" && len(out.CredentialHelperDomains) > 0 {
 		if err := appendExecutionBuildEventCredentialHelper(ctx, &buf, command, out.CredentialHelperDomains); err != nil {
 			return nil, err
 		}
