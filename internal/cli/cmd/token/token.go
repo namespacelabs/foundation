@@ -118,11 +118,16 @@ func NewCreateCmd() *cobra.Command {
 	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json, token")
 	tokenFile := cmd.Flags().String("token_file", "", "Write token to this file in JSON format")
 	userScope := cmd.Flags().Bool("user", false, "Create a token bound to the current user's workspace membership.")
+	noExpiry := cmd.Flags().Bool("no_expiry", false, "Create a token with unlimited duration")
 
 	cmd.MarkFlagRequired("name")
 	cmd.MarkFlagRequired("grant")
+	cmd.MarkFlagsMutuallyExclusive("no_expiry", "expires_in")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if *noExpiry && !*userScope {
+			return fnerrors.Newf("--no_expiry requires --user")
+		}
 
 		tokenSource, err := auth.LoadDefaults()
 		if err != nil {
@@ -144,10 +149,14 @@ func NewCreateCmd() *cobra.Command {
 		req := &v1beta.CreateRevokableTokenRequest{
 			Name:        *name,
 			Description: *description,
-			ExpiresAt:   timestamppb.New(expiresAt),
+
 			Access: &v1beta.AccessPolicy{
 				Grants: permissions,
 			},
+		}
+
+		if !*noExpiry {
+			req.ExpiresAt = timestamppb.New(expiresAt)
 		}
 
 		if *userScope {
