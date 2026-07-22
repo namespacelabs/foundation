@@ -18,10 +18,32 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/integrations/api/compute"
 	"namespacelabs.dev/integrations/auth"
 )
+
+var (
+	listEgressPolicies = fnapi.ListEgressPolicies
+	updateEgressPolicy = fnapi.UpdateEgressPolicy
+)
+
+const exampleEgressPolicyJSON = `{
+  "tag": "example-policy",
+  "description": "Allow access to example.com",
+  "mode": "BLOCK",
+  "rules": [
+    {
+      "op": "ALLOW",
+      "matcher": {
+        "match_domains": ["example.com"]
+      }
+    }
+  ]
+}`
+
+const exampleEgressPolicyHelp = "Contents of an example --spec_file:\n" + exampleEgressPolicyJSON
 
 func NewEgressCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -30,8 +52,310 @@ func NewEgressCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newEgressLogsCmd())
+	cmd.AddCommand(newEgressPolicyCmd())
 
 	return cmd
+}
+
+func newEgressPolicyCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "policy",
+		Short: "Manage tenant egress policies.",
+		Args:  cobra.NoArgs,
+	}
+
+	cmd.AddCommand(newEgressPolicyListCmd())
+	cmd.AddCommand(newEgressPolicyDescribeCmd())
+	cmd.AddCommand(newEgressPolicyCreateCmd())
+	cmd.AddCommand(newEgressPolicyUpdateCmd())
+
+	return cmd
+}
+
+func newEgressPolicyListCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "List available egress policies.",
+		Args:  cobra.NoArgs,
+	}
+
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+
+	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
+		res, err := listEgressPolicies(ctx)
+		if err != nil {
+			return fnerrors.Newf("failed to list egress policies: %w", err)
+		}
+
+		return printEgressPolicies(ctx, *output, res.Policies)
+	})
+}
+
+func newEgressPolicyDescribeCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "describe <tag>",
+		Short: "Describe a single egress policy.",
+		Args:  cobra.ExactArgs(1),
+	}
+
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+
+	return fncobra.Cmd(cmd).DoWithArgs(func(ctx context.Context, args []string) error {
+		res, err := listEgressPolicies(ctx)
+		if err != nil {
+			return fnerrors.Newf("failed to list egress policies: %w", err)
+		}
+
+		index, err := findEgressPolicy(res.Policies, args[0])
+		if err != nil {
+			return err
+		}
+		if index < 0 {
+			return fnerrors.Newf("egress policy %q not found", args[0])
+		}
+
+		policy := res.Policies[index]
+
+		var view egressPolicyView
+		if err := json.Unmarshal(policy, &view); err != nil {
+			return fnerrors.InternalError("failed to decode egress policy: %w", err)
+		}
+
+		pretty, err := json.MarshalIndent(policy, "", "  ")
+		if err != nil {
+			return fnerrors.InternalError("failed to encode egress policy: %w", err)
+		}
+
+		stdout := console.Stdout(ctx)
+
+		if *output == "json" {
+			fmt.Fprintln(stdout, string(pretty))
+			return nil
+		}
+		if *output != "plain" {
+			return fnerrors.Newf("invalid output format: %s", *output)
+		}
+
+		fmt.Fprintf(stdout, "Tag:\t%s\n", view.Tag)
+		if view.Description != "" {
+			fmt.Fprintf(stdout, "Description:\t%s\n", view.Description)
+		}
+		fmt.Fprintln(stdout)
+		fmt.Fprintln(stdout, string(pretty))
+
+		return nil
+	})
+}
+
+func newEgressPolicyCreateCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "create",
+		Short:   "Create an egress policy from a JSON configuration file.",
+		Example: exampleEgressPolicyHelp,
+		Args:    cobra.NoArgs,
+	}
+
+	specFile := cmd.Flags().String("spec_file", "", "Path to JSON file containing the egress policy configuration.")
+
+	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
+		if *specFile == "" {
+			printEgressPolicyExample(ctx)
+			return fnerrors.New("--spec_file is required")
+		}
+
+		contents, err := os.ReadFile(*specFile)
+		if err != nil {
+			return fnerrors.Newf("failed to read egress policy configuration: %w", err)
+		}
+
+		policy, view, err := parseEgressPolicy(contents)
+		if err != nil {
+			return err
+		}
+
+		current, err := listEgressPolicies(ctx)
+		if err != nil {
+			return fnerrors.Newf("failed to list existing egress policies: %w", err)
+		}
+
+		index, err := findEgressPolicy(current.Policies, view.Tag)
+		if err != nil {
+			return err
+		}
+		if index >= 0 {
+			return fnerrors.Newf("egress policy %q already exists", view.Tag)
+		}
+
+		if _, err := updateEgressPolicy(ctx, current.MetadataVersion, policy); err != nil {
+			return fnerrors.Newf("failed to create egress policy: %w", err)
+		}
+
+		fmt.Fprintf(console.Stdout(ctx), "Created egress policy %q.\n", view.Tag)
+		return nil
+	})
+}
+
+func newEgressPolicyUpdateCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "update <tag>",
+		Short:   "Update an egress policy from a JSON configuration file.",
+		Example: exampleEgressPolicyHelp,
+		Args:    cobra.ExactArgs(1),
+	}
+
+	specFile := cmd.Flags().String("spec_file", "", "Path to JSON file containing the egress policy configuration. The policy tag may be omitted from the file.")
+
+	return fncobra.Cmd(cmd).DoWithArgs(func(ctx context.Context, args []string) error {
+		if *specFile == "" {
+			printEgressPolicyExample(ctx)
+			return fnerrors.New("--spec_file is required")
+		}
+
+		contents, err := os.ReadFile(*specFile)
+		if err != nil {
+			return fnerrors.Newf("failed to read egress policy configuration: %w", err)
+		}
+
+		policy, err := parseEgressPolicyUpdate(contents, args[0])
+		if err != nil {
+			return err
+		}
+
+		current, err := listEgressPolicies(ctx)
+		if err != nil {
+			return fnerrors.Newf("failed to list existing egress policies: %w", err)
+		}
+
+		index, err := findEgressPolicy(current.Policies, args[0])
+		if err != nil {
+			return err
+		}
+		if index < 0 {
+			return fnerrors.Newf("egress policy %q not found", args[0])
+		}
+
+		if _, err := updateEgressPolicy(ctx, current.MetadataVersion, policy); err != nil {
+			return fnerrors.Newf("failed to update egress policy: %w", err)
+		}
+
+		fmt.Fprintf(console.Stdout(ctx), "Updated egress policy %q.\n", args[0])
+		return nil
+	})
+}
+
+func printEgressPolicyExample(ctx context.Context) {
+	stdout := console.Stdout(ctx)
+	fmt.Fprintln(stdout, "\nExample policy configuration:")
+	fmt.Fprintln(stdout, exampleEgressPolicyJSON)
+}
+
+type egressPolicyView struct {
+	Tag         string `json:"tag"`
+	Description string `json:"description,omitempty"`
+}
+
+func findEgressPolicy(policies []json.RawMessage, tag string) (int, error) {
+	for index, policy := range policies {
+		var view egressPolicyView
+		if err := json.Unmarshal(policy, &view); err != nil {
+			return -1, fnerrors.InternalError("failed to decode existing egress policy: %w", err)
+		}
+		if view.Tag == tag {
+			return index, nil
+		}
+	}
+
+	return -1, nil
+}
+
+func parseEgressPolicy(contents []byte) (json.RawMessage, egressPolicyView, error) {
+	var policy json.RawMessage
+	if err := json.Unmarshal(contents, &policy); err != nil {
+		return nil, egressPolicyView{}, fnerrors.Newf("invalid egress policy JSON: %w", err)
+	}
+
+	var view egressPolicyView
+	if err := json.Unmarshal(policy, &view); err != nil {
+		return nil, egressPolicyView{}, fnerrors.Newf("invalid egress policy configuration: %w", err)
+	}
+	if strings.TrimSpace(view.Tag) == "" {
+		return nil, egressPolicyView{}, fnerrors.New("invalid egress policy configuration: tag is required")
+	}
+
+	return policy, view, nil
+}
+
+func parseEgressPolicyUpdate(contents []byte, tag string) (json.RawMessage, error) {
+	var policy map[string]json.RawMessage
+	if err := json.Unmarshal(contents, &policy); err != nil {
+		return nil, fnerrors.Newf("invalid egress policy JSON: %w", err)
+	}
+	if policy == nil {
+		return nil, fnerrors.New("invalid egress policy configuration: expected a JSON object")
+	}
+
+	if rawTag, ok := policy["tag"]; ok {
+		var specTag string
+		if err := json.Unmarshal(rawTag, &specTag); err != nil {
+			return nil, fnerrors.Newf("invalid egress policy configuration: tag must be a string: %w", err)
+		}
+		if specTag != tag {
+			return nil, fnerrors.Newf("egress policy tag %q in --spec_file does not match requested tag %q", specTag, tag)
+		}
+	} else {
+		encodedTag, _ := json.Marshal(tag)
+		policy["tag"] = encodedTag
+	}
+
+	encoded, err := json.Marshal(policy)
+	if err != nil {
+		return nil, fnerrors.InternalError("failed to encode egress policy: %w", err)
+	}
+
+	return encoded, nil
+}
+
+func printEgressPolicies(ctx context.Context, output string, policies []json.RawMessage) error {
+	if output == "json" {
+		views := make([]egressPolicyView, 0, len(policies))
+		for _, policy := range policies {
+			var view egressPolicyView
+			if err := json.Unmarshal(policy, &view); err != nil {
+				return fnerrors.InternalError("failed to decode egress policy: %w", err)
+			}
+			views = append(views, view)
+		}
+
+		enc := json.NewEncoder(console.Stdout(ctx))
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(views); err != nil {
+			return fnerrors.InternalError("failed to encode egress policies as JSON: %w", err)
+		}
+		return nil
+	}
+	if output != "plain" {
+		return fnerrors.Newf("invalid output format: %s", output)
+	}
+
+	stdout := console.Stdout(ctx)
+	if len(policies) == 0 {
+		fmt.Fprintln(stdout, "No egress policies configured.")
+		return nil
+	}
+
+	for _, policy := range policies {
+		var view egressPolicyView
+		if err := json.Unmarshal(policy, &view); err != nil {
+			return fnerrors.InternalError("failed to decode egress policy: %w", err)
+		}
+		if view.Description == "" {
+			fmt.Fprintln(stdout, view.Tag)
+		} else {
+			fmt.Fprintf(stdout, "%s\t%s\n", view.Tag, view.Description)
+		}
+	}
+
+	return nil
 }
 
 func newEgressLogsCmd() *cobra.Command {
