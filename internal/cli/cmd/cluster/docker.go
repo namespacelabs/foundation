@@ -38,7 +38,7 @@ const (
 func NewDockerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "docker",
-		Short: "Docker-related functionality.",
+		Short: "Manage Docker integrations.",
 	}
 	fncobra.MarkAsNotSupportedOnWindows(cmd)
 
@@ -46,7 +46,7 @@ func NewDockerCmd() *cobra.Command {
 	cmd.AddCommand(newDockerRemoteCmd())     // nsc docker remote
 	cmd.AddCommand(newDockerLoginCmd(false)) // nsc docker login
 
-	buildx := &cobra.Command{Use: "buildx", Short: "Docker Buildx related functionality."}
+	buildx := &cobra.Command{Use: "buildx", Short: "Manage Docker Buildx integrations."}
 	fncobra.MarkAsNotSupportedOnWindows(buildx)
 	buildx.AddCommand(newSetupBuildxCmd())
 	buildx.AddCommand(newCleanupBuildxCommand())
@@ -146,7 +146,7 @@ func runDocker(ctx context.Context, socketPath string, args ...string) error {
 func newDockerLoginCmd(hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "login",
-		Short:  "Log into the Namespace private registry for use with Docker.",
+		Short:  "Log in to the Namespace private registry with Docker.",
 		Args:   cobra.NoArgs,
 		Hidden: hidden,
 	}

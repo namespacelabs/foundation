@@ -9,6 +9,7 @@ import "github.com/spf13/cobra"
 func NewInternalCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "internal",
+		Short:  "Run internal instance commands.",
 		Args:   cobra.NoArgs,
 		Hidden: true,
 	}

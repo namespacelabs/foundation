@@ -26,7 +26,7 @@ import (
 func NewEgressCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "egress",
-		Short: "Egress-related activities.",
+		Short: "Inspect instance egress.",
 	}
 
 	cmd.AddCommand(newEgressLogsCmd())

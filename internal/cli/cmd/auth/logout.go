@@ -19,7 +19,7 @@ import (
 func NewLogoutCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "logout",
-		Short: "Logout from Namespace",
+		Short: "Log out of Namespace.",
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {

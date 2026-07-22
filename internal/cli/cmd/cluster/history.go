@@ -19,7 +19,7 @@ import (
 func NewListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "Lists all of your instances.",
+		Short: "List your instances.",
 		Args:  cobra.NoArgs,
 	}
 
@@ -96,7 +96,7 @@ func transformForOutput(md api.KubernetesClusterMetadata) map[string]any {
 func newHistoryCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "history",
-		Short: "History of your previous running instances.",
+		Short: "List previously running instances.",
 		Args:  cobra.NoArgs,
 	}
 

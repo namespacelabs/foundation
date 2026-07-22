@@ -27,7 +27,7 @@ import (
 func NewSccacheCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "sccache",
-		Short: "sccache cache related functionality.",
+		Short: "Manage the remote sccache cache.",
 	}
 
 	cmd.AddCommand(newSetupSccacheCacheCmd())

@@ -12,7 +12,7 @@ import (
 func NewBaseImageCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "base-image",
-		Short: "Operations for managing your base images.",
+		Short: "Manage base images.",
 	}
 
 	cmd.AddCommand(newUploadBaseImageCmd())

@@ -22,7 +22,7 @@ import (
 func NewCheckCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "check",
-		Short:  "Returns information on whether the caller is still authenticated to Namespace.",
+		Short:  "Report whether the caller is authenticated to Namespace.",
 		Args:   cobra.NoArgs,
 		Hidden: true,
 	}

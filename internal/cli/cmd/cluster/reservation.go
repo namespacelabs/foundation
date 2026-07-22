@@ -32,7 +32,7 @@ import (
 func NewReservationCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "reservation",
-		Short: "Reservation-related activities.",
+		Short: "Manage instance reservations.",
 	}
 
 	cmd.AddCommand(NewReservationWaitCmd())
@@ -78,7 +78,7 @@ func callReservation(ctx context.Context, method string, req, resp proto.Message
 func NewReservationListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "Lists your reservations.",
+		Short: "List your reservations.",
 		Args:  cobra.NoArgs,
 	}
 
@@ -140,7 +140,7 @@ func NewReservationListCmd() *cobra.Command {
 func NewReservationDescribeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "describe <reservation_id>",
-		Short: "Describes a reservation.",
+		Short: "Describe a reservation.",
 		Args:  cobra.ExactArgs(1),
 	}
 
@@ -185,7 +185,7 @@ func NewReservationDescribeCmd() *cobra.Command {
 func NewReservationCancelCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "cancel <reservation_id>",
-		Short: "Cancels a pending reservation.",
+		Short: "Cancel a pending reservation.",
 		Args:  cobra.ExactArgs(1),
 	}
 
@@ -249,7 +249,7 @@ func orDash(s string) string {
 func NewReservationWaitCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "wait <reservation_id>",
-		Short: "Waits for a reservation to be fulfilled, returning the instance id.",
+		Short: "Wait for a reservation and print its instance ID.",
 		Args:  cobra.ExactArgs(1),
 	}
 
