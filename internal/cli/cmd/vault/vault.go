@@ -5,6 +5,7 @@
 package vault
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -14,7 +15,10 @@ import (
 
 	v1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/vault/v1beta"
 	"buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/stdlib"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -34,6 +38,7 @@ func NewVaultCmd() *cobra.Command {
 	cmd.AddCommand(NewAddCmd())
 	cmd.AddCommand(NewSetCmd())
 	cmd.AddCommand(NewDeleteCmd())
+	cmd.AddCommand(NewExportCmd())
 
 	return cmd
 }
@@ -289,6 +294,192 @@ func NewDeleteCmd() *cobra.Command {
 	})
 
 	return cmd
+}
+
+const (
+	resolveRetries    = 3
+	resolveRetryDelay = time.Second
+)
+
+type exportEntry struct {
+	name  string
+	value string
+}
+
+type resolveSecretFunc func(context.Context, string) (string, error)
+
+func NewExportCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "export --from <file>",
+		Short: "Resolve vault references into a temporary environment file.",
+		Args:  cobra.NoArgs,
+	}
+
+	from := cmd.Flags().String("from", "", "Load environment variable names and vault references from this file.")
+	shell := cmd.Flags().String("shell", "", "Emit commands for the specified shell. Supported: bash.")
+	_ = cmd.MarkFlagRequired("from")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if *shell != "" && *shell != "bash" {
+			return fnerrors.BadInputError("unsupported shell %q; supported shells: bash", *shell)
+		}
+
+		entries, err := readExportEntries(*from)
+		if err != nil {
+			return err
+		}
+
+		tokenSource, err := auth.LoadDefaults()
+		if err != nil {
+			return fnerrors.InvocationError("vault", "failed to get authentication token: %w", err)
+		}
+
+		client, err := vault.NewClient(ctx, tokenSource)
+		if err != nil {
+			return fnerrors.InvocationError("vault", "failed to create vault client: %w", err)
+		}
+		defer client.Close()
+
+		resolve := func(ctx context.Context, secretID string) (string, error) {
+			resp, err := client.Vault.DescribeObject(ctx, &v1beta.DescribeObjectRequest{ObjectId: secretID})
+			if err != nil {
+				return "", err
+			}
+			return resp.GetValue(), nil
+		}
+
+		path, err := writeExportFile(ctx, entries, resolve, resolveRetryDelay)
+		if err != nil {
+			return err
+		}
+
+		if *shell == "bash" {
+			path = quoteShellPath(path)
+			fmt.Fprintf(console.Stdout(ctx), "export `cat %s`\nrm %s\n", path, path)
+		} else {
+			fmt.Fprintln(console.Stdout(ctx), path)
+		}
+
+		return nil
+	})
+
+	return cmd
+}
+
+func readExportEntries(path string) ([]exportEntry, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fnerrors.BadInputError("%s: failed to load: %w", path, err)
+	}
+	defer f.Close()
+
+	var entries []exportEntry
+	names := map[string]bool{}
+	scanner := bufio.NewScanner(f)
+	for lineNumber := 1; scanner.Scan(); lineNumber++ {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		name, secretID, ok := strings.Cut(line, "=")
+		name = strings.TrimSpace(name)
+		secretID = strings.TrimSpace(secretID)
+		if !ok || !validEnvName(name) || !strings.HasPrefix(secretID, "sec_") {
+			return nil, fnerrors.BadInputError("%s:%d: expected NAME=sec_...", path, lineNumber)
+		}
+		if names[name] {
+			return nil, fnerrors.BadInputError("%s:%d: duplicate environment variable %q", path, lineNumber, name)
+		}
+
+		names[name] = true
+		entries = append(entries, exportEntry{name: name, value: secretID})
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fnerrors.BadInputError("%s: failed to load: %w", path, err)
+	}
+	if len(entries) == 0 {
+		return nil, fnerrors.BadInputError("%s: contains no vault references", path)
+	}
+
+	return entries, nil
+}
+
+func validEnvName(name string) bool {
+	for i, ch := range name {
+		if ch == '_' || ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z' || i > 0 && ch >= '0' && ch <= '9' {
+			continue
+		}
+		return false
+	}
+	return name != ""
+}
+
+func writeExportFile(ctx context.Context, entries []exportEntry, resolve resolveSecretFunc, retryDelay time.Duration) (string, error) {
+	resolved := map[string]string{}
+	for k := range entries {
+		secretID := entries[k].value
+		value, ok := resolved[secretID]
+		if !ok {
+			var err error
+			value, err = resolveWithRetry(ctx, secretID, resolve, retryDelay)
+			if err != nil {
+				return "", fnerrors.InvocationError("vault", "failed to resolve vault object %q: %w", secretID, err)
+			}
+			resolved[secretID] = value
+		}
+		entries[k].value = value
+	}
+
+	f, err := os.CreateTemp("", "nsc-vault-export-*")
+	if err != nil {
+		return "", fnerrors.Newf("failed to create temporary export file: %w", err)
+	}
+	path := f.Name()
+	remove := true
+	defer func() {
+		if remove {
+			_ = f.Close()
+			_ = os.Remove(path)
+		}
+	}()
+
+	if err := f.Chmod(0600); err != nil {
+		return "", fnerrors.Newf("failed to secure temporary export file: %w", err)
+	}
+	for _, entry := range entries {
+		if _, err := fmt.Fprintf(f, "%s=%s\n", entry.name, entry.value); err != nil {
+			return "", fnerrors.Newf("failed to write temporary export file: %w", err)
+		}
+	}
+	if err := f.Close(); err != nil {
+		return "", fnerrors.Newf("failed to write temporary export file: %w", err)
+	}
+
+	remove = false
+	return path, nil
+}
+
+func resolveWithRetry(ctx context.Context, secretID string, resolve resolveSecretFunc, retryDelay time.Duration) (string, error) {
+	var value string
+	err := backoff.Retry(func() error {
+		resolved, err := resolve(ctx, secretID)
+		if status.Code(err) == codes.PermissionDenied {
+			return backoff.Permanent(err)
+		}
+		value = resolved
+		return err
+	}, backoff.WithMaxRetries(backoff.WithContext(backoff.NewConstantBackOff(retryDelay), ctx), resolveRetries))
+	return value, err
+}
+
+func quoteShellPath(path string) string {
+	if strings.IndexFunc(path, func(ch rune) bool {
+		return !(ch == '/' || ch == '.' || ch == '-' || ch == '_' || ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z' || ch >= '0' && ch <= '9')
+	}) == -1 {
+		return path
+	}
+	return "'" + strings.ReplaceAll(path, "'", "'\"'\"'") + "'"
 }
 
 func printObjectsTable(ctx context.Context, objects []*v1beta.VaultObjectMetadata) error {
