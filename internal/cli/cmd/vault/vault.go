@@ -310,21 +310,21 @@ type resolveSecretFunc func(context.Context, string) (string, error)
 
 func NewExportCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "export --from <file>",
+		Use:   "export --envdef <file>",
 		Short: "Resolve vault references into a temporary environment file.",
 		Args:  cobra.NoArgs,
 	}
 
-	from := cmd.Flags().String("from", "", "Load environment variable names and vault references from this file.")
+	envdef := cmd.Flags().String("envdef", "", "Load environment variable names and vault references from this file.")
 	shell := cmd.Flags().String("shell", "", "Emit commands for the specified shell. Supported: bash.")
-	_ = cmd.MarkFlagRequired("from")
+	_ = cmd.MarkFlagRequired("envdef")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *shell != "" && *shell != "bash" {
 			return fnerrors.BadInputError("unsupported shell %q; supported shells: bash", *shell)
 		}
 
-		entries, err := readExportEntries(*from)
+		entries, err := readExportEntries(*envdef)
 		if err != nil {
 			return err
 		}
