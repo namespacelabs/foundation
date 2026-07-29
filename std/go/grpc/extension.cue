@@ -14,13 +14,17 @@ $inputs: {
 	serverPort: inputs.#Port & {
 		name: "server-port"
 	}
+	httpPort: inputs.#Port & {
+		name: "http-port"
+	}
 }
 
 configure: fn.#Configure & {
 	startup: {
 		args: {
-			listen_hostname: "0.0.0.0"
-			grpcserver_port: "\($inputs.serverPort.port)"
+			listen_hostname:      "0.0.0.0"
+			grpcserver_port:      "\($inputs.serverPort.port)"
+			grpcserver_http_port: "\($inputs.httpPort.port)"
 		}
 
 		env: {
