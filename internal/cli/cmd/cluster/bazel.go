@@ -638,6 +638,12 @@ func writeTempFile(base, pattern string, content []byte) (string, error) {
 }
 
 func writeFile(path string, content []byte) error {
+	if dir := filepath.Dir(path); dir != "" {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fnerrors.Newf("failed to create directory %q: %w", dir, err)
+		}
+	}
+
 	if err := os.WriteFile(path, content, 0644); err != nil {
 		return fnerrors.Newf("failed to write %q: %w", path, err)
 	}
