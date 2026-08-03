@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	bazelv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/integrations/bazel/v1beta"
@@ -117,6 +118,7 @@ func newBazelInvocationListCmd() *cobra.Command {
 
 type bazelInvocationView struct {
 	InvocationID string `json:"invocation_id"`
+	Command      string `json:"command,omitempty"`
 	StartedAt    string `json:"started_at"`
 	CompletedAt  string `json:"completed_at,omitempty"`
 }
@@ -137,6 +139,7 @@ func writeBazelInvocationList(ctx context.Context, response *bazelv1beta.ListInv
 
 	cols := []tui.Column{
 		{Key: "invocation_id", Title: "Invocation ID", MinWidth: 10, MaxWidth: 36},
+		{Key: "command", Title: "Command", MinWidth: 10, MaxWidth: 80},
 		{Key: "started_at", Title: "Started", MinWidth: 10, MaxWidth: 20},
 		{Key: "completed_at", Title: "Completed", MinWidth: 10, MaxWidth: 20},
 	}
@@ -160,6 +163,9 @@ func bazelInvocationViews(invocations []*bazelv1beta.InvocationListEntry) []baze
 			InvocationID: invocation.GetInvocationId(),
 			StartedAt:    formatBazelInvocationTime(invocation.GetStartedAt()),
 		}
+		if command := formatBazelInvocationCommand(invocation); command != "" {
+			view.Command = command
+		}
 		if invocation.GetCompletedAt() != nil {
 			view.CompletedAt = formatBazelInvocationTime(invocation.GetCompletedAt())
 		}
@@ -171,8 +177,13 @@ func bazelInvocationViews(invocations []*bazelv1beta.InvocationListEntry) []baze
 func bazelInvocationRows(invocations []*bazelv1beta.InvocationListEntry) []tui.Row {
 	rows := make([]tui.Row, 0, len(invocations))
 	for _, invocation := range invocations {
+		command := "-"
+		if cmd := formatBazelInvocationCommand(invocation); cmd != "" {
+			command = cmd
+		}
 		rows = append(rows, tui.Row{
 			"invocation_id": invocation.GetInvocationId(),
+			"command":       command,
 			"started_at":    humanizeBazelInvocationTime(invocation.GetStartedAt()),
 			"completed_at":  humanizeBazelInvocationTime(invocation.GetCompletedAt()),
 		})
@@ -192,6 +203,24 @@ func humanizeBazelInvocationTime(value *timestamppb.Timestamp) string {
 		return "-"
 	}
 	return humanize.Time(value.AsTime().Local())
+}
+
+// formatBazelInvocationCommand renders the command and target patterns from
+// an invocation list entry into a single display string, e.g. "bazel build //foo:bar".
+func formatBazelInvocationCommand(entry *bazelv1beta.InvocationListEntry) string {
+	command := entry.GetCommand()
+	patterns := entry.GetTargetPatterns()
+
+	if command == "" && len(patterns) == 0 {
+		return ""
+	}
+
+	parts := make([]string, 0, 2+len(patterns))
+	if command != "" {
+		parts = append(parts, "bazel", command)
+	}
+	parts = append(parts, patterns...)
+	return strings.Join(parts, " ")
 }
 
 func newBazelInvocationReportCmd() *cobra.Command {
