@@ -3,9 +3,9 @@ module namespacelabs.dev/foundation
 go 1.26.0
 
 require (
-	buf.build/gen/go/namespace/cloud/connectrpc/go v1.20.0-20260710132230-2e3db39f86b8.1
-	buf.build/gen/go/namespace/cloud/grpc/go v1.6.2-20260717182942-d535342a07ff.1
-	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20260717182942-d535342a07ff.1
+	buf.build/gen/go/namespace/cloud/connectrpc/go v1.20.0-20260803095335-52d3e79ff3ca.1
+	buf.build/gen/go/namespace/cloud/grpc/go v1.6.2-20260803095335-52d3e79ff3ca.1
+	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20260803132857-6824e1ccac7c.1
 	cloud.google.com/go/artifactregistry v1.17.2
 	cloud.google.com/go/container v1.45.0
 	connectrpc.com/connect v1.20.0

@@ -116,11 +116,41 @@ func TestWriteBazelInvocationList(t *testing.T) {
 		if rows[0]["completed_at"] != "-" || rows[1]["completed_at"] == "-" {
 			t.Fatalf("completed times = %q, %q, want missing then populated", rows[0]["completed_at"], rows[1]["completed_at"])
 		}
+		if rows[0]["command"] != "-" {
+			t.Fatalf("plain output should show \"-\" for missing command, got %q", rows[0]["command"])
+		}
 		if _, ok := rows[0]["project_id"]; ok {
 			t.Fatalf("plain output contains project_id: %#v", rows[0])
 		}
 		if _, ok := rows[0]["build_id"]; ok {
 			t.Fatalf("plain output contains build_id: %#v", rows[0])
+		}
+	})
+
+	t.Run("plain with commands", func(t *testing.T) {
+		response := &bazelv1beta.ListInvocationsResponse{
+			Invocations: []*bazelv1beta.InvocationListEntry{
+				{
+					InvocationId:   "newest",
+					StartedAt:      timestamppb.New(time.Date(2026, time.July, 17, 12, 0, 0, 0, time.UTC)),
+					Command:        "build",
+					TargetPatterns: []string{"//foo:bar"},
+				},
+				{
+					InvocationId:   "older",
+					StartedAt:      timestamppb.New(time.Date(2026, time.July, 17, 11, 0, 0, 0, time.UTC)),
+					CompletedAt:    timestamppb.New(time.Date(2026, time.July, 17, 11, 5, 0, 0, time.UTC)),
+					Command:        "test",
+					TargetPatterns: []string{"//baz:..."},
+				},
+			},
+		}
+		rows := bazelInvocationRows(response.GetInvocations())
+		if rows[0]["command"] != "bazel build //foo:bar" {
+			t.Fatalf("first row command = %q, want %q", rows[0]["command"], "bazel build //foo:bar")
+		}
+		if rows[1]["command"] != "bazel test //baz:..." {
+			t.Fatalf("second row command = %q, want %q", rows[1]["command"], "bazel test //baz:...")
 		}
 	})
 
@@ -143,6 +173,9 @@ func TestWriteBazelInvocationList(t *testing.T) {
 		if _, ok := got[0]["completed_at"]; ok {
 			t.Fatalf("running invocation contains completed_at: %#v", got[0])
 		}
+		if _, ok := got[0]["command"]; ok {
+			t.Fatalf("JSON output without commands should not contain command: %#v", got[0])
+		}
 		if _, ok := got[0]["project_id"]; ok {
 			t.Fatalf("JSON output contains project_id: %#v", got[0])
 		}
@@ -150,6 +183,83 @@ func TestWriteBazelInvocationList(t *testing.T) {
 			t.Fatalf("JSON output contains build_id: %#v", got[0])
 		}
 	})
+
+	t.Run("json with commands", func(t *testing.T) {
+		response := &bazelv1beta.ListInvocationsResponse{
+			Invocations: []*bazelv1beta.InvocationListEntry{
+				{
+					InvocationId:   "newest",
+					StartedAt:      timestamppb.New(time.Date(2026, time.July, 17, 12, 0, 0, 0, time.UTC)),
+					Command:        "build",
+					TargetPatterns: []string{"//foo:bar"},
+				},
+				{
+					InvocationId: "older",
+					StartedAt:    timestamppb.New(time.Date(2026, time.July, 17, 11, 0, 0, 0, time.UTC)),
+				},
+			},
+		}
+		var output bytes.Buffer
+		if err := writeBazelInvocationListJSON(&output, response.GetInvocations()); err != nil {
+			t.Fatalf("writeBazelInvocationListJSON: %v", err)
+		}
+
+		var got []map[string]any
+		if err := json.Unmarshal(output.Bytes(), &got); err != nil {
+			t.Fatalf("unmarshal JSON output: %v", err)
+		}
+		if got[0]["command"] != "bazel build //foo:bar" {
+			t.Fatalf("first invocation command = %#v, want %q", got[0]["command"], "bazel build //foo:bar")
+		}
+		if _, ok := got[1]["command"]; ok {
+			t.Fatalf("second invocation should not contain command: %#v", got[1])
+		}
+	})
+}
+
+func TestFormatBazelInvocationCommand(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name  string
+		entry *bazelv1beta.InvocationListEntry
+		want  string
+	}{
+		{
+			name: "command and patterns",
+			entry: &bazelv1beta.InvocationListEntry{
+				Command:        "build",
+				TargetPatterns: []string{"//foo:bar", "//baz:..."},
+			},
+			want: "bazel build //foo:bar //baz:...",
+		},
+		{
+			name: "command only",
+			entry: &bazelv1beta.InvocationListEntry{
+				Command: "test",
+			},
+			want: "bazel test",
+		},
+		{
+			name: "patterns only",
+			entry: &bazelv1beta.InvocationListEntry{
+				TargetPatterns: []string{"//foo:bar"},
+			},
+			want: "//foo:bar",
+		},
+		{
+			name:  "empty",
+			entry: &bazelv1beta.InvocationListEntry{},
+			want:  "",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := formatBazelInvocationCommand(tc.entry)
+			if got != tc.want {
+				t.Fatalf("formatBazelInvocationCommand = %q, want %q", got, tc.want)
+			}
+		})
+	}
 }
 
 func TestNewBazelTokenRequest(t *testing.T) {
