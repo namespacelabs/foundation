@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -252,6 +253,13 @@ func newBazelInvocationReportCmd() *cobra.Command {
 			}
 			if err != nil {
 				return fnerrors.Newf("failed to receive Bazel invocation report: %w", err)
+			}
+
+			// Skip the initial keep-alive response (all fields zero) that the
+			// server sends to flush headers before long-running report
+			// generation.
+			if proto.Equal(record, &bazelv1beta.StreamInvocationReportResponse{}) {
+				continue
 			}
 
 			if err := writeBazelInvocationReportRecord(console.Stdout(ctx), record); err != nil {
