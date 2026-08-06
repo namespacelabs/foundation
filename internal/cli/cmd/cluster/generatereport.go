@@ -55,6 +55,20 @@ func NewGenerateReportCmd() *cobra.Command {
 	var jobnameExcArgs []string
 	var profileArgs []string
 	var profileExcArgs []string
+	var buildkiteOrgIDArgs []string
+	var buildkiteOrgIDExcArgs []string
+	var buildkitePipelineIDArgs []string
+	var buildkitePipelineIDExcArgs []string
+	var buildkitePipelineSlugArgs []string
+	var buildkitePipelineSlugExcArgs []string
+	var buildkiteRepositoryArgs []string
+	var buildkiteRepositoryExcArgs []string
+	var buildkiteBranchArgs []string
+	var buildkiteBranchExcArgs []string
+	var buildkiteJobNameArgs []string
+	var buildkiteJobNameExcArgs []string
+	var buildkiteJobStateArgs []string
+	var buildkiteJobStateExcArgs []string
 
 	cmd.Flags().StringSliceVar(&platformArgs, "platform", nil, "platform(s) to include (repeatable). Cannot be passed together with --exclude-platform.")
 	cmd.Flags().StringSliceVar(&platformExcArgs, "exclude-platform", nil, "platform(s) to exclude (repeatable). Cannot be passed together with --platform.")
@@ -79,6 +93,27 @@ func NewGenerateReportCmd() *cobra.Command {
 
 	cmd.Flags().StringSliceVar(&profileArgs, "profile", nil, "Profiles to include (repeatable). Cannot be passed together with --exclude-profile.")
 	cmd.Flags().StringSliceVar(&profileExcArgs, "exclude-profile", nil, "Profiles to exclude (repeatable). Cannot be passed together with --profile.")
+
+	cmd.Flags().StringSliceVar(&buildkiteOrgIDArgs, "buildkite-org-id", nil, "Buildkite organization IDs to include (repeatable). Cannot be passed together with --exclude-buildkite-org-id.")
+	cmd.Flags().StringSliceVar(&buildkiteOrgIDExcArgs, "exclude-buildkite-org-id", nil, "Buildkite organization IDs to exclude (repeatable). Cannot be passed together with --buildkite-org-id.")
+
+	cmd.Flags().StringSliceVar(&buildkitePipelineIDArgs, "buildkite-pipeline-id", nil, "Buildkite pipeline IDs to include (repeatable). Cannot be passed together with --exclude-buildkite-pipeline-id.")
+	cmd.Flags().StringSliceVar(&buildkitePipelineIDExcArgs, "exclude-buildkite-pipeline-id", nil, "Buildkite pipeline IDs to exclude (repeatable). Cannot be passed together with --buildkite-pipeline-id.")
+
+	cmd.Flags().StringSliceVar(&buildkitePipelineSlugArgs, "buildkite-pipeline-slug", nil, "Buildkite pipeline slugs to include (repeatable). Cannot be passed together with --exclude-buildkite-pipeline-slug.")
+	cmd.Flags().StringSliceVar(&buildkitePipelineSlugExcArgs, "exclude-buildkite-pipeline-slug", nil, "Buildkite pipeline slugs to exclude (repeatable). Cannot be passed together with --buildkite-pipeline-slug.")
+
+	cmd.Flags().StringSliceVar(&buildkiteRepositoryArgs, "buildkite-repository", nil, "Buildkite repositories to include (repeatable). Cannot be passed together with --exclude-buildkite-repository.")
+	cmd.Flags().StringSliceVar(&buildkiteRepositoryExcArgs, "exclude-buildkite-repository", nil, "Buildkite repositories to exclude (repeatable). Cannot be passed together with --buildkite-repository.")
+
+	cmd.Flags().StringSliceVar(&buildkiteBranchArgs, "buildkite-branch", nil, "Buildkite branches to include (repeatable). Cannot be passed together with --exclude-buildkite-branch.")
+	cmd.Flags().StringSliceVar(&buildkiteBranchExcArgs, "exclude-buildkite-branch", nil, "Buildkite branches to exclude (repeatable). Cannot be passed together with --buildkite-branch.")
+
+	cmd.Flags().StringSliceVar(&buildkiteJobNameArgs, "buildkite-job-name", nil, "Buildkite job names to include (repeatable). Cannot be passed together with --exclude-buildkite-job-name.")
+	cmd.Flags().StringSliceVar(&buildkiteJobNameExcArgs, "exclude-buildkite-job-name", nil, "Buildkite job names to exclude (repeatable). Cannot be passed together with --buildkite-job-name.")
+
+	cmd.Flags().StringSliceVar(&buildkiteJobStateArgs, "buildkite-job-state", nil, "Buildkite job states to include (repeatable). Cannot be passed together with --exclude-buildkite-job-state.")
+	cmd.Flags().StringSliceVar(&buildkiteJobStateExcArgs, "exclude-buildkite-job-state", nil, "Buildkite job states to exclude (repeatable). Cannot be passed together with --buildkite-job-state.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *start == "" {
@@ -174,6 +209,48 @@ func NewGenerateReportCmd() *cobra.Command {
 		}
 		filter.GithubProfile = profileMatcher
 
+		buildkiteOrgIDMatcher, err := createMatcher("buildkite-org-id", buildkiteOrgIDArgs, buildkiteOrgIDExcArgs)
+		if err != nil {
+			return err
+		}
+		filter.BuildkiteOrgId = buildkiteOrgIDMatcher
+
+		buildkitePipelineIDMatcher, err := createMatcher("buildkite-pipeline-id", buildkitePipelineIDArgs, buildkitePipelineIDExcArgs)
+		if err != nil {
+			return err
+		}
+		filter.BuildkitePipelineId = buildkitePipelineIDMatcher
+
+		buildkitePipelineSlugMatcher, err := createMatcher("buildkite-pipeline-slug", buildkitePipelineSlugArgs, buildkitePipelineSlugExcArgs)
+		if err != nil {
+			return err
+		}
+		filter.BuildkitePipelineSlug = buildkitePipelineSlugMatcher
+
+		buildkiteRepositoryMatcher, err := createMatcher("buildkite-repository", buildkiteRepositoryArgs, buildkiteRepositoryExcArgs)
+		if err != nil {
+			return err
+		}
+		filter.BuildkiteRepository = buildkiteRepositoryMatcher
+
+		buildkiteBranchMatcher, err := createMatcher("buildkite-branch", buildkiteBranchArgs, buildkiteBranchExcArgs)
+		if err != nil {
+			return err
+		}
+		filter.BuildkiteBranch = buildkiteBranchMatcher
+
+		buildkiteJobNameMatcher, err := createMatcher("buildkite-job-name", buildkiteJobNameArgs, buildkiteJobNameExcArgs)
+		if err != nil {
+			return err
+		}
+		filter.BuildkiteJobName = buildkiteJobNameMatcher
+
+		buildkiteJobStateMatcher, err := createMatcher("buildkite-job-state", buildkiteJobStateArgs, buildkiteJobStateExcArgs)
+		if err != nil {
+			return err
+		}
+		filter.BuildkiteJobState = buildkiteJobStateMatcher
+
 		token, err := auth.LoadDefaults()
 		if err != nil {
 			return fnerrors.Newf("Authentication error %w", err)
@@ -196,34 +273,16 @@ func NewGenerateReportCmd() *cobra.Command {
 			return fnerrors.Newf("Unable to generate report: %w", err)
 		}
 
-		csvWriter := csv.NewWriter(outFile)
-
-		header := []string{
-			"instance_id",
-			"created_at",
-			"started_at",
-			"destroyed_at",
-			"resources_cpu",
-			"resources_ram_gb",
-			"resources_cpu_actual_max",
-			"resources_ram_gb_actual_max_percent",
-			"cache_volume_hit",
-			"github_job_id",
-			"github_job_name",
-			"github_job_workflow_name",
-			"github_run_id",
-			"github_run_attempt",
-			"job_created_at",
-			"job_started_at",
-			"job_completed_at",
-			"profile",
-			"repository",
-			"branch",
-			"sender_login",
-			"conclusion",
+		rowsFile, err := os.CreateTemp("", "nsc-report-rows-*.csv")
+		if err != nil {
+			return fnerrors.Newf("Failed to create temporary report file: %w", err)
 		}
+		defer os.Remove(rowsFile.Name())
+		defer rowsFile.Close()
 
-		csvWriter.Write(header)
+		rowsWriter := csv.NewWriter(rowsFile)
+		includeGithub := false
+		includeBuildkite := false
 
 		for {
 			msg, err := resp.Recv()
@@ -234,15 +293,117 @@ func NewGenerateReportCmd() *cobra.Command {
 				return fnerrors.Newf("Error %w", err)
 			}
 			for _, entry := range msg.Entries {
-				csvWriter.Write(entryToRecords(entry))
+				includeGithub = includeGithub || entry.GetGithubJob() != nil
+				includeBuildkite = includeBuildkite || entry.GetBuildkiteJob() != nil
+				if err := rowsWriter.Write(entryToRecords(entry)); err != nil {
+					return fnerrors.Newf("Unable to write temporary report: %w", err)
+				}
+			}
+		}
+		rowsWriter.Flush()
+		if err := rowsWriter.Error(); err != nil {
+			return fnerrors.Newf("Unable to write temporary report: %w", err)
+		}
+		if _, err := rowsFile.Seek(0, io.SeekStart); err != nil {
+			return fnerrors.Newf("Unable to read temporary report: %w", err)
+		}
+
+		csvWriter := csv.NewWriter(outFile)
+		if err := csvWriter.Write(reportHeader(includeGithub, includeBuildkite)); err != nil {
+			return fnerrors.Newf("Unable to write report: %w", err)
+		}
+
+		rowsReader := csv.NewReader(rowsFile)
+		for {
+			record, err := rowsReader.Read()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return fnerrors.Newf("Unable to read temporary report: %w", err)
+			}
+			if err := csvWriter.Write(selectReportColumns(record, includeGithub, includeBuildkite)); err != nil {
+				return fnerrors.Newf("Unable to write report: %w", err)
 			}
 		}
 		csvWriter.Flush()
+		if err := csvWriter.Error(); err != nil {
+			return fnerrors.Newf("Unable to write report: %w", err)
+		}
 		return nil
 	})
 
 	return cmd
 
+}
+
+var baseReportHeader = []string{
+	"instance_id",
+	"created_at",
+	"started_at",
+	"destroyed_at",
+	"resources_cpu",
+	"resources_ram_gb",
+	"resources_cpu_actual_max",
+	"resources_ram_gb_actual_max_percent",
+	"cache_volume_hit",
+}
+
+var githubReportHeader = []string{
+	"github_job_id",
+	"github_job_name",
+	"github_job_workflow_name",
+	"github_run_id",
+	"github_run_attempt",
+	"job_created_at",
+	"job_started_at",
+	"job_completed_at",
+	"profile",
+	"repository",
+	"branch",
+	"sender_login",
+	"conclusion",
+}
+
+var buildkiteReportHeader = []string{
+	"buildkite_job_id",
+	"buildkite_job_name",
+	"buildkite_pipeline_slug",
+	"buildkite_pipeline_id",
+	"buildkite_build_id",
+	"buildkite_build_number",
+	"buildkite_job_created_at",
+	"buildkite_job_runnable_at",
+	"buildkite_job_started_at",
+	"buildkite_job_finished_at",
+	"buildkite_org_id",
+	"buildkite_repository",
+	"buildkite_branch",
+	"buildkite_job_state",
+}
+
+func reportHeader(includeGithub, includeBuildkite bool) []string {
+	header := append([]string{}, baseReportHeader...)
+	if includeGithub {
+		header = append(header, githubReportHeader...)
+	}
+	if includeBuildkite {
+		header = append(header, buildkiteReportHeader...)
+	}
+	return header
+}
+
+func selectReportColumns(record []string, includeGithub, includeBuildkite bool) []string {
+	baseEnd := len(baseReportHeader)
+	githubEnd := baseEnd + len(githubReportHeader)
+	selected := append([]string{}, record[:baseEnd]...)
+	if includeGithub {
+		selected = append(selected, record[baseEnd:githubEnd]...)
+	}
+	if includeBuildkite {
+		selected = append(selected, record[githubEnd:]...)
+	}
+	return selected
 }
 
 func entryToRecords(entry *computev1beta.InstanceReportEntry) []string {
@@ -251,6 +412,7 @@ func entryToRecords(entry *computev1beta.InstanceReportEntry) []string {
 		cacheHit = cacheHit || v.CacheHit
 	}
 	githubJob := entry.GetGithubJob()
+	buildkiteJob := entry.GetBuildkiteJob()
 	cols := []string{entry.InstanceId,
 		tsToString(entry.GetCreatedAt()),
 		tsToString(entry.GetStartedAt()),
@@ -273,6 +435,20 @@ func entryToRecords(entry *computev1beta.InstanceReportEntry) []string {
 		githubJob.GetBranch(),
 		githubJob.GetSenderLogin(),
 		githubJob.GetConclusion(),
+		buildkiteJob.GetJobId(),
+		buildkiteJob.GetJobName(),
+		buildkiteJob.GetPipelineSlug(),
+		buildkiteJob.GetPipelineId(),
+		buildkiteJob.GetBuildId(),
+		strconv.FormatInt(buildkiteJob.GetBuildNumber(), 10),
+		tsToString(buildkiteJob.GetJobCreatedAt()),
+		tsToString(buildkiteJob.GetJobRunnableAt()),
+		tsToString(buildkiteJob.GetJobStartedAt()),
+		tsToString(buildkiteJob.GetJobFinishedAt()),
+		buildkiteJob.GetOrgId(),
+		buildkiteJob.GetRepository(),
+		buildkiteJob.GetBranch(),
+		buildkiteJob.GetJobState(),
 	}
 	return cols
 }
