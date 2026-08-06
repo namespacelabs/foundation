@@ -14,13 +14,29 @@ import (
 )
 
 func AnnotateImage(src NamedImage, anns map[string]string) compute.Computable[Image] {
-	return &annotateImage{src: src, anns: anns}
+	return AnnotateImageOpts(AnnotateImageOptions{}, src, anns)
+}
+
+type AnnotateImageOptions struct {
+	// NoCache, when set, marks the annotated image as non-cacheable. Use
+	// when the annotated result is destined for a registry; otherwise the
+	// cache write forces every layer of the underlying image to be pulled.
+	NoCache bool
+}
+
+func AnnotateImageOpts(opts AnnotateImageOptions, src NamedImage, anns map[string]string) compute.Computable[Image] {
+	return &annotateImage{src: src, anns: anns, noCache: opts.NoCache}
 }
 
 type annotateImage struct {
-	src  NamedImage
-	anns map[string]string
+	src     NamedImage
+	anns    map[string]string
+	noCache bool
 	compute.LocalScoped[Image]
+}
+
+func (al *annotateImage) Output() compute.Output {
+	return compute.Output{NotCacheable: al.noCache}
 }
 
 func (al *annotateImage) Action() *tasks.ActionEvent {
