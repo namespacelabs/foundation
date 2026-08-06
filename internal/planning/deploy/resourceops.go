@@ -7,4 +7,5 @@ package deploy
 func RegisterDeployOps() {
 	register_OpWaitForProviderResults()
 	register_OpCaptureServerConfig()
+	register_OpConsumeResourceOutputs()
 }

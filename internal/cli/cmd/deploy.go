@@ -77,6 +77,7 @@ func NewDeployCmd() *cobra.Command {
 			flags.StringVar(&deployOpts.manualReason, "reason", "", "Why was this deployment triggered.")
 			flags.BoolVar(&forceApply, "force_apply", false, "Force apply resources, overriding field manager conflicts.")
 			flags.MarkHidden("force_apply")
+			flags.BoolVar(&deployOpts.provisionOnly, "provision_only", false, "If set, provision resources (e.g. database schema) without rolling out the requested servers.")
 		}).
 		With(
 			fncobra.ParseEnv(&env),
@@ -121,7 +122,12 @@ func NewDeployCmd() *cobra.Command {
 				}
 			}
 
-			plan, err := deploy.PrepareDeployStack(ctx, p, stack)
+			var deployMode deploy.PrepareDeployMode
+			if deployOpts.provisionOnly {
+				deployMode = deploy.PrepareProvisionOnly
+			}
+
+			plan, err := deploy.PrepareDeployStackOpts(ctx, p, stack, deploy.PrepareDeployOptions{Mode: deployMode})
 			if err != nil {
 				return err
 			}
@@ -162,9 +168,10 @@ func NewDeployCmd() *cobra.Command {
 }
 
 type deployOpts struct {
-	alsoWait     bool
-	outputPath   string
-	manualReason string
+	alsoWait      bool
+	outputPath    string
+	manualReason  string
+	provisionOnly bool
 }
 
 type Output struct {
@@ -229,6 +236,12 @@ func completeDeployment(ctx context.Context, env cfg.Context, cluster runtime.Cl
 		if err := os.WriteFile(opts.outputPath, serialized, 0644); err != nil {
 			return fnerrors.Newf("failed to write %q: %w", opts.outputPath, err)
 		}
+	}
+
+	if opts.provisionOnly {
+		fmt.Fprintf(out, "\n Resources provisioned. Run %s to roll out the servers.\n",
+			colors.Ctx(ctx).Highlight.Apply("ns deploy"))
+		return nil
 	}
 
 	envLabel := fmt.Sprintf("--env=%s", env.Environment().Name)
