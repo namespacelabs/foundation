@@ -2,10 +2,10 @@ buf.build/gen/go/namespace/bazel/protocolbuffers/go v1.36.11-20260717182923-633d
 buf.build/gen/go/namespace/bazel/protocolbuffers/go v1.36.11-20260717182923-633d56cd145e.1/go.mod h1:h9DLLqhUERXx+6lPKgrJxRAG03mCRRAv6VEJnmUnQGk=
 buf.build/gen/go/namespace/cloud/connectrpc/go v1.20.0-20260803095335-52d3e79ff3ca.1 h1:Nu+h9ryPRPUvcJcEl9C8g4ryyGPYFbujbEIIbDVUDxA=
 buf.build/gen/go/namespace/cloud/connectrpc/go v1.20.0-20260803095335-52d3e79ff3ca.1/go.mod h1:xO9KI77e5zYyYFSpddrTqcwrL8a0z+xys5/CMeKOto4=
-buf.build/gen/go/namespace/cloud/grpc/go v1.6.2-20260803095335-52d3e79ff3ca.1 h1:MM190hmxlMqaTNViL1bPtHdfa/zfeh5FTzRq1Hd7qI8=
-buf.build/gen/go/namespace/cloud/grpc/go v1.6.2-20260803095335-52d3e79ff3ca.1/go.mod h1:k26oYTKHzufAsBsFw02/xFkKY6ajgkt+2yeW53n/Aso=
-buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20260803132857-6824e1ccac7c.1 h1:rcU6panirDTHhXUDJElzIXyu6eGtxzqFi0H7oCS+mIE=
-buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20260803132857-6824e1ccac7c.1/go.mod h1:Sq0KOCy7xpul1cCYq/55WryE9Nke8fQsext30EBZp7o=
+buf.build/gen/go/namespace/cloud/grpc/go v1.6.2-20260807183118-54ecdac1cb7f.1 h1:uxx7Vq6N+9ON5HNC5yJGH5Y2jLx8K+A4AA7uuw4xIWM=
+buf.build/gen/go/namespace/cloud/grpc/go v1.6.2-20260807183118-54ecdac1cb7f.1/go.mod h1:DZXt8iyIX/DKXfcPFoaqPoWYKeJ18ZA+swgQ9wn0dR0=
+buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20260807183118-54ecdac1cb7f.1 h1:SIWw1Ek76Vh0ztJxrj4XU94edLFBozQrp5bf2kv/UNU=
+buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20260807183118-54ecdac1cb7f.1/go.mod h1:Sq0KOCy7xpul1cCYq/55WryE9Nke8fQsext30EBZp7o=
 c2sp.org/CCTV/age v0.0.0-20240306222714-3ec4d716e805 h1:u2qwJeEvnypw+OCPUHmoZE3IqwfuN5kgDfo5MLzpNM0=
 c2sp.org/CCTV/age v0.0.0-20240306222714-3ec4d716e805/go.mod h1:FomMrUJ2Lxt5jCLmZkG3FHa72zUprnhd3v/Z18Snm4w=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
@@ -192,6 +192,7 @@ github.com/charmbracelet/bubbles v0.14.0/go.mod h1:bbeTiXwPww4M031aGi8UK2HT9RDWo
 github.com/charmbracelet/bubbletea v0.21.0/go.mod h1:GgmJMec61d08zXsOhqRC/AiOx4K4pmz+VIcRIm1FKr4=
 github.com/charmbracelet/bubbletea v0.23.1 h1:CYdteX1wCiCzKNUlwm25ZHBIc1GXlYFyUIte8WPvhck=
 github.com/charmbracelet/bubbletea v0.23.1/go.mod h1:JAfGK/3/pPKHTnAS8JIE2u9f61BjWTQY57RbT25aMXU=
+github.com/charmbracelet/harmonica v0.2.0 h1:8NxJWRWg/bzKqqEaaeFNipOu77YR5t8aSwG4pgaUBiQ=
 github.com/charmbracelet/harmonica v0.2.0/go.mod h1:KSri/1RMQOZLbw7AHqgcBycp8pgJnQMYYT8QZRqZ1Ao=
 github.com/charmbracelet/lipgloss v0.5.0/go.mod h1:EZLha/HbzEt7cYqdFPovlqy5FZPj0xFhg5SaqxScmgs=
 github.com/charmbracelet/lipgloss v0.6.0 h1:1StyZB9vBSOyuZxQUcUwGr17JmojPNm87inij9N3wJY=
