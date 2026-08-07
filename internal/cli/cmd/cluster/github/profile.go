@@ -60,8 +60,9 @@ func newProfileCreateCmd() *cobra.Command {
 	swapSizeMb := cmd.Flags().Int32("swap_memory", 0, "Swap to provision on the runner, in MB. Must not exceed 2x the machine's memory.")
 	builderMode := cmd.Flags().String("builder_mode", "USE_REMOTE_BUILDER", "Builder mode (USE_REMOTE_BUILDER, USE_LOCAL_CACHE, NO_CACHING).")
 	emoji := cmd.Flags().String("emoji", "", "Optional emoji to visually identify the profile.")
-	egressPolicy := cmd.Flags().String("egress_policy", "", "Egress policy (DOMAIN_ALLOW_LIST to restrict outbound access, or empty for no filtering).")
-	egressDomainAllowList := cmd.Flags().StringSlice("egress_domain_allow_list", nil, "List of allowed egress domains (supports wildcards, e.g. '*.example.org'). Only valid with --egress_policy=DOMAIN_ALLOW_LIST.")
+	egressPolicy := cmd.Flags().String("egress_policy", "", "Optional egress policy (DOMAIN_ALLOW_LIST, TAG, or NONE).")
+	egressDomainAllowList := cmd.Flags().StringSlice("egress_domain_allow_list", nil, "List of allowed egress domains (supports wildcards, e.g. '*.example.org'). Incompatible with --egress_policy=TAG or NONE.")
+	egressPolicyTag := cmd.Flags().String("egress_policy_tag", "", "Workspace egress policy tag. Incompatible with --egress_policy=DOMAIN_ALLOW_LIST or NONE.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
@@ -110,7 +111,7 @@ func newProfileCreateCmd() *cobra.Command {
 				spec.SwapSizeMb = *swapSizeMb
 			}
 
-			np, err := parseNetworkPolicy(*egressPolicy, *egressDomainAllowList)
+			np, err := parseNetworkPolicy(*egressPolicy, *egressDomainAllowList, *egressPolicyTag)
 			if err != nil {
 				return err
 			}
@@ -296,6 +297,9 @@ func newProfileDescribeCmd() *cobra.Command {
 		if profile.Spec.NetworkPolicy != nil {
 			fmt.Fprintf(stdout, "\nNetwork Policy:\n")
 			fmt.Fprintf(stdout, "  Egress:     %s\n", profile.Spec.NetworkPolicy.Egress.String())
+			if profile.Spec.NetworkPolicy.EgressPolicyTag != "" {
+				fmt.Fprintf(stdout, "  Policy Tag: %s\n", profile.Spec.NetworkPolicy.EgressPolicyTag)
+			}
 			if len(profile.Spec.NetworkPolicy.EgressDomainAllowList) > 0 {
 				fmt.Fprintf(stdout, "  Allowed Domains:\n")
 				for _, domain := range profile.Spec.NetworkPolicy.EgressDomainAllowList {
@@ -348,8 +352,9 @@ func newProfileUpdateCmd() *cobra.Command {
 	builderMode := cmd.Flags().String("builder_mode", "", "Builder mode (USE_REMOTE_BUILDER, USE_LOCAL_CACHE, NO_CACHING).")
 	emoji := cmd.Flags().String("emoji", "", "Optional emoji to visually identify the profile.")
 	dockerfile := cmd.Flags().String("dockerfile", "", "Path to Dockerfile for custom runner image.")
-	egressPolicy := cmd.Flags().String("egress_policy", "", "Egress policy (DOMAIN_ALLOW_LIST to restrict outbound access, or NONE to disable filtering).")
-	egressDomainAllowList := cmd.Flags().StringSlice("egress_domain_allow_list", nil, "List of allowed egress domains (supports wildcards, e.g. '*.example.org'). Only valid with --egress_policy=DOMAIN_ALLOW_LIST.")
+	egressPolicy := cmd.Flags().String("egress_policy", "", "Egress policy (DOMAIN_ALLOW_LIST, TAG, or NONE).")
+	egressDomainAllowList := cmd.Flags().StringSlice("egress_domain_allow_list", nil, "List of allowed egress domains (supports wildcards, e.g. '*.example.org'). Incompatible with --egress_policy=TAG or NONE.")
+	egressPolicyTag := cmd.Flags().String("egress_policy_tag", "", "Workspace egress policy tag. Incompatible with --egress_policy=DOMAIN_ALLOW_LIST or NONE.")
 	swapSizeMb := cmd.Flags().Int32("swap_memory", 0, "Swap to provision on the runner, in MB. Must not exceed 2x the machine's memory.")
 	version := cmd.Flags().Int64("version", 0, "Current version of the profile for optimistic concurrency control. If not provided, it will be fetched from the backend.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
@@ -473,29 +478,20 @@ func newProfileUpdateCmd() *cobra.Command {
 			}
 
 			// Update network policy if egress flags are provided
-			if cmd.Flags().Changed("egress_policy") || cmd.Flags().Changed("egress_domain_allow_list") {
+			if cmd.Flags().Changed("egress_policy") || cmd.Flags().Changed("egress_domain_allow_list") || cmd.Flags().Changed("egress_policy_tag") {
 				if spec.NetworkPolicy == nil {
 					spec.NetworkPolicy = &v1beta.NetworkPolicy{}
 				}
 
-				if cmd.Flags().Changed("egress_policy") {
-					egress, err := parseEgressPolicy(*egressPolicy)
-					if err != nil {
-						return err
-					}
-					spec.NetworkPolicy.Egress = egress
+				egressPolicyChanged := cmd.Flags().Changed("egress_policy")
+				domainAllowListChanged := cmd.Flags().Changed("egress_domain_allow_list")
+				policyTagChanged := cmd.Flags().Changed("egress_policy_tag")
 
-					// Clear the allow list when switching away from DOMAIN_ALLOW_LIST.
-					if egress != v1beta.NetworkPolicy_EGRESS_POLICY_DOMAIN_ALLOW_LIST {
-						spec.NetworkPolicy.EgressDomainAllowList = nil
-					}
-				}
-
-				if cmd.Flags().Changed("egress_domain_allow_list") {
-					if spec.NetworkPolicy.Egress != v1beta.NetworkPolicy_EGRESS_POLICY_DOMAIN_ALLOW_LIST {
-						return fnerrors.New("--egress_domain_allow_list can only be used with --egress_policy=DOMAIN_ALLOW_LIST")
-					}
-					spec.NetworkPolicy.EgressDomainAllowList = *egressDomainAllowList
+				if err := applyNetworkPolicyFlags(spec.NetworkPolicy,
+					*egressPolicy, egressPolicyChanged,
+					*egressDomainAllowList, domainAllowListChanged,
+					*egressPolicyTag, policyTagChanged); err != nil {
+					return err
 				}
 			}
 
@@ -798,6 +794,9 @@ func transformProfileForOutput(profile *v1beta.RunnerProfileWithStatus) map[stri
 		if len(profile.Spec.NetworkPolicy.EgressDomainAllowList) > 0 {
 			np["egress_domain_allow_list"] = profile.Spec.NetworkPolicy.EgressDomainAllowList
 		}
+		if profile.Spec.NetworkPolicy.EgressPolicyTag != "" {
+			np["egress_policy_tag"] = profile.Spec.NetworkPolicy.EgressPolicyTag
+		}
 		m["network_policy"] = np
 	}
 
@@ -849,12 +848,15 @@ func transformProfileForOutput(profile *v1beta.RunnerProfileWithStatus) map[stri
 	return m
 }
 
-func parseNetworkPolicy(egressPolicy string, egressDomainAllowList []string) (*v1beta.NetworkPolicy, error) {
-	if egressPolicy == "" && len(egressDomainAllowList) == 0 {
+func parseNetworkPolicy(egressPolicy string, egressDomainAllowList []string, egressPolicyTag string) (*v1beta.NetworkPolicy, error) {
+	if egressPolicy == "" && len(egressDomainAllowList) == 0 && egressPolicyTag == "" {
 		return nil, nil
 	}
 
-	np := &v1beta.NetworkPolicy{}
+	np := &v1beta.NetworkPolicy{
+		EgressDomainAllowList: egressDomainAllowList,
+		EgressPolicyTag:       egressPolicyTag,
+	}
 
 	if egressPolicy != "" {
 		egress, err := parseEgressPolicy(egressPolicy)
@@ -864,18 +866,86 @@ func parseNetworkPolicy(egressPolicy string, egressDomainAllowList []string) (*v
 		np.Egress = egress
 	}
 
-	if len(egressDomainAllowList) > 0 {
-		if np.Egress != v1beta.NetworkPolicy_EGRESS_POLICY_DOMAIN_ALLOW_LIST {
-			return nil, fnerrors.New("--egress_domain_allow_list can only be used with --egress_policy=DOMAIN_ALLOW_LIST")
-		}
-		np.EgressDomainAllowList = egressDomainAllowList
+	if err := resolveNetworkPolicy(np); err != nil {
+		return nil, err
 	}
 
 	return np, nil
 }
 
-// parseEgressPolicy accepts both short-form (NONE, DOMAIN_ALLOW_LIST) and
-// full proto enum names (EGRESS_POLICY_NONE, EGRESS_POLICY_DOMAIN_ALLOW_LIST).
+func resolveNetworkPolicy(np *v1beta.NetworkPolicy) error {
+	if np.Egress == v1beta.NetworkPolicy_EGRESS_POLICY_UNKNOWN && len(np.EgressDomainAllowList) > 0 && np.EgressPolicyTag != "" {
+		return fnerrors.New("--egress_domain_allow_list and --egress_policy_tag cannot be used together")
+	}
+	if np.Egress == v1beta.NetworkPolicy_EGRESS_POLICY_UNKNOWN {
+		if len(np.EgressDomainAllowList) > 0 {
+			np.Egress = v1beta.NetworkPolicy_EGRESS_POLICY_DOMAIN_ALLOW_LIST
+		} else if np.EgressPolicyTag != "" {
+			np.Egress = v1beta.NetworkPolicy_EGRESS_POLICY_TAG
+		}
+	}
+	return validateNetworkPolicyFlags(np)
+}
+
+func applyNetworkPolicyFlags(np *v1beta.NetworkPolicy, egressPolicy string, egressPolicyChanged bool, egressDomainAllowList []string, domainAllowListChanged bool, egressPolicyTag string, policyTagChanged bool) error {
+	if egressPolicyChanged {
+		egress, err := parseEgressPolicy(egressPolicy)
+		if err != nil {
+			return err
+		}
+		np.Egress = egress
+		if egress != v1beta.NetworkPolicy_EGRESS_POLICY_DOMAIN_ALLOW_LIST {
+			np.EgressDomainAllowList = nil
+			np.Advisory = false
+		}
+		if egress != v1beta.NetworkPolicy_EGRESS_POLICY_TAG {
+			np.EgressPolicyTag = ""
+		}
+	}
+
+	if domainAllowListChanged {
+		np.EgressDomainAllowList = egressDomainAllowList
+	}
+	if policyTagChanged {
+		np.EgressPolicyTag = egressPolicyTag
+	}
+
+	if !egressPolicyChanged {
+		if domainAllowListChanged && len(egressDomainAllowList) > 0 && policyTagChanged && egressPolicyTag != "" {
+			return fnerrors.New("--egress_domain_allow_list and --egress_policy_tag cannot be used together")
+		}
+		if policyTagChanged && egressPolicyTag != "" {
+			np.Egress = v1beta.NetworkPolicy_EGRESS_POLICY_UNKNOWN
+			np.EgressDomainAllowList = nil
+			np.Advisory = false
+		}
+		if domainAllowListChanged && len(egressDomainAllowList) > 0 {
+			np.Egress = v1beta.NetworkPolicy_EGRESS_POLICY_UNKNOWN
+			np.EgressPolicyTag = ""
+		}
+	}
+
+	return resolveNetworkPolicy(np)
+}
+
+func validateNetworkPolicyFlags(np *v1beta.NetworkPolicy) error {
+	if len(np.EgressDomainAllowList) > 0 && np.Egress != v1beta.NetworkPolicy_EGRESS_POLICY_DOMAIN_ALLOW_LIST {
+		return fnerrors.Newf("--egress_domain_allow_list is incompatible with --egress_policy=%s", np.Egress)
+	}
+	if np.EgressPolicyTag != "" && np.Egress != v1beta.NetworkPolicy_EGRESS_POLICY_TAG {
+		return fnerrors.Newf("--egress_policy_tag is incompatible with --egress_policy=%s", np.Egress)
+	}
+	if np.Egress == v1beta.NetworkPolicy_EGRESS_POLICY_DOMAIN_ALLOW_LIST && len(np.EgressDomainAllowList) == 0 {
+		return fnerrors.New("--egress_domain_allow_list is required with --egress_policy=DOMAIN_ALLOW_LIST")
+	}
+	if np.Egress == v1beta.NetworkPolicy_EGRESS_POLICY_TAG && np.EgressPolicyTag == "" {
+		return fnerrors.New("--egress_policy_tag is required with --egress_policy=TAG")
+	}
+	return nil
+}
+
+// parseEgressPolicy accepts both short-form (NONE, DOMAIN_ALLOW_LIST, TAG) and
+// full proto enum names (EGRESS_POLICY_NONE, EGRESS_POLICY_DOMAIN_ALLOW_LIST, EGRESS_POLICY_TAG).
 func parseEgressPolicy(s string) (v1beta.NetworkPolicy_EgressPolicy, error) {
 	s = strings.ToUpper(strings.TrimSpace(s))
 
@@ -885,7 +955,7 @@ func parseEgressPolicy(s string) (v1beta.NetworkPolicy_EgressPolicy, error) {
 
 	v, ok := v1beta.NetworkPolicy_EgressPolicy_value[s]
 	if !ok || v == int32(v1beta.NetworkPolicy_EGRESS_POLICY_UNKNOWN) {
-		return 0, fnerrors.Newf("invalid egress policy %q (valid values: NONE, DOMAIN_ALLOW_LIST)", s)
+		return 0, fnerrors.Newf("invalid egress policy %q (valid values: NONE, DOMAIN_ALLOW_LIST, TAG)", s)
 	}
 
 	return v1beta.NetworkPolicy_EgressPolicy(v), nil
