@@ -8,13 +8,22 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"strings"
 
+	computev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/compute/v1beta"
+	"github.com/charmbracelet/bubbles/progress"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/encoding/protojson"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/integrations/api/compute"
+	"namespacelabs.dev/integrations/auth"
 )
 
 func NewWorkspaceCmd() *cobra.Command {
@@ -24,8 +33,88 @@ func NewWorkspaceCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newDescribeCmd())
+	cmd.AddCommand(newConcurrencyCmd())
 
 	return cmd
+}
+
+func newConcurrencyCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "concurrency",
+		Short: "Display current workspace resource usage.",
+		Args:  cobra.NoArgs,
+	}
+
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		resp, err := getConcurrency(ctx)
+		if err != nil {
+			return err
+		}
+
+		stdout := console.Stdout(ctx)
+		switch *output {
+		case "json":
+			body, err := protojson.MarshalOptions{Indent: "  "}.Marshal(resp)
+			if err != nil {
+				return fnerrors.InternalError("failed to encode concurrency as JSON output: %w", err)
+			}
+			fmt.Fprintln(stdout, string(body))
+		case "plain":
+			bar := progress.New(progress.WithSolidFill("#1c32ff"), progress.WithWidth(24), progress.WithoutPercentage())
+			title := lipgloss.NewStyle().Bold(true)
+			detail := lipgloss.NewStyle().Faint(true)
+			for _, entry := range resp.GetConcurrency() {
+				active := entry.GetActiveConcurrency()
+				limits := entry.GetLimits()
+				fmt.Fprintf(stdout, "%s  %s\n", title.Render(entry.GetName()), detail.Render(strings.Join(entry.GetPlatforms(), ", ")))
+				if limits.GetMaxInstanceCount() > 0 {
+					printConcurrencyBar(stdout, bar, "Instances", active.GetInstanceCount(), limits.GetMaxInstanceCount(), fmt.Sprintf("%d / %d", active.GetInstanceCount(), limits.GetMaxInstanceCount()))
+				}
+				if limits.GetMaxCpu() > 0 {
+					printConcurrencyBar(stdout, bar, "vCPU", active.GetCpu(), limits.GetMaxCpu(), fmt.Sprintf("%d / %d", active.GetCpu(), limits.GetMaxCpu()))
+				}
+				if limits.GetMaxMemoryMb() > 0 {
+					printConcurrencyBar(stdout, bar, "Memory", active.GetMemoryMb(), limits.GetMaxMemoryMb(), fmt.Sprintf("%s / %s",
+						humanize.IBytes(uint64(active.GetMemoryMb())*humanize.MiByte),
+						humanize.IBytes(uint64(limits.GetMaxMemoryMb())*humanize.MiByte),
+					))
+				}
+				fmt.Fprintln(stdout)
+			}
+		default:
+			return fnerrors.Newf("unknown output format %q; expected plain or json", *output)
+		}
+
+		return nil
+	})
+
+	return cmd
+}
+
+func printConcurrencyBar(stdout io.Writer, bar progress.Model, label string, active, limit int64, value string) {
+	fmt.Fprintf(stdout, "  %-9s %s  %s\n", label, bar.ViewAs(float64(active)/float64(limit)), value)
+}
+
+func getConcurrency(ctx context.Context) (*computev1beta.GetConcurrencyResponse, error) {
+	token, err := auth.LoadDefaults()
+	if err != nil {
+		return nil, fnerrors.Newf("authentication error: %w", err)
+	}
+
+	client, err := compute.NewClient(ctx, token)
+	if err != nil {
+		return nil, fnerrors.Newf("connection error: %w", err)
+	}
+	defer client.Close()
+
+	resp, err := client.Usage.GetConcurrency(ctx, &computev1beta.GetConcurrencyRequest{})
+	if err != nil {
+		return nil, fnerrors.Newf("failed to get workspace concurrency: %w", err)
+	}
+
+	return resp, nil
 }
 
 func newDescribeCmd() *cobra.Command {

@@ -4,8 +4,8 @@ go 1.26.0
 
 require (
 	buf.build/gen/go/namespace/cloud/connectrpc/go v1.20.0-20260803095335-52d3e79ff3ca.1
-	buf.build/gen/go/namespace/cloud/grpc/go v1.6.2-20260803095335-52d3e79ff3ca.1
-	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20260803132857-6824e1ccac7c.1
+	buf.build/gen/go/namespace/cloud/grpc/go v1.6.2-20260807183118-54ecdac1cb7f.1
+	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20260807183118-54ecdac1cb7f.1
 	cloud.google.com/go/artifactregistry v1.17.2
 	cloud.google.com/go/container v1.45.0
 	connectrpc.com/connect v1.20.0
@@ -199,6 +199,7 @@ require (
 	github.com/bufbuild/protocompile v0.14.1 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/chai2010/gettext-go v1.0.2 // indirect
+	github.com/charmbracelet/harmonica v0.2.0 // indirect
 	github.com/cockroachdb/apd/v3 v3.2.1 // indirect
 	github.com/containerd/cgroups/v3 v3.1.2 // indirect
 	github.com/containerd/containerd v1.7.33 // indirect
