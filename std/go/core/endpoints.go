@@ -12,6 +12,9 @@ import (
 func RegisterDebugEndpoints(mux *mux.Router) {
 	var endpoints []string
 
+	pprofEndpoint := registerPprofEndpoints(mux)
+	endpoints = append(endpoints, pprofEndpoint)
+
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.Handle("/livez", livezEndpoint())
 	mux.Handle("/readyz", readyzEndpoint())
