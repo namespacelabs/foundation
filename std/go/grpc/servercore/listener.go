@@ -116,14 +116,7 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 		return err
 	}
 
-	var tlsL net.Listener = nil
-	if tlsConfig != nil {
-		tlsL = m.Match(cmux.TLS())
-	}
-
-	httpL := m.Match(cmux.HTTP1())
-	anyL := m.Match(cmux.Any())
-
+	tlsL, httpL, anyL := matchDefaultListeners(m, tlsConfig != nil || gogrpc.ServerCreds != nil)
 	grpcopts := OrderedServerInterceptors()
 
 	if gogrpc.ServerCreds != nil {
@@ -139,16 +132,14 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 		PermitWithoutStream: true,
 	}))
 
-	defaultServer := grpc.NewServer(grpcopts...)
-	serversByConfiguration := map[string][]*grpc.Server{
-		"": {defaultServer},
+	defaultServerOpts := slices.Clone(grpcopts)
+	if tlsConfig != nil {
+		defaultServerOpts = append(defaultServerOpts, grpc.Creds(credentials.NewTLS(tlsConfig)))
 	}
 
-	var mtlsServer *grpc.Server
-	if tlsConfig != nil {
-		mtlsServer = grpc.NewServer(append(grpcopts, grpc.Creds(credentials.NewTLS(tlsConfig)))...)
-
-		serversByConfiguration[""] = append(serversByConfiguration[""], mtlsServer)
+	defaultServer := grpc.NewServer(defaultServerOpts...)
+	serversByConfiguration := map[string][]*grpc.Server{
+		"": {defaultServer},
 	}
 
 	rt, err := runtime.LoadRuntimeConfig()
@@ -193,7 +184,7 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 	httpMux := NewHTTPMux(middleware.Registered()...)
 
 	s := &ServerImpl{srv: serversByConfiguration, httpMux: httpMux}
-	registerServices(s)
+	registerHTTPServices(s, registerServices)
 
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
@@ -252,13 +243,16 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 		eg.Go(func() error { return ListenAndGracefullyShutdownHTTP(egCtx, "http", httpServer, gwLis) })
 	}
 
-	debugHTTP := &http.Server{Handler: debugMux}
-	eg.Go(func() error { return ListenAndGracefullyShutdownHTTP(egCtx, "http/debug", debugHTTP, httpL) })
+	if httpL != nil {
+		debugHTTP := &http.Server{Handler: debugMux}
+		eg.Go(func() error { return ListenAndGracefullyShutdownHTTP(egCtx, "http/debug", debugHTTP, httpL) })
+	}
 
-	eg.Go(func() error { return ListenAndGracefullyShutdownGRPC(egCtx, "grpc", defaultServer, anyL) })
-
-	if mtlsServer != nil {
-		eg.Go(func() error { return ListenAndGracefullyShutdownGRPC(egCtx, "grpc/tls", mtlsServer, tlsL) })
+	if anyL != nil {
+		eg.Go(func() error { return ListenAndGracefullyShutdownGRPC(egCtx, "grpc", defaultServer, anyL) })
+	}
+	if tlsL != nil {
+		eg.Go(func() error { return ListenAndGracefullyShutdownGRPC(egCtx, "grpc/tls", defaultServer, tlsL) })
 	}
 
 	for k, srvs := range serversByConfiguration {
@@ -320,6 +314,21 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 	err = eg.Wait()
 	core.ZLog.Info().Err(err).Msg("stopped listening")
 	return err
+}
+
+func registerHTTPServices(s *ServerImpl, registerServices func(Server)) {
+	// Gorilla mux resolves routes in registration order. Keep administrative
+	// endpoints ahead of application catch-all routes.
+	core.RegisterDebugEndpoints(s.httpMux)
+	registerServices(s)
+}
+
+func matchDefaultListeners(m cmux.CMux, transportSecurity bool) (net.Listener, net.Listener, net.Listener) {
+	if transportSecurity {
+		return m.Match(cmux.TLS()), nil, nil
+	}
+
+	return nil, m.Match(cmux.HTTP1()), m.Match(cmux.Any())
 }
 
 func NewHttp2CapableServer(mux http.Handler, opts HTTPOptions) *http.Server {
