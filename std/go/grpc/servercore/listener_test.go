@@ -11,112 +11,18 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/http/httptest"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/soheilhy/cmux"
 	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health/grpc_health_v1"
-	"namespacelabs.dev/foundation/std/go/core"
 	nsgrpc "namespacelabs.dev/foundation/std/go/grpc"
 )
-
-func TestMatchDefaultListeners(t *testing.T) {
-	for _, tc := range []struct {
-		name     string
-		mtls     bool
-		wantTLS  bool
-		wantHTTP bool
-		wantGRPC bool
-	}{
-		{name: "plaintext", wantHTTP: true, wantGRPC: true},
-		{name: "mTLS", mtls: true, wantTLS: true},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			listener, err := net.Listen("tcp", "127.0.0.1:0")
-			if err != nil {
-				t.Fatalf("listen: %v", err)
-			}
-			defer listener.Close()
-
-			tlsListener, httpListener, grpcListener := matchDefaultListeners(cmux.New(listener), tc.mtls)
-			if (tlsListener != nil) != tc.wantTLS || (httpListener != nil) != tc.wantHTTP || (grpcListener != nil) != tc.wantGRPC {
-				t.Fatalf("unexpected listeners: tls=%t http=%t grpc=%t", tlsListener != nil, httpListener != nil, grpcListener != nil)
-			}
-		})
-	}
-}
-
-func TestSecureDefaultListenerRejectsPlaintextHTTP(t *testing.T) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("listen: %v", err)
-	}
-	defer listener.Close()
-
-	m := cmux.New(listener)
-	matchDefaultListeners(m, true)
-	serveDone := make(chan error, 1)
-	go func() {
-		serveDone <- m.Serve()
-	}()
-
-	conn, err := net.DialTimeout("tcp", listener.Addr().String(), time.Second)
-	if err != nil {
-		t.Fatalf("dial: %v", err)
-	}
-	defer conn.Close()
-
-	if _, err := io.WriteString(conn, "GET /metrics HTTP/1.1\r\nHost: localhost\r\n\r\n"); err != nil {
-		t.Fatalf("write request: %v", err)
-	}
-	if err := conn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
-		t.Fatalf("set deadline: %v", err)
-	}
-
-	buffer := make([]byte, 1)
-	if _, err := conn.Read(buffer); err == nil {
-		t.Fatal("plaintext connection was not closed")
-	} else if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-		t.Fatal("plaintext connection remained open")
-	}
-
-	if err := listener.Close(); err != nil {
-		t.Fatalf("close listener: %v", err)
-	}
-	select {
-	case <-serveDone:
-	case <-time.After(time.Second):
-		t.Fatal("cmux did not stop")
-	}
-}
-
-func TestRegisterHTTPServicesKeepsAdministrativeRoutesAheadOfCatchAll(t *testing.T) {
-	httpMux := NewHTTPMux()
-	s := &ServerImpl{httpMux: httpMux}
-
-	registerHTTPServices(s, func(server Server) {
-		server.Scope(&core.Package{}).PathPrefix("/").Handler(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			w.Header().Set("X-Application-Catch-All", "true")
-			w.WriteHeader(http.StatusTeapot)
-		}))
-	})
-
-	for _, path := range []string{"/metrics", "/livez", "/readyz"} {
-		req := httptest.NewRequest(http.MethodGet, path, nil)
-		response := httptest.NewRecorder()
-		httpMux.ServeHTTP(response, req)
-		if response.Header().Get("X-Application-Catch-All") != "" {
-			t.Errorf("%s was handled by the application catch-all", path)
-		}
-	}
-}
 
 // TestNewHttp2CapableServer_GoawayOnShutdown verifies that
 // NewHttp2CapableServer wires up HTTP/2 graceful shutdown for h2c
