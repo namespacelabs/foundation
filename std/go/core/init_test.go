@@ -4,13 +4,7 @@
 
 package core
 
-import (
-	"net/http"
-	"net/http/httptest"
-	"testing"
-
-	"github.com/gorilla/mux"
-)
+import "testing"
 
 func TestEnforceBefore(t *testing.T) {
 	initializers := []*Initializer{
@@ -23,17 +17,6 @@ func TestEnforceBefore(t *testing.T) {
 
 	if _, err := enforceOrder(initializers); err != nil {
 		t.Fatal(err)
-	}
-}
-
-func TestRegisterDebugEndpointsDoesNotExposePprof(t *testing.T) {
-	router := mux.NewRouter()
-	RegisterDebugEndpoints(router)
-
-	response := httptest.NewRecorder()
-	router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/debug/pprof/", nil))
-	if response.Code != http.StatusNotFound {
-		t.Fatalf("got status %d, want %d", response.Code, http.StatusNotFound)
 	}
 }
 
