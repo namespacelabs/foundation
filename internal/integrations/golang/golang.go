@@ -269,22 +269,20 @@ func packageFrom(loc pkggraph.Location) (string, error) {
 	return gosupport.ComputeGoPackage(loc.Abs())
 }
 
-func (impl) InternalEndpoints(env *schema.Environment, srv *schema.Server, ports []*schema.Endpoint_Port) ([]*schema.InternalEndpoint, error) {
+func (impl) InternalEndpoints(_ *schema.Environment, srv *schema.Server, ports []*schema.Endpoint_Port) ([]*schema.InternalEndpoint, error) {
 	// XXX have these defined in std/go/core/fn.cue so they're versioned.
 	var internals = [][2]string{
 		{"/metrics", "prometheus.io/metrics"},
 		{"/livez", runtime.FnServiceLivez},
 		{"/readyz", runtime.FnServiceReadyz},
 	}
+	var serverPortName = "server-port"
 
 	var serverPort *schema.Endpoint_Port
 	for _, port := range ports {
-		if port.Name == "http-port" {
+		if port.Name == serverPortName {
 			serverPort = port
 			break
-		}
-		if port.Name == "server-port" {
-			serverPort = port
 		}
 	}
 
