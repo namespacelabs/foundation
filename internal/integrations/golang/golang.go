@@ -277,18 +277,13 @@ func (impl) InternalEndpoints(env *schema.Environment, srv *schema.Server, ports
 		{"/readyz", runtime.FnServiceReadyz},
 	}
 
-	preferredPortName := "http-port"
-	if env.Purpose == schema.Environment_TESTING {
-		preferredPortName = "server-port"
-	}
-
 	var serverPort *schema.Endpoint_Port
 	for _, port := range ports {
-		if port.Name == preferredPortName {
+		if port.Name == "http-port" {
 			serverPort = port
 			break
 		}
-		if port.Name == "server-port" || port.Name == "http-port" {
+		if port.Name == "server-port" {
 			serverPort = port
 		}
 	}

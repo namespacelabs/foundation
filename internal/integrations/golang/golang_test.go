@@ -21,7 +21,7 @@ func TestInternalEndpointsSelectsHealthPort(t *testing.T) {
 		purpose  schema.Environment_Purpose
 		wantPort string
 	}{
-		{name: "testing", purpose: schema.Environment_TESTING, wantPort: "server-port"},
+		{name: "testing", purpose: schema.Environment_TESTING, wantPort: "http-port"},
 		{name: "production", purpose: schema.Environment_PRODUCTION, wantPort: "http-port"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
