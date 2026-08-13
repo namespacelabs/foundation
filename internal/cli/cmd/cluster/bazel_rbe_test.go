@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	bazelv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/integrations/bazel/v1beta"
 	"connectrpc.com/connect"
 	"github.com/cenkalti/backoff/v4"
 	"google.golang.org/grpc/codes"
@@ -122,15 +123,17 @@ func TestToBazelExecutionConfigBuildEventsDisabled(t *testing.T) {
 func TestToBazelExecutionConfigWithoutRemoteExecution(t *testing.T) {
 	t.Parallel()
 
+	remoteUploadLocalResults := false
 	config, err := toBazelExecutionConfig(context.Background(), bazelRbeSetup{
-		SchedulerEndpoint:     "grpcs://scheduler.example:443",
-		StorageEndpoint:       "grpcs://storage.example:443",
-		IngressAuthToken:      "tok123",
-		RemoteLocalFallback:   true,
-		RemoteDownloadOutputs: "minimal",
-		RemoteTimeout:         5 * time.Minute,
-		Jobs:                  32,
-		BuildEventEndpoint:    "grpcs://api.us-east1.namespaceapis.com",
+		SchedulerEndpoint:        "grpcs://scheduler.example:443",
+		StorageEndpoint:          "grpcs://storage.example:443",
+		RemoteUploadLocalResults: &remoteUploadLocalResults,
+		IngressAuthToken:         "tok123",
+		RemoteLocalFallback:      true,
+		RemoteDownloadOutputs:    "minimal",
+		RemoteTimeout:            5 * time.Minute,
+		Jobs:                     32,
+		BuildEventEndpoint:       "grpcs://api.us-east1.namespaceapis.com",
 	}, "build", false, false)
 	if err != nil {
 		t.Fatalf("toBazelExecutionConfig: %v", err)
@@ -141,6 +144,7 @@ func TestToBazelExecutionConfigWithoutRemoteExecution(t *testing.T) {
 		"build --remote_cache=grpcs://storage.example:443\n",
 		"build --remote_header=x-nsc-ingress-auth=Bearer\\ tok123\n",
 		"build --remote_download_outputs=minimal\n",
+		"build --remote_upload_local_results=false\n",
 		"build --jobs=32\n",
 		"build --remote_timeout=300\n",
 		"build --bes_backend=grpcs://api.us-east1.namespaceapis.com\n",
@@ -181,6 +185,13 @@ func TestNewBazelCmdSetupAlias(t *testing.T) {
 	if remote.DefValue != "true" {
 		t.Fatalf("--remote default = %q, want true", remote.DefValue)
 	}
+	storage := setup.Flags().Lookup("storage")
+	if storage == nil {
+		t.Fatal("bazel setup is missing --storage")
+	}
+	if storage.DefValue != bazelStorageReadWrite {
+		t.Fatalf("--storage default = %q, want %q", storage.DefValue, bazelStorageReadWrite)
+	}
 	if setup.Flags().Lookup("token") == nil {
 		t.Fatal("bazel setup is missing --token")
 	}
@@ -195,11 +206,93 @@ func TestNewBazelCmdSetupAlias(t *testing.T) {
 	if executionSetup.Flags().Lookup("remote") != nil {
 		t.Fatal("bazel execution setup must not expose --remote")
 	}
+	if executionSetup.Flags().Lookup("storage") != nil {
+		t.Fatal("bazel execution setup must not expose --storage")
+	}
 	if executionSetup.Flags().Lookup("token") == nil {
 		t.Fatal("bazel execution setup is missing --token")
 	}
 	if executionSetup.Flags().Lookup("disable_build_events") == nil {
 		t.Fatal("bazel execution setup is missing --disable_build_events")
+	}
+}
+
+func TestBazelSetupStorageModeValidation(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "invalid mode", args: []string{"--storage=invalid"}, want: "invalid storage mode"},
+		{name: "read only with remote execution", args: []string{"--storage=read-only"}, want: "requires --remote=false"},
+		{name: "read only with remote asset API", args: []string{"--remote=false", "--storage=read-only", "--enable_remote_asset_api"}, want: "may not be used with --storage=read-only"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := newSetupBazelCmd()
+			cmd.SetArgs(tc.args)
+			err := cmd.ExecuteContext(context.Background())
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("ExecuteContext() error = %v, want error containing %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestBazelStorageSetup(t *testing.T) {
+	t.Parallel()
+
+	response := &bazelv1beta.EnsureStorageClusterResponse{
+		StorageEndpoint:                          "grpcs://storage.example:444",
+		RemoteAssetEndpoint:                      "grpcs://asset.example:444",
+		RecommendedBazelRemoteUploadLocalResults: true,
+	}
+
+	readWrite := bazelStorageSetup(response)
+	if readWrite.RemoteUploadLocalResults == nil || !*readWrite.RemoteUploadLocalResults {
+		t.Fatalf("read-write setup upload recommendation = %v, want true", readWrite.RemoteUploadLocalResults)
+	}
+	if readWrite.StorageEndpoint != response.GetStorageEndpoint() || readWrite.RemoteAssetEndpoint != response.GetRemoteAssetEndpoint() {
+		t.Fatalf("read-write setup = %#v, want response endpoints", readWrite)
+	}
+
+	response.SetRecommendedBazelRemoteUploadLocalResults(false)
+	readOnly := bazelStorageSetup(response)
+	if readOnly.RemoteUploadLocalResults == nil || *readOnly.RemoteUploadLocalResults {
+		t.Fatalf("read-only setup upload recommendation = %v, want false", readOnly.RemoteUploadLocalResults)
+	}
+}
+
+func TestMakeEnsureBazelStorageClusterRequest(t *testing.T) {
+	t.Parallel()
+
+	req := makeEnsureBazelStorageClusterRequest(
+		"ci",
+		bazelv1beta.BazelExecutionAuthMode_BAZEL_EXECUTION_AUTH_MODE_STATIC,
+		true,
+		bazelv1beta.BazelStorageAccessMode_BAZEL_STORAGE_ACCESS_MODE_READ_ONLY,
+	)
+	if req.GetKey() != "ci" {
+		t.Fatalf("key = %q, want ci", req.GetKey())
+	}
+	if req.GetAuthMode() != bazelv1beta.BazelExecutionAuthMode_BAZEL_EXECUTION_AUTH_MODE_STATIC {
+		t.Fatalf("auth mode = %v, want static", req.GetAuthMode())
+	}
+	if !req.GetEnableRemoteAssetApi() {
+		t.Fatal("remote asset API is disabled, want enabled")
+	}
+	if req.GetAccessMode() != bazelv1beta.BazelStorageAccessMode_BAZEL_STORAGE_ACCESS_MODE_READ_ONLY {
+		t.Fatalf("access mode = %v, want read-only", req.GetAccessMode())
+	}
+}
+
+func TestBazelStorageAccessMode(t *testing.T) {
+	t.Parallel()
+
+	if got := bazelStorageAccessMode(bazelStorageReadOnly); got != bazelv1beta.BazelStorageAccessMode_BAZEL_STORAGE_ACCESS_MODE_READ_ONLY {
+		t.Fatalf("read-only access mode = %v, want read-only", got)
+	}
+	if got := bazelStorageAccessMode(bazelStorageReadWrite); got != bazelv1beta.BazelStorageAccessMode_BAZEL_STORAGE_ACCESS_MODE_READ_WRITE {
+		t.Fatalf("read-write access mode = %v, want read-write", got)
 	}
 }
 

@@ -176,6 +176,7 @@ func newBazelTokenRequest(name string, expiresAt time.Time, scope string) (*iamv
 		Access: &iamv1beta.AccessPolicy{
 			Grants: []*iamv1beta.Permission{
 				{ResourceType: "bazel/execution", ResourceId: "*", Actions: []string{"ensure"}},
+				{ResourceType: "bazel/storage", ResourceId: "*", Actions: []string{"write"}},
 				{ResourceType: "ingress", ResourceId: "*", Actions: []string{"access"}},
 			},
 		},
