@@ -278,8 +278,8 @@ func TestNewBazelTokenRequest(t *testing.T) {
 	}
 
 	grants := req.GetAccess().GetGrants()
-	if len(grants) != 2 {
-		t.Fatalf("grant count = %d, want 2", len(grants))
+	if len(grants) != 3 {
+		t.Fatalf("grant count = %d, want 3", len(grants))
 	}
 	assertGrant := func(got *iamv1beta.Permission, resourceType, action string) {
 		t.Helper()
@@ -288,7 +288,8 @@ func TestNewBazelTokenRequest(t *testing.T) {
 		}
 	}
 	assertGrant(grants[0], "bazel/execution", "ensure")
-	assertGrant(grants[1], "ingress", "access")
+	assertGrant(grants[1], "bazel/storage", "write")
+	assertGrant(grants[2], "ingress", "access")
 
 	tenantReq, err := newBazelTokenRequest("rbe-ci-token", expiresAt, "tenant")
 	if err != nil {

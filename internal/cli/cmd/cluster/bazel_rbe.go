@@ -36,6 +36,8 @@ const (
 	defaultBazelRbeCommand      = "build"
 	bazelProvisioningMaxRetries = 3
 	bazelProvisioningRetryWait  = 200 * time.Millisecond
+	bazelStorageReadOnly        = "read-only"
+	bazelStorageReadWrite       = "read-write"
 )
 
 func newSetupExecutionCmd() *cobra.Command {
@@ -47,7 +49,7 @@ func newSetupBazelCmd() *cobra.Command {
 }
 
 func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
-	var bazelRcPath, output, bazelCommand, key, tokenFile string
+	var bazelRcPath, output, bazelCommand, key, tokenFile, storageMode string
 	var staticDur time.Duration
 	var static, enableRemoteAssetAPI, disableBuildEvents bool
 	remote := true
@@ -67,9 +69,20 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 		flags.BoolVar(&disableBuildEvents, "disable_build_events", false, "If specified, do not configure Bazel to send build events.")
 		fncobra.DurationVar(flags, &staticDur, "static_token_duration", 4*time.Hour, "The minimum duration of the static token configured (requires --static).")
 		if includeRemoteFlag {
-			flags.BoolVar(&remote, "remote", true, "If false, configure remote caching and build events without remote execution.")
+			flags.BoolVar(&remote, "remote", true, "If false, configure remote caching without remote execution.")
+			flags.StringVar(&storageMode, "storage", bazelStorageReadWrite, "Storage access mode. Valid options: read-only, read-write.")
 		}
 	}).Do(func(ctx context.Context) error {
+		if storageMode != "" && storageMode != bazelStorageReadOnly && storageMode != bazelStorageReadWrite {
+			return fnerrors.BadInputError("invalid storage mode %q (valid values: read-only, read-write)", storageMode)
+		}
+		if remote && storageMode == bazelStorageReadOnly {
+			return fnerrors.BadInputError("--storage=read-only requires --remote=false")
+		}
+		if enableRemoteAssetAPI && storageMode == bazelStorageReadOnly {
+			return fnerrors.BadInputError("--enable_remote_asset_api may not be used with --storage=read-only")
+		}
+
 		var tok api.TokenSource
 		if tokenFile != "" {
 			loaded, err := loadTokenFromFile(tokenFile)
@@ -91,23 +104,44 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 			authMode = bazelv1beta.BazelExecutionAuthMode_BAZEL_EXECUTION_AUTH_MODE_STATIC
 		}
 
-		res, err := ensureBazelExecutionCluster(ctx, tok, key, authMode, enableRemoteAssetAPI)
-		if err != nil {
-			return fnerrors.Newf("failed to provision bazel execution cluster: %w", err)
-		}
+		var out bazelRbeSetup
+		if remote {
+			res, err := ensureBazelExecutionCluster(ctx, tok, key, authMode, enableRemoteAssetAPI)
+			if err != nil {
+				return fnerrors.Newf("failed to provision bazel execution cluster: %w", err)
+			}
 
-		if res.GetSchedulerEndpoint() == "" || res.GetStorageEndpoint() == "" {
-			return fnerrors.Newf("received incomplete response (scheduler=%q storage=%q)", res.GetSchedulerEndpoint(), res.GetStorageEndpoint())
-		}
+			if res.GetSchedulerEndpoint() == "" || res.GetStorageEndpoint() == "" {
+				return fnerrors.Newf("received incomplete response (scheduler=%q storage=%q)", res.GetSchedulerEndpoint(), res.GetStorageEndpoint())
+			}
 
-		out := bazelRbeSetup{
-			SchedulerEndpoint:     res.GetSchedulerEndpoint(),
-			StorageEndpoint:       res.GetStorageEndpoint(),
-			RemoteAssetEndpoint:   res.GetRemoteAssetEndpoint(),
-			Jobs:                  int32(res.GetRecommendedBazelJobs()),
-			RemoteTimeout:         time.Duration(res.GetRecommendedBazelRemoteTimeoutSeconds()) * time.Second,
-			RemoteLocalFallback:   res.GetRecommendedBazelRemoteLocalFallback(),
-			RemoteDownloadOutputs: res.GetRecommendedBazelRemoteDownloadOutputs(),
+			out = bazelRbeSetup{
+				SchedulerEndpoint:     res.GetSchedulerEndpoint(),
+				StorageEndpoint:       res.GetStorageEndpoint(),
+				RemoteAssetEndpoint:   res.GetRemoteAssetEndpoint(),
+				Jobs:                  int32(res.GetRecommendedBazelJobs()),
+				RemoteTimeout:         time.Duration(res.GetRecommendedBazelRemoteTimeoutSeconds()) * time.Second,
+				RemoteLocalFallback:   res.GetRecommendedBazelRemoteLocalFallback(),
+				RemoteDownloadOutputs: res.GetRecommendedBazelRemoteDownloadOutputs(),
+			}
+
+			// The build event endpoint is a separate, bearer-authenticated host
+			// (the regional API gateway), independent of the scheduler/storage auth
+			// mode. The server only returns it (and the credential helper domains
+			// used to authenticate it in the default mTLS mode) when build event
+			// ingestion is enabled for the workspace.
+			out.BuildEventEndpoint = res.GetBuildEventEndpoint()
+			out.CredentialHelperDomains = res.GetCredentialHelperDomains()
+		} else {
+			res, err := ensureBazelStorageCluster(ctx, tok, key, authMode, enableRemoteAssetAPI, bazelStorageAccessMode(storageMode))
+			if err != nil {
+				return fnerrors.Newf("failed to provision bazel storage cluster: %w", err)
+			}
+			if res.GetStorageEndpoint() == "" {
+				return fnerrors.Newf("received incomplete response (storage=%q)", res.GetStorageEndpoint())
+			}
+
+			out = bazelStorageSetup(res)
 		}
 
 		if static {
@@ -152,14 +186,6 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 			out.ClientCert = clientCertPath
 			out.ClientKey = clientKeyPath
 		}
-
-		// The build event endpoint is a separate, bearer-authenticated host
-		// (the regional API gateway), independent of the scheduler/storage auth
-		// mode. The server only returns it (and the credential helper domains
-		// used to authenticate it in the default mTLS mode) when build event
-		// ingestion is enabled for the workspace.
-		out.BuildEventEndpoint = res.GetBuildEventEndpoint()
-		out.CredentialHelperDomains = res.GetCredentialHelperDomains()
 
 		if bazelRcPath != "" {
 			data, err := toBazelExecutionConfig(ctx, out, bazelCommand, remote, disableBuildEvents)
@@ -215,18 +241,28 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 }
 
 type bazelRbeSetup struct {
-	SchedulerEndpoint       string        `json:"scheduler_endpoint,omitempty"`
-	StorageEndpoint         string        `json:"storage_endpoint,omitempty"`
-	RemoteAssetEndpoint     string        `json:"remote_asset_endpoint,omitempty"`
-	ClientCert              string        `json:"client_cert,omitempty"`
-	ClientKey               string        `json:"client_key,omitempty"`
-	IngressAuthToken        string        `json:"ingress_auth_token,omitempty"`
-	Jobs                    int32         `json:"jobs,omitempty"`
-	RemoteTimeout           time.Duration `json:"remote_timeout,omitempty"`
-	RemoteLocalFallback     bool          `json:"remote_local_fallback,omitempty"`
-	RemoteDownloadOutputs   string        `json:"remote_download_outputs,omitempty"`
-	BuildEventEndpoint      string        `json:"build_event_endpoint,omitempty"`
-	CredentialHelperDomains []string      `json:"credential_helper_domains,omitempty"`
+	SchedulerEndpoint        string        `json:"scheduler_endpoint,omitempty"`
+	StorageEndpoint          string        `json:"storage_endpoint,omitempty"`
+	RemoteAssetEndpoint      string        `json:"remote_asset_endpoint,omitempty"`
+	RemoteUploadLocalResults *bool         `json:"remote_upload_local_results,omitempty"`
+	ClientCert               string        `json:"client_cert,omitempty"`
+	ClientKey                string        `json:"client_key,omitempty"`
+	IngressAuthToken         string        `json:"ingress_auth_token,omitempty"`
+	Jobs                     int32         `json:"jobs,omitempty"`
+	RemoteTimeout            time.Duration `json:"remote_timeout,omitempty"`
+	RemoteLocalFallback      bool          `json:"remote_local_fallback,omitempty"`
+	RemoteDownloadOutputs    string        `json:"remote_download_outputs,omitempty"`
+	BuildEventEndpoint       string        `json:"build_event_endpoint,omitempty"`
+	CredentialHelperDomains  []string      `json:"credential_helper_domains,omitempty"`
+}
+
+func bazelStorageSetup(response *bazelv1beta.EnsureStorageClusterResponse) bazelRbeSetup {
+	remoteUploadLocalResults := response.GetRecommendedBazelRemoteUploadLocalResults()
+	return bazelRbeSetup{
+		StorageEndpoint:          response.GetStorageEndpoint(),
+		RemoteAssetEndpoint:      response.GetRemoteAssetEndpoint(),
+		RemoteUploadLocalResults: &remoteUploadLocalResults,
+	}
 }
 
 func toBazelExecutionConfig(ctx context.Context, out bazelRbeSetup, command string, remote, disableBuildEvents bool) ([]byte, error) {
@@ -260,6 +296,9 @@ func toBazelExecutionConfig(ctx context.Context, out bazelRbeSetup, command stri
 	}
 	if out.RemoteDownloadOutputs != "" {
 		lines = append(lines, fmt.Sprintf("--remote_download_outputs=%s", out.RemoteDownloadOutputs))
+	}
+	if out.RemoteUploadLocalResults != nil {
+		lines = append(lines, fmt.Sprintf("--remote_upload_local_results=%t", *out.RemoteUploadLocalResults))
 	}
 	if out.Jobs > 0 {
 		lines = append(lines, fmt.Sprintf("--jobs=%d", out.Jobs))
@@ -335,6 +374,36 @@ func ensureBazelExecutionCluster(ctx context.Context, tok api.TokenSource, key s
 	return retryBazelProvisioning(ctx, func() (*bazelv1beta.EnsureClusterResponse, error) {
 		return client.EnsureCluster(ctx, req)
 	})
+}
+
+func ensureBazelStorageCluster(ctx context.Context, tok api.TokenSource, key string, authMode bazelv1beta.BazelExecutionAuthMode, enableRemoteAssetAPI bool, accessMode bazelv1beta.BazelStorageAccessMode) (*bazelv1beta.EnsureStorageClusterResponse, error) {
+	client, conn, err := newBazelServiceClient(ctx, tok)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	req := makeEnsureBazelStorageClusterRequest(key, authMode, enableRemoteAssetAPI, accessMode)
+
+	return retryBazelProvisioning(ctx, func() (*bazelv1beta.EnsureStorageClusterResponse, error) {
+		return client.EnsureStorageCluster(ctx, req)
+	})
+}
+
+func makeEnsureBazelStorageClusterRequest(key string, authMode bazelv1beta.BazelExecutionAuthMode, enableRemoteAssetAPI bool, accessMode bazelv1beta.BazelStorageAccessMode) *bazelv1beta.EnsureStorageClusterRequest {
+	req := &bazelv1beta.EnsureStorageClusterRequest{}
+	req.SetKey(key)
+	req.SetAuthMode(authMode)
+	req.SetEnableRemoteAssetApi(enableRemoteAssetAPI)
+	req.SetAccessMode(accessMode)
+	return req
+}
+
+func bazelStorageAccessMode(storageMode string) bazelv1beta.BazelStorageAccessMode {
+	if storageMode == bazelStorageReadOnly {
+		return bazelv1beta.BazelStorageAccessMode_BAZEL_STORAGE_ACCESS_MODE_READ_ONLY
+	}
+	return bazelv1beta.BazelStorageAccessMode_BAZEL_STORAGE_ACCESS_MODE_READ_WRITE
 }
 
 func retryBazelProvisioning[T any](ctx context.Context, call func() (T, error)) (T, error) {
