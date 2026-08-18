@@ -11,6 +11,7 @@ import (
 
 	v1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/iam/v1beta"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/integrations/api"
 )
 
 const AdminScope = "admin"
@@ -308,12 +309,27 @@ type ListTrustRelationshipsResponse struct {
 }
 
 func GetTenant(ctx context.Context) (GetTenantResponse, error) {
+	return getTenant(ctx, IssueBearerToken)
+}
+
+func GetTenantWithToken(ctx context.Context, token api.TokenSource) (GetTenantResponse, error) {
+	return getTenant(ctx, func(ctx context.Context) (ResolvedToken, error) {
+		bearerToken, err := token.IssueToken(ctx, 15*time.Minute, false)
+		if err != nil {
+			return ResolvedToken{}, err
+		}
+
+		return ResolvedToken{BearerToken: bearerToken}, nil
+	})
+}
+
+func getTenant(ctx context.Context, issueBearerToken func(context.Context) (ResolvedToken, error)) (GetTenantResponse, error) {
 	req := struct{}{}
 
 	var res GetTenantResponse
 	if err := (Call[any]{
 		Method:           "nsl.tenants.TenantsService/GetTenant",
-		IssueBearerToken: IssueBearerToken,
+		IssueBearerToken: issueBearerToken,
 		Retryable:        true,
 	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
 		return GetTenantResponse{}, err
