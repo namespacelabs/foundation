@@ -22,6 +22,7 @@ func TestToBazelExecutionConfigBuildEventsStatic(t *testing.T) {
 	t.Parallel()
 
 	config, err := toBazelExecutionConfig(context.Background(), bazelRbeSetup{
+		TenantID:           "tenant_test",
 		SchedulerEndpoint:  "grpcs://scheduler.example:443",
 		StorageEndpoint:    "grpcs://storage.example:443",
 		IngressAuthToken:   "tok123",
@@ -34,6 +35,7 @@ func TestToBazelExecutionConfigBuildEventsStatic(t *testing.T) {
 	got := string(config)
 	for _, want := range []string{
 		"build --bes_backend=grpcs://api.us-east1.namespaceapis.com\n",
+		"build --bes_results_url=https://cloud.namespace.so/tenant_test/bazel/invocation/\n",
 		"build --bes_header=Authorization=Bearer\\ tok123\n",
 		"build --bes_header=x-nsc-ingress-auth=Bearer\\ tok123\n",
 	} {
@@ -51,6 +53,7 @@ func TestToBazelExecutionConfigBuildEventsMTLS(t *testing.T) {
 	t.Parallel()
 
 	config, err := toBazelExecutionConfig(context.Background(), bazelRbeSetup{
+		TenantID:                "tenant_test",
 		SchedulerEndpoint:       "grpcs://scheduler.example:444",
 		StorageEndpoint:         "grpcs://storage.example:444",
 		ClientCert:              "/tmp/client.cert",
@@ -65,6 +68,7 @@ func TestToBazelExecutionConfigBuildEventsMTLS(t *testing.T) {
 	got := string(config)
 	for _, want := range []string{
 		"build --bes_backend=grpcs://api.us-east1.namespaceapis.com\n",
+		"build --bes_results_url=https://cloud.namespace.so/tenant_test/bazel/invocation/\n",
 		"build --credential_helper=*.api.us-east1.namespaceapis.com=" + BazelCredHelperBinary + "\n",
 	} {
 		if !strings.Contains(got, want) {
@@ -81,6 +85,7 @@ func TestToBazelExecutionConfigNoBuildEvents(t *testing.T) {
 	t.Parallel()
 
 	config, err := toBazelExecutionConfig(context.Background(), bazelRbeSetup{
+		TenantID:          "tenant_test",
 		SchedulerEndpoint: "grpcs://scheduler.example:444",
 		StorageEndpoint:   "grpcs://storage.example:444",
 		ClientCert:        "/tmp/client.cert",
@@ -91,7 +96,7 @@ func TestToBazelExecutionConfigNoBuildEvents(t *testing.T) {
 	}
 
 	got := string(config)
-	if strings.Contains(got, "--bes_backend") || strings.Contains(got, "credential_helper") {
+	if strings.Contains(got, "--bes_backend") || strings.Contains(got, "--bes_results_url") || strings.Contains(got, "credential_helper") {
 		t.Fatalf("must not configure build events when no endpoint is returned: %q", got)
 	}
 }
@@ -100,6 +105,7 @@ func TestToBazelExecutionConfigBuildEventsDisabled(t *testing.T) {
 	t.Parallel()
 
 	config, err := toBazelExecutionConfig(context.Background(), bazelRbeSetup{
+		TenantID:                "tenant_test",
 		SchedulerEndpoint:       "grpcs://scheduler.example:444",
 		StorageEndpoint:         "grpcs://storage.example:444",
 		BuildEventEndpoint:      "grpcs://api.us-east1.namespaceapis.com",
@@ -110,7 +116,7 @@ func TestToBazelExecutionConfigBuildEventsDisabled(t *testing.T) {
 	}
 
 	got := string(config)
-	for _, unwanted := range []string{"--bes_backend", "--bes_header", "credential_helper"} {
+	for _, unwanted := range []string{"--bes_backend", "--bes_results_url", "--bes_header", "credential_helper"} {
 		if strings.Contains(got, unwanted) {
 			t.Fatalf("disabled build event config contains %q: %q", unwanted, got)
 		}
@@ -125,6 +131,7 @@ func TestToBazelExecutionConfigWithoutRemoteExecution(t *testing.T) {
 
 	remoteUploadLocalResults := false
 	config, err := toBazelExecutionConfig(context.Background(), bazelRbeSetup{
+		TenantID:                 "tenant_test",
 		SchedulerEndpoint:        "grpcs://scheduler.example:443",
 		StorageEndpoint:          "grpcs://storage.example:443",
 		RemoteUploadLocalResults: &remoteUploadLocalResults,
@@ -148,6 +155,7 @@ func TestToBazelExecutionConfigWithoutRemoteExecution(t *testing.T) {
 		"build --jobs=32\n",
 		"build --remote_timeout=300\n",
 		"build --bes_backend=grpcs://api.us-east1.namespaceapis.com\n",
+		"build --bes_results_url=https://cloud.namespace.so/tenant_test/bazel/invocation/\n",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing config line %q in %q", want, got)

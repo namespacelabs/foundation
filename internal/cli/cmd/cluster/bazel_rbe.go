@@ -144,6 +144,18 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 			out = bazelStorageSetup(res)
 		}
 
+		if out.BuildEventEndpoint != "" && !disableBuildEvents {
+			tenant, err := fnapi.GetTenantWithToken(ctx, tok)
+			if err != nil {
+				return fnerrors.Newf("failed to resolve tenant for build event results: %w", err)
+			}
+			if tenant.Tenant == nil || tenant.Tenant.TenantId == "" {
+				return fnerrors.New("received incomplete tenant response")
+			}
+
+			out.TenantID = tenant.Tenant.TenantId
+		}
+
 		if static {
 			// In static mode the server returns the public, bearer-authenticated
 			// endpoints (and deliberately does not expose the mTLS endpoints). A
@@ -241,6 +253,7 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 }
 
 type bazelRbeSetup struct {
+	TenantID                 string        `json:"-"`
 	SchedulerEndpoint        string        `json:"scheduler_endpoint,omitempty"`
 	StorageEndpoint          string        `json:"storage_endpoint,omitempty"`
 	RemoteAssetEndpoint      string        `json:"remote_asset_endpoint,omitempty"`
@@ -309,7 +322,10 @@ func toBazelExecutionConfig(ctx context.Context, out bazelRbeSetup, command stri
 	}
 
 	if out.BuildEventEndpoint != "" && !disableBuildEvents {
-		lines = append(lines, fmt.Sprintf("--bes_backend=%s", out.BuildEventEndpoint))
+		lines = append(lines,
+			fmt.Sprintf("--bes_backend=%s", out.BuildEventEndpoint),
+			fmt.Sprintf("--bes_results_url=https://cloud.namespace.so/%s/bazel/invocation/", out.TenantID),
+		)
 
 		if out.IngressAuthToken != "" {
 			lines = append(lines,
