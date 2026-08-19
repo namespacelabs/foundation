@@ -274,6 +274,10 @@ func PortForProtocol(endpoint *schema.Endpoint, protocol string) *schema.Endpoin
 			return port
 		}
 	case schema.ClearTextGrpcProtocol:
+		if port := findEndpointPort(endpoint, "int-grpc-port"); port != nil {
+			return port
+		}
+		// Support endpoints generated before int-grpc-port was introduced.
 		if port := findEndpointPort(endpoint, "grpc-port"); port != nil {
 			return port
 		}

@@ -14,7 +14,7 @@ import (
 func TestIngressPort(t *testing.T) {
 	serverPort := &schema.Endpoint_PortMap{ExportedPort: 4000, Port: &schema.Endpoint_Port{Name: "server-port", ContainerPort: 4000}}
 	httpPort := &schema.Endpoint_PortMap{ExportedPort: 4001, Port: &schema.Endpoint_Port{Name: "http-port", ContainerPort: 4001}}
-	grpcPort := &schema.Endpoint_PortMap{ExportedPort: 4002, Port: &schema.Endpoint_Port{Name: "grpc-port", ContainerPort: 4002}}
+	grpcPort := &schema.Endpoint_PortMap{ExportedPort: 4002, Port: &schema.Endpoint_Port{Name: "int-grpc-port", ContainerPort: 4002}}
 	endpoint := &schema.Endpoint{Ports: []*schema.Endpoint_PortMap{serverPort, httpPort, grpcPort}}
 
 	assert.Equal(t, PortForProtocol(endpoint, schema.ClearTextGrpcProtocol), grpcPort)
@@ -24,4 +24,10 @@ func TestIngressPort(t *testing.T) {
 	assert.Equal(t, PortForProtocol(&schema.Endpoint{Ports: []*schema.Endpoint_PortMap{httpPort, serverPort}}, schema.GrpcProtocol), serverPort)
 	assert.Equal(t, PortForProtocol(&schema.Endpoint{Ports: []*schema.Endpoint_PortMap{serverPort}}, schema.ClearTextGrpcProtocol), serverPort)
 	assert.Equal(t, PortForProtocol(endpoint, "custom"), serverPort)
+
+	legacyHTTPPort := &schema.Endpoint_PortMap{ExportedPort: 4003, Port: &schema.Endpoint_Port{Name: "http-port", ContainerPort: 4003}}
+	legacyGRPCPort := &schema.Endpoint_PortMap{ExportedPort: 4004, Port: &schema.Endpoint_Port{Name: "grpc-port", ContainerPort: 4004}}
+	legacyEndpoint := &schema.Endpoint{Ports: []*schema.Endpoint_PortMap{serverPort, legacyHTTPPort, legacyGRPCPort}}
+	assert.Equal(t, PortForProtocol(legacyEndpoint, schema.HttpProtocol), legacyHTTPPort)
+	assert.Equal(t, PortForProtocol(legacyEndpoint, schema.ClearTextGrpcProtocol), legacyGRPCPort)
 }

@@ -45,7 +45,7 @@ func ComputeEndpoints(planner runtime.Planner, srv Server, merged *schema.Server
 		}
 
 		var lst *schema.Listener
-		var additionalPort *schema.Endpoint_Port
+		var additionalPorts []*schema.Endpoint_Port
 		if service.ListenerName != "" {
 			for _, l := range merged.Listener {
 				if l.Name == service.ListenerName {
@@ -65,10 +65,20 @@ func ComputeEndpoints(planner runtime.Planner, srv Server, merged *schema.Server
 			lst = &schema.Listener{
 				Port: serverPort,
 			}
-			additionalPort = findPort(serverPorts, "grpc-port")
+			internalGrpcPort := findPort(serverPorts, "int-grpc-port")
+			if internalGrpcPort == nil {
+				// Support workspaces generated before int-grpc-port was introduced.
+				internalGrpcPort = findPort(serverPorts, "grpc-port")
+			}
+			if internalGrpcPort != nil {
+				additionalPorts = append(additionalPorts, internalGrpcPort)
+			}
+			if internalHTTPPort := findPort(serverPorts, "int-http-port"); internalHTTPPort != nil {
+				additionalPorts = append(additionalPorts, internalHTTPPort)
+			}
 		}
 
-		nd, err := computeServiceEndpoint(planner, sch.Server, lst, additionalPort, service)
+		nd, err := computeServiceEndpoint(planner, sch.Server, lst, additionalPorts, service)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -150,7 +160,7 @@ func findPort(serverPorts []*schema.Endpoint_Port, name string) *schema.Endpoint
 }
 
 // XXX this should be somewhere else.
-func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, listener *schema.Listener, additionalPort *schema.Endpoint_Port, n *schema.Node) ([]*schema.Endpoint, error) {
+func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, listener *schema.Listener, additionalPorts []*schema.Endpoint_Port, n *schema.Node) ([]*schema.Endpoint, error) {
 	var endpoints []*schema.Endpoint
 
 	exportedPort := n.ExportedPort
@@ -199,7 +209,7 @@ func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, list
 				LoadBalancerClass:  n.GetLoadBalancerClass(),
 				Ports:              []*schema.Endpoint_PortMap{{ExportedPort: exportedPort, Port: listener.Port}},
 			}
-			if additionalPort != nil {
+			for _, additionalPort := range additionalPorts {
 				additionalExportedPort := additionalPort.ContainerPort
 				if additionalExportedPort == exportedPort {
 					additionalExportedPort = listener.Port.ContainerPort

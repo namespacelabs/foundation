@@ -277,15 +277,12 @@ func (impl) InternalEndpoints(_ *schema.Environment, srv *schema.Server, ports [
 		{"/readyz", runtime.FnServiceReadyz},
 	}
 
-	var serverPort *schema.Endpoint_Port
-	for _, port := range ports {
-		if port.Name == "http-port" {
-			serverPort = port
-			break
-		}
-		if port.Name == "server-port" {
-			serverPort = port
-		}
+	serverPort := findPort(ports, "int-http-port")
+	if serverPort == nil {
+		serverPort = findPort(ports, "http-port")
+	}
+	if serverPort == nil {
+		serverPort = findPort(ports, "server-port")
 	}
 
 	if serverPort == nil {
@@ -303,6 +300,15 @@ func (impl) InternalEndpoints(_ *schema.Environment, srv *schema.Server, ports [
 		Port:            serverPort,
 		ServiceMetadata: metadata,
 	}}, nil
+}
+
+func findPort(ports []*schema.Endpoint_Port, name string) *schema.Endpoint_Port {
+	for _, port := range ports {
+		if port.Name == name {
+			return port
+		}
+	}
+	return nil
 }
 
 func toServiceMetadata(internals [][2]string, protocol string) ([]*schema.ServiceMetadata, error) {

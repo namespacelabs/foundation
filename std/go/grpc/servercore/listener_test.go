@@ -29,16 +29,18 @@ import (
 
 func TestMatchDefaultListeners(t *testing.T) {
 	for _, tc := range []struct {
-		name     string
-		hasTLS   bool
-		tlsOnly  bool
-		wantTLS  bool
-		wantHTTP bool
-		wantGRPC bool
+		name          string
+		hasTLS        bool
+		tlsOnly       bool
+		separateAdmin bool
+		wantTLS       bool
+		wantHTTP      bool
+		wantGRPC      bool
 	}{
 		{name: "plaintext", wantHTTP: true, wantGRPC: true},
 		{name: "mTLS compatibility", hasTLS: true, wantTLS: true, wantHTTP: true, wantGRPC: true},
 		{name: "mTLS only", hasTLS: true, tlsOnly: true, wantTLS: true},
+		{name: "separate admin listener", hasTLS: true, separateAdmin: true, wantTLS: true, wantGRPC: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -47,7 +49,7 @@ func TestMatchDefaultListeners(t *testing.T) {
 			}
 			defer listener.Close()
 
-			tlsListener, httpListener, grpcListener := matchDefaultListeners(cmux.New(listener), tc.hasTLS, tc.tlsOnly)
+			tlsListener, httpListener, grpcListener := matchDefaultListeners(cmux.New(listener), tc.hasTLS, tc.tlsOnly, !tc.separateAdmin)
 			if (tlsListener != nil) != tc.wantTLS || (httpListener != nil) != tc.wantHTTP || (grpcListener != nil) != tc.wantGRPC {
 				t.Fatalf("unexpected listeners: tls=%t http=%t grpc=%t", tlsListener != nil, httpListener != nil, grpcListener != nil)
 			}
@@ -63,7 +65,7 @@ func TestSecureDefaultListenerRejectsPlaintextHTTP(t *testing.T) {
 	defer listener.Close()
 
 	m := cmux.New(listener)
-	matchDefaultListeners(m, true, true)
+	matchDefaultListeners(m, true, true, false)
 	serveDone := make(chan error, 1)
 	go func() {
 		serveDone <- m.Serve()
@@ -111,7 +113,7 @@ func TestGrpcServerTLSOnly(t *testing.T) {
 	}
 }
 
-func TestRegisterHTTPServicesKeepsAdministrativeRoutesAheadOfCatchAll(t *testing.T) {
+func TestRegisterHTTPServicesDoesNotExposeAdministrativeRoutes(t *testing.T) {
 	httpMux := NewHTTPMux()
 	s := &ServerImpl{httpMux: httpMux}
 
@@ -126,8 +128,8 @@ func TestRegisterHTTPServicesKeepsAdministrativeRoutesAheadOfCatchAll(t *testing
 		req := httptest.NewRequest(http.MethodGet, path, nil)
 		response := httptest.NewRecorder()
 		httpMux.ServeHTTP(response, req)
-		if response.Header().Get("X-Application-Catch-All") != "" {
-			t.Errorf("%s was handled by the application catch-all", path)
+		if response.Header().Get("X-Application-Catch-All") != "true" {
+			t.Errorf("%s was not handled by the application catch-all", path)
 		}
 	}
 }
