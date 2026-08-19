@@ -53,9 +53,10 @@ type HTTPOptions struct {
 }
 
 type ListenOpts struct {
-	CreateListener      func(context.Context) (net.Listener, error)
-	CreateNamedListener func(context.Context, string) (net.Listener, error)
-	CreateHttpListener  func(context.Context) (net.Listener, HTTPOptions, error)
+	CreateListener          func(context.Context) (net.Listener, error)
+	CreateNamedListener     func(context.Context, string) (net.Listener, error)
+	CreatePlaintextListener func(context.Context) (net.Listener, error)
+	CreateHttpListener      func(context.Context) (net.Listener, HTTPOptions, error)
 
 	DontHandleSigTerm bool
 }
@@ -116,38 +117,45 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 		return err
 	}
 
-	var tlsL net.Listener = nil
-	if tlsConfig != nil {
-		tlsL = m.Match(cmux.TLS())
-	}
-
-	httpL := m.Match(cmux.HTTP1())
-	anyL := m.Match(cmux.Any())
-
-	grpcopts := OrderedServerInterceptors()
-
-	if gogrpc.ServerCreds != nil {
-		grpcopts = append(grpcopts, grpc.Creds(gogrpc.ServerCreds))
-	}
-
-	grpcopts = append(grpcopts, grpc.KeepaliveParams(keepalive.ServerParameters{
+	tlsOnly := gogrpc.ServerCreds != nil || grpcServerTLSOnly() && tlsConfig != nil
+	tlsL, httpL, anyL := matchDefaultListeners(m, tlsConfig != nil || gogrpc.ServerCreds != nil, tlsOnly)
+	keepaliveOpts := []grpc.ServerOption{grpc.KeepaliveParams(keepalive.ServerParameters{
 		Time:              5 * time.Second,
 		Timeout:           20 * time.Second,
 		MaxConnectionIdle: 60 * time.Second, // If a connection is idle, close it, so that clients re-establish TCP connections.
 	}), grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
 		MinTime:             10 * time.Second,
 		PermitWithoutStream: true,
-	}))
+	})}
+	plaintextServerOpts := append(OrderedServerInterceptors(), keepaliveOpts...)
+	grpcopts := slices.Clone(plaintextServerOpts)
+	defaultServerOpts := slices.Clone(plaintextServerOpts)
+	if !tlsOnly && tlsConfig != nil {
+		defaultServerOpts = append(orderedServerInterceptors(true), keepaliveOpts...)
+	}
 
-	defaultServer := grpc.NewServer(grpcopts...)
+	if gogrpc.ServerCreds != nil {
+		grpcopts = append(grpcopts, grpc.Creds(gogrpc.ServerCreds))
+		defaultServerOpts = append(defaultServerOpts, grpc.Creds(gogrpc.ServerCreds))
+	}
+
+	if tlsOnly && tlsConfig != nil {
+		defaultServerOpts = append(defaultServerOpts, grpc.Creds(credentials.NewTLS(tlsConfig)))
+	}
+
+	defaultServer := grpc.NewServer(defaultServerOpts...)
 	serversByConfiguration := map[string][]*grpc.Server{
 		"": {defaultServer},
 	}
+	var plaintextServer *grpc.Server
+	if opts.CreatePlaintextListener != nil && gogrpc.ServerCreds == nil {
+		plaintextServer = grpc.NewServer(plaintextServerOpts...)
+		serversByConfiguration[""] = append(serversByConfiguration[""], plaintextServer)
+	}
 
 	var mtlsServer *grpc.Server
-	if tlsConfig != nil {
-		mtlsServer = grpc.NewServer(append(grpcopts, grpc.Creds(credentials.NewTLS(tlsConfig)))...)
-
+	if !tlsOnly && tlsConfig != nil {
+		mtlsServer = grpc.NewServer(append(slices.Clone(grpcopts), grpc.Creds(credentials.NewTLS(tlsConfig)))...)
 		serversByConfiguration[""] = append(serversByConfiguration[""], mtlsServer)
 	}
 
@@ -193,7 +201,7 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 	httpMux := NewHTTPMux(middleware.Registered()...)
 
 	s := &ServerImpl{srv: serversByConfiguration, httpMux: httpMux}
-	registerServices(s)
+	registerHTTPServices(s, registerServices)
 
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
@@ -252,13 +260,30 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 		eg.Go(func() error { return ListenAndGracefullyShutdownHTTP(egCtx, "http", httpServer, gwLis) })
 	}
 
-	debugHTTP := &http.Server{Handler: debugMux}
-	eg.Go(func() error { return ListenAndGracefullyShutdownHTTP(egCtx, "http/debug", debugHTTP, httpL) })
+	if plaintextServer != nil {
+		plaintextLis, err := opts.CreatePlaintextListener(ctx)
+		if err != nil {
+			return err
+		}
 
-	eg.Go(func() error { return ListenAndGracefullyShutdownGRPC(egCtx, "grpc", defaultServer, anyL) })
+		core.ZLog.Info().Msgf("Starting plaintext gRPC listen on %v", plaintextLis.Addr())
+		eg.Go(func() error {
+			return ListenAndGracefullyShutdownGRPC(egCtx, "grpc/plaintext", plaintextServer, plaintextLis)
+		})
+	}
 
+	if httpL != nil {
+		debugHTTP := &http.Server{Handler: debugMux}
+		eg.Go(func() error { return ListenAndGracefullyShutdownHTTP(egCtx, "http/debug", debugHTTP, httpL) })
+	}
+
+	if anyL != nil {
+		eg.Go(func() error { return ListenAndGracefullyShutdownGRPC(egCtx, "grpc", defaultServer, anyL) })
+	}
 	if mtlsServer != nil {
 		eg.Go(func() error { return ListenAndGracefullyShutdownGRPC(egCtx, "grpc/tls", mtlsServer, tlsL) })
+	} else if tlsL != nil {
+		eg.Go(func() error { return ListenAndGracefullyShutdownGRPC(egCtx, "grpc/tls", defaultServer, tlsL) })
 	}
 
 	for k, srvs := range serversByConfiguration {
@@ -320,6 +345,26 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 	err = eg.Wait()
 	core.ZLog.Info().Err(err).Msg("stopped listening")
 	return err
+}
+
+func registerHTTPServices(s *ServerImpl, registerServices func(Server)) {
+	// Gorilla mux resolves routes in registration order. Keep administrative
+	// endpoints ahead of application catch-all routes.
+	core.RegisterDebugEndpoints(s.httpMux)
+	registerServices(s)
+}
+
+func matchDefaultListeners(m cmux.CMux, hasTLS, tlsOnly bool) (net.Listener, net.Listener, net.Listener) {
+	if tlsOnly {
+		return m.Match(cmux.TLS()), nil, nil
+	}
+
+	var tlsListener net.Listener
+	if hasTLS {
+		tlsListener = m.Match(cmux.TLS())
+	}
+
+	return tlsListener, m.Match(cmux.HTTP1()), m.Match(cmux.Any())
 }
 
 func NewHttp2CapableServer(mux http.Handler, opts HTTPOptions) *http.Server {

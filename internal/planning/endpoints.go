@@ -45,6 +45,7 @@ func ComputeEndpoints(planner runtime.Planner, srv Server, merged *schema.Server
 		}
 
 		var lst *schema.Listener
+		var additionalPort *schema.Endpoint_Port
 		if service.ListenerName != "" {
 			for _, l := range merged.Listener {
 				if l.Name == service.ListenerName {
@@ -58,15 +59,16 @@ func ComputeEndpoints(planner runtime.Planner, srv Server, merged *schema.Server
 		} else {
 			serverPort := findPort(serverPorts, "server-port")
 			if serverPort == nil {
-				return nil, nil, fnerrors.Newf("listener %q is missing a corresponding port", service.ListenerName)
+				return nil, nil, fnerrors.New("default listener is missing a corresponding port")
 			}
 
 			lst = &schema.Listener{
 				Port: serverPort,
 			}
+			additionalPort = findPort(serverPorts, "grpc-port")
 		}
 
-		nd, err := computeServiceEndpoint(planner, sch.Server, lst, service)
+		nd, err := computeServiceEndpoint(planner, sch.Server, lst, additionalPort, service)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -148,7 +150,7 @@ func findPort(serverPorts []*schema.Endpoint_Port, name string) *schema.Endpoint
 }
 
 // XXX this should be somewhere else.
-func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, listener *schema.Listener, n *schema.Node) ([]*schema.Endpoint, error) {
+func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, listener *schema.Listener, additionalPort *schema.Endpoint_Port, n *schema.Node) ([]*schema.Endpoint, error) {
 	var endpoints []*schema.Endpoint
 
 	exportedPort := n.ExportedPort
@@ -196,6 +198,13 @@ func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, list
 				ServiceMetadata:    n.GetServiceMetadata(),
 				LoadBalancerClass:  n.GetLoadBalancerClass(),
 				Ports:              []*schema.Endpoint_PortMap{{ExportedPort: exportedPort, Port: listener.Port}},
+			}
+			if additionalPort != nil {
+				additionalExportedPort := additionalPort.ContainerPort
+				if additionalExportedPort == exportedPort {
+					additionalExportedPort = listener.Port.ContainerPort
+				}
+				endpoint.Ports = append(endpoint.Ports, &schema.Endpoint_PortMap{ExportedPort: additionalExportedPort, Port: additionalPort})
 			}
 
 			if slices.Contains(constants.ReservedServiceNames, endpoint.ServiceName) {

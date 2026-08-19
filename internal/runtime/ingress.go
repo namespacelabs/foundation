@@ -37,8 +37,6 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 			continue
 		}
 
-		pm := endpoint.Ports[0]
-
 		if endpoint.IngressProvider != nil {
 			fmt.Fprintf(console.Debug(ctx), "Skipping endpoint %s/%s: has ingress provider\n", endpoint.EndpointOwner, endpoint.AllocatedName)
 			continue
@@ -68,6 +66,8 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 			fmt.Fprintf(console.Debug(ctx), "Skipping endpoint %s/%s: no protocol\n", endpoint.EndpointOwner, endpoint.AllocatedName)
 			continue
 		}
+
+		pm := PortForProtocol(endpoint, *protocol)
 
 		var paths []*schema.IngressFragment_IngressHttpPath
 		var grpc []*schema.IngressFragment_IngressGrpcService
@@ -265,6 +265,37 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 	}
 
 	return ingresses, nil
+}
+
+func PortForProtocol(endpoint *schema.Endpoint, protocol string) *schema.Endpoint_PortMap {
+	switch protocol {
+	case schema.HttpProtocol:
+		if port := findEndpointPort(endpoint, "http-port"); port != nil {
+			return port
+		}
+	case schema.ClearTextGrpcProtocol:
+		if port := findEndpointPort(endpoint, "grpc-port"); port != nil {
+			return port
+		}
+	case schema.HttpsProtocol, schema.GrpcProtocol:
+		if port := findEndpointPort(endpoint, "server-port"); port != nil {
+			return port
+		}
+	default:
+		return endpoint.Ports[0]
+	}
+
+	return endpoint.Ports[0]
+}
+
+func findEndpointPort(endpoint *schema.Endpoint, name string) *schema.Endpoint_PortMap {
+	for _, port := range endpoint.Ports {
+		if port.GetPort().GetName() == name {
+			return port
+		}
+	}
+
+	return nil
 }
 
 func AttachComputedDomains(ctx context.Context, ws string, env cfg.Context, cluster Planner, sch *schema.Stack_Entry, template *schema.IngressFragment, allocatedName DomainsRequest) ([]*schema.IngressFragment, error) {

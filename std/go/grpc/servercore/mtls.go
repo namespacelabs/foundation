@@ -12,6 +12,8 @@ import (
 	"os"
 )
 
+const grpcServerTLSOnlyEnv = "FOUNDATION_GRPCSERVER_TLS_ONLY"
+
 type tlsBundle struct {
 	PrivateKeyPem  string   `json:"private_key_pem"`
 	CertificatePem string   `json:"certificate_pem"`
@@ -46,6 +48,10 @@ func getMtlsConfig() (*tls.Config, error) {
 		ClientAuth:   tls.RequireAndVerifyClientCert,
 		ClientCAs:    pool,
 	}, nil
+}
+
+func grpcServerTLSOnly() bool {
+	return os.Getenv(grpcServerTLSOnlyEnv) == "true"
 }
 
 func reportCertificateMetrics(certPem string) error {
