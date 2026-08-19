@@ -53,10 +53,11 @@ type HTTPOptions struct {
 }
 
 type ListenOpts struct {
-	CreateListener          func(context.Context) (net.Listener, error)
-	CreateNamedListener     func(context.Context, string) (net.Listener, error)
-	CreatePlaintextListener func(context.Context) (net.Listener, error)
-	CreateHttpListener      func(context.Context) (net.Listener, HTTPOptions, error)
+	CreateListener             func(context.Context) (net.Listener, error)
+	CreateNamedListener        func(context.Context, string) (net.Listener, error)
+	CreatePlaintextListener    func(context.Context) (net.Listener, error)
+	CreateHttpListener         func(context.Context) (net.Listener, HTTPOptions, error)
+	CreateInternalHTTPListener func(context.Context) (net.Listener, error)
 
 	DontHandleSigTerm bool
 }
@@ -118,7 +119,7 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 	}
 
 	tlsOnly := gogrpc.ServerCreds != nil || grpcServerTLSOnly() && tlsConfig != nil
-	tlsL, httpL, anyL := matchDefaultListeners(m, tlsConfig != nil || gogrpc.ServerCreds != nil, tlsOnly)
+	tlsL, httpL, anyL := matchDefaultListeners(m, tlsConfig != nil || gogrpc.ServerCreds != nil, tlsOnly, opts.CreateInternalHTTPListener == nil)
 	keepaliveOpts := []grpc.ServerOption{grpc.KeepaliveParams(keepalive.ServerParameters{
 		Time:              5 * time.Second,
 		Timeout:           20 * time.Second,
@@ -231,6 +232,17 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 	eg, egCtx := errgroup.WithContext(cancelCtx)
 
 	var httpServer *http.Server
+	if opts.CreateInternalHTTPListener != nil {
+		adminLis, err := opts.CreateInternalHTTPListener(ctx)
+		if err != nil {
+			return err
+		}
+
+		adminServer := &http.Server{Handler: debugMux}
+		core.ZLog.Info().Msgf("Starting internal admin HTTP listen on %v", adminLis.Addr())
+		eg.Go(func() error { return ListenAndGracefullyShutdownHTTP(egCtx, "http/admin", adminServer, adminLis) })
+	}
+
 	if opts.CreateHttpListener != nil {
 		gwLis, opts, err := opts.CreateHttpListener(ctx)
 		if err != nil {
@@ -348,13 +360,12 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 }
 
 func registerHTTPServices(s *ServerImpl, registerServices func(Server)) {
-	// Gorilla mux resolves routes in registration order. Keep administrative
-	// endpoints ahead of application catch-all routes.
-	core.RegisterDebugEndpoints(s.httpMux)
+	// Administrative endpoints are served by the internal admin listener.
+	// Keep the application listener safe to expose through path-based ingress.
 	registerServices(s)
 }
 
-func matchDefaultListeners(m cmux.CMux, hasTLS, tlsOnly bool) (net.Listener, net.Listener, net.Listener) {
+func matchDefaultListeners(m cmux.CMux, hasTLS, tlsOnly, serveAdminHTTP bool) (net.Listener, net.Listener, net.Listener) {
 	if tlsOnly {
 		return m.Match(cmux.TLS()), nil, nil
 	}
@@ -364,7 +375,11 @@ func matchDefaultListeners(m cmux.CMux, hasTLS, tlsOnly bool) (net.Listener, net
 		tlsListener = m.Match(cmux.TLS())
 	}
 
-	return tlsListener, m.Match(cmux.HTTP1()), m.Match(cmux.Any())
+	if serveAdminHTTP {
+		return tlsListener, m.Match(cmux.HTTP1()), m.Match(cmux.Any())
+	}
+
+	return tlsListener, nil, m.Match(cmux.Any())
 }
 
 func NewHttp2CapableServer(mux http.Handler, opts HTTPOptions) *http.Server {

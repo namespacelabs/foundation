@@ -25,14 +25,23 @@ func main() {
 	testing.Do(func(ctx context.Context, t testing.Test) error {
 		endpoint := t.MustEndpoint("namespacelabs.dev/foundation/internal/testdata/service/post", "post")
 
-		metrics, err := schemahelper.UnmarshalServiceMetadata[*schema.HttpExportedService](
-			schemahelper.CombineServiceMetadata(t.InternalOf(endpoint.ServerOwner)),
-			"prometheus.io/metrics")
-		if err != nil {
-			return err
+		var metricsEndpoint *schema.InternalEndpoint
+		var metrics *schema.HttpExportedService
+		for _, internal := range t.InternalOf(endpoint.ServerOwner) {
+			var err error
+			metrics, err = schemahelper.UnmarshalServiceMetadata[*schema.HttpExportedService](
+				internal.ServiceMetadata,
+				"prometheus.io/metrics")
+			if err != nil {
+				return err
+			}
+			if metrics != nil {
+				metricsEndpoint = internal
+				break
+			}
 		}
 
-		if metrics == nil {
+		if metricsEndpoint == nil {
 			return errors.New("prometheus metrics endpoint missing")
 		}
 
@@ -48,7 +57,7 @@ func main() {
 
 		log.Println(response)
 
-		scrapeUrl := testing.MakeHttpUrl(endpoint, metrics.Path)
+		scrapeUrl := fmt.Sprintf("http://%s:%d/%s", endpoint.AllocatedName, metricsEndpoint.Port.ContainerPort, strings.TrimPrefix(metrics.Path, "/"))
 		log.Printf("Scraping responses at: %s", scrapeUrl)
 
 		resp, err := http.Get(scrapeUrl)

@@ -14,6 +14,7 @@ func TestInternalEndpointsSelectsHealthPort(t *testing.T) {
 	ports := []*schema.Endpoint_Port{
 		{Name: "server-port", ContainerPort: 4000},
 		{Name: "http-port", ContainerPort: 4001},
+		{Name: "int-http-port", ContainerPort: 4002},
 	}
 
 	endpoints, err := (impl{}).InternalEndpoints(
@@ -26,6 +27,23 @@ func TestInternalEndpointsSelectsHealthPort(t *testing.T) {
 	}
 	if len(endpoints) != 1 {
 		t.Fatalf("got %d endpoints, want 1", len(endpoints))
+	}
+	if got := endpoints[0].Port.GetName(); got != "int-http-port" {
+		t.Errorf("got port %q, want %q", got, "int-http-port")
+	}
+}
+
+func TestInternalEndpointsSupportsLegacyHealthPort(t *testing.T) {
+	endpoints, err := (impl{}).InternalEndpoints(
+		&schema.Environment{Purpose: schema.Environment_TESTING},
+		&schema.Server{PackageName: "example.com/server"},
+		[]*schema.Endpoint_Port{
+			{Name: "server-port", ContainerPort: 4000},
+			{Name: "http-port", ContainerPort: 4001},
+		},
+	)
+	if err != nil {
+		t.Fatalf("InternalEndpoints: %v", err)
 	}
 	if got := endpoints[0].Port.GetName(); got != "http-port" {
 		t.Errorf("got port %q, want %q", got, "http-port")

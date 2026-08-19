@@ -19,11 +19,12 @@ import (
 )
 
 var (
-	listenHostname = flag.String("listen_hostname", "localhost", "Hostname to listen on.")
-	port           = flag.Int("grpcserver_port", 0, "Port to listen on.")
-	plaintextPort  = flag.Int("grpcserver_plaintext_port", 0, "Port to listen for plaintext gRPC on.")
-	httpPort       = flag.Int("grpcserver_http_port", 0, "Port to listen HTTP on.")
-	httpOptions    = flag.String("grpc_http_options", "{}", "Options to pass to the HTTP server.")
+	listenHostname   = flag.String("listen_hostname", "localhost", "Hostname to listen on.")
+	port             = flag.Int("grpcserver_port", 0, "Port to listen on.")
+	plaintextPort    = flag.Int("grpcserver_plaintext_port", 0, "Port to listen for plaintext gRPC on.")
+	httpPort         = flag.Int("grpcserver_http_port", 0, "Port to listen HTTP on.")
+	internalHTTPPort = flag.Int("grpcserver_internal_http_port", 0, "Port to listen for internal HTTP health and metrics on.")
+	httpOptions      = flag.String("grpc_http_options", "{}", "Options to pass to the HTTP server.")
 )
 
 const drainTimeout = 30 * time.Second
@@ -80,6 +81,10 @@ func makeListenerOpts() servercore.ListenOpts {
 			lst, err := servercore.MakeTCPListener(*listenHostname, *httpPort)(ctx)
 			return lst, parsed, err
 		}
+	}
+
+	if *internalHTTPPort != 0 {
+		opts.CreateInternalHTTPListener = servercore.MakeTCPListener(*listenHostname, *internalHTTPPort)
 	}
 
 	return opts
