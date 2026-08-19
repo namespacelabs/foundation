@@ -21,6 +21,7 @@ import (
 var (
 	listenHostname = flag.String("listen_hostname", "localhost", "Hostname to listen on.")
 	port           = flag.Int("grpcserver_port", 0, "Port to listen on.")
+	plaintextPort  = flag.Int("grpcserver_plaintext_port", 0, "Port to listen for plaintext gRPC on.")
 	httpPort       = flag.Int("grpcserver_http_port", 0, "Port to listen HTTP on.")
 	httpOptions    = flag.String("grpc_http_options", "{}", "Options to pass to the HTTP server.")
 )
@@ -63,6 +64,10 @@ func makeListenerOpts() servercore.ListenOpts {
 
 			return nil, rpcerrors.Errorf(codes.InvalidArgument, "no such server port %q", name)
 		},
+	}
+
+	if *plaintextPort != 0 {
+		opts.CreatePlaintextListener = servercore.MakeTCPListener(*listenHostname, *plaintextPort)
 	}
 
 	if *httpPort != 0 {

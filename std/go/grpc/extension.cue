@@ -7,6 +7,7 @@ extension: fn.#Extension & {
 	import: [
 		"namespacelabs.dev/foundation/std/core",
 		"namespacelabs.dev/foundation/std/go/grpc/metrics",
+		"namespacelabs.dev/foundation/std/go/http",
 	]
 }
 
@@ -14,13 +15,17 @@ $inputs: {
 	serverPort: inputs.#Port & {
 		name: "server-port"
 	}
+	grpcPort: inputs.#Port & {
+		name: "grpc-port"
+	}
 }
 
 configure: fn.#Configure & {
 	startup: {
 		args: {
-			listen_hostname: "0.0.0.0"
-			grpcserver_port: "\($inputs.serverPort.port)"
+			listen_hostname:           "0.0.0.0"
+			grpcserver_port:           "\($inputs.serverPort.port)"
+			grpcserver_plaintext_port: "\($inputs.grpcPort.port)"
 		}
 
 		env: {

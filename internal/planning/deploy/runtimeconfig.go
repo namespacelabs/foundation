@@ -171,7 +171,7 @@ func makeServiceIngress(stack *planning.StackWithIngress, endpoint *schema.Endpo
 
 		return &runtime.Server_Ingress{
 			Domain: []*runtime.Server_Ingress_Domain{{
-				BaseUrl: fmt.Sprintf("http://%s:%d", endpoint.AllocatedName, endpoint.Ports[0].ExportedPort),
+				BaseUrl: fmt.Sprintf("http://%s:%d", endpoint.AllocatedName, internalruntime.PortForProtocol(endpoint, schema.HttpProtocol).ExportedPort),
 			}},
 		}
 	}

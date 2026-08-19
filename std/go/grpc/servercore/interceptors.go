@@ -16,7 +16,19 @@ import (
 )
 
 func OrderedServerInterceptors() []grpc.ServerOption {
+	return orderedServerInterceptors(false)
+}
+
+func orderedServerInterceptors(tracePlaintextTransport bool) []grpc.ServerOption {
 	registrations := interceptors.ServerInterceptors()
+	if tracePlaintextTransport {
+		registrations = append(registrations, interceptors.Registered{
+			Name:   "plaintext-transport-tracing",
+			After:  []string{"otel-tracing"},
+			Unary:  tracePlaintextUnaryServerInterceptor,
+			Stream: tracePlaintextStreamServerInterceptor,
+		})
+	}
 
 	var rid requestid.Interceptor
 	registrations = append(registrations, interceptors.Registered{
