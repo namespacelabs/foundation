@@ -9,7 +9,7 @@ import "github.com/spf13/cobra"
 func NewAwsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "aws",
-		Short: "AWS Federation related commands.",
+		Short: "Authenticate to AWS with workload federation.",
 	}
 
 	cmd.AddCommand(newAssumeRoleCmd())

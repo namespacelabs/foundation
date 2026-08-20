@@ -18,7 +18,7 @@ import (
 func NewDestroyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "destroy [instance-id]",
-		Short: "Destroys an existing instance.",
+		Short: "Destroy an instance.",
 		Args:  cobra.ArbitraryArgs,
 	}
 

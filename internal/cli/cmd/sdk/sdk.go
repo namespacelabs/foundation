@@ -40,7 +40,7 @@ func NewSdkCmd(hidden bool) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:    "sdk",
-		Short:  "SDK related operations (e.g. download, shell).",
+		Short:  "Manage development SDKs.",
 		Hidden: hidden,
 	}
 
@@ -118,7 +118,7 @@ func simpleFileSDK[V ~string](name string, makeComputable func(context.Context, 
 func newSdkShellCmd(selectedSdkList func() []sdk) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "shell",
-		Short: "Starts a shell with every SDK in the PATH.",
+		Short: "Start a shell with configured SDKs in PATH.",
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
@@ -181,7 +181,7 @@ func newSdkShellCmd(selectedSdkList func() []sdk) *cobra.Command {
 func newSdkDownloadCmd(selectedSdkList func() []sdk) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "download",
-		Short: "Downloads a predefined set of SDKs.",
+		Short: "Download the configured SDKs.",
 		Args:  cobra.NoArgs,
 	}
 
@@ -223,7 +223,7 @@ func newSdkDownloadCmd(selectedSdkList func() []sdk) *cobra.Command {
 func newSdkVerifyCmd(selectedSdkList func() []sdk) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "verify-digest",
-		Short:  "Downloads all of the SDKs known URLs to verify their digests (for development).",
+		Short:  "Verify the digests of all known SDK downloads.",
 		Hidden: true,
 		Args:   cobra.NoArgs,
 

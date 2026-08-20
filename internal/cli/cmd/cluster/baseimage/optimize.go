@@ -20,7 +20,7 @@ import (
 func newOptimizeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "optimize",
-		Short: "Triggers the optimization of a base image.",
+		Short: "Optimize a base image.",
 		Args:  cobra.NoArgs,
 	}
 

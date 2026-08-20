@@ -28,7 +28,7 @@ import (
 func NewCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
-		Short: "Creates a new instance.",
+		Short: "Create an instance.",
 		Args:  cobra.NoArgs,
 	}
 

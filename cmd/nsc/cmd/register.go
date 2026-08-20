@@ -65,7 +65,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(cluster.NewBazelCmd())
 	root.AddCommand(cluster.NewGradleCmd())
 	root.AddCommand(cluster.NewPantsCmd())
-	cacheCmd := &cobra.Command{Use: "cache", Short: "Build cache related functionality."}
+	cacheCmd := &cobra.Command{Use: "cache", Short: "Manage remote build caches."}
 	cacheCmd.AddCommand(cluster.NewSccacheCmd())
 	cacheCmd.AddCommand(cluster.NewGradleCacheCmd())
 	cacheCmd.AddCommand(cluster.NewBazelCacheCmd())
@@ -100,6 +100,7 @@ func RegisterCommands(root *cobra.Command) {
 func newGithub() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "github",
+		Short:  "Manage GitHub Actions resources.",
 		Args:   cobra.NoArgs,
 		Hidden: true,
 	}

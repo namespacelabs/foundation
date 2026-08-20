@@ -28,7 +28,7 @@ import (
 func NewGenerateReportCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "report",
-		Short: "Generates a report of compute instances.",
+		Short: "Generate an instance report.",
 		Args:  cobra.NoArgs, // for now
 	}
 

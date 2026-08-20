@@ -24,7 +24,7 @@ import (
 func NewVolumeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "volume",
-		Short: "Volume-related activities.",
+		Short: "Manage workspace volumes.",
 	}
 
 	cmd.AddCommand(newListVolumesCmd())
@@ -42,7 +42,7 @@ const (
 func newListVolumesCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "Lists the volumes for this workspace.",
+		Short: "List volumes for the current workspace.",
 		Args:  cobra.NoArgs,
 	}
 

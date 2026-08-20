@@ -37,7 +37,7 @@ var resources = append(kubernetesResources,
 func NewDescribeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "describe",
-		Short: "Outputs a description of the specified instance.",
+		Short: "Describe an instance.",
 		Args:  cobra.ExactArgs(1),
 	}
 

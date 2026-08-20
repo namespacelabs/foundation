@@ -63,7 +63,7 @@ func NewKubectlCmd() *cobra.Command {
 func NewKubeconfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "kubeconfig",
-		Short: "Kubeconfig-related activities.",
+		Short: "Manage instance kubeconfigs.",
 	}
 
 	cmd.AddCommand(newWriteKubeconfigCmd("write", false))

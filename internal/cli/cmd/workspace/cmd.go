@@ -29,7 +29,7 @@ import (
 func NewWorkspaceCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "workspace",
-		Short: "Interact with Namespace workspace.",
+		Short: "Inspect the current workspace.",
 	}
 
 	cmd.AddCommand(newDescribeCmd())
@@ -120,7 +120,7 @@ func getConcurrency(ctx context.Context) (*computev1beta.GetConcurrencyResponse,
 func newDescribeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "describe",
-		Short: "Describe current workspace details.",
+		Short: "Describe the current workspace.",
 		Args:  cobra.NoArgs,
 	}
 

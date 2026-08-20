@@ -19,7 +19,7 @@ import (
 func NewRdpCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "rdp [instance-id]",
-		Short:  "Start a RDP session.",
+		Short:  "Start an RDP session.",
 		Args:   cobra.ArbitraryArgs,
 		Hidden: true,
 	}

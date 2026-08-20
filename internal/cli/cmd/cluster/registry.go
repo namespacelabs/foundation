@@ -301,7 +301,7 @@ func newRegistryListCmd() *cobra.Command {
 func newRegistryDescribeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "describe [image-reference]",
-		Short: "Get detailed information about a specific image.",
+		Short: "Describe a registry image.",
 		Args:  cobra.MaximumNArgs(1),
 		Long: `Get detailed information about a specific image.
 
@@ -724,7 +724,7 @@ Alternatively, use --repository and --digest flags.`,
 func newRegistryGetDefaultExpirationCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get",
-		Short: "Gets the default expiration setting.",
+		Short: "Get the default expiration setting.",
 		Args:  cobra.NoArgs,
 		Long:  `Gets the default expiration setting that is currently configured.`,
 	}
@@ -742,7 +742,7 @@ func newRegistryGetDefaultExpirationCmd() *cobra.Command {
 func newRegistrySetDefaultExpirationCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "set",
-		Short: "Sets the default expiration setting.",
+		Short: "Set the default expiration setting.",
 		Args:  cobra.NoArgs,
 		Long:  `Sets the default expiration setting that is applied to new images.`,
 	}
@@ -945,7 +945,7 @@ func setPolicy(ctx context.Context, repository string, expiration time.Duration,
 func newRegistryPolicyGetCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get",
-		Short: "Gets the current policy settings.",
+		Short: "Get the current policy settings.",
 		Args:  cobra.NoArgs,
 		Long:  `Gets the policy settings that are currently configured. If --repository is specified, gets the policy for that repository.`,
 	}
@@ -963,7 +963,7 @@ func newRegistryPolicyGetCmd() *cobra.Command {
 func newRegistryPolicySetCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "set",
-		Short: "Sets policy settings.",
+		Short: "Set policy settings.",
 		Args:  cobra.NoArgs,
 		Long:  `Sets the policy settings. If --repository is specified, sets the policy for that repository, otherwise sets the default policy.`,
 	}
