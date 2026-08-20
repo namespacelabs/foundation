@@ -21,6 +21,7 @@ message DatabaseArgs {
     int32                    statement_timeout_ms                   = 10;
     int32                    connect_timeout_ms                     = 9;
     int32                    max_conns_idle_time_ms                 = 11;  // Set if > 0.
+    int32                    max_conn_lifetime_jitter_ms            = 12;  // Set if > 0.
 }
 
 message DatabaseReferenceArgs {

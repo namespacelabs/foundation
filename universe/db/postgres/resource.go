@@ -44,6 +44,7 @@ func ConnectToReplicaResource(ctx context.Context, res *resources.Parsed, resour
 type ConfigOverrides struct {
 	MaxConns                        int32
 	MaxConnIdleTime                 time.Duration
+	MaxConnLifetimeJitter           time.Duration
 	IdleInTransactionSessionTimeout time.Duration
 	StatementTimeout                time.Duration
 	LockTimeout                     time.Duration
@@ -74,6 +75,10 @@ func NewDatabaseFromConnectionUriWithOverrides(ctx context.Context, db DBInstanc
 
 		if overrides.MaxConnIdleTime > 0 {
 			config.MaxConnIdleTime = overrides.MaxConnIdleTime
+		}
+
+		if overrides.MaxConnLifetimeJitter > 0 {
+			config.MaxConnLifetimeJitter = overrides.MaxConnLifetimeJitter
 		}
 
 		if overrides.IdleInTransactionSessionTimeout > 0 {
