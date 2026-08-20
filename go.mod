@@ -3,6 +3,7 @@ module namespacelabs.dev/foundation
 go 1.26.0
 
 require (
+	buf.build/gen/go/namespace/bazel/protocolbuffers/go v1.36.11-20260717182923-633d56cd145e.1
 	buf.build/gen/go/namespace/cloud/connectrpc/go v1.20.0-20260803095335-52d3e79ff3ca.1
 	buf.build/gen/go/namespace/cloud/grpc/go v1.6.2-20260814090053-550b37c69cb1.1
 	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20260814090053-550b37c69cb1.1
@@ -157,7 +158,6 @@ require (
 )
 
 require (
-	buf.build/gen/go/namespace/bazel/protocolbuffers/go v1.36.11-20260717182923-633d56cd145e.1 // indirect
 	cloud.google.com/go v0.121.6 // indirect
 	cloud.google.com/go/auth v0.18.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
