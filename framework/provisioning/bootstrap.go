@@ -28,11 +28,6 @@ type Request struct {
 	r         *protocol.ToolRequest
 }
 
-// XXX remove Tool when all the uses are gone.
-type Tool interface {
-	StackHandler
-}
-
 type AllHandlers interface {
 	StackHandler
 
@@ -72,12 +67,6 @@ func Handle(h *Handlers) {
 	}); err != nil {
 		log.Fatal(err)
 	}
-}
-
-func HandleInvoke(f InvokeFunc) {
-	h := NewHandlers()
-	h.Any().HandleInvoke(f)
-	Handle(h)
 }
 
 func handleRequest(ctx context.Context, req *protocol.ToolRequest, handlers AllHandlers) (*protocol.ToolResponse, error) {
