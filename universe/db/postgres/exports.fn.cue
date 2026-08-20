@@ -15,6 +15,7 @@ package postgres
 		statementTimeoutMs?:                int
 		connectTimeoutMs?:                  int
 		maxConnsIdleTimeMs?:                int
+		maxConnLifetimeJitterMs?:           int
 
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/universe/db/postgres"
@@ -55,6 +56,7 @@ package postgres
 		statementTimeoutMs?:                int
 		connectTimeoutMs?:                  int
 		maxConnsIdleTimeMs?:                int
+		maxConnLifetimeJitterMs?:           int
 
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/universe/db/postgres"
