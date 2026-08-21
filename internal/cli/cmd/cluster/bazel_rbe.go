@@ -199,6 +199,16 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 			out.ClientKey = clientKeyPath
 		}
 
+		if err := waitForBazelCacheReady(ctx, bazelCacheReadinessConfig{
+			endpoint:    out.StorageEndpoint,
+			clientCert:  out.ClientCert,
+			clientKey:   out.ClientKey,
+			bearerToken: out.IngressAuthToken,
+			waitTimeout: bazelCacheReadinessTimeout,
+		}); err != nil {
+			return fnerrors.Newf("failed waiting for bazel storage readiness: %w", err)
+		}
+
 		if bazelRcPath != "" {
 			data, err := toBazelExecutionConfig(ctx, out, bazelCommand, remote, disableBuildEvents)
 			if err != nil {

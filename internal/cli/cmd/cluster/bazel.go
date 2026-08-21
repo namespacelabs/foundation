@@ -523,6 +523,24 @@ func newSetupCacheCmd() *cobra.Command {
 			out.RemoteAssetEndpoint = response.GetRemoteAssetEndpoint()
 		}
 
+		readinessToken := out.StaticToken
+		if readinessToken == "" && len(out.CredentialHelperDomains) > 0 {
+			readinessToken, err = tokenSource.IssueToken(ctx, bazelCacheReadinessTimeout, false)
+			if err != nil {
+				return fnerrors.Newf("failed to issue token for bazel cache readiness check: %w", err)
+			}
+		}
+		if err := waitForBazelCacheReady(ctx, bazelCacheReadinessConfig{
+			endpoint:    out.Endpoint,
+			serverCA:    out.ServerCaCert,
+			clientCert:  out.ClientCert,
+			clientKey:   out.ClientKey,
+			bearerToken: readinessToken,
+			waitTimeout: bazelCacheReadinessTimeout,
+		}); err != nil {
+			return fnerrors.Newf("failed waiting for bazel cache readiness: %w", err)
+		}
+
 		// If set, we always generate a bazelrc file.
 		if bazelRcPath != "" {
 			data, err := toBazelConfig(ctx, out, useAbsoluteCredHelperPath, bazelCommand, disableBuildEvents)
