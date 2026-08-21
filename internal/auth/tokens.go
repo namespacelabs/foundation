@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/moby/sys/atomicwriter"
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -158,10 +159,8 @@ func (t *Token) IssueToken(ctx context.Context, minDur time.Duration, skipCache 
 		} else {
 			claims, err := extractClaims(string(cacheContents))
 			if err != nil {
-				return "", err
-			}
-
-			if claims != nil {
+				fmt.Fprintf(console.Debug(ctx), "Ignoring invalid cached tenant token: %v\n", err)
+			} else if claims != nil {
 				sessionClaims, err := t.Claims(ctx)
 				if err != nil {
 					return "", err
@@ -183,7 +182,7 @@ func (t *Token) IssueToken(ctx context.Context, minDur time.Duration, skipCache 
 	newToken, err := t.ReIssue(ctx, t, dur)
 	if err == nil && t.path != "" {
 		cachePath := tokenCachePath(t.path)
-		if err := os.WriteFile(cachePath, []byte(newToken), 0600); err != nil {
+		if err := atomicwriter.WriteFile(cachePath, []byte(newToken), 0600); err != nil {
 			fmt.Fprintf(console.Warnings(ctx), "Failed to write token cache: %v\n", err)
 		}
 	}
@@ -270,7 +269,7 @@ func StoreToken(token StoredToken) error {
 		}
 	}
 
-	if err := os.WriteFile(p, data, 0600); err != nil {
+	if err := atomicwriter.WriteFile(p, data, 0600); err != nil {
 		return fnerrors.Newf("failed to write token data: %w", err)
 	}
 

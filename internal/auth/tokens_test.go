@@ -5,9 +5,11 @@
 package auth
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
@@ -109,5 +111,37 @@ func TestDeleteStoredTokenInvalidatesCacheWithoutTokenFile(t *testing.T) {
 
 	if _, err := os.Stat(cachePath); !os.IsNotExist(err) {
 		t.Fatalf("expected token.cache to be removed, stat err = %v", err)
+	}
+}
+
+func TestIssueTokenReplacesInvalidCache(t *testing.T) {
+	dir := t.TempDir()
+	tokenPath := filepath.Join(dir, defaultTokenLoc)
+	cachePath := filepath.Join(dir, tokenCacheLoc)
+	if err := os.WriteFile(cachePath, []byte("invalid"), 0o600); err != nil {
+		t.Fatalf("seed cache: %v", err)
+	}
+
+	token := &Token{
+		path: tokenPath,
+		ReIssue: func(context.Context, *Token, time.Duration) (string, error) {
+			return "fresh-token", nil
+		},
+	}
+
+	got, err := token.IssueToken(context.Background(), time.Minute, false)
+	if err != nil {
+		t.Fatalf("IssueToken: %v", err)
+	}
+	if got != "fresh-token" {
+		t.Fatalf("IssueToken returned %q, want fresh-token", got)
+	}
+
+	contents, err := os.ReadFile(cachePath)
+	if err != nil {
+		t.Fatalf("read cache: %v", err)
+	}
+	if string(contents) != "fresh-token" {
+		t.Fatalf("cache contains %q, want fresh-token", contents)
 	}
 }
