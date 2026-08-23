@@ -23,9 +23,9 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/tui"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/integrations/api/iam"
-	"namespacelabs.dev/integrations/auth"
 )
 
 func NewTokenCmd() *cobra.Command {
@@ -53,7 +53,7 @@ func NewListCmd() *cobra.Command {
 	includeRevoked := cmd.Flags().Bool("include_revoked", false, "Include revoked tokens in the list")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		tokenSource, err := auth.LoadDefaults()
+		tokenSource, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return fnerrors.InvocationError("token", "failed to get authentication token: %w", err)
 		}
@@ -129,7 +129,7 @@ func NewCreateCmd() *cobra.Command {
 			return fnerrors.Newf("--no_expiry requires --user")
 		}
 
-		tokenSource, err := auth.LoadDefaults()
+		tokenSource, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return fnerrors.InvocationError("token", "failed to get authentication token: %w", err)
 		}
@@ -215,7 +215,7 @@ func NewRevokeCmd() *cobra.Command {
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 
-		tokenSource, err := auth.LoadDefaults()
+		tokenSource, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return fnerrors.InvocationError("token", "failed to get authentication token: %w", err)
 		}
@@ -256,7 +256,7 @@ func NewRefreshCmd() *cobra.Command {
 	cmd.MarkFlagRequired("token_id")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		tokenSource, err := auth.LoadDefaults()
+		tokenSource, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return fnerrors.InvocationError("token", "failed to get authentication token: %w", err)
 		}

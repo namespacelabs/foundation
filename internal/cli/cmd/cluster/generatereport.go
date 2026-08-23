@@ -20,9 +20,9 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/integrations/api/compute"
-	"namespacelabs.dev/integrations/auth"
 )
 
 func NewGenerateReportCmd() *cobra.Command {
@@ -251,7 +251,7 @@ func NewGenerateReportCmd() *cobra.Command {
 		}
 		filter.BuildkiteJobState = buildkiteJobStateMatcher
 
-		token, err := auth.LoadDefaults()
+		token, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return fnerrors.Newf("Authentication error %w", err)
 		}

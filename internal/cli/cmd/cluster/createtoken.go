@@ -18,10 +18,10 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/go-ids"
 	"namespacelabs.dev/integrations/api/iam"
-	"namespacelabs.dev/integrations/auth"
 )
 
 type createTokenConfig struct {
@@ -56,7 +56,7 @@ func newCreateCacheTokenCmd(cfg createTokenConfig) *cobra.Command {
 			return fnerrors.New("no permissions required for this cache (unexpected)")
 		}
 
-		tokenSource, err := auth.LoadDefaults()
+		tokenSource, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return fnerrors.InvocationError(cfg.TokenPrefix, "failed to get authentication token: %w", err)
 		}
@@ -135,7 +135,7 @@ func newBazelCreateTokenCmd() *cobra.Command {
 			return err
 		}
 
-		tokenSource, err := auth.LoadDefaults()
+		tokenSource, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return fnerrors.InvocationError("bazel", "failed to get authentication token: %w", err)
 		}
