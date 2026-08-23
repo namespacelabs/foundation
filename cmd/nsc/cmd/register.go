@@ -70,6 +70,7 @@ func RegisterCommands(root *cobra.Command) {
 	cacheCmd.AddCommand(cluster.NewGradleCacheCmd())
 	cacheCmd.AddCommand(cluster.NewBazelCacheCmd())
 	cacheCmd.AddCommand(cluster.NewPantsCacheCmd())
+	cacheCmd.AddCommand(cluster.NewTurborepoCmd())
 	root.AddCommand(cacheCmd)
 	root.AddCommand(cluster.NewArtifactCmd()) // nsc artifact
 
