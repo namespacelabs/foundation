@@ -23,7 +23,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/integrations/api/compute"
-	"namespacelabs.dev/integrations/auth"
 )
 
 func NewWorkspaceCmd() *cobra.Command {
@@ -98,7 +97,7 @@ func printConcurrencyBar(stdout io.Writer, bar progress.Model, label string, act
 }
 
 func getConcurrency(ctx context.Context) (*computev1beta.GetConcurrencyResponse, error) {
-	token, err := auth.LoadDefaults()
+	token, err := fnapi.FetchToken(ctx)
 	if err != nil {
 		return nil, fnerrors.Newf("authentication error: %w", err)
 	}

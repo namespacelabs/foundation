@@ -21,7 +21,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/integrations/api/compute"
-	"namespacelabs.dev/integrations/auth"
 )
 
 var (
@@ -376,7 +375,7 @@ func newEgressLogsCmd() *cobra.Command {
 			return fnerrors.Newf("unsupported output format %q, supported values: plain, json", *output)
 		}
 
-		token, err := auth.LoadDefaults()
+		token, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return fnerrors.Newf("Authentication error: %w", err)
 		}

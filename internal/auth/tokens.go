@@ -5,12 +5,14 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -21,6 +23,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/metadata"
+	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/integrations/auth"
 )
@@ -34,12 +37,15 @@ const (
 
 var Workspace string
 var Keychain string
+var impersonatingTenantID string
 
 func SetupFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&Workspace, "workspace", "", "Select a workspace log in to.")
 	flags.StringVar(&Keychain, "keychain", "", "Use the specified token keychain.")
+	flags.StringVar(&impersonatingTenantID, "impersonate", "", "Tenant ID to impersonate")
 
 	_ = flags.MarkHidden("workspace")
+	_ = flags.MarkHidden("impersonate")
 }
 
 func tokenLoc() string {
@@ -309,6 +315,10 @@ func HasKeychain() bool {
 	return Keychain != ""
 }
 
+func IsImpersonatingTenant() bool {
+	return impersonatingTenantID != ""
+}
+
 var validKeychainName = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
 
 func keychainPath(configDir string) (string, error) {
@@ -392,6 +402,37 @@ func LoadTenantToken(ctx context.Context, issue IssueShortTermFunc) (*Token, err
 	return loadWorkspaceToken(ctx, issue, time.Now())
 }
 
+type tenantTokenBinaryRequest struct {
+	TenantID string `json:"tenant_id"`
+}
+
+type ResolvedTenantToken struct {
+	BearerToken string `json:"bearer_token"`
+}
+
+func LoadTokenFromBinary(ctx context.Context) (*Token, error) {
+	binary := "nsc-credential-helper"
+	if custom := os.Getenv("NSC_CREDENTIAL_HELPER"); custom != "" {
+		binary = custom
+	}
+	path, err := exec.LookPath(binary)
+	if err != nil {
+		return nil, err
+	}
+
+	input, err := json.Marshal(tenantTokenBinaryRequest{TenantID: impersonatingTenantID})
+	if err != nil {
+		return nil, err
+	}
+
+	resolved, err := runTokenBinary(ctx, rtypes.StdIO(ctx), input, path, "impersonate")
+	if err != nil {
+		return nil, err
+	}
+
+	return &Token{StoredToken: StoredToken{TenantToken: resolved.BearerToken}}, nil
+}
+
 func EnsureTokenValidAt(ctx context.Context, issue IssueShortTermFunc, target time.Time) error {
 	_, err := loadWorkspaceToken(ctx, issue, target)
 	return err
@@ -404,4 +445,25 @@ func FetchTokenFromSpec(ctx context.Context, issue IssueShortTermFunc, spec stri
 	}
 
 	return &Token{StoredToken: StoredToken{TenantToken: t}, ReIssue: issue}, nil
+}
+
+func runTokenBinary(ctx context.Context, io rtypes.IO, input []byte, command string, args ...string) (ResolvedTenantToken, error) {
+	cmd := exec.CommandContext(ctx, command, args...)
+	cmd.Stdin = bytes.NewReader(input)
+	cmd.Stderr = io.Stderr
+
+	output, err := cmd.Output()
+	if err != nil {
+		return ResolvedTenantToken{}, err
+	}
+
+	var token ResolvedTenantToken
+	if err := json.Unmarshal(output, &token); err != nil {
+		return ResolvedTenantToken{}, err
+	}
+	if token.BearerToken == "" {
+		return ResolvedTenantToken{}, fnerrors.New("credential helper returned an empty bearer_token")
+	}
+
+	return token, nil
 }

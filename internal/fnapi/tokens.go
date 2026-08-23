@@ -44,7 +44,16 @@ type ImpersonationSpec struct {
 
 func FetchToken(ctx context.Context) (*localauth.Token, error) {
 	return tasks.Return(ctx, tasks.Action("nsc.fetch-token").LogLevel(1), func(ctx context.Context) (*localauth.Token, error) {
-		if impersonate := os.Getenv("NSC_IMPERSONATE_TENANT_ID"); impersonate != "" {
+		impersonate := os.Getenv("NSC_IMPERSONATE_TENANT_ID")
+
+		if localauth.IsImpersonatingTenant() {
+			if impersonate != "" {
+				return nil, fnerrors.BadInputError("NSC_IMPERSONATE_TENANT_ID can't be used together with --impersonate")
+			}
+			return localauth.LoadTokenFromBinary(ctx)
+		}
+
+		if impersonate != "" {
 			loc := os.Getenv("NSC_IMPERSONATION_SPEC_FILE")
 			if loc == "" {
 				return nil, fnerrors.BadInputError("NSC_IMPERSONATE_TENANT_ID requires NSC_IMPERSONATION_SPEC_FILE to be set")
