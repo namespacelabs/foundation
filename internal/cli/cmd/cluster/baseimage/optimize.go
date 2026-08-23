@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/integrations/api/compute"
-	"namespacelabs.dev/integrations/auth"
 )
 
 func newOptimizeCmd() *cobra.Command {
@@ -32,7 +32,7 @@ func newOptimizeCmd() *cobra.Command {
 			return fmt.Errorf("--image_ref is required")
 		}
 
-		token, err := auth.LoadDefaults()
+		token, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return err
 		}

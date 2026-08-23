@@ -25,10 +25,10 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/integrations/api/builds"
 	registryapi "namespacelabs.dev/integrations/api/registry"
-	"namespacelabs.dev/integrations/auth"
 )
 
 func NewRegistryCmd() *cobra.Command {
@@ -173,7 +173,7 @@ func newRegistryListCmd() *cobra.Command {
 		if len(args) > 0 && repository == "" {
 			repository = args[0]
 		}
-		tokenSource, err := auth.LoadDefaults()
+		tokenSource, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return fnerrors.InvocationError("registry", "failed to get authentication token: %w", err)
 		}
@@ -317,7 +317,7 @@ Alternatively, use --repository and --reference flags.`,
 	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		tokenSource, err := auth.LoadDefaults()
+		tokenSource, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return fnerrors.InvocationError("registry", "failed to get authentication token: %w", err)
 		}
@@ -391,7 +391,7 @@ Alternatively, use --repository and --digest flags.`,
 	suffix := cmd.Flags().String("suffix", "", "An optional suffix to append to repository names")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		tokenSource, err := auth.LoadDefaults()
+		tokenSource, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return fnerrors.InvocationError("registry", "failed to get authentication token: %w", err)
 		}
@@ -635,7 +635,7 @@ Alternatively, use --repository and --digest flags.`,
 	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		tokenSource, err := auth.LoadDefaults()
+		tokenSource, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return fnerrors.InvocationError("registry", "failed to get authentication token: %w", err)
 		}
@@ -762,7 +762,7 @@ func newRegistrySetDefaultExpirationCmd() *cobra.Command {
 }
 
 func getPolicy(ctx context.Context, repository, output string) error {
-	tokenSource, err := auth.LoadDefaults()
+	tokenSource, err := fnapi.FetchToken(ctx)
 	if err != nil {
 		return fnerrors.InvocationError("registry", "failed to get authentication token: %w", err)
 	}
@@ -862,7 +862,7 @@ func getPolicy(ctx context.Context, repository, output string) error {
 }
 
 func setPolicy(ctx context.Context, repository string, expiration time.Duration, noExpiration bool) error {
-	tokenSource, err := auth.LoadDefaults()
+	tokenSource, err := fnapi.FetchToken(ctx)
 	if err != nil {
 		return fnerrors.InvocationError("registry", "failed to get authentication token: %w", err)
 	}

@@ -26,10 +26,10 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	con "namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/integrations/api/compute"
-	"namespacelabs.dev/integrations/auth"
 )
 
 func NewSshCmd() *cobra.Command {
@@ -249,7 +249,7 @@ func InlineSsh(ctx context.Context, cluster *api.KubernetesCluster, opts InlineS
 				return ConnectBits{}, fnerrors.BadInputError("--user and --container_name are exclusive")
 			}
 
-			token, err := auth.LoadDefaults()
+			token, err := fnapi.FetchToken(ctx)
 			if err != nil {
 				return ConnectBits{}, err
 			}

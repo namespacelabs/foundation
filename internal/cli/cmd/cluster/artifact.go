@@ -31,9 +31,9 @@ import (
 	"namespacelabs.dev/foundation/framework/io/downloader"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/integrations/api/storage"
-	"namespacelabs.dev/integrations/auth"
 )
 
 const (
@@ -117,7 +117,7 @@ func newArtifactUploadCmd() *cobra.Command {
 		}
 		defer uploadFile.Close()
 
-		token, err := auth.LoadDefaults()
+		token, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return err
 		}
@@ -328,7 +328,7 @@ func newArtifactExpireCmd() *cobra.Command {
 		}
 		path := args[0]
 
-		token, err := auth.LoadDefaults()
+		token, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return err
 		}
@@ -396,7 +396,7 @@ applied first and --ensure_minimum then acts as a lower bound on the result.`,
 			req.EnsureMinimum = durationpb.New(ensureMinimum)
 		}
 
-		token, err := auth.LoadDefaults()
+		token, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return err
 		}
@@ -443,7 +443,7 @@ func newArtifactDownloadCmd() *cobra.Command {
 		}
 		src, dest := args[0], args[1]
 
-		token, err := auth.LoadDefaults()
+		token, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return err
 		}
@@ -611,7 +611,7 @@ The content at the URL is assumed to be immutable.`,
 		now := time.Now()
 		sourceURL := args[0]
 
-		token, err := auth.LoadDefaults()
+		token, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return fnerrors.BadDataError("failed to obtain auth data: %w", err)
 		}
@@ -757,7 +757,7 @@ func newArtifactDescribeCmd() *cobra.Command {
 			return fnerrors.BadInputError("invalid output format: %s", output)
 		}
 
-		token, err := auth.LoadDefaults()
+		token, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return err
 		}

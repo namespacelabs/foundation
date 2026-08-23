@@ -23,9 +23,9 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/integrations/api/vault"
-	"namespacelabs.dev/integrations/auth"
 )
 
 func NewVaultCmd() *cobra.Command {
@@ -53,7 +53,7 @@ func NewListCmd() *cobra.Command {
 	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		tokenSource, err := auth.LoadDefaults()
+		tokenSource, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return fnerrors.InvocationError("vault", "failed to get authentication token: %w", err)
 		}
@@ -131,7 +131,7 @@ func NewAddCmd() *cobra.Command {
 			secret = value
 		}
 
-		tokenSource, err := auth.LoadDefaults()
+		tokenSource, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return fnerrors.InvocationError("vault", "failed to get authentication token: %w", err)
 		}
@@ -214,7 +214,7 @@ func NewSetCmd() *cobra.Command {
 			secret = value
 		}
 
-		tokenSource, err := auth.LoadDefaults()
+		tokenSource, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return fnerrors.InvocationError("vault", "failed to get authentication token: %w", err)
 		}
@@ -268,7 +268,7 @@ func NewDeleteCmd() *cobra.Command {
 	version := cmd.Flags().String("if-version-matches", "", "Only delete if the object version matches this value")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		tokenSource, err := auth.LoadDefaults()
+		tokenSource, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return fnerrors.InvocationError("vault", "failed to get authentication token: %w", err)
 		}
@@ -329,7 +329,7 @@ func NewExportCmd() *cobra.Command {
 			return err
 		}
 
-		tokenSource, err := auth.LoadDefaults()
+		tokenSource, err := fnapi.FetchToken(ctx)
 		if err != nil {
 			return fnerrors.InvocationError("vault", "failed to get authentication token: %w", err)
 		}

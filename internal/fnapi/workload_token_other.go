@@ -7,5 +7,5 @@
 package fnapi
 
 func defaultWorkloadTokenPath() (string, error) {
-	return "", nil
+	return "/var/run/nsc/token.json", nil
 }
