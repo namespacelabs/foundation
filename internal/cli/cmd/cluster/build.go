@@ -29,6 +29,7 @@ import (
 	"github.com/moby/buildkit/util/progress/progresswriter"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
+	"github.com/tonistiigi/fsutil"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/codes"
 	buildkitfw "namespacelabs.dev/foundation/framework/build/buildkit"
@@ -469,9 +470,14 @@ func startSingleBuild(eg *executor.Executor, c *client.Client, mw *progresswrite
 		}
 
 		if bf.ContextDir != "" {
-			solveOpt.LocalDirs = map[string]string{
-				"context":    bf.ContextDir,
-				"dockerfile": bf.ContextDir,
+			localMount, err := fsutil.NewFS(bf.ContextDir)
+			if err != nil {
+				return err
+			}
+
+			solveOpt.LocalMounts = map[string]fsutil.FS{
+				"context":    localMount,
+				"dockerfile": localMount,
 			}
 
 			if bf.Dockerfile != "" {
