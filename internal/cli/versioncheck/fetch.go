@@ -13,8 +13,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 )
 
@@ -42,21 +40,4 @@ func CheckRemote(ctx context.Context, current *storage.NamespaceBinaryVersion, c
 		BuildTime:  resp.BuildTime,
 		NewVersion: newVersion,
 	}, nil
-}
-
-// XXX this method is not correct; it does not take into account the API requirements of the module's dependencies.
-func FetchWorkspaceRequirements(ctx context.Context) (*schema.Workspace_FoundationRequirements, error) {
-	moduleRoot, err := cuefrontend.ModuleLoader.FindModuleRoot(".")
-	if err != nil {
-		// The user is not inside of a workspace. This is normal.
-		return nil, nil
-	}
-
-	wsData, err := cuefrontend.ModuleLoader.ModuleAt(ctx, moduleRoot)
-	if err != nil {
-		// Failed to parse workspace. For the purposes of version check it's okay to proceed,
-		return nil, err
-	}
-
-	return wsData.Proto().Foundation, nil
 }
