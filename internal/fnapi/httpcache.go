@@ -8,9 +8,9 @@ import (
 	"context"
 	"net/http"
 
-	"buf.build/gen/go/namespace/cloud/connectrpc/go/proto/namespace/cloud/integrations/httpcache/v1beta/httpcachev1betaconnect"
 	"connectrpc.com/connect"
 	"namespacelabs.dev/integrations/api"
+	"namespacelabs.dev/integrations/proto/namespace/cloud/integrations/httpcache/v1beta/httpcachev1betaconnect"
 )
 
 func NewHttpCacheServiceClient(ctx context.Context) (httpcachev1betaconnect.HttpCacheServiceClient, error) {

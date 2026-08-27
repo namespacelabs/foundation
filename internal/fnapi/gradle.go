@@ -8,9 +8,9 @@ import (
 	"context"
 	"net/http"
 
-	"buf.build/gen/go/namespace/cloud/connectrpc/go/proto/namespace/cloud/integrations/gradle/v1beta/gradlev1betaconnect"
 	"connectrpc.com/connect"
 	"namespacelabs.dev/integrations/api"
+	"namespacelabs.dev/integrations/proto/namespace/cloud/integrations/gradle/v1beta/gradlev1betaconnect"
 )
 
 func NewGradleCacheServiceClient(ctx context.Context) (gradlev1betaconnect.GradleCacheServiceClient, error) {

@@ -26,8 +26,8 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api/private"
 	"namespacelabs.dev/go-ids"
 
-	instancev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/private/instance"
 	controlapi "github.com/moby/buildkit/api/services/control"
+	instancev1beta "namespacelabs.dev/integrations/proto/namespace/private/instance"
 )
 
 func serveGRPCProxy(ctx context.Context, workerInfo *controlapi.ListWorkersResponse, annotateBuild bool, listener net.Listener, proxyStatus *proxyStatusDesc, connect func(context.Context) (net.Conn, error)) error {

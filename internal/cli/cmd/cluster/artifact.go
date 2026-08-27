@@ -18,7 +18,6 @@ import (
 	"strings"
 	"time"
 
-	storagev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/storage/v1beta"
 	"github.com/aws/smithy-go/ptr"
 	"github.com/cenkalti/backoff"
 	"github.com/dustin/go-humanize"
@@ -28,12 +27,13 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
-	"namespacelabs.dev/foundation/framework/io/downloader"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/integrations/api/storage"
+	storagev1beta "namespacelabs.dev/integrations/proto/namespace/cloud/storage/v1beta"
+	"namespacelabs.dev/integrations/storage/downloader"
 )
 
 const (
@@ -466,7 +466,7 @@ func newArtifactDownloadCmd() *cobra.Command {
 		}
 
 		start := time.Now()
-		if err := writeArtifactWithResume(ctx, cli, namespace, src, downloadTo, resume); err != nil {
+		if err := downloader.DownloadArtifact(ctx, cli, namespace, src, downloadTo, downloader.Options{Resume: resume}); err != nil {
 			return err
 		}
 
@@ -668,24 +668,6 @@ The content at the URL is assumed to be immutable.`,
 				fmt.Fprintf(console.Stderr(ctx), "Error: Failed to cache artifact: %v; retrying in %v...\n", err, delay)
 			})
 	})
-}
-
-func writeArtifactWithResume(ctx context.Context, cli storage.Client, namespace, path string, dest string, resume bool) error {
-	opts := downloader.Options{
-		Resume: resume,
-		ResolveURL: func(ctx context.Context) (string, error) {
-			res, err := cli.Artifacts.ResolveArtifact(ctx, &storagev1beta.ResolveArtifactRequest{
-				Path:      path,
-				Namespace: namespace,
-			})
-			if err != nil {
-				return "", err
-			}
-			return res.SignedDownloadUrl, nil
-		},
-	}
-
-	return downloader.Download(ctx, dest, opts)
 }
 
 type artifactDescribeJSONOutput struct {

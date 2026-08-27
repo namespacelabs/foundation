@@ -13,8 +13,6 @@ import (
 	"strings"
 	"time"
 
-	v1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/vault/v1beta"
-	"buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/stdlib"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
@@ -26,6 +24,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/integrations/api/vault"
+	v1beta "namespacelabs.dev/integrations/proto/namespace/cloud/vault/v1beta"
+	"namespacelabs.dev/integrations/proto/namespace/stdlib"
 )
 
 func NewVaultCmd() *cobra.Command {

@@ -12,8 +12,6 @@ import (
 	"strconv"
 	"time"
 
-	v1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/github/v1beta"
-	"buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/stdlib"
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -22,6 +20,8 @@ import (
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	v1beta "namespacelabs.dev/integrations/proto/namespace/cloud/github/v1beta"
+	"namespacelabs.dev/integrations/proto/namespace/stdlib"
 )
 
 func NewJobsCmd() *cobra.Command {

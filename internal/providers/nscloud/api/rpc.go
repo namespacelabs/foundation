@@ -13,8 +13,6 @@ import (
 	"regexp"
 	"time"
 
-	builderv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/builder/v1beta"
-	computev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/compute/v1beta"
 	"github.com/bcicen/jstream"
 	"github.com/cenkalti/backoff"
 	"go.uber.org/atomic"
@@ -32,6 +30,8 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/endpoint"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/go-ids"
+	builderv1beta "namespacelabs.dev/integrations/proto/namespace/cloud/builder/v1beta"
+	computev1beta "namespacelabs.dev/integrations/proto/namespace/cloud/compute/v1beta"
 )
 
 type API struct {

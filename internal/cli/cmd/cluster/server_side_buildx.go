@@ -21,7 +21,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	builderv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/builder/v1beta"
 	"github.com/docker/cli/cli/command"
 	controlapi "github.com/moby/buildkit/api/services/control"
 	"github.com/natefinch/atomic"
@@ -38,6 +37,7 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/metadata"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
+	builderv1beta "namespacelabs.dev/integrations/proto/namespace/cloud/builder/v1beta"
 )
 
 func PrepareServerSideBuildxProxy(ctx context.Context, stateDir string, platforms []api.BuildPlatform, conf api.BuilderConfiguration) ([]BuilderConfig, error) {

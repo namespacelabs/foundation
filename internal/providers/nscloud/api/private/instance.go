@@ -10,11 +10,11 @@ import (
 	"crypto/x509"
 	"os"
 
-	instance "buf.build/gen/go/namespace/cloud/grpc/go/proto/namespace/private/instance/instancev1betagrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/metadata"
+	instance "namespacelabs.dev/integrations/proto/namespace/private/instance"
 )
 
 var (

@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	builderv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/builder/v1beta"
 	controlapi "github.com/moby/buildkit/api/services/control"
 	types "github.com/moby/buildkit/api/types"
 	"github.com/moby/buildkit/client"
@@ -32,6 +31,7 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/buildctl"
 	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/std/tasks"
+	builderv1beta "namespacelabs.dev/integrations/proto/namespace/cloud/builder/v1beta"
 )
 
 func NewBuildkitCmd() *cobra.Command {

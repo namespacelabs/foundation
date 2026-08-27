@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	computev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/compute/v1beta"
 	c "github.com/containerd/console"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
@@ -30,6 +29,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/integrations/api/compute"
+	computev1beta "namespacelabs.dev/integrations/proto/namespace/cloud/compute/v1beta"
 )
 
 func NewSshCmd() *cobra.Command {

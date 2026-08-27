@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	iamv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/iam/v1beta"
 	bazelv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/integrations/bazel/v1beta"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	iamv1beta "namespacelabs.dev/integrations/proto/namespace/cloud/iam/v1beta"
 )
 
 func TestNewBazelCreateTokenCmd(t *testing.T) {

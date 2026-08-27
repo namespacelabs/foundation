@@ -13,8 +13,6 @@ import (
 	"strconv"
 	"time"
 
-	computev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/compute/v1beta"
-	"buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/stdlib"
 	"github.com/araddon/dateparse"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -23,6 +21,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/integrations/api/compute"
+	computev1beta "namespacelabs.dev/integrations/proto/namespace/cloud/compute/v1beta"
+	"namespacelabs.dev/integrations/proto/namespace/stdlib"
 )
 
 func NewGenerateReportCmd() *cobra.Command {

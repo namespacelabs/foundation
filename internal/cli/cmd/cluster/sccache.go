@@ -12,9 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"buf.build/gen/go/namespace/cloud/connectrpc/go/proto/namespace/cloud/integrations/httpcache/v1beta/httpcachev1betaconnect"
-	iamv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/iam/v1beta"
-	httpcachev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/integrations/httpcache/v1beta"
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -22,6 +19,9 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	iamv1beta "namespacelabs.dev/integrations/proto/namespace/cloud/iam/v1beta"
+	httpcachev1beta "namespacelabs.dev/integrations/proto/namespace/cloud/integrations/httpcache/v1beta"
+	"namespacelabs.dev/integrations/proto/namespace/cloud/integrations/httpcache/v1beta/httpcachev1betaconnect"
 )
 
 func NewSccacheCmd() *cobra.Command {

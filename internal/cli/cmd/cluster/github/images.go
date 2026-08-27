@@ -10,9 +10,6 @@ import (
 	"fmt"
 	"io"
 
-	v1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/github/v1beta"
-	images "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/private/images"
-	"buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/stdlib"
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -20,6 +17,9 @@ import (
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	v1beta "namespacelabs.dev/integrations/proto/namespace/cloud/github/v1beta"
+	images "namespacelabs.dev/integrations/proto/namespace/private/images"
+	"namespacelabs.dev/integrations/proto/namespace/stdlib"
 )
 
 func NewImagesCmd() *cobra.Command {

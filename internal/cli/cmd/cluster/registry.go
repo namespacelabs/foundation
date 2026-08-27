@@ -13,8 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	registryv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/registry/v1beta"
-	"buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/stdlib"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
@@ -29,6 +27,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/integrations/api/builds"
 	registryapi "namespacelabs.dev/integrations/api/registry"
+	registryv1beta "namespacelabs.dev/integrations/proto/namespace/cloud/registry/v1beta"
+	"namespacelabs.dev/integrations/proto/namespace/stdlib"
 )
 
 func NewRegistryCmd() *cobra.Command {

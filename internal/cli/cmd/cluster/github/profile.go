@@ -12,8 +12,6 @@ import (
 	"strings"
 	"time"
 
-	computev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/compute/v1beta"
-	v1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/github/v1beta"
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -25,6 +23,8 @@ import (
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	computev1beta "namespacelabs.dev/integrations/proto/namespace/cloud/compute/v1beta"
+	v1beta "namespacelabs.dev/integrations/proto/namespace/cloud/github/v1beta"
 )
 
 func NewProfileCmd() *cobra.Command {
