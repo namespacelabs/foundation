@@ -10,13 +10,13 @@ import (
 	"fmt"
 	"strings"
 
-	v1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/iam/v1beta"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/cmd/token"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	v1beta "namespacelabs.dev/integrations/proto/namespace/cloud/iam/v1beta"
 )
 
 func NewTrustRelationshipsCmd() *cobra.Command {

@@ -19,7 +19,6 @@ import (
 	"syscall"
 	"time"
 
-	computev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/compute/v1beta"
 	"github.com/cenkalti/backoff"
 	"github.com/docker/cli/cli/command"
 	cliflags "github.com/docker/cli/cli/flags"
@@ -40,6 +39,7 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
+	computev1beta "namespacelabs.dev/integrations/proto/namespace/cloud/compute/v1beta"
 )
 
 const (

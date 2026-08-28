@@ -11,12 +11,12 @@ import (
 	"log"
 	"net/url"
 
-	builder "buf.build/gen/go/namespace/cloud/grpc/go/proto/namespace/cloud/builder/v1beta/builderv1betagrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/endpoint"
+	builder "namespacelabs.dev/integrations/proto/namespace/cloud/builder/v1beta"
 )
 
 func NewBuilderServiceClient(ctx context.Context, tid string, token fnapi.ResolvedToken) (builder.BuilderServiceClient, *grpc.ClientConn, error) {

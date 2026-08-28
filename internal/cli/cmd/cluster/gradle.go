@@ -13,9 +13,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"buf.build/gen/go/namespace/cloud/connectrpc/go/proto/namespace/cloud/integrations/gradle/v1beta/gradlev1betaconnect"
-	iamv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/iam/v1beta"
-	gradlev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/integrations/gradle/v1beta"
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -26,6 +23,9 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
+	iamv1beta "namespacelabs.dev/integrations/proto/namespace/cloud/iam/v1beta"
+	gradlev1beta "namespacelabs.dev/integrations/proto/namespace/cloud/integrations/gradle/v1beta"
+	"namespacelabs.dev/integrations/proto/namespace/cloud/integrations/gradle/v1beta/gradlev1betaconnect"
 )
 
 const gradleCachePathBase = "gradle"

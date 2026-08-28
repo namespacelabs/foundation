@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"time"
 
-	"buf.build/gen/go/namespace/cloud/connectrpc/go/proto/namespace/cloud/github/v1beta/githubv1betaconnect"
 	"connectrpc.com/connect"
 	"namespacelabs.dev/integrations/api"
+	"namespacelabs.dev/integrations/proto/namespace/cloud/github/v1beta/githubv1betaconnect"
 )
 
 func newAuthInterceptor(tokenSource api.TokenSource) connect.UnaryInterceptorFunc {

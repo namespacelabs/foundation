@@ -15,7 +15,6 @@ import (
 	"text/tabwriter"
 	"time"
 
-	expcompute "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/experimental/compute"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -26,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/endpoint"
 	"namespacelabs.dev/foundation/std/tasks"
+	expcompute "namespacelabs.dev/integrations/proto/namespace/experimental/compute"
 )
 
 // NewReservationCmd implements `nsc reservation`.

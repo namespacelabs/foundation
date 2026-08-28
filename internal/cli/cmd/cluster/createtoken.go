@@ -11,7 +11,6 @@ import (
 	"os"
 	"time"
 
-	iamv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/iam/v1beta"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -22,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/go-ids"
 	"namespacelabs.dev/integrations/api/iam"
+	iamv1beta "namespacelabs.dev/integrations/proto/namespace/cloud/iam/v1beta"
 )
 
 type createTokenConfig struct {

@@ -9,9 +9,9 @@ import (
 	"encoding/json"
 	"time"
 
-	v1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/iam/v1beta"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/integrations/api"
+	v1beta "namespacelabs.dev/integrations/proto/namespace/cloud/iam/v1beta"
 )
 
 const AdminScope = "admin"
