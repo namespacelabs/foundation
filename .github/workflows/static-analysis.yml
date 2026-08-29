@@ -21,7 +21,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v7
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - name: Run gofmt (goimports)
@@ -31,7 +31,7 @@ jobs:
     runs-on: nscloud-ubuntu-22.04-amd64-2x8
     steps:
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: 1.26.x
       - name: Check out code
@@ -50,7 +50,7 @@ jobs:
 
     steps:
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: 1.26.x
 
