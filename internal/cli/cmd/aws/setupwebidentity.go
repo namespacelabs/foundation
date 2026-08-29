@@ -20,7 +20,7 @@ import (
 func newSetupWebIdentity() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "setup-web-identity",
-		Short:  "Provides configuration to the AWS CLI/SDK to use Workload Federation to access a particular AWS role.",
+		Short:  "Configure AWS tools to assume a role with workload federation.",
 		Args:   cobra.NoArgs,
 		Hidden: true,
 	}

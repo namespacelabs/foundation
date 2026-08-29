@@ -29,7 +29,7 @@ func NewLoginCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "login",
-		Short: "Login to Namespace to access Namespace Instances, Remote Builders, etc.",
+		Short: "Log in to Namespace.",
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {

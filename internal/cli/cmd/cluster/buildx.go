@@ -463,7 +463,7 @@ func wireBuildx(dockerCli *command.DockerCli, name string, use, defaultLoad bool
 func newCleanupBuildxCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "cleanup",
-		Short: "Unregisters Namespace Remote builders from buildx.",
+		Short: "Unregister Namespace remote builders from Buildx.",
 	}
 
 	name := cmd.Flags().String("name", defaultBuilder, "The name of the builder to clean up.")
@@ -721,7 +721,7 @@ func makeUnixHTTPClient(unixSockPath string) *http.Client {
 func newStatusBuildxCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status",
-		Short: "Status information for the local Namespace buildx context.",
+		Short: "Show the local Namespace Buildx context status.",
 	}
 
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
@@ -999,7 +999,7 @@ func newDumpListWorkersBuildxCommand() *cobra.Command {
 func newWaitBuilderCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "wait-for-builder",
-		Short:  "Ensures a remote builder is running and ready to execute builds.",
+		Short:  "Ensure a remote builder is ready.",
 		Args:   cobra.NoArgs,
 		Hidden: true,
 	}

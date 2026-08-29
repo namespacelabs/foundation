@@ -24,7 +24,7 @@ import (
 func newUploadBaseImageCmd() *cobra.Command {
 	run := &cobra.Command{
 		Use:   "upload [source-image] [target-tag]",
-		Short: "Converts an existing image into a base image and uploads it to nscr.io",
+		Short: "Convert and upload an image as a base image to nscr.io.",
 		Args:  cobra.ExactArgs(2),
 	}
 

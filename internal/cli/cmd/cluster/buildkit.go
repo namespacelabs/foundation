@@ -37,7 +37,7 @@ import (
 func NewBuildkitCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "buildkit",
-		Short:  "Buildkit-related functionality.",
+		Short:  "Run BuildKit tools against build instances.",
 		Hidden: true,
 	}
 	fncobra.MarkAsNotSupportedOnWindows(cmd)

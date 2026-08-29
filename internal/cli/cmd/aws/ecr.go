@@ -32,7 +32,7 @@ const dockerCfgName = "config.json"
 func newEcrDockerLoginCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "ecr-docker-login",
-		Short:  "Uses Workload Federation to log into ECR for use with Docker.",
+		Short:  "Log in to Amazon ECR with workload federation.",
 		Args:   cobra.NoArgs,
 		Hidden: true,
 	}

@@ -26,7 +26,7 @@ import (
 func NewGitCheckoutCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "git-checkout",
-		Short:  "Actions for git checkouts supporting Namespace Cache Volumes.",
+		Short:  "Manage Git checkouts on cache volumes.",
 		Hidden: true,
 	}
 
@@ -41,7 +41,7 @@ func NewGitCheckoutCmd() *cobra.Command {
 func newUpdateSubmodulesCmd(mirrorBaseDir *string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update-submodules",
-		Short: "Updates git submodules using a Namespace git mirror.",
+		Short: "Update Git submodules using a Namespace mirror.",
 	}
 
 	repositoryPath := cmd.Flags().String("repository_path", "", "the path of the repository to work in")

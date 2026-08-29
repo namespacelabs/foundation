@@ -27,7 +27,7 @@ const (
 func newImpersonateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "impersonate",
-		Short:  "To impersonate Namespace workload as a GCP service account.",
+		Short:  "Impersonate a Google Cloud service account.",
 		Args:   cobra.NoArgs,
 		Hidden: true,
 	}

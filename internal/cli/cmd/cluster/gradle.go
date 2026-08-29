@@ -33,10 +33,10 @@ const gradleCachePathBase = "gradle"
 func NewGradleCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "gradle",
-		Short: "Gradle-related activities.",
+		Short: "Manage Gradle integrations.",
 	}
 
-	cache := &cobra.Command{Use: "cache", Short: "Gradle cache related functionality."}
+	cache := &cobra.Command{Use: "cache", Short: "Manage remote Gradle caches."}
 	cache.AddCommand(newSetupGradleCacheCmd())
 	cache.AddCommand(newGradleCreateTokenCmd())
 
@@ -50,7 +50,7 @@ func NewGradleCmd() *cobra.Command {
 func NewGradleCacheCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "gradle",
-		Short: "Gradle cache related functionality.",
+		Short: "Manage remote Gradle caches.",
 	}
 
 	cmd.AddCommand(newSetupGradleCacheCmd())

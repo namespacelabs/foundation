@@ -25,7 +25,7 @@ const (
 func NewDevboxCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "devbox",
-		Short:  "Devboxes are managed by the separate devbox CLI.",
+		Short:  "Install or run the Devbox CLI.",
 		Hidden: true,
 		Args:   cobra.NoArgs,
 	}

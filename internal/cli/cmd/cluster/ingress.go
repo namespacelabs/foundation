@@ -22,7 +22,7 @@ import (
 func NewIngressCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ingress",
-		Short: "Ingress-related activities.",
+		Short: "Manage instance ingress.",
 	}
 
 	cmd.AddCommand(newListIngressesCmd())
@@ -39,7 +39,7 @@ type ingressOut struct {
 func newListIngressesCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "Lists the registered ingresses on the specified instance.",
+		Short: "List registered ingress endpoints for an instance.",
 		Args:  cobra.MaximumNArgs(1),
 	}
 

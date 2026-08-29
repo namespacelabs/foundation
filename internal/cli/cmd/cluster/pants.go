@@ -26,10 +26,10 @@ const pantsCachePathBase = "pantscache"
 func NewPantsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "pants",
-		Short: "Pants-related activities.",
+		Short: "Manage Pants integrations.",
 	}
 
-	cache := &cobra.Command{Use: "cache", Short: "Pants cache related functionality."}
+	cache := &cobra.Command{Use: "cache", Short: "Manage remote Pants caches."}
 	cache.AddCommand(newSetupPantsCacheCmd())
 
 	cmd.AddCommand(cache)
@@ -42,7 +42,7 @@ func NewPantsCmd() *cobra.Command {
 func NewPantsCacheCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "pants",
-		Short: "Pants cache related functionality.",
+		Short: "Manage remote Pants caches.",
 	}
 
 	cmd.AddCommand(newSetupPantsCacheCmd())

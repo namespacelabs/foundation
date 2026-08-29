@@ -30,7 +30,7 @@ import (
 func newPackageCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "package [path]",
-		Short: "Creates a macOS package from a directory and uploads it to nscr.io",
+		Short: "Create and upload a macOS package to nscr.io.",
 		Args:  cobra.ExactArgs(1),
 	}
 

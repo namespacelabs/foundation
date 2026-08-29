@@ -28,7 +28,7 @@ import (
 func NewRunCmd() *cobra.Command {
 	run := &cobra.Command{
 		Use:   "run",
-		Short: "Starts a container in an ephemeral environment, optionally exporting ports for public serving.",
+		Short: "Run a container in an ephemeral instance.",
 		Args:  cobra.ArbitraryArgs,
 	}
 

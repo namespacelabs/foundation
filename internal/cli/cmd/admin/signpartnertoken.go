@@ -41,7 +41,7 @@ func newSignPartnerTokenCmd() *cobra.Command {
 	return fncobra.Cmd(
 		&cobra.Command{
 			Use:   "sign-partner-token --partner_id=user_... --issuer_url=https://... --key_from_file=...",
-			Short: "Run gcloud.",
+			Short: "Sign a partner token.",
 		}).
 		WithFlags(func(flags *pflag.FlagSet) {
 			flags.StringVar(&partnerID, "partner_id", "", "Partner account ID to assert.")

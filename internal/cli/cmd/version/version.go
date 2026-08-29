@@ -32,7 +32,7 @@ func NewVersionCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "version",
-		Short: "Outputs the compiled version of Namespace.",
+		Short: "Print the Namespace CLI version.",
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			if buildInfo {
@@ -76,7 +76,7 @@ func newEnsureCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "ensure",
-		Short: "Ensures the current binary is at least a given version, updating if needed.",
+		Short: "Ensure the CLI meets a minimum version.",
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
@@ -124,7 +124,7 @@ func newCheckCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "check",
-		Short: "Checks whether the current binary is up to date.",
+		Short: "Check whether the CLI is up to date.",
 		Long: `Checks whether the current binary is up to date.
 
 By default (--latest), checks if a newer version is available.
@@ -200,7 +200,7 @@ Exits with code 2 if the version is outdated or the constraint is not met.`,
 func newUpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "update",
-		Short:   "Updates the current binary to the latest version.",
+		Short:   "Update the CLI to the latest version.",
 		Aliases: []string{"update-ns"},
 		Args:    cobra.NoArgs,
 		Annotations: map[string]string{
