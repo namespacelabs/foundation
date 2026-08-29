@@ -61,6 +61,10 @@ type PreparedImage struct {
 type BuildImageOpts struct {
 	UsePrebuilts bool
 	Platforms    []specs.Platform
+	// PublishName, when set, instructs the underlying BuildKit builder to push
+	// the resulting image directly to the named repository (server-side),
+	// rather than transferring the image back to the client.
+	PublishName compute.Computable[oci.RepositoryWithParent]
 }
 
 // Returns a Prepared.
@@ -100,6 +104,7 @@ func PlanBinary(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context,
 		Spec:          spec,
 		Workspace:     loc.Module,
 		Platforms:     platforms,
+		PublishName:   opts.PublishName,
 	}
 
 	return &Prepared{

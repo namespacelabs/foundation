@@ -36,7 +36,12 @@ func (m MergeSpecs) BuildImage(ctx context.Context, env pkggraph.SealedContext, 
 		images[k] = oci.MakeNamedImage(m.Descriptions[k], image)
 	}
 
-	return oci.MergeImageLayers(images...), nil
+	// When the build is destined for a registry, skip the local content
+	// cache for the merged result. Otherwise the cache write forces every
+	// constituent layer to be pulled to disk from the source registry.
+	return oci.MergeImageLayersOpts(oci.MergeImageLayersOptions{
+		NoCache: conf.PublishName() != nil,
+	}, images...), nil
 }
 
 func (m MergeSpecs) PlatformIndependent() bool { return m.platformIndependent }
