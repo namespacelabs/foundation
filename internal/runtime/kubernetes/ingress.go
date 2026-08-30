@@ -53,12 +53,11 @@ func planIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, r Bou
 		}
 	}
 
-	// On ephemeral environments, e.g. tests, we don't wait for an
-	// ingress controller to be present, before installing ingress
-	// objects. This is because we sometimes run in environments where
-	// there's no controller installed (e.g. in ephemeral nscloud
-	// clusters). And tests don't (yet) exercise ingress objects.
-	if len(state.Definitions) > 0 && !r.env.Ephemeral {
+	// Local ephemeral environments install nginx and may exercise Ingress
+	// resources, so they need the same readiness ordering as persistent
+	// environments. Ephemeral nscloud clusters use provider-managed ingress and
+	// intentionally have no in-cluster controller to wait for.
+	if len(state.Definitions) > 0 && !r.skipIngressControllerWait {
 		var d defs.DefList
 
 		d.AddExt("Ensure Ingress Controller", &kubedef.OpEnsureIngressController{

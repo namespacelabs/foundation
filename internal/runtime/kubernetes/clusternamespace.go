@@ -44,9 +44,10 @@ type ClusterNamespace struct {
 }
 
 type BoundNamespace struct {
-	env       *schema.Environment
-	namespace string
-	planning  *client.DeploymentPlanning
+	env                       *schema.Environment
+	namespace                 string
+	planning                  *client.DeploymentPlanning
+	skipIngressControllerWait bool
 }
 
 var _ runtime.ClusterNamespace = &ClusterNamespace{}

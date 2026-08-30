@@ -135,6 +135,9 @@ func bindNamespace(env cfg.Context) BoundNamespace {
 	}
 
 	b := BoundNamespace{env: env.Environment(), namespace: ns}
+	if hostEnv, err := client.CheckGetHostEnv(env.Configuration()); err == nil {
+		b.skipIngressControllerWait = env.Environment().Ephemeral && hostEnv.GetProvider() == "nscloud"
+	}
 
 	if conf, ok := kubernetesDeploymentPlanning.CheckGet(env.Configuration()); ok {
 		b.planning = conf

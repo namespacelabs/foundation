@@ -271,6 +271,7 @@ func (Ingress) Service() *kubedef.IngressSelector {
 			},
 		},
 		LoadBalancerServiceName: "ingress-nginx-controller",
+		ReadinessServiceName:    "ingress-nginx-controller-admission",
 	}
 }
 
