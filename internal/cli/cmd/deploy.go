@@ -113,10 +113,13 @@ func NewDeployCmd() *cobra.Command {
 				if uploadToRegistry {
 					target = p.Registry.AllocateName(uploadTo, "")
 				} else {
+					// An explicit external registry may require credentials. Use the
+					// standard Docker keychain just as build-binary does when publishing.
 					p.Registry = registry.MakeStaticRegistry(&buildr.Registry{
-						Url: uploadTo,
+						Url:           uploadTo,
+						UseDockerAuth: true,
 					})
-					target = registry.Precomputed(registry.AttachStaticKeychain(nil, filepath.Join(uploadTo, "plan"), oci.RegistryAccess{}))
+					target = registry.Precomputed(registry.AttachStaticKeychain(nil, filepath.Join(uploadTo, "plan"), p.Registry.Access()))
 					uploadToRegistry = true
 				}
 			}

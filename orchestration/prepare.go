@@ -22,12 +22,16 @@ import (
 )
 
 const (
-	OrchestratorModeHead      = "head"
-	OrchestratorModePrebuilt  = "prebuilt"
-	PrebuiltOrchestratorImage = "registry.zrh-services.namespace.systems/namespacelabs.dev/foundation/orchestration/server@sha256:c9fb3e8e70e06d47168879a998049f96bf3e1693e0e3b65f581b5d93ea80b5c8"
+	OrchestratorModeHead               = "head"
+	OrchestratorModePrebuilt           = "prebuilt"
+	PrebuiltOrchestratorImage          = "public.registry.namespace.systems/namespacelabs.dev/foundation/orchestration/server@sha256:9dfde24a3a7a5570ac4fd4f3447da7ebbce3f4a1c98f809c1a86ca70502dda24"
+	PrebuiltOrchestratorToolRepository = "public.registry.namespace.systems/namespacelabs.dev/foundation/orchestration/server/tool"
+	PrebuiltOrchestratorToolDigest     = "sha256:bcc828b2ef2f48efdbbec7e6896fc05d30caf511a5d3a12ebd3f27c70bbab45a"
 )
 
-var OrchestratorMode = OrchestratorModeHead
+// The orchestrator rarely changes, so avoid rebuilding it during every local
+// prepare. Use --orchestrator=head when explicitly testing orchestrator changes.
+var OrchestratorMode = OrchestratorModePrebuilt
 
 var stateless = &runtimepb.Deployable{
 	PackageRef:      schema.MakePackageSingleRef(constants.ServerPkg),
@@ -45,7 +49,7 @@ func RegisterPrepare() {
 }
 
 func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, cluster runtime.Cluster, wait bool) (any, error) {
-	env, err := MakeOrchestratorContext(ctx, targetEnv)
+	env, err := MakeOrchestratorContext(ctx, targetEnv, OrchestratorMode)
 	if err != nil {
 		return nil, err
 	}
