@@ -10,8 +10,10 @@ import (
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubetool"
+	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/orchestration/server/constants"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 )
@@ -30,7 +32,7 @@ func MakeSyntheticContext(wsproto *schema.Workspace, env *schema.Environment, ho
 	return cfg.MakeUnverifiedContext(newCfg, env)
 }
 
-func MakeOrchestratorContext(ctx context.Context, conf cfg.Configuration) (cfg.Context, error) {
+func MakeOrchestratorContext(ctx context.Context, conf cfg.Configuration, mode string) (cfg.Context, error) {
 	// We use a static environment here, since the orchestrator has global scope.
 	envProto := &schema.Environment{
 		Name:      kubedef.AdminNamespace,
@@ -50,6 +52,17 @@ func MakeOrchestratorContext(ctx context.Context, conf cfg.Configuration) (cfg.C
 		previous.Configuration = append(previous.Configuration, protos.WrapAnyOrDie(
 			&kubetool.KubernetesEnv{Namespace: kubedef.AdminNamespace}, // pin deployments to admin namespace
 		))
+		if mode == OrchestratorModePrebuilt {
+			// Keep the tool prebuilt scoped to this mode so --orchestrator=head
+			// rebuilds both the server and its provisioning logic from source.
+			previous.Configuration = append(previous.Configuration, protos.WrapAnyOrDie(&binary.Prebuilts{
+				PrebuiltBinary: []*schema.Workspace_BinaryDigest{{
+					PackageName: constants.ToolPkg.String(),
+					Repository:  PrebuiltOrchestratorToolRepository,
+					Digest:      PrebuiltOrchestratorToolDigest,
+				}},
+			}))
+		}
 		return previous
 	})
 

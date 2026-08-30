@@ -7,7 +7,9 @@ prebuilts: {
 	digest: {
 		"namespacelabs.dev/foundation/std/development/filesync/controller": "sha256:41ffa681aec6a70dcd5a7ebeccd94814688389a45f39810138a4d3f1ef8278da"
 	}
-	baseRepository: "us-docker.pkg.dev/foundation-344819/prebuilts/"
+	// Keep all Foundation prebuilts in the public registry so consumers don't
+	// need credentials to prepare a local environment.
+	baseRepository: "public.registry.namespace.systems/"
 }
 internalAliases: [{
 	module_name: "library.namespace.so"

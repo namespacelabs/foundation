@@ -64,12 +64,18 @@ func NewBuildBinaryCmd() *cobra.Command {
 			fncobra.ParseEnv(&env),
 			fncobra.ParseLocations(&cmdLocs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true, SupportPackageRef: true})).
 		Do(func(ctx context.Context) error {
-			registry, err := registry.GetRegistry(ctx, env)
-			if err != nil {
-				return err
+			var reg registry.Manager
+			if len(baseRepository) == 0 {
+				// An explicit repository is self-contained; requiring the environment's
+				// registry would prevent remote builds from publishing directly to it.
+				var err error
+				reg, err = registry.GetRegistry(ctx, env)
+				if err != nil {
+					return err
+				}
 			}
 
-			return buildLocations(ctx, env, registry, userTag, cmdLocs, baseRepository, buildOpts)
+			return buildLocations(ctx, env, reg, userTag, cmdLocs, baseRepository, buildOpts)
 		})
 }
 
