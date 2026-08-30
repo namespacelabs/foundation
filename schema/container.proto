@@ -1,0 +1,59 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "schema/binary.proto";
+import "schema/networking.proto";
+import "schema/package.proto";
+import "schema/volume.proto";
+
+message Container {
+    reserved 5;
+
+    PackageRef owner = 9;
+
+    // Deprecated, use binary_ref
+    string     binary     = 1;
+    PackageRef binary_ref = 4;
+
+    string          name = 3;
+    repeated string args = 2;
+
+    repeated BinaryConfig.EnvEntry env      = 6;
+    repeated Mount                 mount    = 7;
+    Security                       security = 8;
+    ResourceLimits                 requests = 10;
+    ResourceLimits                 limits   = 11;
+
+    repeated Endpoint.Port container_port = 12;
+
+    int64 termination_grace_period_seconds = 13;
+
+    message Security {
+        bool privileged   = 1;
+        bool host_network = 2;
+        bool host_pid     = 4;
+        repeated string capabilities = 3;
+    }
+
+    message ResourceLimits {
+        string memory = 1;
+        string cpu    = 2;
+    }
+}
+
+message ContainerExtension {
+    // One of name, or package ref, must be set.
+    string     name       = 1;
+    PackageRef binary_ref = 2;
+
+    repeated string args                 = 3;
+    repeated BinaryConfig.EnvEntry env   = 4;
+    repeated Mount                 mount = 5;
+}

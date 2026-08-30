@@ -1,0 +1,443 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+package token
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/spf13/cobra"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/console/tui"
+	"namespacelabs.dev/foundation/internal/fnapi"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/integrations/api/iam"
+	v1beta "namespacelabs.dev/integrations/proto/namespace/cloud/iam/v1beta"
+)
+
+func NewTokenCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "token",
+		Short: "Manage revocable tokens.",
+	}
+
+	cmd.AddCommand(NewListCmd())
+	cmd.AddCommand(NewCreateCmd())
+	cmd.AddCommand(NewRefreshCmd())
+	cmd.AddCommand(NewRevokeCmd())
+
+	return cmd
+}
+
+func NewListCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "List revocable tokens.",
+		Args:  cobra.NoArgs,
+	}
+
+	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
+	includeRevoked := cmd.Flags().Bool("include_revoked", false, "Include revoked tokens in the list")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		tokenSource, err := fnapi.FetchToken(ctx)
+		if err != nil {
+			return fnerrors.InvocationError("token", "failed to get authentication token: %w", err)
+		}
+
+		client, err := iam.NewClient(ctx, tokenSource)
+		if err != nil {
+			return fnerrors.InvocationError("token", "failed to create iam client: %w", err)
+		}
+		defer client.Close()
+
+		req := &v1beta.ListRevokableTokensRequest{
+			IncludeRevoked: *includeRevoked,
+		}
+
+		resp, err := client.Tokens.ListRevokableTokens(ctx, req)
+		if err != nil {
+			return fnerrors.InvocationError("token", "failed to list revocable tokens: %w", err)
+		}
+
+		switch *output {
+		case "json":
+			var b bytes.Buffer
+			fmt.Fprint(&b, "[")
+			for k, token := range resp.Tokens {
+				if k > 0 {
+					fmt.Fprint(&b, ",")
+				}
+
+				bb, err := protojson.MarshalOptions{UseProtoNames: true, Multiline: true}.Marshal(token)
+				if err != nil {
+					return err
+				}
+
+				fmt.Fprintf(&b, "\n%s", bb)
+			}
+			fmt.Fprint(&b, "\n]\n")
+
+			console.Stdout(ctx).Write(b.Bytes())
+
+			return nil
+		case "table":
+			return printTokensTable(ctx, resp.Tokens)
+		default:
+			return fnerrors.BadInputError("invalid output format: %s", *output)
+		}
+	})
+
+	return cmd
+}
+
+func NewCreateCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "create",
+		Short: "Create a revocable token.",
+		Args:  cobra.NoArgs,
+	}
+
+	name := cmd.Flags().String("name", "", "A unique name for the token within the tenant")
+	description := cmd.Flags().StringP("description", "d", "", "A human-readable description of the token's purpose")
+	expiresIn := fncobra.Duration(cmd.Flags(), "expires_in", 24*time.Hour, "Duration until the token expires (max 365 days)")
+	grants := cmd.Flags().StringArray("grant", nil, "Grant permission as JSON object (can be specified multiple times). Format: {\"resource_type\":\"...\",\"resource_id\":\"...\",\"actions\":[\"...\"]}")
+	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json, token")
+	tokenFile := cmd.Flags().String("token_file", "", "Write token to this file in JSON format")
+	userScope := cmd.Flags().Bool("user", false, "Create a token bound to the current user's workspace membership.")
+	noExpiry := cmd.Flags().Bool("no_expiry", false, "Create a token with unlimited duration")
+
+	cmd.MarkFlagRequired("name")
+	cmd.MarkFlagRequired("grant")
+	cmd.MarkFlagsMutuallyExclusive("no_expiry", "expires_in")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if *noExpiry && !*userScope {
+			return fnerrors.Newf("--no_expiry requires --user")
+		}
+
+		tokenSource, err := fnapi.FetchToken(ctx)
+		if err != nil {
+			return fnerrors.InvocationError("token", "failed to get authentication token: %w", err)
+		}
+
+		client, err := iam.NewClient(ctx, tokenSource)
+		if err != nil {
+			return fnerrors.InvocationError("token", "failed to create iam client: %w", err)
+		}
+		defer client.Close()
+
+		permissions, err := ParseGrants(*grants)
+		if err != nil {
+			return fnerrors.BadInputError("failed to parse grants: %w", err)
+		}
+
+		expiresAt := time.Now().Add(*expiresIn)
+		req := &v1beta.CreateRevokableTokenRequest{
+			Name:        *name,
+			Description: *description,
+
+			Access: &v1beta.AccessPolicy{
+				Grants: permissions,
+			},
+		}
+
+		if !*noExpiry {
+			req.ExpiresAt = timestamppb.New(expiresAt)
+		}
+
+		if *userScope {
+			req.Scope = v1beta.RevokableToken_TENANT_MEMBERSHIP_SCOPE
+		}
+
+		resp, err := client.Tokens.CreateRevokableToken(ctx, req)
+		if err != nil {
+			if errIsTokenCreateDenied(err) {
+				fmt.Fprintf(console.Stderr(ctx), "%s Only workspace administrators can create tenant-wide tokens. To create a user-scoped token, specify --user instead.\n", colors.Ctx(ctx).LogCategory.Apply("Note:"))
+			}
+			return fnerrors.InvocationError("token", "failed to create revocable token: %w", err)
+		}
+
+		if *tokenFile != "" {
+			if err := writeTokenToFile(*tokenFile, resp.BearerToken); err != nil {
+				return fnerrors.InvocationError("token", "failed to write token to file: %w", err)
+			}
+			fmt.Fprintf(console.Stdout(ctx), "Token written to %s\n", *tokenFile)
+		}
+
+		switch *output {
+		case "json":
+			bb, err := protojson.MarshalOptions{UseProtoNames: true, Multiline: true}.Marshal(resp)
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintln(console.Stdout(ctx), string(bb))
+			return nil
+
+		case "token":
+			return printTokenJSON(ctx, resp.BearerToken)
+
+		case "table":
+			return printTokenCreated(ctx, resp, *tokenFile == "")
+
+		default:
+			return fnerrors.BadInputError("invalid output format: %s", *output)
+		}
+	})
+
+	return cmd
+}
+
+func NewRevokeCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "revoke",
+		Short: "Revoke a token.",
+		Args:  cobra.NoArgs,
+	}
+
+	tokenId := cmd.Flags().String("token_id", "", "The token ID to revoke")
+
+	cmd.MarkFlagRequired("token_id")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+
+		tokenSource, err := fnapi.FetchToken(ctx)
+		if err != nil {
+			return fnerrors.InvocationError("token", "failed to get authentication token: %w", err)
+		}
+
+		client, err := iam.NewClient(ctx, tokenSource)
+		if err != nil {
+			return fnerrors.InvocationError("token", "failed to create iam client: %w", err)
+		}
+		defer client.Close()
+
+		req := &v1beta.RevokeRevokableTokenRequest{
+			TokenId: *tokenId,
+		}
+
+		_, err = client.Tokens.RevokeRevokableToken(ctx, req)
+		if err != nil {
+			return fnerrors.InvocationError("token", "failed to revoke token: %w", err)
+		}
+
+		fmt.Fprintf(console.Stdout(ctx), "Successfully revoked token %s\n", *tokenId)
+		return nil
+	})
+
+	return cmd
+}
+
+func NewRefreshCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "refresh",
+		Short: "Refresh a token.",
+		Args:  cobra.NoArgs,
+	}
+
+	tokenId := cmd.Flags().String("token_id", "", "The token ID to refresh")
+	minimumDuration := fncobra.Duration(cmd.Flags(), "minimum_duration", 0, "Ensure the token remains valid for at least this duration")
+	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
+
+	cmd.MarkFlagRequired("token_id")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		tokenSource, err := fnapi.FetchToken(ctx)
+		if err != nil {
+			return fnerrors.InvocationError("token", "failed to get authentication token: %w", err)
+		}
+
+		client, err := iam.NewClient(ctx, tokenSource)
+		if err != nil {
+			return fnerrors.InvocationError("token", "failed to create iam client: %w", err)
+		}
+		defer client.Close()
+
+		resp, err := client.Tokens.RefreshRevokableToken(ctx, &v1beta.RefreshRevokableTokenRequest{
+			TokenId:         *tokenId,
+			MinimumDuration: durationpb.New(*minimumDuration),
+		})
+		if err != nil {
+			return fnerrors.InvocationError("token", "failed to refresh token: %w", err)
+		}
+
+		switch *output {
+		case "json":
+			bb, err := protojson.MarshalOptions{UseProtoNames: true, Multiline: true}.Marshal(resp)
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintln(console.Stdout(ctx), string(bb))
+			return nil
+
+		case "table":
+			if resp.Token == nil {
+				fmt.Fprintf(console.Stdout(ctx), "Token %s refreshed.\n", *tokenId)
+				return nil
+			}
+
+			fmt.Fprintf(console.Stdout(ctx), "Token %s refreshed.\n\n", resp.Token.TokenId)
+			return printTokenDetails(ctx, resp.Token)
+
+		default:
+			return fnerrors.BadInputError("invalid output format: %s", *output)
+		}
+	})
+
+	return cmd
+}
+
+func printTokensTable(ctx context.Context, tokens []*v1beta.RevokableToken) error {
+	if len(tokens) == 0 {
+		fmt.Fprintf(console.Stdout(ctx), "No tokens found.\n")
+		return nil
+	}
+
+	cols := []tui.Column{
+		{Key: "token_id", Title: "TOKEN ID", MinWidth: 20, MaxWidth: 50},
+		{Key: "name", Title: "NAME", MinWidth: 10, MaxWidth: 30},
+		{Key: "description", Title: "DESCRIPTION", MinWidth: 10, MaxWidth: 50},
+		{Key: "created", Title: "CREATED", MinWidth: 20, MaxWidth: 20},
+		{Key: "status", Title: "STATUS", MinWidth: 10, MaxWidth: 10},
+	}
+
+	rows := []tui.Row{}
+	for _, token := range tokens {
+		createdAt := ""
+		if token.CreatedAt != nil {
+			createdAt = token.CreatedAt.AsTime().Format(time.RFC3339)
+		}
+
+		status := "Active"
+		if token.RevokedAt != nil {
+			status = "Revoked"
+		} else if token.ExpiresAt != nil && token.ExpiresAt.AsTime().Before(time.Now()) {
+			status = "Expired"
+		}
+
+		row := tui.Row{
+			"token_id":    token.TokenId,
+			"name":        token.Name,
+			"description": token.Description,
+			"created":     createdAt,
+			"status":      status,
+		}
+		rows = append(rows, row)
+	}
+
+	return tui.StaticTable(ctx, cols, rows)
+}
+
+func printTokenCreated(ctx context.Context, resp *v1beta.CreateRevokableTokenResponse, showToken bool) error {
+	if resp.Token != nil {
+		if err := printTokenDetails(ctx, resp.Token); err != nil {
+			return err
+		}
+	}
+
+	if showToken {
+		fmt.Fprintf(console.Stdout(ctx), "\nBearer Token: %s\n", resp.BearerToken)
+		fmt.Fprintf(console.Stdout(ctx), "\n⚠️  Save this token securely - it will not be shown again.\n")
+	}
+
+	return nil
+}
+
+func printTokenDetails(ctx context.Context, token *v1beta.RevokableToken) error {
+	fmt.Fprintf(console.Stdout(ctx), "Token ID:     %s\n", token.TokenId)
+	fmt.Fprintf(console.Stdout(ctx), "Name:         %s\n", token.Name)
+	fmt.Fprintf(console.Stdout(ctx), "Description:  %s\n", token.Description)
+
+	if token.CreatedAt != nil {
+		fmt.Fprintf(console.Stdout(ctx), "Created At:   %s\n", token.CreatedAt.AsTime().Format(time.RFC3339))
+	}
+
+	if token.ExpiresAt != nil {
+		fmt.Fprintf(console.Stdout(ctx), "Expires At:   %s\n", token.ExpiresAt.AsTime().Format(time.RFC3339))
+	}
+
+	return nil
+}
+
+func printTokenJSON(ctx context.Context, bearerToken string) error {
+	tokenData := map[string]string{
+		"bearer_token": bearerToken,
+	}
+
+	bb, err := json.MarshalIndent(tokenData, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintln(console.Stdout(ctx), string(bb))
+	return nil
+}
+
+func writeTokenToFile(path string, bearerToken string) error {
+	tokenData := map[string]string{
+		"bearer_token": bearerToken,
+	}
+
+	bb, err := json.MarshalIndent(tokenData, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, bb, 0600)
+}
+
+func ParseGrants(grants []string) ([]*v1beta.Permission, error) {
+	var permissions []*v1beta.Permission
+
+	for _, grant := range grants {
+		var perm v1beta.Permission
+		if err := protojson.Unmarshal([]byte(grant), &perm); err != nil {
+			return nil, fnerrors.BadInputError("failed to parse grant JSON %q: %w", grant, err)
+		}
+
+		if perm.ResourceType == "" {
+			return nil, fnerrors.BadInputError("grant %q: resource_type is required", grant)
+		}
+
+		if len(perm.Actions) == 0 {
+			return nil, fnerrors.BadInputError("grant %q: at least one action is required", grant)
+		}
+
+		permissions = append(permissions, &perm)
+	}
+
+	return permissions, nil
+}
+
+// errIsTokenCreateDenied returns true if the error is a PermissionDenied error that says it's missing the creation action for resource token/revokable.
+func errIsTokenCreateDenied(err error) bool {
+	st, ok := status.FromError(err)
+	if !ok || st.Code() != codes.PermissionDenied {
+		return false
+	}
+	for _, detail := range st.Details() {
+		if permDenied, ok := detail.(*v1beta.PermissionDeniedError); ok {
+			for _, access := range permDenied.GetMissingAccessPermissions() {
+				if access.GetResourceType() == "token/revokable" && access.GetAction() == "create" {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}

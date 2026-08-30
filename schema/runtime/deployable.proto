@@ -1,0 +1,20 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.schema.runtime;
+
+option go_package = "namespacelabs.dev/foundation/schema/runtime";
+
+import "schema/package.proto";
+
+message Deployable {
+    reserved 1;
+
+    foundation.schema.PackageRef package_ref      = 5;
+    string                       id               = 2;
+    string                       name             = 3;
+    string                       deployable_class = 4;
+}

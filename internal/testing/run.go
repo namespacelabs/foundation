@@ -1,0 +1,321 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+package testing
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"sync"
+	"time"
+
+	"github.com/morikuni/aec"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/executor"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning/deploy"
+	"namespacelabs.dev/foundation/internal/runtime"
+	fnsync "namespacelabs.dev/foundation/internal/sync"
+	"namespacelabs.dev/foundation/orchestration"
+	"namespacelabs.dev/foundation/schema"
+	runtimepb "namespacelabs.dev/foundation/schema/runtime"
+	"namespacelabs.dev/foundation/schema/storage"
+	"namespacelabs.dev/foundation/std/cfg"
+	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/foundation/std/tasks/idtypes"
+)
+
+const TestRunAction = "test.run"
+
+var errTestFailed = errors.New("test failed")
+
+type testRun struct {
+	SealedContext cfg.Context     // Doesn't affect the output.
+	Planner       runtime.Planner // Target, doesn't affect the output.
+
+	TestRef *schema.PackageRef
+
+	Driver           compute.Computable[deploy.PreparedDeployable]
+	Stack            *schema.Stack
+	ServersUnderTest schema.PackageList
+	Plan             compute.Computable[*deploy.Plan]
+	OutputProgress   bool
+
+	compute.LocalScoped[*storage.TestResultBundle]
+}
+
+var _ compute.Computable[*storage.TestResultBundle] = &testRun{}
+
+func (test *testRun) Action() *tasks.ActionEvent {
+	return tasks.Action("test").Arg("name", test.TestRef.Name).Arg("package_name", test.TestRef.AsPackageName())
+}
+
+func (test *testRun) Inputs() *compute.In {
+	return compute.Inputs().
+		Str("testName", test.TestRef.Name).
+		Stringer("testPkg", test.TestRef.AsPackageName()).
+		Proto("workspace", test.SealedContext.Workspace().Proto()).
+		Proto("env", test.SealedContext.Environment()).
+		Computable("driver", test.Driver).
+		Proto("stack", test.Stack).
+		Strs("focus", test.ServersUnderTest.PackageNamesAsString()).
+		Computable("plan", test.Plan)
+}
+
+func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*storage.TestResultBundle, error) {
+	// The actual test run is wrapped in another action, so we can apply policies to it (e.g. constrain how many tests are deployed in parallel).
+	return tasks.Return(ctx, tasks.Action(TestRunAction).Arg("test.name", test.TestRef.Name), func(ctx context.Context) (*storage.TestResultBundle, error) {
+		return test.compute(ctx, r)
+	})
+}
+
+func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.TestResultBundle, error) {
+	started := time.Now()
+
+	p := compute.MustGetDepValue(r, test.Plan, "plan")
+	d := compute.MustGetDepValue(r, test.Driver, "driver")
+
+	env := test.SealedContext
+
+	// May take a non-trivial amount of time.
+	cluster, err := test.Planner.EnsureClusterNamespace(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if !test.SealedContext.Environment().Ephemeral {
+			// skip cleanup for non-ephemeral environments (e.g. to allow manual inspection of the resources)
+			return
+		}
+		if _, err := cluster.DeleteRecursively(ctx, false); err != nil {
+			fmt.Fprintln(console.Errors(ctx), "Failed to cleanup: ", err)
+		}
+	}()
+
+	deployPlan := deploy.Serialize(env.Workspace().Proto(), env.Environment(), test.Stack, p, test.ServersUnderTest)
+
+	out := console.TypedOutput(ctx, "test", idtypes.CatOutputUs)
+
+	fmt.Fprintf(out, "%s: Test %s\n", test.TestRef.Canonical(), aec.LightBlackF.Apply("RUNNING"))
+
+	var waitErr error
+	if err := orchestration.Deploy(ctx, env, cluster, deployPlan, fmt.Sprintf("testing %s", test.TestRef.Canonical()), true, test.OutputProgress); err != nil {
+		waitErr = fnerrors.AttachLocation(test.TestRef.AsPackageName(), err)
+	}
+
+	var testLogBuf *fnsync.ByteBuffer
+	if waitErr == nil {
+		// All servers deployed. Lets start wait for the test driver.
+
+		localCtx, cancelAll := context.WithCancel(ctx)
+		defer cancelAll()
+
+		ex := executor.Newf(localCtx, "testing.run(%s)", test.TestRef.Canonical())
+
+		var extraOutput []io.Writer
+		if test.OutputProgress {
+			extraOutput = append(extraOutput, console.Output(ctx, "testlog"))
+		}
+
+		var testLog io.Writer
+		testLog, testLogBuf = makeLog(extraOutput...)
+
+		ex.Go(func(ctx context.Context) error {
+			defer cancelAll() // When the test is done, cancel logging.
+
+			containers, err := cluster.WaitForTermination(ctx, d.Template)
+			if err != nil {
+				return err
+			}
+
+			if len(containers) != 1 {
+				return fnerrors.InternalError("expected test driver to yield exactly one container, got %d", len(containers))
+			}
+
+			for _, container := range containers {
+				if err := cluster.Cluster().FetchLogsTo(ctx, container.Reference, runtime.FetchLogsOpts{}, runtime.WriteToWriter(testLog)); err != nil {
+					if errors.Is(err, context.Canceled) {
+						return err
+					}
+
+					fmt.Fprintf(console.Errors(ctx), "%s: failed to fetch test log: %v\n", test.TestRef.Canonical(), err)
+				}
+			}
+
+			for _, container := range containers {
+				// XXX consolidate these two.
+				var e1 runtime.ErrContainerExitStatus
+				var e2 runtime.ErrContainerFailed
+				if errors.As(container.TerminationError, &e1) && e1.ExitCode > 0 {
+					return errTestFailed
+				} else if errors.As(err, &e2) {
+					return errTestFailed
+				} else if container.TerminationError != nil {
+					return container.TerminationError
+				}
+			}
+
+			return nil
+		})
+
+		waitErr = ex.Wait()
+	}
+
+	completed := time.Now()
+
+	testResults := &storage.TestResult{}
+	if waitErr == nil {
+		testResults.Success = true
+	} else if errors.Is(waitErr, errTestFailed) {
+		testResults.Success = false
+	} else {
+		testResults.Success = false
+		st := status.Convert(waitErr)
+		testResults.ErrorCode = int32(st.Code())
+		testResults.ErrorMessage = st.Message()
+	}
+
+	if test.OutputProgress {
+		fmt.Fprintf(out, "\nCollecting post-execution server logs...\n\n")
+	}
+
+	// Limit how much time we spend on collecting logs out of the test environment.
+	collectionCtx, collectionDone := context.WithTimeout(ctx, 60*time.Second)
+	defer collectionDone()
+
+	bundle, err := collectLogs(collectionCtx, env, cluster, test.TestRef, test.Stack, test.ServersUnderTest, test.OutputProgress)
+	if err != nil {
+		return nil, err
+	}
+
+	bundle.DeployPlan = deployPlan
+	bundle.ComputedConfigurations = p.Computed
+
+	bundle.Started = timestamppb.New(started)
+	bundle.Completed = timestamppb.New(completed)
+
+	bundle.Result = testResults
+	if testLogBuf != nil {
+		bundle.TestLog = &storage.TestResultBundle_InlineLog{
+			PackageName: test.TestRef.PackageName,
+			Output:      testLogBuf.Seal().Bytes(),
+		}
+	}
+
+	return bundle, nil
+}
+
+func collectLogs(ctx context.Context, env cfg.Context, rt runtime.ClusterNamespace, testRef *schema.PackageRef, stack *schema.Stack, focus schema.PackageList, printLogs bool) (*storage.TestResultBundle, error) {
+	ex := executor.New(ctx, "test.collect-logs")
+
+	type serverLog struct {
+		PackageName   string
+		ContainerName string
+		ContainerKind runtimepb.ContainerKind
+		Buffer        *fnsync.ByteBuffer
+	}
+
+	var serverLogs []serverLog
+	var mu sync.Mutex // Protects concurrent access to serverLogs.
+
+	out := console.Output(ctx, "test.collect-logs")
+
+	for _, entry := range stack.Entry {
+		srv := entry.Server // Close on srv.
+
+		ex.Go(func(ctx context.Context) error {
+			// It should be possible to resolve a container fairly quickly. Make
+			// sure we don't get stuck here waiting forever.
+			resolveCtx, resolveDone := context.WithTimeout(ctx, 10*time.Second)
+			defer resolveDone()
+
+			containers, err := rt.ResolveContainers(resolveCtx, srv)
+			if err != nil {
+				fmt.Fprintf(out, "%s: failed to resolve containers: %s: %v\n", testRef.Canonical(), srv.PackageName, err)
+				return nil
+			}
+
+			for _, ctr := range containers {
+				ctr := ctr // Close on ctr.
+
+				var extraOutput []io.Writer
+				if printLogs && focus.Has(schema.PackageName(srv.PackageName)) {
+					name := srv.Name
+					if len(containers) > 0 {
+						name = ctr.HumanReference
+					}
+					extraOutput = append(extraOutput, console.Output(ctx, name))
+				}
+
+				w, log := makeLog(extraOutput...)
+
+				mu.Lock()
+				serverLogs = append(serverLogs, serverLog{
+					PackageName:   srv.PackageName,
+					ContainerName: ctr.HumanReference,
+					ContainerKind: ctr.Kind,
+					Buffer:        log,
+				})
+				mu.Unlock()
+
+				ex.Go(func(ctx context.Context) error {
+					err := rt.Cluster().FetchLogsTo(ctx, ctr, runtime.FetchLogsOpts{}, runtime.WriteToWriterWithTimestamps(w))
+					if errors.Is(err, context.Canceled) {
+						return nil
+					}
+					if err != nil {
+						fmt.Fprintf(out, "%s: failed to fetch logs: %s: %v\n", testRef.Canonical(), srv.PackageName, err)
+					}
+					return nil
+				})
+			}
+
+			return nil
+		})
+	}
+
+	var diagnostics *storage.EnvironmentDiagnostics
+	ex.Go(func(ctx context.Context) error {
+		var err error
+		diagnostics, err = rt.FetchEnvironmentDiagnostics(ctx)
+		if err != nil {
+			fmt.Fprintf(console.Warnings(ctx), "Failed to retrieve environment diagnostics: %v\n", err)
+		}
+		return nil
+	})
+
+	if err := ex.Wait(); err != nil {
+		return nil, err
+	}
+
+	bundle := &storage.TestResultBundle{
+		EnvDiagnostics: diagnostics,
+	}
+
+	for _, entry := range serverLogs {
+		bundle.ServerLog = append(bundle.ServerLog, &storage.TestResultBundle_InlineLog{
+			PackageName:   entry.PackageName,
+			ContainerName: entry.ContainerName,
+			ContainerKind: entry.ContainerKind,
+			Output:        entry.Buffer.Seal().Bytes(),
+		})
+	}
+
+	return bundle, nil
+}
+
+func makeLog(otherWriters ...io.Writer) (io.Writer, *fnsync.ByteBuffer) {
+	buf := fnsync.NewByteBuffer()
+	if len(otherWriters) == 0 {
+		return buf, buf
+	}
+	w := io.MultiWriter(append(otherWriters, buf)...)
+	return w, buf
+}

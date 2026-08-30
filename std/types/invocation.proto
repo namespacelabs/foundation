@@ -1,0 +1,35 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.std.types;
+
+option go_package = "namespacelabs.dev/foundation/std/types";
+
+import "google/protobuf/any.proto";
+import "std/proto/options.proto";
+import "schema/binary.proto";
+import "schema/package.proto";
+
+message DeferredInvocationSource {
+    reserved 4;
+
+    // Deprecated, use binary_ref instead
+    string            binary     = 1 [(foundation.std.proto.is_package) = true];
+    schema.PackageRef binary_ref = 5;
+
+    bool                cacheable  = 2;
+    google.protobuf.Any with_input = 3;
+}
+
+message DeferredInvocation {
+    reserved 1, 6;
+
+    schema.PackageRef              binary_ref    = 7;
+    string                         image         = 2;
+    foundation.schema.BinaryConfig binary_config = 3;
+    bool                           cacheable     = 4;
+    google.protobuf.Any            with_input    = 5;
+}

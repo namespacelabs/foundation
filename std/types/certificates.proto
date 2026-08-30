@@ -1,0 +1,23 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.std.types;
+
+option go_package = "namespacelabs.dev/foundation/std/types";
+
+import "schema/domain.proto";
+
+message TLSCertificateSpec {
+    repeated string organization = 1;
+    string          description  = 2;
+    string          common_name  = 3;
+    repeated string dns_name     = 4;
+}
+
+message CertificateChain {
+    foundation.schema.Certificate CA     = 1;
+    foundation.schema.Certificate Server = 2;
+}

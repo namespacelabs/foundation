@@ -1,0 +1,119 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"strings"
+
+	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/expfmt"
+	"namespacelabs.dev/foundation/framework/testing"
+	"namespacelabs.dev/foundation/internal/testdata/service/proto"
+	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/schemahelper"
+)
+
+func main() {
+	testing.Do(func(ctx context.Context, t testing.Test) error {
+		endpoint := t.MustEndpoint("namespacelabs.dev/foundation/internal/testdata/service/post", "post")
+
+		var metricsEndpoint *schema.InternalEndpoint
+		var metrics *schema.HttpExportedService
+		for _, internal := range t.InternalOf(endpoint.ServerOwner) {
+			var err error
+			metrics, err = schemahelper.UnmarshalServiceMetadata[*schema.HttpExportedService](
+				internal.ServiceMetadata,
+				"prometheus.io/metrics")
+			if err != nil {
+				return err
+			}
+			if metrics != nil {
+				metricsEndpoint = internal
+				break
+			}
+		}
+
+		if metricsEndpoint == nil {
+			return errors.New("prometheus metrics endpoint missing")
+		}
+
+		conn, err := t.NewClient(endpoint)
+		if err != nil {
+			return err
+		}
+
+		response, err := proto.NewPostServiceClient(conn).Post(ctx, &proto.PostRequest{Input: "Hello from the test"})
+		if err != nil {
+			return err
+		}
+
+		log.Println(response)
+
+		scrapeUrl := fmt.Sprintf("http://%s:%d/%s", endpoint.AllocatedName, metricsEndpoint.Port.ContainerPort, strings.TrimPrefix(metrics.Path, "/"))
+		log.Printf("Scraping responses at: %s", scrapeUrl)
+
+		resp, err := http.Get(scrapeUrl)
+		if err != nil {
+			return err
+		}
+
+		defer resp.Body.Close()
+
+		dec := expfmt.NewDecoder(resp.Body, expfmt.FmtText)
+		mf := &dto.MetricFamily{}
+
+		var m *dto.Metric
+		for {
+			if err := dec.Decode(mf); err == io.EOF {
+				break
+			} else if err != nil {
+				return err
+			}
+
+			if mf.GetName() == "grpc_server_msg_received_total" {
+				for _, metric := range mf.Metric {
+					if hasLabels(metric.Label, map[string]string{
+						"grpc_service": "internal.testdata.service.proto.PostService",
+						"grpc_method":  "Post",
+					}) {
+						m = metric
+					} else {
+						var labels []string
+						for _, label := range metric.GetLabel() {
+							labels = append(labels, fmt.Sprintf("%s:%s", label.GetName(), label.GetValue()))
+						}
+						log.Printf("Found other GRPC metric with labels: %s", strings.Join(labels, ","))
+					}
+				}
+			}
+		}
+
+		log.Printf("Expected metric: %s", m)
+
+		if m.GetCounter().GetValue() != 1 {
+			return fmt.Errorf("expected grpc_server_msg_received_total to be 1, saw %+v instead", m)
+		}
+
+		return nil
+	})
+}
+
+func hasLabels(labels []*dto.LabelPair, expected map[string]string) bool {
+	for _, label := range labels {
+		if val, ok := expected[label.GetName()]; ok {
+			if val != label.GetValue() {
+				return false
+			}
+			delete(expected, label.GetName())
+		}
+	}
+	return len(expected) == 0
+}

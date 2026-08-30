@@ -1,0 +1,14 @@
+{
+	"buf": {
+		"go": "docker.io/library/golang:1.26.2",
+		"prebuilt": "us-docker.pkg.dev/foundation-344819/prebuilts/namespacelabs.dev/foundation/internal/sdk/buf/image/prebuilt@sha256:5a9f9711fcd93aa2cdb5d2ee2aaa1b2fdd23b7e139ff4a39438153668b9b84ef"
+	},
+	"goPackages": {
+		"github.com/bufbuild/buf/cmd/buf": "8b26061eeebc26fa9b68583d1a4f14315cdfa69b",
+		"google.golang.org/protobuf/cmd/protoc-gen-go": "b92717ecb630d4a4824b372bf98c729d87311a4d",
+		"google.golang.org/grpc/cmd/protoc-gen-go-grpc": "b4c5e24c7373b22c6c38d68379c39ecdc616a968"
+	},
+	"protoc": "3.15.7-r1",
+	"yarn": "1.22.10-r0",
+	"protobuf-ts": "554c392ae1bcd7cbb9b3bc40fb0621508751430d"
+}

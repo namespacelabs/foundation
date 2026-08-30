@@ -1,0 +1,175 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "google/protobuf/any.proto";
+import "google/protobuf/descriptor.proto";
+import "schema/domain.proto";
+import "schema/package.proto";
+
+// Next ID: 19
+message Endpoint {
+    enum Type {
+        INGRESS_UNSPECIFIED = 0;  // Defaults to PRIVATE in services.
+        PRIVATE             = 1;
+        INTERNET_FACING     = 2;  // With an ingress frontend.
+        LOAD_BALANCER       = 3;  // Public facing load-balancer.
+    }
+    enum ServiceTrafficPolicy {
+        UNSPECIFIED = 0;
+        LOCAL       = 1;
+        CLUSTER     = 2;
+    }
+
+    Type type = 1;
+    reserved 2;
+
+    // The tuple (endpoint_owner, service_name) uniquely identifies an endpoint.
+    string service_name   = 3;
+    string endpoint_owner = 4;  // Package name.
+
+    Port                 deprecated_port          = 5;
+    int32                deprecated_exported_port = 13;
+    repeated PortMap     ports                    = 15;
+    bool                 headless                 = 16;
+    ServiceTrafficPolicy external_traffic_policy  = 17;
+    string               load_balancer_class      = 18;
+    string               allocated_name           = 6;
+
+    string                   fully_qualified_name = 14;
+    string                   server_owner         = 7;  // Package name.
+    repeated ServiceMetadata service_metadata     = 8;
+
+    string service_label = 10;
+
+    PackageRef  ingress_provider = 11;
+    IngressSpec ingress_spec     = 12;
+
+    message PortMap {
+        Port  port          = 1;
+        int32 exported_port = 2;  // If unset, will be port.container_port.
+    }
+
+    message Port {
+        enum Protocol {
+            PROTOCOL_UNSPECIFIED = 0;  // Defaults to TCP.
+            TCP                  = 1;
+            UDP                  = 2;
+        }
+
+        string name           = 1;
+        int32  container_port = 2;
+        // Most of the times you DON'T want to use this; this binds the
+        // container port to the specified port in the node the pod gets
+        // scheduled to.
+        int32    host_port = 3;
+        Protocol protocol  = 4;
+    }
+
+    message IngressSpec {
+        repeated DomainSpec domain      = 1;  // If set, exposes this endpoint in the specified domains.
+        ServiceAnnotations  annotations = 2;
+    }
+
+    reserved 9;
+}
+
+message InternalEndpoint {
+    string                   server_owner     = 1;  // Package name.
+    Endpoint.Port            port             = 2;
+    repeated ServiceMetadata service_metadata = 3;
+}
+
+// Next ID: 10
+message IngressFragment {
+    reserved 9;
+
+    string                      name         = 1;
+    string                      owner        = 2;  // Server package name.
+    Domain                      domain       = 3;
+    Endpoint                    endpoint     = 6;
+    repeated IngressHttpPath    http_path    = 4;
+    repeated IngressGrpcService grpc_service = 7;
+    string                      manager      = 8;  // If this is a specialized ingress, it may be annotated as such. E.g. with namespacelabs.dev/foundation/std/grp/httptranscoding.
+
+    // Accepted: HttpCors, ProxyBodySize.
+    repeated google.protobuf.Any extension = 5;
+
+    message IngressHttpPath {
+        string          path             = 1;
+        string          kind             = 2;
+        string          owner            = 3;  // Package name.
+        string          service          = 4;  // Backend service.
+        int32           service_port     = 6;
+        BackendProtocol backend_protocol = 7;
+        reserved 5;
+
+        enum BackendProtocol {
+            BACKEND_PROTOCOL_UNKNOWN = 0;
+            HTTP                     = 1;
+            GRPC                     = 2;
+            GRPCS                    = 3;
+        }
+    }
+
+    message IngressGrpcService {
+        string          grpc_service = 1;  // Fully qualified name.
+        string          owner        = 2;  // Package name.
+        string          service      = 3;  // Backing service.
+        repeated string method       = 5;  // If not set, forward all methods.
+        int32           service_port = 8;
+        bool            backend_tls  = 6;
+        bool            all_services = 7;  // If set, all paths are forwarded.
+        reserved 4;
+    }
+}
+
+message IngressFragmentList {
+    repeated IngressFragment ingress_fragment = 1;
+}
+
+message HttpCors {
+    bool            enabled        = 1;
+    repeated string allowed_origin = 2;  // Access-Control-Allow-Origin
+    repeated string expose_headers = 3;  // Access-Control-Expose-Headers
+}
+
+message ServiceMetadata {
+    string              kind     = 1;
+    string              protocol = 2;
+    google.protobuf.Any details  = 3;
+}
+
+message HttpUrlMap {
+    repeated Entry entry = 1;
+
+    message Entry {
+        string            path_prefix     = 1;
+        string            kind            = 2;
+        schema.PackageRef backend_service = 3;
+    }
+}
+
+message GrpcHttpTranscoding {
+    // Includes the service proto definition, and its dependencies.
+    google.protobuf.FileDescriptorSet file_descriptor_set = 1;
+}
+
+message HttpExportedService {
+    string path = 1;
+}
+
+message ServiceAnnotations {
+    repeated KeyValue key_value = 1;
+
+    message KeyValue {
+        string key   = 1;
+        string value = 2;
+    }
+}

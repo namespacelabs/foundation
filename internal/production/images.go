@@ -1,0 +1,63 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+package production
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/moby/buildkit/client/llb"
+	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/build"
+	"namespacelabs.dev/foundation/internal/build/buildkit"
+	"namespacelabs.dev/foundation/internal/dependencies/pins"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/llbutil"
+)
+
+const (
+	Alpine = "alpine"
+)
+
+// DevelopmentImage returns a minimal base image where we add tools for development. Use of
+// development images is temporary, and likely to only be used when ephemeral containers
+// are not available.
+func DevelopmentImage(ctx context.Context, name string, makeClient buildkit.ClientFactory, target build.BuildTarget) (oci.NamedImage, error) {
+	base := pins.Server(name)
+	if base == nil || base.Base == "" {
+		return nil, fnerrors.InternalError("missing base server definition for %q", name)
+	}
+
+	if base.NonRootUserID == nil {
+		return nil, fnerrors.InternalError("base definition missing userid")
+	}
+
+	serverBase, err := pins.CheckImage(base.Base)
+	if err != nil {
+		return nil, err
+	}
+
+	state := llbutil.Image(serverBase, *target.TargetPlatform()).
+		With(withNonRootUserWithUserID(*base.NonRootUserID)).
+		Run(llb.Shlex("apk add --no-cache bash")).Root()
+
+	t := build.NewBuildTarget(target.TargetPlatform()).WithTargetName(target.PublishName())
+
+	img, err := buildkit.BuildImage(ctx, makeClient, t.WithSourceLabel("base:"+name), state)
+	if err != nil {
+		return nil, err
+	}
+
+	return oci.MakeNamedImage(fmt.Sprintf("%s + dev tools", serverBase), img), nil
+}
+
+func withNonRootUserWithUserID(userid int) func(llb.State) llb.State {
+	return func(base llb.State) llb.State {
+		return base.
+			Run(llb.Shlexf("addgroup -g %d nonroot", userid)).
+			Run(llb.Shlexf("adduser -h /home/nonroot -D -s /sbin/nologin -G nonroot -u %d nonroot", userid)).
+			Root()
+	}
+}

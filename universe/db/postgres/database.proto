@@ -1,0 +1,53 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.universe.db.postgres;
+
+option go_package = "namespacelabs.dev/foundation/universe/db/postgres";
+
+import "std/proto/options.proto";
+import "std/types/resource.proto";
+
+message Database {
+    string                        name        = 1;
+    foundation.std.types.Resource schema_file = 2 [(foundation.std.proto.provision_only) = true];
+    Endpoint                      hosted_at   = 3;
+    Credentials                   credentials = 4;
+
+    message Endpoint {
+        string address = 1;
+        uint32 port    = 2;
+    }
+
+    message Credentials {
+        Secret user     = 1;
+        Secret password = 2;
+
+        message Secret {
+            // Only set one of these fields.
+            string value     = 1;
+            string from_path = 2;
+        }
+    }
+}
+
+// This type represents a fully formed database. This is an internal type, used
+// for internal configuration.
+message InstantiatedDatabase {
+    string            package_name = 1;
+    Credentials       credentials  = 2;
+    repeated Database database     = 3;
+
+    message Credentials {
+        string secret_name          = 1;
+        string secret_mount_path    = 2;
+        string secret_resource_name = 3;
+    }
+}
+
+message InstantiatedDatabases {
+    repeated InstantiatedDatabase instantiated = 1;
+}

@@ -1,0 +1,36 @@
+module: "namespacelabs.dev/foundation"
+requirements: {
+	api:          140
+	toolsVersion: 4
+}
+prebuilts: {
+	digest: {
+		"namespacelabs.dev/foundation/std/development/filesync/controller": "sha256:41ffa681aec6a70dcd5a7ebeccd94814688389a45f39810138a4d3f1ef8278da"
+	}
+	// Keep all Foundation prebuilts in the public registry so consumers don't
+	// need credentials to prepare a local environment.
+	baseRepository: "public.registry.namespace.systems/"
+}
+internalAliases: [{
+	module_name: "library.namespace.so"
+	rel_path:    "library"
+}]
+enabledFeatures: ["experimental/container/annotations"]
+environment: {
+	dev: {
+		runtime: "kubernetes"
+		purpose: "DEVELOPMENT"
+	}
+	staging: {
+		runtime: "kubernetes"
+		purpose: "PRODUCTION"
+	}
+	prod: {
+		runtime: "kubernetes"
+		purpose: "PRODUCTION"
+		configuration: [{
+			"@type":        "type.googleapis.com/foundation.framework.deploy.Deployment"
+			require_reason: true
+		}]
+	}
+}

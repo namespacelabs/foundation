@@ -1,0 +1,31 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+package fnapi
+
+import (
+	"context"
+	"net/http"
+
+	"buf.build/gen/go/namespace/cloud/connectrpc/go/proto/namespace/cloud/integrations/bazel/v1beta/bazelv1betaconnect"
+	"connectrpc.com/connect"
+	"namespacelabs.dev/integrations/api"
+)
+
+func NewBazelCacheServiceClient(ctx context.Context) (bazelv1betaconnect.BazelCacheServiceClient, error) {
+	tok, err := FetchToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewBazelCacheServiceClientWithToken(tok), nil
+}
+
+func NewBazelCacheServiceClientWithToken(tok api.TokenSource) bazelv1betaconnect.BazelCacheServiceClient {
+	return bazelv1betaconnect.NewBazelCacheServiceClient(
+		http.DefaultClient,
+		GlobalEndpoint(),
+		connect.WithInterceptors(newAuthInterceptor(tok)),
+	)
+}

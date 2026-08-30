@@ -1,0 +1,34 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.universe.db.postgres;
+
+option go_package = "namespacelabs.dev/foundation/universe/db/postgres";
+
+import "google/protobuf/duration.proto";
+
+message DatabaseArgs {
+    reserved 1, 2;
+    string                   client                                 = 7;
+    string                   resource_ref                           = 3;
+    int32                    max_conns                              = 4;  // Set if > 0.
+    string                   max_conns_from_env                     = 6;
+    google.protobuf.Duration max_conns_idle_time                    = 5;  // Deprecated: use max_conns_idle_time_ms; unusable from CUE.
+    int32                    idle_in_transaction_session_timeout_ms = 8;
+    int32                    statement_timeout_ms                   = 10;
+    int32                    connect_timeout_ms                     = 9;
+    int32                    max_conns_idle_time_ms                 = 11;  // Set if > 0.
+    int32                    max_conn_lifetime_jitter_ms            = 12;  // Set if > 0.
+}
+
+message DatabaseReferenceArgs {
+    string cluster_ref = 1;
+    string database    = 2;
+}
+
+message FactoryArgs {
+    string client = 1;
+}

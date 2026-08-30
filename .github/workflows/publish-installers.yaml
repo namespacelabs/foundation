@@ -1,0 +1,35 @@
+name: publish-installers
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "install/install.sh"
+      - "install/install_nsc.sh"
+      - ".github/workflows/publish-installers.yaml"
+      - "tools/release-tigris/**"
+  workflow_dispatch:
+
+jobs:
+  publish-installers:
+    runs-on: namespace-profile-foundation-releaser
+    env:
+      TIGRIS_ASSETS_BUCKET: nsl-public-assets
+      TIGRIS_ENDPOINT: https://t3.storage.dev
+      AWS_ACCESS_KEY_ID: ${{ secrets.TIGRIS_ASSETS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.TIGRIS_ASSETS_SECRET_ACCESS_KEY }}
+      AWS_REGION: auto
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Validate Tigris configuration
+        run: test -n "$TIGRIS_ASSETS_BUCKET"
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.26.x
+          cache: false
+
+      - name: Publish installer scripts to Tigris
+        run: go run ./tools/release-tigris installers --bucket "$TIGRIS_ASSETS_BUCKET" --endpoint "$TIGRIS_ENDPOINT"

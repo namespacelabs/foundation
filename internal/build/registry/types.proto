@@ -1,0 +1,49 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.build.registry;
+
+option go_package = "namespacelabs.dev/foundation/internal/build/registry";
+
+message Registry {
+    string            url               = 1;
+    bool              insecure          = 2;
+    bool              use_docker_auth   = 3;  // If true, the credentials stored by Docker are used to access this repository.
+    bool              single_repository = 4;  // If true, all images are stored in a single repository, rather than creating a repository per image.
+    RegistryTransport transport         = 5;
+}
+
+message Provider {
+    string provider = 1;
+}
+
+message RegistryTransport {
+    SSH ssh = 1;
+    TLS tls = 2;
+
+    message SSH {
+        string        user             = 1;
+        string        private_key_path = 2;
+        string        ssh_addr         = 3;
+        string        remote_addr      = 4;
+        string        agent_sock_path  = 5;
+        TeleportProxy teleport_proxy   = 6;
+    }
+
+    message TeleportProxy {
+        string profile_name      = 1;
+        string tbot_identity_dir = 2;
+        string host              = 3;
+        string proxy_address     = 4;
+        string cluster           = 5;
+    }
+
+    message TLS {
+        string endpoint = 1;
+        string cert     = 2;
+        string key      = 3;
+    }
+}

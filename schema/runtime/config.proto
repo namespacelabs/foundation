@@ -1,0 +1,100 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.schema.runtime;
+
+option go_package = "namespacelabs.dev/foundation/schema/runtime";
+
+// The runtime configuration is generated from the deployment plan. It is
+// injected into the server at runtime. Because RuntimeConfig is serialized
+// as JSON, the field names have great significance and should be changed
+// with care.
+message RuntimeConfig {
+    Environment environment = 1;
+
+    Server current = 2;
+
+    // References to other servers that this server depends on.
+    repeated Server stack_entry = 3;
+
+    repeated ListenerConfiguration listener_configuration = 4;
+
+    message Environment {
+        string name    = 1;  // Empty if ephemeral is true.
+        string purpose = 2;
+
+        // Typically only set for tests. Signals that this environment is single-use and not meant to be user serviceable.
+        bool ephemeral = 3;
+    }
+
+    message ListenerConfiguration {
+        string name           = 1;
+        string protocol       = 2;  // grpc, or the empty string.
+        int32  container_port = 3;
+    }
+}
+
+message Server {
+    string server_id    = 7;
+    string package_name = 1;
+    string module_name  = 2;
+
+    repeated Port             port              = 3;
+    repeated Service          service           = 4;
+    repeated InternalEndpoint internal_endpoint = 6;
+
+    string image_ref = 5;  // Only set for current.
+
+    TelemetryResource telemetry_resource = 8;
+
+    message Port {
+        string name = 1;
+        int32  port = 2;
+    }
+
+    message Service {
+        string  owner                    = 1;  // Package name.
+        string  name                     = 2;  // Scoped to package name.
+        string  endpoint                 = 3;  // E.g. hostname:port.
+        string  fully_qualified_endpoint = 5;  // E.g. fully_qualified_hostname:port.
+        Ingress ingress                  = 4;  // Computed ingress for this service.
+    }
+
+    message Ingress {
+        repeated Domain domain = 4;
+
+        message Domain {
+            // Includes the protocol, e.g. https://, and a port if needed.
+            string base_url = 1;
+        }
+    }
+
+    message InternalEndpoint {
+        string                port_name      = 1;
+        int32                 container_port = 2;
+        repeated ExportedHttp exported       = 3;
+
+        message ExportedHttp {
+            string path = 1;
+            string kind = 2;
+        }
+    }
+}
+
+message TelemetryResource {
+    string service_name = 1;
+}
+
+message BuildVCS {
+    string revision    = 1;
+    string commit_time = 2;
+    bool   uncommitted = 3;
+}
+
+message SecretChecksum {
+    string secret_ref = 1;
+    string checksum   = 2;
+}

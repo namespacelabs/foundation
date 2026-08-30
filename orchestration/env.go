@@ -1,0 +1,70 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+package orchestration
+
+import (
+	"context"
+
+	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubetool"
+	"namespacelabs.dev/foundation/internal/build/binary"
+	"namespacelabs.dev/foundation/internal/protos"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/orchestration/server/constants"
+	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
+)
+
+func MakeSyntheticConfiguration(wsproto *schema.Workspace, envName string, hostEnv *client.HostEnv, extra ...proto.Message) cfg.Configuration {
+	messages := []proto.Message{hostEnv}
+	messages = append(messages, extra...)
+
+	ws := cfg.MakeSyntheticWorkspace(wsproto, nil)
+
+	return cfg.MakeConfigurationWith(envName, ws, cfg.ConfigurationSlice{Configuration: protos.WrapAnysOrDie(messages...)})
+}
+
+func MakeSyntheticContext(wsproto *schema.Workspace, env *schema.Environment, hostEnv *client.HostEnv, extra ...proto.Message) cfg.Context {
+	newCfg := MakeSyntheticConfiguration(wsproto, env.Name, hostEnv, extra...)
+	return cfg.MakeUnverifiedContext(newCfg, env)
+}
+
+func MakeOrchestratorContext(ctx context.Context, conf cfg.Configuration, mode string) (cfg.Context, error) {
+	// We use a static environment here, since the orchestrator has global scope.
+	envProto := &schema.Environment{
+		Name:      kubedef.AdminNamespace,
+		Runtime:   "kubernetes", // XXX should be an input.
+		Ephemeral: false,
+
+		// TODO - this can't be empty, since std/runtime/kubernetes/extension.cue checks it.
+		Purpose: schema.Environment_PRODUCTION,
+
+		Labels: []*schema.Label{{
+			Name:  "namespace.so/environment-scope",
+			Value: "admin",
+		}},
+	}
+
+	newCfg := conf.Derive(kubedef.AdminNamespace, func(previous cfg.ConfigurationSlice) cfg.ConfigurationSlice {
+		previous.Configuration = append(previous.Configuration, protos.WrapAnyOrDie(
+			&kubetool.KubernetesEnv{Namespace: kubedef.AdminNamespace}, // pin deployments to admin namespace
+		))
+		if mode == OrchestratorModePrebuilt {
+			// Keep the tool prebuilt scoped to this mode so --orchestrator=head
+			// rebuilds both the server and its provisioning logic from source.
+			previous.Configuration = append(previous.Configuration, protos.WrapAnyOrDie(&binary.Prebuilts{
+				PrebuiltBinary: []*schema.Workspace_BinaryDigest{{
+					PackageName: constants.ToolPkg.String(),
+					Repository:  PrebuiltOrchestratorToolRepository,
+					Digest:      PrebuiltOrchestratorToolDigest,
+				}},
+			}))
+		}
+		return previous
+	})
+
+	return cfg.MakeUnverifiedContext(newCfg, envProto), nil
+}

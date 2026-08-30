@@ -1,0 +1,300 @@
+{
+	"annotations": {
+	  "list": [
+		{
+		  "builtIn": 1,
+		  "datasource": "-- Grafana --",
+		  "enable": true,
+		  "hide": true,
+		  "iconColor": "rgba(0, 211, 255, 1)",
+		  "name": "Annotations & Alerts",
+		  "target": {
+			"limit": 100,
+			"matchAny": false,
+			"tags": [],
+			"type": "dashboard"
+		  },
+		  "type": "dashboard"
+		}
+	  ]
+	},
+	"editable": true,
+	"fiscalYearStartMonth": 0,
+	"gnetId": null,
+	"graphTooltip": 0,
+	"id": 2,
+	"iteration": 1646662123306,
+	"links": [],
+	"liveNow": false,
+	"panels": [
+	  {
+		"datasource": null,
+		"fieldConfig": {
+		  "defaults": {
+			"color": {
+			  "mode": "palette-classic"
+			},
+			"custom": {
+			  "axisLabel": "",
+			  "axisPlacement": "auto",
+			  "barAlignment": 0,
+			  "drawStyle": "line",
+			  "fillOpacity": 0,
+			  "gradientMode": "none",
+			  "hideFrom": {
+				"legend": false,
+				"tooltip": false,
+				"viz": false
+			  },
+			  "lineInterpolation": "linear",
+			  "lineWidth": 1,
+			  "pointSize": 5,
+			  "scaleDistribution": {
+				"type": "linear"
+			  },
+			  "showPoints": "auto",
+			  "spanNulls": false,
+			  "stacking": {
+				"group": "A",
+				"mode": "none"
+			  },
+			  "thresholdsStyle": {
+				"mode": "off"
+			  }
+			},
+			"mappings": [],
+			"thresholds": {
+			  "mode": "absolute",
+			  "steps": [
+				{
+				  "color": "green",
+				  "value": null
+				},
+				{
+				  "color": "red",
+				  "value": 80
+				}
+			  ]
+			},
+			"unit": "reqps"
+		  },
+		  "overrides": []
+		},
+		"gridPos": {
+		  "h": 9,
+		  "w": 12,
+		  "x": 0,
+		  "y": 0
+		},
+		"id": 2,
+		"options": {
+		  "legend": {
+			"calcs": [],
+			"displayMode": "list",
+			"placement": "bottom"
+		  },
+		  "tooltip": {
+			"mode": "single"
+		  }
+		},
+		"targets": [
+		  {
+			"exemplar": true,
+			"expr": "sum(rate(grpc_server_handled_total{grpc_service=~\"$service\", grpc_method=~\"$method\", k8s_namespacelabs_dev_env=~\"$env\"}[5m])) by (grpc_service, grpc_method)",
+			"interval": "",
+			"legendFormat": "{{grpc_service}}/{{grpc_method}}",
+			"refId": "A"
+		  }
+		],
+		"title": "Requests",
+		"type": "timeseries"
+	  },
+	  {
+		"datasource": null,
+		"fieldConfig": {
+		  "defaults": {
+			"color": {
+			  "mode": "palette-classic"
+			},
+			"custom": {
+			  "axisLabel": "",
+			  "axisPlacement": "auto",
+			  "barAlignment": 0,
+			  "drawStyle": "line",
+			  "fillOpacity": 0,
+			  "gradientMode": "none",
+			  "hideFrom": {
+				"legend": false,
+				"tooltip": false,
+				"viz": false
+			  },
+			  "lineInterpolation": "linear",
+			  "lineWidth": 1,
+			  "pointSize": 5,
+			  "scaleDistribution": {
+				"type": "linear"
+			  },
+			  "showPoints": "auto",
+			  "spanNulls": false,
+			  "stacking": {
+				"group": "A",
+				"mode": "none"
+			  },
+			  "thresholdsStyle": {
+				"mode": "off"
+			  }
+			},
+			"mappings": [],
+			"thresholds": {
+			  "mode": "absolute",
+			  "steps": [
+				{
+				  "color": "green",
+				  "value": null
+				},
+				{
+				  "color": "red",
+				  "value": 80
+				}
+			  ]
+			},
+			"unit": "reqps"
+		  },
+		  "overrides": []
+		},
+		"gridPos": {
+		  "h": 9,
+		  "w": 12,
+		  "x": 12,
+		  "y": 0
+		},
+		"id": 3,
+		"options": {
+		  "legend": {
+			"calcs": [],
+			"displayMode": "list",
+			"placement": "bottom"
+		  },
+		  "tooltip": {
+			"mode": "single"
+		  }
+		},
+		"targets": [
+		  {
+			"exemplar": true,
+			"expr": "sum(rate(grpc_server_handled_total{grpc_service=~\"$service\", grpc_method=~\"$method\", k8s_namespacelabs_dev_env=~\"$env\", grpc_code!=\"OK\"}[5m])) by (grpc_service, grpc_method)",
+			"interval": "",
+			"legendFormat": "{{grpc_service}}/{{grpc_method}}",
+			"refId": "A"
+		  }
+		],
+		"title": "Errors",
+		"type": "timeseries"
+	  }
+	],
+	"schemaVersion": 31,
+	"style": "dark",
+	"tags": [],
+	"templating": {
+	  "list": [
+		{
+		  "allValue": null,
+		  "current": {
+			"selected": true,
+			"text": [
+			  "All"
+			],
+			"value": [
+			  "$__all"
+			]
+		  },
+		  "datasource": null,
+		  "definition": "label_values(grpc_service)",
+		  "description": null,
+		  "error": null,
+		  "hide": 0,
+		  "includeAll": true,
+		  "label": "Service",
+		  "multi": true,
+		  "name": "service",
+		  "options": [],
+		  "query": {
+			"query": "label_values(grpc_service)",
+			"refId": "StandardVariableQuery"
+		  },
+		  "refresh": 1,
+		  "regex": "",
+		  "skipUrlSync": false,
+		  "sort": 1,
+		  "type": "query"
+		},
+		{
+		  "allValue": null,
+		  "current": {
+			"selected": true,
+			"text": [
+			  "All"
+			],
+			"value": [
+			  "$__all"
+			]
+		  },
+		  "datasource": null,
+		  "definition": "label_values(grpc_method)",
+		  "description": null,
+		  "error": null,
+		  "hide": 0,
+		  "includeAll": true,
+		  "label": "Method",
+		  "multi": true,
+		  "name": "method",
+		  "options": [],
+		  "query": {
+			"query": "label_values(grpc_method)",
+			"refId": "StandardVariableQuery"
+		  },
+		  "refresh": 1,
+		  "regex": "",
+		  "skipUrlSync": false,
+		  "sort": 1,
+		  "type": "query"
+		},
+		{
+		  "allValue": null,
+		  "current": {
+			"selected": true,
+			"text": "dev",
+			"value": "dev"
+		  },
+		  "datasource": null,
+		  "definition": "label_values(k8s_namespacelabs_dev_env)",
+		  "description": null,
+		  "error": null,
+		  "hide": 0,
+		  "includeAll": true,
+		  "label": "Environment",
+		  "multi": false,
+		  "name": "env",
+		  "options": [],
+		  "query": {
+			"query": "label_values(k8s_namespacelabs_dev_env)",
+			"refId": "StandardVariableQuery"
+		  },
+		  "refresh": 1,
+		  "regex": "",
+		  "skipUrlSync": false,
+		  "sort": 1,
+		  "type": "query"
+		}
+	  ]
+	},
+	"time": {
+	  "from": "now-6h",
+	  "to": "now"
+	},
+	"timepicker": {},
+	"timezone": "",
+	"title": "Default Dashboard",
+	"uid": "zCYtkYYnk",
+	"version": 9
+  }

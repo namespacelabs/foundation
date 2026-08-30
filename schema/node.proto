@@ -1,0 +1,184 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "google/protobuf/any.proto";
+import "schema/networking.proto";
+import "schema/environment.proto";
+import "schema/reference.proto";
+import "schema/resource.proto";
+import "schema/server.proto";
+import "schema/volume.proto";
+
+// Next ID: 32
+message Node {
+    // The package name (computed).
+    string package_name = 1;
+    // The module name (computed).
+    string module_name = 20;
+
+    Kind kind = 2;
+
+    // The computed list of dependency URLs of this service (direct and indirect).
+    repeated string import = 3;
+
+    reserved 4;
+
+    // Name used publicly.
+    string ingress_service_name = 5;
+
+    // Singleton dependencies instantiated for this node.
+    repeated Instantiate instantiate = 6;
+
+    // A list of node needs (e.g. ports, etc).
+    repeated Need need = 7;
+
+    // Declarations of instance types this node provides.
+    repeated Provides provides = 8;
+
+    // Service nodes export services. This is embedded in the schema now but
+    // may become dependencies in the future, i.e. an exported service
+    // is kind of an instance of a declared gRPC service.
+    repeated GrpcExportService export_service = 9;
+
+    // Deploy services of this node into a separate configuration.
+    string listener_name = 28;
+    int32  exported_port = 29;
+
+    // If set to true, these service's GRPC services are to be exported as HTTP
+    // as well. Regardless of the ingress configuration here, these endpoints
+    // will be public.
+    reserved "export_services_as_http";
+    reserved 17;
+
+    // HTTP paths exported by this service.
+    repeated HttpPath export_http = 16;
+
+    // Ingress can be used to configure whether a service is visible to the
+    // internet (only valid for services).
+    Endpoint.Type ingress = 10;
+
+    repeated ServiceMetadata service_metadata = 30;
+
+    // Applies when ingress is LOAD_BALANCER.
+    string load_balancer_class = 31;
+
+    // Can't contain multiple initializers with the same "framework".
+    // Not a map since "framework" will likely be broken down and converted to a message.
+    repeated NodeInitializer initializers = 11;
+
+    Framework service_framework = 19;
+
+    repeated Reference reference = 13;
+
+    // Set of dependencies specified explicitly by the user.
+    repeated string user_imports = 14;
+
+    // Framework-specific extensions.
+    repeated google.protobuf.Any ext = 15;
+
+    reserved 18, 24;
+
+    repeated Volume volume = 22;
+
+    repeated Mount mount = 23;
+
+    // Environment requirements determine whether a particular node is compatible with a particular environment.
+    EnvironmentRequirement environment_requirement = 21;
+
+    ResourcePack resource_pack = 26;
+
+    repeated string extension = 27;
+
+    enum Kind {
+        KIND_UNSPECIFIED = 0;
+        SERVICE          = 1;
+        EXTENSION        = 2;
+    }
+
+    message EnvironmentRequirement {
+        repeated foundation.schema.Label environment_has_label           = 1;
+        repeated foundation.schema.Label environment_does_not_have_label = 2;
+    }
+}
+
+message NodeInitializer {
+    Framework       framework            = 1;
+    repeated string initialize_before    = 2;  // Package name.
+    repeated string initialize_after     = 3;  // Package name.
+    bool            has_post_initializer = 4;
+}
+
+message HttpPath {
+    string                                          path             = 1;
+    string                                          kind             = 2;
+    IngressFragment.IngressHttpPath.BackendProtocol backend_protocol = 3;
+}
+
+// XXX needs are at odds with instanced nodes; both provide means for the node to
+// use data+behavior provided by another part of the system. Provides is a better
+// model as it's more flexible. Needs are a necessary level right now to get core
+// types instantiated (e.g. ports).
+message Need {
+    string cue_path = 1;
+
+    oneof type {
+        Port port = 2;
+    }
+
+    message Port {
+        string name = 1;
+    }
+}
+
+message Provides {
+    string               name         = 1;
+    TypeDef              type         = 2;
+    repeated AvailableIn available_in = 3;
+
+    message AvailableIn {
+        Go go = 1;
+
+        message Go {
+            string package = 1;
+            string type    = 2;
+        }
+    }
+
+    // Scoped dependencies instantiated for this provided type.
+    repeated Instantiate instantiate = 4;
+}
+
+message TypeDef {
+    // The type made available for configuration.
+    string typename = 1;
+    // Paths to the protos that define the types available as a provider. Paths
+    // must be relative to the package.
+    repeated string source = 2;
+}
+
+message GrpcExportService {
+    // Paths to the protos that defines the service. Paths must be
+    // relative to the package.
+    repeated string proto = 1;
+
+    // The type of the service being exported.
+    string proto_typename = 2;
+
+    // A subset of methods this implementation supports. If empty, the implementation supports all methods.
+    repeated string method = 3;
+
+    bool server_reflection_included = 4;
+}
+
+// Used as Endpoint metadata to signal that all forwarding should be setup for
+// any service available in the port.
+message GrpcExportAllServices {
+    // No options.
+}

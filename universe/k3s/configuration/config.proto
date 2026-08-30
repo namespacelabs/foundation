@@ -1,0 +1,30 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.universe.k3s.configuration;
+
+option go_package = "namespacelabs.dev/foundation/universe/k3s/configuration";
+
+message Remote {
+    SshEndpoint endpoint = 1;
+    string      registry = 2;
+}
+
+message SshEndpoint {
+    string        user             = 1;
+    string        private_key_path = 2;
+    string        agent_sock_path  = 4;
+    string        address          = 3;
+    TeleportProxy teleport_proxy   = 5;
+}
+
+message TeleportProxy {
+    string profile_name      = 1;
+    string tbot_identity_dir = 2;
+    string host              = 3;
+    string proxy_address     = 4;
+    string cluster           = 5;
+}

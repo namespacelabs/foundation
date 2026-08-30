@@ -1,0 +1,43 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package internal.testdata.service.proto;
+
+option go_package = "namespacelabs.dev/foundation/internal/testdata/service/proto";
+
+import "google/protobuf/any.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+message PostRequest {
+    string input = 1;
+}
+
+message PostResponse {
+    string id       = 1;
+    string response = 2;
+}
+
+message FetchRequest {
+    string id = 1;
+}
+
+message FetchResponse {
+    string response = 1;
+}
+
+message TestTranscodingResponse {
+    google.protobuf.Any       any       = 1;
+    google.protobuf.Timestamp timestamp = 2;
+    google.protobuf.Duration  duration  = 3;
+}
+
+service PostService {
+    rpc Post(PostRequest) returns (PostResponse);
+    rpc Fetch(FetchRequest) returns (FetchResponse);
+    rpc TestTranscoding(google.protobuf.Empty) returns (TestTranscodingResponse);
+}

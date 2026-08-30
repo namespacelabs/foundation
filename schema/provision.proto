@@ -1,0 +1,43 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "schema/binary.proto";
+import "schema/package.proto";
+
+message Invocation {
+    reserved 3;
+
+    // Deprecated, use binary_ref
+    string     binary     = 1;
+    PackageRef binary_ref = 9;
+
+    repeated string args                                = 2;
+    repeated schema.BinaryConfig.EnvEntry env           = 10;
+    string                                working_dir   = 4;
+    map<string, InvocationSnapshot>       snapshots     = 5;
+    bool                                  no_cache      = 6;
+    bool                                  requires_keys = 7;
+    repeated ValueInjection               inject        = 8;
+
+    message ValueInjection {
+        string type = 1;
+    }
+}
+
+message InvocationSnapshot {
+    string from_workspace = 1;
+    bool   optional       = 2;
+    bool   require_file   = 3;
+}
+
+message StartupPlan {
+    repeated string args               = 1;
+    repeated BinaryConfig.EnvEntry env = 2;
+}

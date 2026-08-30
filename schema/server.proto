@@ -1,0 +1,255 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "google/protobuf/any.proto";
+import "schema/container.proto";
+import "schema/environment.proto";
+import "schema/networking.proto";
+import "schema/package.proto";
+import "schema/probe.proto";
+import "schema/reference.proto";
+import "schema/resource.proto";
+import "schema/volume.proto";
+import "schema/domain.proto";
+import "schema/naming.proto";
+import "schema/resolvable.proto";
+
+enum Framework {
+    reserved 2, 3, 5;
+
+    FRAMEWORK_UNSPECIFIED = 0;
+    GO                    = 1;
+    // Only for servers
+    OPAQUE = 4;
+}
+
+// Next ID: 43
+message Server {
+    reserved 9, 13, 17, 19, 20, 27, 28, 30, 32, 34;
+
+    // The package name (computed).
+    string package_name = 1;
+    // The module name (computed).
+    string module_name = 5;
+
+    // In order to decouple code location and production resources, we refer
+    // to the service through it's ID; which must remain constant during the
+    // life of the service.
+    string id = 2;
+
+    // A name for a person-user to read and refer to.
+    string name = 3;
+
+    Description description = 23;
+
+    // The computed list of dependency URLs of this server (direct and indirect).
+    repeated string import = 4;
+
+    // Framework-specific extensions.
+    repeated google.protobuf.Any ext = 6;
+
+    // All of the allocations performed in this server's dependency tree.
+    repeated Allocation allocation = 7;
+
+    Framework framework = 8;
+
+    string deployable_class = 31;
+
+    reserved 39;
+
+    // This server is meant to be used for tests, and should not be deployed by default.
+    bool testonly = 21;
+
+    // Indicates if a server should be considered for location-less invocations.
+    // E.g. `ns deploy` should not deploy test only servers, unless explicitly mentioned.
+    bool run_by_default = 29;
+
+    repeated Reference reference = 12;
+
+    // Set of dependencies specified explicitly by the user.
+    repeated string user_imports = 14;
+
+    // Set of URL prefixes this server declares supporting.
+    repeated URLMapEntry url_map = 15;
+
+    reserved 10, 11, 16, 18, 22, 36, 26, 33, 35, 37, 38, 40;
+
+    repeated EnvironmentRequirement environment_requirement = 24;
+
+    // This duplicates some of the fields above while we work on a transition.
+    ServerFragment self = 41;
+
+    Naming server_naming = 42;
+
+    message ServiceSpec {
+        reserved 2;
+
+        string                   name                 = 1;
+        string                   label                = 5;
+        repeated ServiceMetadata metadata             = 6;
+        repeated Endpoint.PortMap ports               = 12;
+        bool                      internal            = 4;  // This service is of no relevance for development.
+        Endpoint.Type             endpoint_type       = 7;
+        PackageRef                ingress_provider    = 8;
+        repeated DomainSpec       ingress_domain      = 10;  // Only has a meaning if this is an ingress.
+        ServiceAnnotations        ingress_annotations = 11;
+        bool                      headless            = 13;
+
+        Endpoint.ServiceTrafficPolicy external_traffic_policy = 14;
+        string                        load_balancer_class    = 15;
+    }
+
+    message URLMapEntry {
+        string                                          path_prefix      = 1;
+        string                                          package_name     = 2;
+        string                                          ingress_name     = 3;
+        string                                          kind             = 4;
+        IngressFragment.IngressHttpPath.BackendProtocol backend_protocol = 5;
+        bool public                                                      = 6;
+    }
+
+    message Description {
+        string label    = 1;
+        string url      = 2;
+        string icon_url = 3;
+    }
+
+    message EnvironmentRequirement {
+        string   package                                                 = 1;
+        repeated foundation.schema.Label environment_has_label           = 2;
+        repeated foundation.schema.Label environment_does_not_have_label = 3;
+    }
+
+    message Toleration {
+        string key = 1;
+        string operator = 2;
+        string value  = 3;
+        string effect = 4;
+    }
+
+    message Configuration {
+        string name = 1;
+    }
+}
+
+message ServerFragment {
+    Container main_container                      = 1;
+    repeated Server.ServiceSpec service           = 2;
+    repeated Server.ServiceSpec ingress           = 3;
+    repeated Probe              probe             = 4;
+    repeated Volume             volume            = 5;
+    ResourcePack                resource_pack     = 6;
+    ServerPermissions           permissions       = 7;
+    repeated Server.Toleration toleration         = 8;
+    repeated string            extension          = 9;  // Package name.
+    repeated Container         sidecar            = 10;
+    repeated Container         init_container     = 11;
+    repeated NamedResolvable   annotation         = 12;
+    repeated NodeSelectorItem  node_selector      = 13;
+    repeated Listener          listener           = 14;
+    int32                      replicas           = 15;
+    PodAntiAffinity            pod_anti_affinity  = 16;
+    UpdateStrategy             update_strategy    = 17;
+    SpreadConstraints          spread_constraints = 18;
+    string                     priority_class     = 19;
+    TelemetryResource          telemetry_resource = 20;
+}
+
+message TelemetryResource {
+    string service_name = 1;
+}
+
+message Listener {
+    string        name     = 1;
+    string        protocol = 2;
+    Endpoint.Port port     = 3;
+}
+
+message NodeSelectorItem {
+    string key   = 1;
+    string value = 2;
+}
+
+message UpdateStrategy {
+    string max_surge       = 1;
+    string max_unavailable = 2;
+}
+
+message PodAntiAffinity {
+    string topology_key = 1;
+}
+
+message SpreadConstraints {
+    int32  max_skew     = 1;
+    int32  min_domains  = 2;
+    string topology_key = 3;
+
+    map<string, string> label_selector = 4;
+
+    bool when_unsatisfiable_schedule_anyway = 5;
+}
+
+// Allocations for a tree of instanced values.
+message Allocation {
+    repeated Instance instance = 1;
+
+    message Instance {
+        // The source of the allocation.
+        string instance_owner = 1;
+        // The owning package of the fields being instantiated.
+        string package_name = 2;
+        // An unique name within the server for this allocation path.
+        string alloc_name = 3;
+
+        repeated Instantiate instantiated = 4;
+
+        // Allocations that happen as a result of this allocation (e.g. an instance
+        // of a dependency).
+        repeated Allocation downstream_allocation = 5;
+    }
+}
+
+message Instantiate {
+    string package_name = 3;
+    string type         = 4;
+
+    // A unique name used to refer and configure this dependency.
+    string name = 1;
+
+    google.protobuf.Any constructor = 2;
+}
+
+message RequiredStorage {
+    string owner         = 1;  // Package name.
+    string persistent_id = 2;
+    uint64 byte_count    = 3;
+    string mount_path    = 4;
+}
+
+message ServerPermissions {
+    repeated ClusterRole cluster_role = 1;
+
+    message ClusterRole {
+        string label       = 1;
+        string resource_id = 2;
+    }
+}
+
+// Server extensions which are dynamically provided by tools.
+message ServerExtension {
+    reserved 2;
+
+    string owner = 1;  // Package name.
+
+    repeated Volume             volume           = 3;
+    repeated ContainerExtension extend_container = 5;
+
+    reserved 4;
+}

@@ -1,0 +1,828 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+package cluster
+
+import (
+	"archive/zip"
+	"compress/flate"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/aws/smithy-go/ptr"
+	"github.com/cenkalti/backoff"
+	"github.com/dustin/go-humanize"
+	"github.com/mattn/go-zglob"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnapi"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/integrations/api/storage"
+	storagev1beta "namespacelabs.dev/integrations/proto/namespace/cloud/storage/v1beta"
+	"namespacelabs.dev/integrations/storage/downloader"
+)
+
+const (
+	mainArtifactNamespace = "main"
+	cacheURLRetries       = 3
+)
+
+func NewArtifactCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "artifact",
+		Short: "Artifact-related activities.",
+	}
+
+	cmd.AddCommand(newArtifactUploadCmd())
+	cmd.AddCommand(newArtifactDownloadCmd())
+	cmd.AddCommand(newArtifactCacheURLCmd())
+	cmd.AddCommand(newArtifactExpireCmd())
+	cmd.AddCommand(newArtifactExtendCmd())
+	cmd.AddCommand(newArtifactDescribeCmd())
+
+	return cmd
+}
+
+func newArtifactUploadCmd() *cobra.Command {
+	var namespace string
+	var expirationDur time.Duration
+	var pack string
+
+	return fncobra.Cmd(&cobra.Command{
+		Use:   "upload [src] [dest]",
+		Short: "Upload an artifact.",
+		Long:  "Upload an artifact.",
+		Args:  cobra.RangeArgs(1, 2),
+	}).WithFlags(func(flags *pflag.FlagSet) {
+		flags.StringVar(&namespace, "namespace", mainArtifactNamespace, "Target namespace of the artifact.")
+		fncobra.DurationVar(flags, &expirationDur, "expires_in", 0, "If set, sets the artifact's expiration into the specified future.")
+		flags.StringVar(&pack, "pack", "", "A glob pattern to select files to zip and upload.")
+	}).DoWithArgs(func(ctx context.Context, args []string) error {
+		var src, dest string
+		var uploadFile io.ReadSeekCloser
+
+		if pack != "" {
+			if len(args) != 1 {
+				return fnerrors.Newf("expected exactly one argument (destination) when --pack is provided")
+			}
+			dest = args[0]
+
+			tmpFile, err := os.CreateTemp("", "artifact-upload-*.zip")
+			if err != nil {
+				return fnerrors.Newf("failed to create temporary file: %w", err)
+			}
+			defer os.Remove(tmpFile.Name())
+
+			start := time.Now()
+			count, err := zipFiles(ctx, pack, tmpFile)
+			if err != nil {
+				tmpFile.Close()
+				return err
+			}
+
+			fmt.Fprintf(console.Stdout(ctx), "Created archive with %d entries. Took %v.\n", count, time.Since(start))
+
+			if _, err := tmpFile.Seek(0, 0); err != nil {
+				tmpFile.Close()
+				return err
+			}
+
+			uploadFile = tmpFile
+			src = "archive"
+		} else {
+			if len(args) != 2 {
+				return fnerrors.Newf("expected exactly two arguments: a local source and a remote destination")
+			}
+			src, dest = args[0], args[1]
+
+			f, err := os.Open(src)
+			if err != nil {
+				return fnerrors.Newf("failed to open file %s: %w", src, err)
+			}
+			uploadFile = f
+		}
+		defer uploadFile.Close()
+
+		token, err := fnapi.FetchToken(ctx)
+		if err != nil {
+			return err
+		}
+
+		cli, err := storage.NewClient(ctx, token)
+		if err != nil {
+			return err
+		}
+		defer cli.Close()
+
+		opts := storage.UploadOpts{}
+
+		if expirationDur > 0 {
+			opts.ExpiresAt = ptr.Time(time.Now().Add(expirationDur))
+		} else if expirationDur < 0 {
+			return fnerrors.BadInputError("expiration can't be negative")
+		}
+
+		start := time.Now()
+		if _, err := storage.UploadArtifactWithOpts(ctx, cli, namespace, dest, uploadFile, opts); err != nil {
+			return err
+		}
+
+		stat, err := uploadFile.Seek(0, 1)
+		if err != nil {
+			// ignore, just don't print the size
+			stat = 0
+		}
+
+		fmt.Fprintf(console.Stdout(ctx), "Uploaded %s (%s) to %s (namespace %s). Took %v.\n",
+			src, humanize.Bytes(uint64(stat)), dest, namespace, time.Since(start))
+
+		return nil
+	})
+}
+
+func zipFiles(ctx context.Context, pattern string, w io.Writer) (int, error) {
+	matches, err := zglob.Glob(pattern)
+	if err != nil {
+		return 0, fnerrors.Newf("failed to glob files: %w", err)
+	}
+
+	if len(matches) == 0 {
+		return 0, fnerrors.Newf("no files matched pattern %q", pattern)
+	}
+
+	zw := zip.NewWriter(w)
+	zw.RegisterCompressor(zip.Deflate, func(out io.Writer) (io.WriteCloser, error) {
+		return flate.NewWriter(out, flate.BestSpeed)
+	})
+	defer zw.Close()
+
+	count := 0
+	seen := map[string]bool{}
+
+	addSymlink := func(match string, info os.FileInfo) error {
+		if seen[match] {
+			return nil
+		}
+		seen[match] = true
+
+		target, err := os.Readlink(match)
+		if err != nil {
+			return fnerrors.Newf("failed to read symlink %q: %w", match, err)
+		}
+
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return fnerrors.Newf("failed to create zip header for symlink %q: %w", match, err)
+		}
+		header.Name = match
+		header.Method = zip.Store // Symlinks don't need compression
+
+		writer, err := zw.CreateHeader(header)
+		if err != nil {
+			return fnerrors.Newf("failed to create zip writer for symlink %q: %w", match, err)
+		}
+
+		// Store the symlink target as the file content
+		if _, err := io.WriteString(writer, target); err != nil {
+			return fnerrors.Newf("failed to write symlink target for %q: %w", match, err)
+		}
+		count++
+		return nil
+	}
+
+	addFile := func(match string, info os.FileInfo) error {
+		if seen[match] {
+			return nil
+		}
+		seen[match] = true
+
+		f, err := os.Open(match)
+		if err != nil {
+			return fnerrors.Newf("failed to open file %q: %w", match, err)
+		}
+		defer f.Close()
+
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return fnerrors.Newf("failed to create zip header for %q: %w", match, err)
+		}
+		header.Name = match
+		header.Method = zip.Deflate
+
+		writer, err := zw.CreateHeader(header)
+		if err != nil {
+			return fnerrors.Newf("failed to create zip writer for %q: %w", match, err)
+		}
+
+		if _, err := io.Copy(writer, f); err != nil {
+			return fnerrors.Newf("failed to copy file %q to zip: %w", match, err)
+		}
+		count++
+		return nil
+	}
+
+	addDir := func(path string, info os.FileInfo) error {
+		if seen[path] {
+			return nil
+		}
+		seen[path] = true
+
+		// Only add empty directories; non-empty ones are implied by their file entries.
+		entries, err := os.ReadDir(path)
+		if err != nil {
+			return fnerrors.Newf("failed to read directory %q: %w", path, err)
+		}
+		if len(entries) > 0 {
+			return nil
+		}
+
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return fnerrors.Newf("failed to create zip header for %q: %w", path, err)
+		}
+		// Ensure directory names end with a slash.
+		header.Name = path + "/"
+
+		if _, err := zw.CreateHeader(header); err != nil {
+			return fnerrors.Newf("failed to create zip writer for %q: %w", path, err)
+		}
+		count++
+		return nil
+	}
+
+	addEntry := func(path string, info os.FileInfo) error {
+		if info.Mode()&os.ModeSymlink != 0 {
+			return addSymlink(path, info)
+		}
+		if info.IsDir() {
+			return addDir(path, info)
+		}
+		return addFile(path, info)
+	}
+
+	for _, match := range matches {
+		info, err := os.Lstat(match)
+		if err != nil {
+			return 0, fnerrors.Newf("failed to stat file %q: %w", match, err)
+		}
+
+		// Handle symlinks
+		if info.Mode()&os.ModeSymlink != 0 {
+			if err := addSymlink(match, info); err != nil {
+				return 0, err
+			}
+			continue
+		}
+
+		if info.IsDir() {
+			if err := filepath.Walk(match, func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+				// Use Lstat to detect symlinks during walk
+				linfo, err := os.Lstat(path)
+				if err != nil {
+					return err
+				}
+				return addEntry(path, linfo)
+			}); err != nil {
+				return 0, fnerrors.Newf("failed to walk directory %q: %w", match, err)
+			}
+			continue
+		}
+
+		if err := addFile(match, info); err != nil {
+			return 0, err
+		}
+	}
+
+	return count, nil
+}
+
+func newArtifactExpireCmd() *cobra.Command {
+	var namespace string
+
+	return fncobra.Cmd(&cobra.Command{
+		Use:   "expire [path]",
+		Short: "Expire an artifact.",
+		Args:  cobra.ExactArgs(1),
+	}).WithFlags(func(flags *pflag.FlagSet) {
+		flags.StringVar(&namespace, "namespace", mainArtifactNamespace, "Namespace of the artifact.")
+	}).DoWithArgs(func(ctx context.Context, args []string) error {
+		if len(args) != 1 {
+			return fnerrors.Newf("expected exactly one arguments: the path of the artifact to expire")
+		}
+		path := args[0]
+
+		token, err := fnapi.FetchToken(ctx)
+		if err != nil {
+			return err
+		}
+
+		cli, err := storage.NewClient(ctx, token)
+		if err != nil {
+			return err
+		}
+		defer cli.Close()
+
+		if err := storage.ExpireArtifact(ctx, cli, namespace, path); err != nil {
+			return err
+		}
+		fmt.Fprintf(console.Stdout(ctx), "Expired %s (namespace %s)\n", path, namespace)
+
+		return nil
+	})
+}
+
+func newArtifactExtendCmd() *cobra.Command {
+	var namespace string
+	var extendBy, ensureMinimum time.Duration
+	var extendByFlag, ensureMinimumFlag *pflag.Flag
+
+	return fncobra.Cmd(&cobra.Command{
+		Use:   "extend [path]",
+		Short: "Extend the expiration of an artifact.",
+		Long: `Extend the expiration of a finalized artifact.
+
+This enables dynamic, access-based retention: create artifacts with a short
+expiration and push it out whenever they are accessed.
+
+At least one of --by or --ensure_minimum must be set. When both are set, --by is
+applied first and --ensure_minimum then acts as a lower bound on the result.`,
+		Args: cobra.ExactArgs(1),
+	}).WithFlags(func(flags *pflag.FlagSet) {
+		flags.StringVar(&namespace, "namespace", mainArtifactNamespace, "Namespace of the artifact.")
+		fncobra.DurationVar(flags, &extendBy, "by", 0, "Extend the current expiration by this duration, relative to the artifact's current expiration.")
+		fncobra.DurationVar(flags, &ensureMinimum, "ensure_minimum", 0, "Ensure the artifact expires no sooner than this duration from now.")
+		extendByFlag = flags.Lookup("by")
+		ensureMinimumFlag = flags.Lookup("ensure_minimum")
+	}).DoWithArgs(func(ctx context.Context, args []string) error {
+		path := args[0]
+
+		if !extendByFlag.Changed && !ensureMinimumFlag.Changed {
+			return fnerrors.BadInputError("at least one of --by or --ensure_minimum must be set")
+		}
+
+		req := &storagev1beta.ExtendArtifactRequest{
+			Path:      path,
+			Namespace: namespace,
+		}
+
+		if extendByFlag.Changed {
+			if extendBy <= 0 {
+				return fnerrors.BadInputError("--by must be positive")
+			}
+			req.ExtendBy = durationpb.New(extendBy)
+		}
+
+		if ensureMinimumFlag.Changed {
+			if ensureMinimum <= 0 {
+				return fnerrors.BadInputError("--ensure_minimum must be positive")
+			}
+			req.EnsureMinimum = durationpb.New(ensureMinimum)
+		}
+
+		token, err := fnapi.FetchToken(ctx)
+		if err != nil {
+			return err
+		}
+
+		cli, err := storage.NewClient(ctx, token)
+		if err != nil {
+			return err
+		}
+		defer cli.Close()
+
+		res, err := cli.Artifacts.ExtendArtifact(ctx, req)
+		if err != nil {
+			return err
+		}
+
+		if res.GetExpiresAt() != nil {
+			fmt.Fprintf(console.Stdout(ctx), "Extended %s (namespace %s); now expires %s.\n",
+				path, namespace, res.GetExpiresAt().AsTime().Format(time.RFC3339))
+		} else {
+			fmt.Fprintf(console.Stdout(ctx), "Extended %s (namespace %s); now never expires.\n",
+				path, namespace)
+		}
+
+		return nil
+	})
+}
+
+func newArtifactDownloadCmd() *cobra.Command {
+	var namespace string
+	var resume, unpack bool
+
+	return fncobra.Cmd(&cobra.Command{
+		Use:   "download [src] [dest]",
+		Short: "Download an artifact.",
+		Long:  "Download an artifact.",
+		Args:  cobra.ExactArgs(2),
+	}).WithFlags(func(flags *pflag.FlagSet) {
+		flags.StringVar(&namespace, "namespace", mainArtifactNamespace, "Namespace of the artifact.")
+		flags.BoolVar(&resume, "resume", false, "Enable resumable downloads with persistent state file.")
+		flags.BoolVar(&unpack, "unpack", false, "Unpack the downloaded artifact (assumed to be a zip) into the destination directory.")
+	}).DoWithArgs(func(ctx context.Context, args []string) error {
+		if len(args) != 2 {
+			return fnerrors.Newf("expected exactly two arguments: a remote source and a local destination")
+		}
+		src, dest := args[0], args[1]
+
+		token, err := fnapi.FetchToken(ctx)
+		if err != nil {
+			return err
+		}
+
+		cli, err := storage.NewClient(ctx, token)
+		if err != nil {
+			return err
+		}
+		defer cli.Close()
+
+		downloadTo := dest
+		if unpack {
+			tmpFile, err := os.CreateTemp("", "artifact-download-*.zip")
+			if err != nil {
+				return fnerrors.Newf("failed to create temporary file: %w", err)
+			}
+			defer os.Remove(tmpFile.Name())
+			tmpFile.Close() // downloader will open it
+			downloadTo = tmpFile.Name()
+		}
+
+		start := time.Now()
+		if err := downloader.DownloadArtifact(ctx, cli, namespace, src, downloadTo, downloader.Options{Resume: resume}); err != nil {
+			return err
+		}
+
+		stat, err := os.Stat(downloadTo)
+		if err != nil {
+			return fnerrors.Newf("failed to stat downloaded file: %w", err)
+		}
+
+		fmt.Fprintf(console.Stdout(ctx), "Downloaded %s (namespace %s) (%s). Took %v.\n",
+			src, namespace, humanize.Bytes(uint64(stat.Size())), time.Since(start))
+
+		if unpack {
+			start := time.Now()
+			if err := unzipArtifact(ctx, downloadTo, dest); err != nil {
+				return err
+			}
+			fmt.Fprintf(console.Stdout(ctx), "Unpacking took %v.\n", time.Since(start))
+		} else {
+			fmt.Fprintf(console.Stdout(ctx), "Downloaded to %s.\n", dest)
+		}
+
+		return nil
+	})
+}
+
+func unzipArtifact(ctx context.Context, src, dest string) error {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return fnerrors.Newf("failed to open zip file %q: %w", src, err)
+	}
+	defer r.Close()
+
+	if err := os.MkdirAll(dest, 0755); err != nil {
+		return fnerrors.Newf("failed to create destination directory %q: %w", dest, err)
+	}
+
+	absDest, err := filepath.Abs(filepath.Clean(dest))
+	if err != nil {
+		return fnerrors.Newf("failed to resolve destination path: %w", err)
+	}
+
+	for _, f := range r.File {
+		fpath := filepath.Join(dest, f.Name)
+
+		// Check for Zip Slip
+		absPath, err := filepath.Abs(filepath.Clean(fpath))
+		if err != nil {
+			return fnerrors.Newf("failed to resolve file path: %w", err)
+		}
+
+		if !strings.HasPrefix(absPath, absDest+string(os.PathSeparator)) {
+			return fnerrors.Newf("illegal file path: %s", fpath)
+		}
+
+		if f.FileInfo().IsDir() {
+			if err := os.MkdirAll(fpath, os.ModePerm); err != nil {
+				return fnerrors.Newf("failed to create directory %q: %w", fpath, err)
+			}
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
+			return fnerrors.Newf("failed to create directory %q: %w", filepath.Dir(fpath), err)
+		}
+
+		// Handle symlinks
+		if f.FileInfo().Mode()&os.ModeSymlink != 0 {
+			rc, err := f.Open()
+			if err != nil {
+				return fnerrors.Newf("failed to open zip file content %q: %w", f.Name, err)
+			}
+			targetBytes, err := io.ReadAll(rc)
+			rc.Close()
+			if err != nil {
+				return fnerrors.Newf("failed to read symlink target for %q: %w", f.Name, err)
+			}
+			target := string(targetBytes)
+
+			// Validate symlink target doesn't escape destination
+			absTarget := filepath.Join(filepath.Dir(fpath), target)
+			absTargetClean, err := filepath.Abs(filepath.Clean(absTarget))
+			if err == nil && !strings.HasPrefix(absTargetClean, absDest+string(os.PathSeparator)) && absTargetClean != absDest {
+				// Only block absolute symlinks that escape; relative symlinks within archive are ok
+				if filepath.IsAbs(target) {
+					return fnerrors.Newf("illegal symlink target escapes destination: %s -> %s", f.Name, target)
+				}
+			}
+
+			if err := os.Symlink(target, fpath); err != nil {
+				return fnerrors.Newf("failed to create symlink %q -> %q: %w", fpath, target, err)
+			}
+			fmt.Fprintf(console.Stdout(ctx), "Created symlink %s -> %s\n", fpath, target)
+			continue
+		}
+
+		outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err != nil {
+			return fnerrors.Newf("failed to open output file %q: %w", fpath, err)
+		}
+
+		rc, err := f.Open()
+		if err != nil {
+			outFile.Close()
+			return fnerrors.Newf("failed to open zip file content %q: %w", f.Name, err)
+		}
+
+		_, err = io.Copy(outFile, rc)
+		outFile.Close()
+		rc.Close()
+
+		if err != nil {
+			return fnerrors.Newf("failed to copy file content to %q: %w", fpath, err)
+		}
+
+		fmt.Fprintf(console.Stdout(ctx), "Created %s\n", fpath)
+	}
+
+	return nil
+}
+
+func newArtifactCacheURLCmd() *cobra.Command {
+	var dest string
+	var maxAge time.Duration
+	var maxAgeFlag *pflag.Flag
+
+	return fncobra.Cmd(&cobra.Command{
+		Use:   "cache-url [target url] --out=[filename] { --max_age=[duration] }",
+		Short: "Download an arbitrary URL using a pull-through cache.",
+		Long: `Download the content from an arbitrary URL and cache it for fast access.
+
+If the content is already present in the artifact cache for the given URL it will be used instead.
+
+The content at the URL is assumed to be immutable.`,
+		Args: cobra.ExactArgs(1),
+	}).WithFlags(func(flags *pflag.FlagSet) {
+		//flags.BoolVar(&renew, "renew", false, "Force-download from the source and update the cached content.")
+		fncobra.DurationVar(flags, &maxAge, "max_age", 0, "Redownload from source if the cached content is older than this duration.")
+		flags.StringVar(&dest, "out", "", "Filename to save the downloaded content at.")
+		cobra.MarkFlagRequired(flags, "out")
+		maxAgeFlag = flags.Lookup("max_age")
+	}).DoWithArgs(func(ctx context.Context, args []string) error {
+		now := time.Now()
+		sourceURL := args[0]
+
+		token, err := fnapi.FetchToken(ctx)
+		if err != nil {
+			return fnerrors.BadDataError("failed to obtain auth data: %w", err)
+		}
+
+		cli, err := storage.NewClient(ctx, token)
+		if err != nil {
+			return fnerrors.InvocationError("namespace api", "failed to connect: %w", err)
+		}
+		defer cli.Close()
+
+		var newerThan time.Time
+		if maxAgeFlag.Changed {
+			newerThan = now.Add(-maxAge)
+		}
+
+		return backoff.RetryNotify(func() error {
+			r, _, err := storage.CacheURL(ctx, cli, sourceURL, storage.CacheURLOpts{
+				NewerThan: newerThan,
+				Logf: func(f string, xs ...interface{}) {
+					fmt.Fprintf(console.Stderr(ctx), f, xs...)
+				},
+			})
+
+			if err != nil {
+				if status.Code(err) == codes.InvalidArgument {
+					return backoff.Permanent(fnerrors.BadInputError("%w", err))
+				}
+
+				if cse := new(storage.CacheSourceError); errors.As(err, cse) {
+					if cse.HTTPStatusCode == 0 || cse.HTTPStatusCode >= http.StatusInternalServerError {
+						// Only retry network errors or 5xx HTTP errors.
+						return err
+					}
+				}
+
+				return backoff.Permanent(fnerrors.InvocationError("remote", "%w", err))
+			}
+
+			w, err := os.Create(dest)
+			if err != nil {
+				return backoff.Permanent(fnerrors.Newf("failed to open %q: %w", dest, err))
+			}
+			defer w.Close()
+
+			if _, err := w.ReadFrom(r); err != nil {
+				return backoff.Permanent(fnerrors.Newf("failed to download artifact: %w", err))
+			}
+
+			fmt.Fprintf(console.Stderr(ctx), "Downloaded to %s.\n", dest)
+			return nil
+		},
+			backoff.WithMaxRetries(backoff.WithContext(backoff.NewConstantBackOff(5*time.Second), ctx), cacheURLRetries),
+			func(err error, delay time.Duration) {
+				fmt.Fprintf(console.Stderr(ctx), "Error: Failed to cache artifact: %v; retrying in %v...\n", err, delay)
+			})
+	})
+}
+
+type artifactDescribeJSONOutput struct {
+	ID        string            `json:"id"`
+	Path      string            `json:"path"`
+	Namespace string            `json:"namespace"`
+	Size      int64             `json:"size"`
+	Status    string            `json:"status"`
+	CreatedAt *time.Time        `json:"created_at,omitempty"`
+	ExpiresAt *time.Time        `json:"expires_at,omitempty"`
+	Labels    map[string]string `json:"labels,omitempty"`
+	WebURL    string            `json:"web_url,omitempty"`
+}
+
+type artifactDescribeErrorJSONOutput struct {
+	Error     string `json:"error"`
+	Path      string `json:"path"`
+	Namespace string `json:"namespace"`
+}
+
+func writeArtifactDescribeNotFound(w io.Writer, output, path, namespace string) (string, error) {
+	msg := fmt.Sprintf("%s doesn't exist", path)
+
+	switch output {
+	case "json":
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(artifactDescribeErrorJSONOutput{
+			Error:     msg,
+			Path:      path,
+			Namespace: namespace,
+		}); err != nil {
+			return "", err
+		}
+	case "plain":
+		if _, err := fmt.Fprintf(w, "%s\n", msg); err != nil {
+			return "", err
+		}
+	default:
+		return "", fnerrors.BadInputError("invalid output format: %s", output)
+	}
+
+	return msg, nil
+}
+
+func artifactDescribeNotFoundError(w io.Writer, output, path, namespace string) error {
+	msg, err := writeArtifactDescribeNotFound(w, output, path, namespace)
+	if err != nil {
+		return err
+	}
+
+	return fnerrors.ExitWithCode(errors.New(msg), 2)
+}
+
+func newArtifactDescribeCmd() *cobra.Command {
+	var namespace string
+	var output string
+
+	return fncobra.Cmd(&cobra.Command{
+		Use:   "describe [path]",
+		Short: "Describe an artifact's metadata.",
+		Args:  cobra.ExactArgs(1),
+	}).WithFlags(func(flags *pflag.FlagSet) {
+		flags.StringVar(&namespace, "namespace", mainArtifactNamespace, "Namespace of the artifact.")
+		flags.StringVarP(&output, "output", "o", "plain", "Output format: plain, json")
+	}).DoWithArgs(func(ctx context.Context, args []string) error {
+		path := args[0]
+		if output != "plain" && output != "json" {
+			return fnerrors.BadInputError("invalid output format: %s", output)
+		}
+
+		token, err := fnapi.FetchToken(ctx)
+		if err != nil {
+			return err
+		}
+
+		cli, err := storage.NewClient(ctx, token)
+		if err != nil {
+			return err
+		}
+		defer cli.Close()
+
+		res, err := cli.Artifacts.ResolveArtifact(ctx, &storagev1beta.ResolveArtifactRequest{
+			Path:      path,
+			Namespace: namespace,
+		})
+		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				return artifactDescribeNotFoundError(console.Stdout(ctx), output, path, namespace)
+			}
+			return err
+		}
+
+		desc := res.GetDescription()
+
+		if desc.GetStatus() == storagev1beta.Artifact_EXPIRED {
+			return artifactDescribeNotFoundError(console.Stdout(ctx), output, path, namespace)
+		}
+
+		switch output {
+		case "json":
+			out := artifactDescribeJSONOutput{
+				ID:        desc.GetId(),
+				Path:      desc.GetPath(),
+				Namespace: desc.GetNamespace(),
+				Size:      desc.GetSize(),
+				Status:    desc.GetStatus().String(),
+				WebURL:    desc.GetWebUrl(),
+			}
+
+			if desc.GetCreatedAt() != nil {
+				t := desc.GetCreatedAt().AsTime()
+				out.CreatedAt = &t
+			}
+			if desc.GetExpiresAt() != nil {
+				t := desc.GetExpiresAt().AsTime()
+				out.ExpiresAt = &t
+			}
+			if len(desc.GetLabels()) > 0 {
+				out.Labels = make(map[string]string)
+				for _, lbl := range desc.GetLabels() {
+					out.Labels[lbl.GetName()] = lbl.GetValue()
+				}
+			}
+
+			enc := json.NewEncoder(console.Stdout(ctx))
+			enc.SetIndent("", "  ")
+			return enc.Encode(out)
+
+		case "plain":
+			stdout := console.Stdout(ctx)
+			fmt.Fprintf(stdout, "Path:      %s\n", desc.GetPath())
+			fmt.Fprintf(stdout, "Namespace: %s\n", desc.GetNamespace())
+			fmt.Fprintf(stdout, "ID:        %s\n", desc.GetId())
+			fmt.Fprintf(stdout, "Size:      %s (%d bytes)\n", humanize.Bytes(uint64(desc.GetSize())), desc.GetSize())
+			fmt.Fprintf(stdout, "Status:    %s\n", desc.GetStatus().String())
+			if desc.GetCreatedAt() != nil {
+				fmt.Fprintf(stdout, "Created:   %s\n", desc.GetCreatedAt().AsTime().Format(time.RFC3339))
+			}
+			if desc.GetExpiresAt() != nil {
+				fmt.Fprintf(stdout, "Expires:   %s\n", desc.GetExpiresAt().AsTime().Format(time.RFC3339))
+			}
+			if desc.GetWebUrl() != "" {
+				fmt.Fprintf(stdout, "Web URL:   %s\n", desc.GetWebUrl())
+			}
+			if len(desc.GetLabels()) > 0 {
+				fmt.Fprintf(stdout, "Labels:\n")
+				for _, lbl := range desc.GetLabels() {
+					fmt.Fprintf(stdout, "  %s: %s\n", lbl.GetName(), lbl.GetValue())
+				}
+			}
+			return nil
+
+		default:
+			return fnerrors.BadInputError("invalid output format: %s", output)
+		}
+	})
+}

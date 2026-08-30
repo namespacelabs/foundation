@@ -1,0 +1,24 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.runtime.kubernetes.helm;
+
+option go_package = "namespacelabs.dev/foundation/internal/runtime/kubernetes/helm";
+
+message OpHelmInstall {
+    Blob chart_archive_blob = 1;
+    string namespace        = 2;
+    string   release_name   = 3;
+    JsonBlob values         = 4;
+}
+
+message Blob {
+    bytes inline = 1;
+}
+
+message JsonBlob {
+    string inline = 1;
+}

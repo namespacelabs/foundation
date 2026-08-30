@@ -1,0 +1,88 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+package buildkit
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/containerd/errdefs"
+	buildkit "github.com/moby/buildkit/client"
+	"github.com/moby/moby/api/types/mount"
+	"github.com/moby/moby/client"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/runtime/docker"
+	"namespacelabs.dev/foundation/internal/runtime/docker/install"
+)
+
+const DefaultContainerName = "fn-buildkitd"
+
+func EnsureBuildkitd(ctx context.Context, containerName string) (string, error) {
+	vendoredVersion, err := Version()
+	if err != nil {
+		return "", err
+	}
+
+	var spec = install.PersistentSpec{
+		Name:          "buildkit",
+		ContainerName: containerName,
+		Version:       vendoredVersion,
+		Image:         "moby/buildkit",
+		WaitUntilRunning: func(ctx context.Context, containerName string) error {
+			return waitReadiness(ctx, func(ctx context.Context) (*buildkit.Client, error) {
+				return buildkit.New(ctx, makeAddr(containerName))
+			})
+		},
+		Volumes: map[string]string{
+			containerName: "/var/lib/buildkit",
+		},
+		Privileged: true,
+	}
+
+	if err := spec.Ensure(ctx, console.TypedOutput(ctx, "docker", console.CatOutputTool)); err != nil {
+		return "", err
+	}
+
+	return makeAddr(spec.ContainerName), nil
+}
+
+func RemoveBuildkitd(ctx context.Context) error {
+	dockerclient, err := docker.NewClient()
+	if err != nil {
+		return fnerrors.InternalError("failed to instantiate the docker client while removing buildkitd: %w", err)
+	}
+
+	// Ignore if the container is already removed.
+	ctr, err := dockerclient.ContainerInspect(ctx, DefaultContainerName)
+	if err != nil {
+		if errdefs.IsNotFound(err) {
+			return nil
+		} else {
+			return err
+		}
+	}
+
+	// Remove container
+	opts := client.ContainerRemoveOptions{Force: true}
+	if err := dockerclient.ContainerRemove(ctx, ctr.Name, opts); err != nil {
+		return fnerrors.InternalError("failed to remove the buildkitd container: %w", err)
+	}
+
+	// Remove volumes
+	for _, m := range ctr.Mounts {
+		if m.Type == mount.TypeVolume {
+			if err := dockerclient.VolumeRemove(ctx, m.Name, true); err != nil {
+				return fnerrors.InternalError("failed to remove the buildkitd volume: %w", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func makeAddr(containerName string) string {
+	return fmt.Sprintf("docker-container://%s", containerName)
+}

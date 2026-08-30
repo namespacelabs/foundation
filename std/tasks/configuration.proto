@@ -1,0 +1,22 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.workspace.tasks;
+
+option go_package = "namespacelabs.dev/foundation/std/tasks";
+
+message ThrottleConfiguration {
+    // Capacity configuration applies to requests with these labels.
+    map<string, string> labels = 1;
+    // Maximum capacity, i.e. concurrency.
+    int32 capacity = 2;
+    // If specified, maintain a map of capacities, keyed by the value of the specified label.
+    string count_per_label = 3;
+}
+
+message ThrottleConfigurations {
+    repeated ThrottleConfiguration throttle_configuration = 1;
+}

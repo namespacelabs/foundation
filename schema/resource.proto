@@ -1,0 +1,82 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "schema/package.proto";
+import "schema/provision.proto";
+
+// A resource represents an instance of an entity class, i.e. a _thing_ that has
+// been instantiated to be used by a server, or by other resources.
+message ResourceInstance {
+    reserved 5;
+
+    string package_name = 1;  // Computed, where this resource lives.
+    string name         = 2;  // The name of the resource, scoped to the package where it lives.
+
+    PackageRef class = 3;  // The class of resource being instantiated.
+    string provider  = 4;  // Package name of the provider that knows how to instantiate this resource.
+
+    // A resource is instantiated from an intent, which can be either specified inline, or be computed.
+    string     serialized_intent_json = 8;
+    Invocation intent_from            = 6;
+
+    // Set of resources passed to provider. Must match the requirements set by the provider.
+    repeated InputResource input_resource = 7;
+
+    message InputResource {
+        PackageRef name         = 1;
+        PackageRef resource_ref = 2;
+    }
+}
+
+message ResourceClass {
+    string package_name = 1;  // Computed, where this resource class lives.
+    string name         = 2;  // The name of class. A resource class' package_name and name combine to form `class`.
+    string description  = 6;  // A human-visible description of this resource class.
+
+    ResourceType intent_type   = 3;  // How is the resource defined.
+    ResourceType instance_type = 4;  // And what generated configuration is attached to each instance.
+
+    string default_provider = 5;  // If set, a resource that refers to this class and doesn't specify a provider will default to this default.
+}
+
+message ResourceType {
+    string proto_package = 3; // Namespace package where the proto_source lives.
+    string proto_source  = 1;
+    string proto_type    = 2;
+}
+
+message ResourceProvider {
+    string       package_name   = 1;  // Computed, where this provider lives.
+    ResourceType intent_type    = 9;
+    PackageRef   provides_class = 2;  // The resource this provider supports.
+
+    Invocation initialized_with = 3;   // Run this invocation to create the resource. This yields an instantiation during the execution phase.
+    Invocation prepare_with     = 5;   // Create the resource during planning phase.
+    Invocation resources_from   = 10;  // Compute resources from this invocation.
+
+    repeated ResourceInput resource_input = 8;
+
+    ResourcePack resource_pack = 4;  // Resources this provider depends on in order to instantiate its own resource.
+
+    repeated PackageRef available_classes  = 6;  // Resource classes that an invocation may produce (any instance of a different class will be rejected).
+    repeated string     available_packages = 7;  // Packages that an invocation may reference.
+
+    message ResourceInput {
+        PackageRef name             = 1;
+        PackageRef class            = 2;
+        PackageRef default_resource = 3;
+        bool       optional         = 4;
+    }
+}
+
+message ResourcePack {
+    repeated PackageRef       resource_ref      = 1;
+    repeated ResourceInstance resource_instance = 2;
+}

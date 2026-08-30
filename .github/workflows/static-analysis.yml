@@ -1,0 +1,70 @@
+name: static-analysis
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - "*"
+  merge_group:
+    types: [checks_requested]
+
+concurrency:
+  group: ${{ github.workflow }}-$${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  gofmt:
+    runs-on: nscloud-ubuntu-22.04-amd64-2x8
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Run gofmt (goimports)
+        run: go run golang.org/x/tools/cmd/goimports -d --format-only $(find . -name '*.go' ! -name '*.pb.go' ! -name 'deps.fn.go' -type f)
+
+  vet:
+    runs-on: nscloud-ubuntu-22.04-amd64-2x8
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.26.x
+      - name: Check out code
+        uses: actions/checkout@v7
+      - name: Run go vet
+        run: go vet ./...
+
+  staticcheck:
+    # Temporarily disable staticcheck until we get it working with go 1.23.
+    if: false
+    runs-on: nscloud
+    strategy:
+      matrix:
+        goos: [linux] # Not running darwin due to it requiring the C integration.
+        goarch: [amd64, arm64]
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.26.x
+
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Install staticcheck
+        run: "go install honnef.co/go/tools/cmd/staticcheck"
+
+      - name: Print staticcheck version
+        run: "staticcheck -version"
+
+      - name: "Run staticcheck (${{ matrix.goos }}/${{ matrix.goarch }})"
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: "staticcheck ./..."

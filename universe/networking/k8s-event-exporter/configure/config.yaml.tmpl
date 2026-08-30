@@ -1,0 +1,9 @@
+logLevel: error
+logFormat: json
+route:
+  routes:
+    - match:
+        - receiver: "stdout"
+receivers:
+  - name: "stdout"
+    stdout: { }

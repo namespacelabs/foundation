@@ -1,0 +1,131 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.schema;
+
+import "schema/environment.proto";
+import "schema/integration.proto";
+import "schema/package.proto";
+import "schema/resolvable.proto";
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+// A "binary" represents a compiled image. It's output is an OCI image, but the
+// difference to an OCI image is that a binary knows how to build itself (i.e.
+// the resulting image is reproducible).
+message Binary {
+    reserved 3, 4, 5, 7;
+
+    // The package name (computed).
+    string package_name = 1;
+
+    string name = 2;
+
+    BinaryConfig          config     = 6;  // Run instructions.
+    LayeredImageBuildPlan build_plan = 8;
+    repeated Label        labels     = 9;
+}
+
+// Next ID: 19
+message ImageBuildPlan {
+    reserved 3, 9, 14, 16;
+
+    string description = 12;  // A human-readable description of what's being built. Optional.
+
+    string              go_package          = 1;   // Use go binary builder.
+    GoBuild             go_build            = 7;   // Use go binary builder.
+    string              dockerfile          = 2;   // Use Dockerfile builder.
+    DockerBuild         docker_build        = 18;  // Use Dockerfile builder.
+    LLBPlan             llb_plan            = 4;   // Build binary which itself produces LLB.
+    string              nix_flake           = 5;   // Build a docker image from a nix flake.
+    repeated string     snapshot_files      = 6;   // Add all referenced files, and directories, recursively visiting their children.
+    string              image_id            = 8;   // Use an existing image.
+    PackageRef          binary              = 10;  // Add another binary as a layer.
+    StaticFilesServer   static_files_server = 11;
+    AlpineBuild         alpine_build        = 13;  // Build an alpine image that installs required packages.
+    FilesFrom           files_from          = 15;
+    MakeFilesystemImage make_fs_image       = 17;
+    MelangeBuild melange_build = 19;
+
+    message LLBPlan {
+        Binary output_of = 1;
+    }
+
+    message GoBuild {
+        string rel_path      = 1;
+        string binary_name   = 2;
+        bool   binary_only   = 3;
+        bool   strip         = 4;  // Deprecated: use strip_symbols and strip_dwarf instead.
+        bool   strip_symbols = 5;
+        bool   strip_dwarf   = 6;
+    }
+
+    message AlpineBuild {
+        string          version = 2;  // An optional version + digest.
+        repeated string package = 1;
+    }
+
+    message StaticFilesServer {
+        // Path to serve files from.
+        string dir = 1;
+
+        int32 port = 2;
+    }
+
+    message FilesFrom {
+        ImageBuildPlan  from       = 1;
+        repeated string files      = 2;
+        string          target_dir = 3;
+    }
+
+    message MakeSquashFS {
+        ImageBuildPlan from   = 1;
+        string         target = 2;
+    }
+
+    message MakeFilesystemImage {
+        ImageBuildPlan from   = 1;
+        string         target = 2;
+        string         kind   = 3;
+        int64          size   = 4;  // Bytes.
+        bool           raw    = 5;
+    }
+
+    message DockerBuild {
+        string                   dockerfile        = 1;
+        repeated AttrsByPlatform attrs_by_platform = 2;
+        map<string, string>      attrs             = 3;
+        string                   context_dir       = 4;
+
+        message AttrsByPlatform {
+            string              platform = 1;
+            map<string, string> attrs    = 2;
+        }
+    }
+
+    message MelangeBuild {
+        repeated string files = 1;
+        repeated string platforms = 2;
+    }
+}
+
+message LayeredImageBuildPlan {
+    repeated ImageBuildPlan layer_build_plan = 1;  // Each build plan will yield N layers, in order.
+}
+
+// Instructions of how to invoke the image, if it includes an invocable binary.
+message BinaryConfig {
+    repeated string   command     = 1;
+    repeated string   args        = 2;
+    repeated EnvEntry env         = 3;
+    string            working_dir = 4;
+
+    message EnvEntry {
+        reserved 2, 3, 4, 5, 6, 7, 8, 9;
+        string     name  = 1;
+        Resolvable value = 10;
+    }
+}

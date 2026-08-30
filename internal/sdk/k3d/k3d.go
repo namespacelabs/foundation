@@ -1,0 +1,326 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+package k3d
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"golang.org/x/mod/semver"
+	"namespacelabs.dev/foundation/internal/artifacts"
+	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/artifacts/unpack"
+	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/disk"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/localexec"
+	"namespacelabs.dev/foundation/internal/runtime/docker"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
+	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/tasks"
+	"sigs.k8s.io/yaml"
+)
+
+const version = "5.8.3"
+
+var (
+	IgnoreZfsCheck     = false
+	IgnoreVersionCheck = false
+)
+
+var Pins = map[string]artifacts.Reference{
+	"linux/amd64": {
+		URL: fmt.Sprintf("https://github.com/rancher/k3d/releases/download/v%s/k3d-linux-amd64", version),
+		Digest: schema.Digest{
+			Algorithm: "sha256",
+			Hex:       "dbaa79a76ace7f4ca230a1ff41dc7d8a5036a8ad0309e9c54f9bf3836dbe853e",
+		},
+	},
+	"linux/arm64": {
+		URL: fmt.Sprintf("https://github.com/rancher/k3d/releases/download/v%s/k3d-linux-arm64", version),
+		Digest: schema.Digest{
+			Algorithm: "sha256",
+			Hex:       "0b8110f2229631af7402fb828259330985918b08fefd38b7f1b788a1c8687216",
+		},
+	},
+	"darwin/arm64": {
+		URL: fmt.Sprintf("https://github.com/rancher/k3d/releases/download/v%s/k3d-darwin-arm64", version),
+		Digest: schema.Digest{
+			Algorithm: "sha256",
+			Hex:       "8da468daa7dc7cf7cdd4735f90a9bb05179fa27858250f62e3d8cdf5b5ca0698",
+		},
+	},
+	"darwin/amd64": {
+		URL: fmt.Sprintf("https://github.com/rancher/k3d/releases/download/v%s/k3d-darwin-amd64", version),
+		Digest: schema.Digest{
+			Algorithm: "sha256",
+			Hex:       "fd0f8e9e8ea4d8bc3674572ca6ed0833b639bf57c43c708616d937377324cfea",
+		},
+	},
+}
+
+type State struct {
+	Running bool   `json:"running,omitempty"`
+	Status  string `json:"status,omitempty"`
+}
+
+type Node struct {
+	Name  string `json:"name,omitempty"`
+	Role  string `json:"role,omitempty"`
+	State State  `json:"state,omitempty"`
+}
+
+type Cluster struct {
+	Name  string `json:"name,omitempty"`
+	Nodes []Node `json:"nodes,omitempty"`
+}
+
+type Registry = Node
+
+type K3D string
+
+func EnsureSDK(ctx context.Context, p specs.Platform) (K3D, error) {
+	sdk, err := SDK(ctx, p)
+	if err != nil {
+		return "", err
+	}
+
+	return compute.GetValue(ctx, sdk)
+}
+
+func SDK(ctx context.Context, p specs.Platform) (compute.Computable[K3D], error) {
+	key := fmt.Sprintf("%s/%s", p.OS, p.Architecture)
+	ref, ok := Pins[key]
+	if !ok {
+		return nil, fnerrors.Newf("platform not supported: %s", key)
+	}
+
+	if !IgnoreZfsCheck {
+		if fstype, err := disk.FSType("/"); err != nil {
+			fmt.Fprintf(console.Warnings(ctx), "failed to retrieve filesystem type, can't check for ZFS: %v\n", err)
+		} else if fstype == "zfs" {
+			return nil, fnerrors.InternalError("currently a base system of ZFS is not supported, as it is not compatible with k3d (see https://github.com/namespacelabs/foundation/issues/121). You can ignore this check by retrying with --ignore_zfs_check")
+		}
+	}
+
+	w := unpack.Unpack("k3d", unpack.MakeFilesystem("k3d", 0755, ref))
+
+	return compute.Map(
+		tasks.Action("k3d.ensure").Arg("version", version).HumanReadablef("Ensuring k3d %s is installed", version),
+		compute.Inputs().Computable("k3d", w).JSON("platform", p),
+		compute.Output{},
+		func(ctx context.Context, r compute.Resolved) (K3D, error) {
+			return K3D(filepath.Join(compute.MustGetDepValue(r, w, "k3d").Files, "k3d")), nil
+		}), nil
+}
+
+// https://github.com/rancher/k3d/issues/807
+const minimumDockerVer = "20.10.5"
+const minimumRuncVer = "1.0.0-rc93"
+
+func ValidateDocker(ctx context.Context, cli docker.Client) error {
+	if IgnoreVersionCheck {
+		return nil
+	}
+
+	fmt.Fprintf(console.Debug(ctx), "using Docker client version %q\n", cli.ClientVersion())
+
+	ver, err := cli.ServerVersion(ctx)
+	if err != nil {
+		return fnerrors.InvocationError("docker", "failed to obtain docker version: %w", err)
+	}
+
+	fmt.Fprintf(console.Debug(ctx), "found Docker server version %q\n", ver.Version)
+
+	dockerOK, runcOK, runcVersion := validateVersions(ver)
+	if !dockerOK || !runcOK {
+		stderr := console.Stderr(ctx)
+		fmt.Fprintln(stderr, "Docker does not meet our minimum requirements:")
+		fmt.Fprintf(stderr, "  Docker meets: %v, minimum: %s, running: %s\n", dockerOK, minimumDockerVer, ver.Version)
+		fmt.Fprintf(stderr, "  Runc meets: %v, minimum: %s, running: %s\n", runcOK, minimumRuncVer, runcVersion)
+		return fnerrors.Newf("docker does not meet requirements")
+	}
+
+	return nil
+}
+
+func validateVersions(ver docker.ServerVersion) (bool, bool, string) {
+	dockerOK := semver.Compare("v"+ver.Version, "v"+minimumDockerVer) >= 0
+	runcOK := false
+
+	runcVersion := "<not present>"
+	for _, comp := range ver.Components {
+		if comp.Name == "runc" {
+			runcVersion = comp.Version
+
+			// Debian uses a different format for versions, using ~ instead of -
+			// to mark rc builds. Ideally we'd have a more robust version parser
+			// here, but for now, just convert all ~ back to - so Go's semver
+			// parsing is happy.
+			modifiedVersion := strings.ReplaceAll(runcVersion, "~", "-")
+
+			runcOK = semver.Compare("v"+modifiedVersion, "v"+minimumRuncVer) >= 0
+		}
+	}
+	return dockerOK, runcOK, runcVersion
+}
+
+func (k3d K3D) ListClusters(ctx context.Context) ([]Cluster, error) {
+	var output bytes.Buffer
+
+	if err := tasks.Action("k3d.list-clusters").Run(ctx, func(ctx context.Context) error {
+		args := []string{"cluster", "list", "-o", "json"}
+		return k3d.doWithStdoutStderr(ctx, &output, console.Output(ctx, "k3d"), args...)
+	}); err != nil {
+		return nil, err
+	}
+
+	var clusters []Cluster
+	if err := json.Unmarshal(output.Bytes(), &clusters); err != nil {
+		return nil, err
+	}
+
+	return clusters, nil
+}
+
+func (k3d K3D) CreateCluster(ctx context.Context, name, registry, image string, updateDefault bool) error {
+	fmt.Fprintf(console.Stdout(ctx), "Creating a Kubernetes cluster, this may take up to a minute (image=%s).\n", image)
+
+	args := []string{
+		"cluster", "create",
+		"--registry-use", registry,
+		"--image", image,
+		fmt.Sprintf("--kubeconfig-update-default=%v", updateDefault),
+		"--k3s-arg", "--disable=traefik@server:0",
+		"--wait", name,
+	}
+
+	if mirror := oci.DockerHubMirror(); mirror != "" {
+		mirrors := map[string]any{}
+
+		for _, addr := range []string{"docker.io", "registry-1.docker.io", "registry.docker.com", "registry.hub.docker.com"} {
+			mirrors[addr] = map[string][]string{
+				"endpoint": {mirror},
+			}
+		}
+
+		k3sregs := map[string]any{
+			"mirrors": mirrors,
+		}
+
+		data, err := yaml.Marshal(k3sregs)
+		if err != nil {
+			return fnerrors.Newf("failed to marshal yaml: %w", err)
+		}
+
+		cfgDir, err := dirs.Ensure(cfgDir())
+		if err != nil {
+			return fnerrors.Newf("failed to ensure config dir: %w", err)
+		}
+
+		regFile := filepath.Join(cfgDir, "registries.yaml")
+		if err := os.WriteFile(regFile, []byte(data), 0644); err != nil {
+			fmt.Fprintf(console.Warnings(ctx), "Failed to write token cache: %v\n", err)
+		}
+
+		args = append(args, "--registry-config", regFile)
+	}
+
+	return tasks.Action("k3d.create-cluster").Arg("image", image).Run(ctx, func(ctx context.Context) error {
+		return k3d.do(ctx, args...)
+	})
+}
+
+func cfgDir() (string, error) {
+	c, err := dirs.Config()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(c, "k3d"), nil
+}
+
+func (k3d K3D) DeleteCluster(ctx context.Context, name string) error {
+	return tasks.Action("k3d.delete-cluster").Run(ctx, func(ctx context.Context) error {
+		return k3d.do(ctx, "cluster", "delete", name)
+	})
+}
+
+func (k3d K3D) ListRegistries(ctx context.Context) ([]Registry, error) {
+	var output bytes.Buffer
+
+	if err := tasks.Action("k3d.list-registries").Run(ctx, func(ctx context.Context) error {
+		args := []string{"registry", "list", "-o", "json"}
+		return k3d.doWithStdoutStderr(ctx, &output, console.Output(ctx, "k3d"), args...)
+	}); err != nil {
+		return nil, err
+	}
+
+	var registries []Registry
+	if err := json.Unmarshal(output.Bytes(), &registries); err != nil {
+		return nil, err
+	}
+
+	return registries, nil
+}
+
+func (k3d K3D) DeleteRegistry(ctx context.Context, name string) error {
+	return tasks.Action("k3d.delete-registry").Run(ctx, func(ctx context.Context) error {
+		return k3d.do(ctx, "registry", "delete", name)
+	})
+}
+
+// If port is 0, an open port is allocated dynamically.
+func (k3d K3D) CreateRegistry(ctx context.Context, name string, port int) error {
+	if !strings.HasPrefix(name, "k3d-") {
+		return fnerrors.Newf("a k3d- prefix is required in registry names")
+	}
+
+	return tasks.Action("k3d.create-image-registry").Run(ctx, func(ctx context.Context) error {
+		args := []string{"registry", "create", strings.TrimPrefix(name, "k3d-")}
+		return k3d.do(ctx, args...)
+	})
+}
+
+func (k3d K3D) MergeConfiguration(ctx context.Context, name string) error {
+	return tasks.Action("k3d.merge-configuration").Arg("name", name).Run(ctx, func(ctx context.Context) error {
+		return k3d.do(ctx, "kubeconfig", "merge", name, "-d", "--kubeconfig-switch-context=false")
+	})
+}
+
+func (k3d K3D) StartNode(ctx context.Context, nodeName string) error {
+	return tasks.Action("k3d.start-node").Arg("name", nodeName).Run(ctx, func(ctx context.Context) error {
+		return k3d.do(ctx, "node", "start", nodeName)
+	})
+}
+
+func (k3d K3D) StopNode(ctx context.Context, nodeName string) error {
+	return tasks.Action("k3d.stop-node").Arg("name", nodeName).Run(ctx, func(ctx context.Context) error {
+		return k3d.do(ctx, "node", "stop", nodeName)
+	})
+}
+
+func (k3d K3D) do(ctx context.Context, args ...string) error {
+	// Pipe stdout to a named debug as we typically only care about errors from k3d invocations.
+	return k3d.doWithStdoutStderr(ctx, console.NamedDebug(ctx, "k3d"), console.Output(ctx, "k3d"), args...)
+}
+
+func (k3d K3D) doWithStdoutStderr(ctx context.Context, stdout io.Writer, stderr io.Writer, args ...string) error {
+	fmt.Fprintf(console.Debug(ctx), "k3d: running %s\n", strings.Join(append([]string{string(k3d)}, args...), " "))
+
+	cmd := exec.CommandContext(ctx, string(k3d), args...)
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	return localexec.RunAndPropagateCancelation(ctx, "k3d", cmd)
+}

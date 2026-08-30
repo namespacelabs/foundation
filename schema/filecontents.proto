@@ -1,0 +1,21 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+// TODO reconcile with std.types.Resource.
+message FileContents {
+    string path     = 1;
+    bytes  contents = 2;
+
+    reserved 3;
+}
+
+message InlineJson {
+    string inline_json = 1;
+}

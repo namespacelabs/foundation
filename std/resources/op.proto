@@ -1,0 +1,25 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.std.resources;
+
+option go_package = "namespacelabs.dev/foundation/std/resources";
+
+import "schema/package.proto";
+import "schema/runtime/config.proto";
+import "schema/runtime/deployable.proto";
+
+message ResourceDependency {
+    foundation.schema.PackageRef resource_ref         = 1;
+    string                       resource_instance_id = 2;
+    foundation.schema.PackageRef resource_class       = 3;
+}
+
+message OpCaptureServerConfig {
+    string                               resource_instance_id = 1;
+    foundation.schema.runtime.Server     server_config        = 2;
+    foundation.schema.runtime.Deployable deployable           = 3;
+}

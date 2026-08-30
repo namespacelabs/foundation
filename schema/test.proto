@@ -1,0 +1,31 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "schema/binary.proto";
+import "schema/integration.proto";
+import "schema/package.proto";
+
+message Test {
+    // The package name (computed).
+    string package_name = 1;
+
+    string            name             = 2;
+    schema.PackageRef driver           = 8;
+    BinaryConfig      binary_config    = 6;
+    repeated string   serversUnderTest = 4;
+
+    // Integration that needs to be applied to this test. May be nil.
+    // Shouldn't be used outside of workspace.FinalizePackage.
+    Integration integration = 5;
+
+    repeated string tag = 7;
+
+    reserved 3;
+}

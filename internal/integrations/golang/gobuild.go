@@ -1,0 +1,36 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+package golang
+
+import (
+	"strings"
+
+	"golang.org/x/mod/semver"
+)
+
+func goBuildArgs(goVersion string, stripSymbols, stripDwarf bool) map[string]string {
+	m := map[string]string{
+		"-v":        "",
+		"-trimpath": "",
+	}
+
+	var ldflags []string
+	if stripSymbols {
+		ldflags = append(ldflags, "-s")
+	}
+	if stripDwarf {
+		ldflags = append(ldflags, "-w")
+	}
+	if len(ldflags) > 0 {
+		m["-ldflags"] = strings.Join(ldflags, " ")
+	}
+
+	// VCS information is not included in the binaries, to ensure we have reproducible builds.
+	if semver.Compare("v"+goVersion, "v1.18") >= 0 {
+		m["-buildvcs"] = "false"
+	}
+
+	return m
+}

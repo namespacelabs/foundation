@@ -1,0 +1,116 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "google/protobuf/any.proto";
+import "schema/environment.proto";
+import "schema/package.proto";
+
+// Workspace definition.
+// Next ID: 14
+message Workspace {
+    reserved 2;
+
+    string                   module_name    = 1;
+    repeated EnvironmentSpec env_spec       = 10;
+    repeated SecretBinding   secret_binding = 13;
+
+    // Package manager.
+    repeated Dependency dep = 3;
+
+    // Development options.
+    repeated Replace replace      = 4;
+    repeated string  private_repo = 5;
+
+    // Workspace-wide pre-compiled binaries.
+    repeated BinaryDigest prebuilt_binary          = 6;
+    string                prebuilt_base_repository = 7;
+
+    FoundationRequirements foundation = 8;
+
+    // A list of features to enable. Usually experimental features.
+    repeated string enabledFeatures = 12;
+
+    repeated ProtoModuleImports experimental_proto_module_imports = 9;
+
+    message Dependency {
+        string module_name = 1;
+        string version     = 2;
+    }
+
+    message Replace {
+        string module_name = 1;
+        string path        = 2;
+    }
+
+    message BinaryDigest {
+        string package_name = 1;
+        string digest       = 2;
+        string repository   = 3;
+    }
+
+    message FoundationRequirements {
+        int32 minimum_api   = 1;
+        int32 tools_version = 2;
+    }
+
+    message ProtoModuleImports {
+        string module_name = 1;
+    }
+
+    message EnvironmentSpec {
+        string              name                                  = 1;
+        string              runtime                               = 2;  // E.g. kubernetes
+        Environment.Purpose purpose                               = 3;
+        repeated foundation.schema.Label labels                   = 4;
+        repeated google.protobuf.Any configuration                = 5;
+        repeated DevHost.ConfigurePlatform platform_configuration = 6;
+    }
+
+    message SecretBinding {
+        PackageRef          package_ref   = 1;
+        string              environment   = 2;
+        google.protobuf.Any configuration = 3;
+    }
+
+    message LoadedFrom {
+        string          abs_path         = 1;
+        repeated string definition_files = 2;
+
+        reserved 3;
+    }
+
+    message Alias {
+        string module_name = 1;
+        string rel_path    = 2;
+    }
+}
+
+// Configure a developer workstation.
+message DevHost {
+    repeated ConfigureEnvironment configure          = 1;
+    repeated ConfigurePlatform    configure_platform = 2;
+    repeated google.protobuf.Any configure_tools     = 3;
+    repeated Workspace.EnvironmentSpec local_env     = 4;  // Allows specifying environments for local use alone.
+
+    message ConfigureEnvironment {
+        string              name                            = 1;
+        string              runtime                         = 2;
+        Environment.Purpose purpose                         = 3;
+        repeated google.protobuf.Any configuration          = 4;
+        repeated ConfigurePlatform   platform_configuration = 5;
+    }
+
+    message ConfigurePlatform {
+        string   architecture                      = 1;
+        string   os                                = 2;
+        string   variant                           = 3;
+        repeated google.protobuf.Any configuration = 4;
+    }
+}

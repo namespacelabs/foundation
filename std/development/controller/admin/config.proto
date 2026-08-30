@@ -1,0 +1,32 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.std.development.controller.admin;
+
+option go_package = "namespacelabs.dev/foundation/std/development/controller/admin";
+
+message Configuration {
+    repeated Backend backend       = 1;
+    string           package_base  = 2;
+    int32            filesync_port = 3;
+    int32            revproxy_port = 4;
+}
+
+message Backend {
+    string    package_name = 1;
+    Execution execution    = 2;
+    HttpPass  http_pass    = 3;
+}
+
+message Execution {
+    repeated string args           = 1;
+    repeated string additional_env = 2;
+}
+
+message HttpPass {
+    string url_prefix = 1;
+    string backend    = 2;
+}

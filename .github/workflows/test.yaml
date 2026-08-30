@@ -1,0 +1,43 @@
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - "*"
+
+  merge_group:
+    types: [checks_requested]
+
+name: Test
+jobs:
+  test:
+    name: go tests
+    runs-on:
+      - nscloud-ubuntu-22.04-amd64-8x16-with-cache
+      - nscloud-cache-size-10gb
+      - nscloud-cache-tag-foundation-golang
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.26.x
+          cache: false
+
+      - name: Setup runner cache
+        uses: namespacelabs/nscloud-cache-action@v1
+        with:
+          cache: go
+
+      - name: Test
+        run: go test ./...
+
+      - name: Check Go Formatting
+        run: go fmt ./... && git diff --exit-code
+
+      - name: Check Go Mod Tidyness
+        run: go mod tidy && git diff --exit-code

@@ -1,0 +1,95 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "google/protobuf/any.proto";
+
+// A definition represents a serialized invocation. It captures the arguments
+// for a method which is registered by an implementation. It thus provides a
+// form of decoupling, and allows for a frontend/backend design, with separate
+// planning/execution phases.
+message SerializedInvocation {
+    // Human readable description of the definition, does not affect output.
+    // Presented to the user on invocation.
+    string description = 1;
+    // The list of packages this invocation applies to. Purely informational,
+    // does not affect output.
+    repeated string scope = 3;
+    // Arguments to the method. The type of the arguments is used to select the
+    // method implementation.
+    google.protobuf.Any impl = 2;
+    // Computed arguments that may be used by the implementation.
+    repeated ComputedValue computed = 4;
+    // Set of outputs this invocation depends on.
+    repeated string required_output = 6;
+
+    ScheduleOrder order = 5;  // If not specified, is computed based on impl type.
+
+    // The minimum orchestrator version this invocation requires.
+    int32 minimum_version = 7;
+
+    message ComputedValue {
+        string              name  = 1;
+        google.protobuf.Any value = 2;
+    }
+}
+
+message ScheduleOrder {
+    repeated string sched_category       = 1;  // Category for scheduling purposes. Categories are shared by multiple invocations.
+    repeated string sched_after_category = 2;  // Run this invocation after all invocations of the specified category are run.
+}
+
+// An invocation that requires compilation, and will yield a SerializedInvocation.
+message SerializedInvocationSource {
+    // Human readable description of the definition, does not affect output.
+    // Presented to the user on invocation.
+    string description = 1;
+    // The list of packages this invocation applies to. Purely informational,
+    // does not affect output.
+    repeated string scope = 2;
+    // Arguments to the method. The type of the arguments is used to select the
+    // method implementation.
+    google.protobuf.Any impl = 3;
+    // Arguments to be computed to pass to the SerializedInvocation.
+    repeated ComputableValue computable = 4;
+
+    ScheduleOrder order = 5;  // If not specified, is computed based on impl type.
+
+    message ComputableValue {
+        string              name  = 1;
+        google.protobuf.Any value = 2;
+    }
+}
+
+message SerializedProgram {
+    repeated SerializedInvocation invocation = 1;
+}
+
+// Computed configurations are used to then project runtime-specific
+// configuration, such as flags, env vars, etc. Computed configurations are
+// emitted by provisioning tools, and retained in config images. They're used to
+// be able to retain the intersection of implementation version and
+// configuration inputs. Rather than having implementations recompute these
+// values, and have to keep track of versions, a fully denormalized version is
+// retained instead.
+message ComputedConfiguration {
+    // A package name that represents who computed this configuration.
+    string owner = 1;
+    // A domain-specific message which encapsulates a computed configuration.
+    google.protobuf.Any impl = 2;
+}
+
+message ComputedConfigurations {
+    repeated Entry entry = 1;
+
+    message Entry {
+        string                         server_package = 1;  // Which server owns these configurations.
+        repeated ComputedConfiguration configuration  = 2;
+    }
+}

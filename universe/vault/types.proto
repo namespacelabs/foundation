@@ -1,0 +1,54 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.universe.vault;
+
+option go_package = "namespacelabs.dev/foundation/universe/vault";
+
+message AppRole {
+    string name  = 1;
+    string mount = 4;
+
+    reserved 2, 3;
+}
+
+message Certificate {
+    string          common_name = 5;
+    repeated string sans        = 6;
+    string          mount       = 7;
+    string          role        = 8;
+    repeated string ip_sans     = 9;
+    string          ttl         = 10;
+
+    bool exclude_cn_from_sans           = 11;
+    bool dont_prepend_base_domain_to_cn = 12;
+
+    reserved 1, 2, 3, 4;
+}
+
+message CertificateAuthority {
+    string          mount        = 1;
+    string          common_name  = 2;
+    repeated string organization = 3;
+    string          ttl          = 4;
+}
+
+message CertificateConfig {
+    string          base_domain  = 1;
+    repeated string sans_domains = 2;
+}
+
+message VaultProvider {
+    string address     = 1;
+    string namespace   = 2;
+    string auth_mount  = 3;
+    string auth_method = 4;
+}
+
+message Secret {
+    // Secret reference in format - <mount>/<path>:<key>.
+    string secret_reference = 1;
+}

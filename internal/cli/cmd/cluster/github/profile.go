@@ -1,0 +1,976 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+package github
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	oslib "os"
+	"strings"
+	"time"
+
+	"connectrpc.com/connect"
+	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
+	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/tui"
+	"namespacelabs.dev/foundation/internal/fnapi"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	computev1beta "namespacelabs.dev/integrations/proto/namespace/cloud/compute/v1beta"
+	v1beta "namespacelabs.dev/integrations/proto/namespace/cloud/github/v1beta"
+)
+
+func NewProfileCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "profile",
+		Short: "Manage GitHub runner profiles.",
+	}
+
+	cmd.AddCommand(newProfileCreateCmd())
+	cmd.AddCommand(newProfileListCmd())
+	cmd.AddCommand(newProfileDescribeCmd())
+	cmd.AddCommand(newProfileUpdateCmd())
+	cmd.AddCommand(newProfileDeleteCmd())
+	cmd.AddCommand(newProfileBuildBaseImageCmd())
+	cmd.AddCommand(newProfileRebuildBaseImageCmd())
+
+	return cmd
+}
+
+func newProfileCreateCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "create",
+		Short: "Create a new GitHub runner profile.",
+		Args:  cobra.NoArgs,
+	}
+
+	specFile := cmd.Flags().String("spec_file", "", "Path to JSON file containing the profile spec. When provided, individual flags are ignored.")
+	tag := cmd.Flags().String("tag", "", "Stable user-configurable alias for the profile (required unless --spec_file is used).")
+	description := cmd.Flags().String("description", "", "Human-friendly description of the profile.")
+	os := cmd.Flags().String("os", "ubuntu-24.04", "Operating system label (e.g., 'ubuntu-24.04').")
+	machineType := cmd.Flags().String("machine_type", "4x8", "Machine type in the format 'CPUxMemoryGB' (e.g., '4x8' for 4 vCPU and 8GB memory).")
+	machineArch := cmd.Flags().String("machine_arch", "amd64", "Machine architecture (amd64 or arm64).")
+	swapSizeMb := cmd.Flags().Int32("swap_memory", 0, "Swap to provision on the runner, in MB. Must not exceed 2x the machine's memory.")
+	builderMode := cmd.Flags().String("builder_mode", "USE_REMOTE_BUILDER", "Builder mode (USE_REMOTE_BUILDER, USE_LOCAL_CACHE, NO_CACHING).")
+	emoji := cmd.Flags().String("emoji", "", "Optional emoji to visually identify the profile.")
+	egressPolicy := cmd.Flags().String("egress_policy", "", "Optional egress policy (DOMAIN_ALLOW_LIST, TAG, or NONE).")
+	egressDomainAllowList := cmd.Flags().StringSlice("egress_domain_allow_list", nil, "List of allowed egress domains (supports wildcards, e.g. '*.example.org'). Incompatible with --egress_policy=TAG or NONE.")
+	egressPolicyTag := cmd.Flags().String("egress_policy_tag", "", "Workspace egress policy tag. Incompatible with --egress_policy=DOMAIN_ALLOW_LIST or NONE.")
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		var spec *v1beta.RunnerProfileSpec
+
+		// If spec file is provided, read the entire spec from the file
+		if *specFile != "" {
+			var err error
+			spec, err = readSpecFile(*specFile)
+			if err != nil {
+				return err
+			}
+		} else {
+			// Otherwise, build spec from flags
+			if *tag == "" {
+				return fnerrors.New("--tag is required")
+			}
+
+			// Parse machine type
+			vcpu, memoryMB, err := cluster.ParseMachineType(*machineType)
+			if err != nil {
+				return err
+			}
+
+			// Parse builder mode
+			builderModeValue, ok := v1beta.BuilderMode_value[*builderMode]
+			if !ok {
+				return fnerrors.Newf("invalid builder mode: %s", *builderMode)
+			}
+
+			spec = &v1beta.RunnerProfileSpec{
+				Tag:         *tag,
+				Description: *description,
+				Os:          *os,
+				InstanceShape: &computev1beta.InstanceShape{
+					VirtualCpu:      vcpu,
+					MemoryMegabytes: memoryMB,
+					MachineArch:     *machineArch,
+					Os:              "linux",
+				},
+				BuilderMode: v1beta.BuilderMode(builderModeValue),
+				Emoji:       *emoji,
+			}
+
+			if cmd.Flags().Changed("swap_memory") {
+				spec.SwapSizeMb = *swapSizeMb
+			}
+
+			np, err := parseNetworkPolicy(*egressPolicy, *egressDomainAllowList, *egressPolicyTag)
+			if err != nil {
+				return err
+			}
+			spec.NetworkPolicy = np
+		}
+
+		profile, err := createProfile(ctx, spec)
+		if err != nil {
+			return err
+		}
+
+		stdout := console.Stdout(ctx)
+
+		if *output == "json" {
+			enc := json.NewEncoder(stdout)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(transformProfileForOutput(profile)); err != nil {
+				return fnerrors.InternalError("failed to encode profile as JSON output: %w", err)
+			}
+			return nil
+		}
+
+		fmt.Fprintf(stdout, "\nProfile created successfully:\n")
+		fmt.Fprintf(stdout, "  Profile ID: %s\n", profile.ProfileId)
+		fmt.Fprintf(stdout, "  Tag: %s\n", profile.Spec.Tag)
+		fmt.Fprintf(stdout, "  Description: %s\n", profile.Spec.Description)
+		fmt.Fprintf(stdout, "  OS: %s\n", profile.Spec.Os)
+		fmt.Fprintf(stdout, "  Version: %d\n", profile.Version)
+
+		return nil
+	})
+
+	return cmd
+}
+
+func newProfileListCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "List all GitHub runner profiles.",
+		Args:  cobra.NoArgs,
+	}
+
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		profiles, err := listProfiles(ctx)
+		if err != nil {
+			return err
+		}
+
+		stdout := console.Stdout(ctx)
+
+		if *output == "json" {
+			enc := json.NewEncoder(stdout)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(transformProfiles(profiles)); err != nil {
+				return fnerrors.InternalError("failed to encode profiles as JSON output: %w", err)
+			}
+			return nil
+		}
+
+		if len(profiles) == 0 {
+			fmt.Fprintf(stdout, "No profiles found.\n")
+			return nil
+		}
+
+		cols := []tui.Column{
+			{Key: "profile_id", Title: "ID", MinWidth: 10, MaxWidth: 30},
+			{Key: "tag", Title: "Tag", MinWidth: 10, MaxWidth: 30},
+			{Key: "os", Title: "OS", MinWidth: 10, MaxWidth: 20},
+			{Key: "shape", Title: "Shape", MinWidth: 8, MaxWidth: 15},
+			{Key: "platform", Title: "Platform", MinWidth: 12, MaxWidth: 20},
+		}
+
+		rows := []tui.Row{}
+		for _, profile := range profiles {
+			shape := "-"
+			platform := "-"
+			if profile.Spec.InstanceShape != nil {
+				// Format shape as "CPUxMemory" e.g. "4x16"
+				memoryGB := profile.Spec.InstanceShape.MemoryMegabytes / 1024
+				shape = fmt.Sprintf("%dx%d", profile.Spec.InstanceShape.VirtualCpu, memoryGB)
+
+				// Format platform as "os/arch" e.g. "linux/amd64"
+				osType := profile.Spec.InstanceShape.Os
+				if osType == "" {
+					osType = "linux"
+				}
+				platform = fmt.Sprintf("%s/%s", osType, profile.Spec.InstanceShape.MachineArch)
+			}
+
+			rows = append(rows, tui.Row{
+				"profile_id": profile.ProfileId,
+				"tag":        profile.Spec.Tag,
+				"os":         profile.Spec.Os,
+				"shape":      shape,
+				"platform":   platform,
+			})
+		}
+
+		return tui.StaticTable(ctx, cols, rows)
+	})
+
+	return cmd
+}
+
+func newProfileDescribeCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "describe",
+		Short: "Describe a GitHub runner profile in detail.",
+		Args:  cobra.NoArgs,
+	}
+
+	profileId := cmd.Flags().String("profile_id", "", "Profile ID to describe (required).")
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if *profileId == "" {
+			return fnerrors.New("--profile_id is required")
+		}
+
+		profiles, err := listProfiles(ctx)
+		if err != nil {
+			return err
+		}
+
+		var profile *v1beta.RunnerProfileWithStatus
+		for _, p := range profiles {
+			if p.ProfileId == *profileId {
+				profile = p
+				break
+			}
+		}
+
+		if profile == nil {
+			return fnerrors.Newf("profile not found: %s", *profileId)
+		}
+
+		stdout := console.Stdout(ctx)
+
+		if *output == "json" {
+			enc := json.NewEncoder(stdout)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(transformProfileForOutput(profile)); err != nil {
+				return fnerrors.InternalError("failed to encode profile as JSON output: %w", err)
+			}
+			return nil
+		}
+
+		// Plain text detailed output
+		fmt.Fprintf(stdout, "\nProfile Details:\n\n")
+		fmt.Fprintf(stdout, "Profile ID:   %s\n", profile.ProfileId)
+		fmt.Fprintf(stdout, "Tag:          %s\n", profile.Spec.Tag)
+		if profile.Spec.Emoji != "" {
+			fmt.Fprintf(stdout, "Emoji:        %s\n", profile.Spec.Emoji)
+		}
+		if profile.Spec.Description != "" {
+			fmt.Fprintf(stdout, "Description:  %s\n", profile.Spec.Description)
+		}
+		fmt.Fprintf(stdout, "OS:           %s\n", profile.Spec.Os)
+
+		if profile.Spec.InstanceShape != nil {
+			fmt.Fprintf(stdout, "\nInstance Shape:\n")
+			fmt.Fprintf(stdout, "  CPU:        %d vCPU\n", profile.Spec.InstanceShape.VirtualCpu)
+			memoryGB := float64(profile.Spec.InstanceShape.MemoryMegabytes) / 1024
+			fmt.Fprintf(stdout, "  Memory:     %.0f GB (%d MB)\n", memoryGB, profile.Spec.InstanceShape.MemoryMegabytes)
+			fmt.Fprintf(stdout, "  Arch:       %s\n", profile.Spec.InstanceShape.MachineArch)
+			osType := profile.Spec.InstanceShape.Os
+			if osType == "" {
+				osType = "linux"
+			}
+			fmt.Fprintf(stdout, "  Platform:   %s/%s\n", osType, profile.Spec.InstanceShape.MachineArch)
+		}
+
+		if profile.Spec.BuilderMode != v1beta.BuilderMode_BUILDER_MODE_UNSPECIFIED {
+			fmt.Fprintf(stdout, "\nBuilder Mode: %s\n", profile.Spec.BuilderMode.String())
+		}
+
+		if len(profile.Spec.CacheVolumeSettings) > 0 {
+			fmt.Fprintf(stdout, "\nCache Volumes: %d configured\n", len(profile.Spec.CacheVolumeSettings))
+		}
+
+		if profile.Spec.NetworkPolicy != nil {
+			fmt.Fprintf(stdout, "\nNetwork Policy:\n")
+			fmt.Fprintf(stdout, "  Egress:     %s\n", profile.Spec.NetworkPolicy.Egress.String())
+			if profile.Spec.NetworkPolicy.EgressPolicyTag != "" {
+				fmt.Fprintf(stdout, "  Policy Tag: %s\n", profile.Spec.NetworkPolicy.EgressPolicyTag)
+			}
+			if len(profile.Spec.NetworkPolicy.EgressDomainAllowList) > 0 {
+				fmt.Fprintf(stdout, "  Allowed Domains:\n")
+				for _, domain := range profile.Spec.NetworkPolicy.EgressDomainAllowList {
+					fmt.Fprintf(stdout, "    - %s\n", domain)
+				}
+			}
+		}
+
+		if len(profile.Spec.ExperimentalFeatures) > 0 {
+			fmt.Fprintf(stdout, "\nExperimental Features:\n")
+			for _, feature := range profile.Spec.ExperimentalFeatures {
+				fmt.Fprintf(stdout, "  - %s\n", feature)
+			}
+		}
+
+		fmt.Fprintf(stdout, "\nMetadata:\n")
+		fmt.Fprintf(stdout, "  Version:    %d\n", profile.Version)
+		if profile.CreatedAt != nil {
+			fmt.Fprintf(stdout, "  Created:    %s\n", profile.CreatedAt.AsTime().Format(time.RFC3339))
+		}
+		if profile.UpdatedAt != nil {
+			fmt.Fprintf(stdout, "  Updated:    %s\n", profile.UpdatedAt.AsTime().Format(time.RFC3339))
+		}
+
+		if profile.Status != nil && len(profile.Status.CustomRunnerImage) > 0 {
+			fmt.Fprintf(stdout, "\nCustom Runner Images: %d\n", len(profile.Status.CustomRunnerImage))
+		}
+
+		fmt.Fprintf(stdout, "\n")
+		return nil
+	})
+
+	return cmd
+}
+
+func newProfileUpdateCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "update",
+		Short: "Update an existing GitHub runner profile.",
+		Args:  cobra.NoArgs,
+	}
+
+	profileId := cmd.Flags().String("profile_id", "", "Profile ID to update (required).")
+	specFile := cmd.Flags().String("spec_file", "", "Path to JSON file containing the profile spec. When provided, individual flags are ignored.")
+	tag := cmd.Flags().String("tag", "", "Stable user-configurable alias for the profile.")
+	description := cmd.Flags().String("description", "", "Human-friendly description of the profile.")
+	os := cmd.Flags().String("os", "", "Operating system label (e.g., 'ubuntu-24.04').")
+	machineType := cmd.Flags().String("machine_type", "", "Machine type in the format 'CPUxMemoryGB' (e.g., '4x8' for 4 vCPU and 8GB memory).")
+	machineArch := cmd.Flags().String("machine_arch", "", "Machine architecture (amd64 or arm64).")
+	builderMode := cmd.Flags().String("builder_mode", "", "Builder mode (USE_REMOTE_BUILDER, USE_LOCAL_CACHE, NO_CACHING).")
+	emoji := cmd.Flags().String("emoji", "", "Optional emoji to visually identify the profile.")
+	dockerfile := cmd.Flags().String("dockerfile", "", "Path to Dockerfile for custom runner image.")
+	egressPolicy := cmd.Flags().String("egress_policy", "", "Egress policy (DOMAIN_ALLOW_LIST, TAG, or NONE).")
+	egressDomainAllowList := cmd.Flags().StringSlice("egress_domain_allow_list", nil, "List of allowed egress domains (supports wildcards, e.g. '*.example.org'). Incompatible with --egress_policy=TAG or NONE.")
+	egressPolicyTag := cmd.Flags().String("egress_policy_tag", "", "Workspace egress policy tag. Incompatible with --egress_policy=DOMAIN_ALLOW_LIST or NONE.")
+	swapSizeMb := cmd.Flags().Int32("swap_memory", 0, "Swap to provision on the runner, in MB. Must not exceed 2x the machine's memory.")
+	version := cmd.Flags().Int64("version", 0, "Current version of the profile for optimistic concurrency control. If not provided, it will be fetched from the backend.")
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if *profileId == "" {
+			return fnerrors.New("--profile_id is required")
+		}
+
+		var spec *v1beta.RunnerProfileSpec
+		var updateVersion int64
+
+		// If spec file is provided, read the entire spec from the file
+		if *specFile != "" {
+			var err error
+			spec, err = readSpecFile(*specFile)
+			if err != nil {
+				return err
+			}
+
+			// When using spec_file, version is required since we don't fetch the current profile
+			if *version == 0 {
+				return fnerrors.New("--version is required when using --spec_file")
+			}
+			updateVersion = *version
+		} else {
+			// Otherwise, get the current profile and apply individual flag updates
+			profiles, err := listProfiles(ctx)
+			if err != nil {
+				return err
+			}
+
+			var currentProfile *v1beta.RunnerProfileWithStatus
+			for _, p := range profiles {
+				if p.ProfileId == *profileId {
+					currentProfile = p
+					break
+				}
+			}
+
+			if currentProfile == nil {
+				return fnerrors.Newf("profile not found: %s", *profileId)
+			}
+
+			// Use the version from the backend if not explicitly provided
+			if *version == 0 {
+				updateVersion = currentProfile.Version
+			} else {
+				updateVersion = *version
+			}
+
+			// Store the original spec for comparison
+			originalSpec := currentProfile.Spec
+
+			// Deep copy so mutations to spec don't affect originalSpec.
+			spec = proto.Clone(originalSpec).(*v1beta.RunnerProfileSpec)
+
+			// Update only the fields that were provided
+			if *tag != "" {
+				spec.Tag = *tag
+			}
+			if cmd.Flags().Changed("description") {
+				spec.Description = *description
+			}
+			if *os != "" {
+				spec.Os = *os
+			}
+			if *emoji != "" {
+				spec.Emoji = *emoji
+			}
+			if *builderMode != "" {
+				builderModeValue, ok := v1beta.BuilderMode_value[*builderMode]
+				if !ok {
+					return fnerrors.Newf("invalid builder mode: %s", *builderMode)
+				}
+				spec.BuilderMode = v1beta.BuilderMode(builderModeValue)
+			}
+
+			// Update instance shape fields if provided
+			if *machineType != "" || *machineArch != "" {
+				if spec.InstanceShape == nil {
+					spec.InstanceShape = &computev1beta.InstanceShape{}
+				} else {
+					// Make a copy of the instance shape
+					spec.InstanceShape = &computev1beta.InstanceShape{
+						VirtualCpu:      spec.InstanceShape.VirtualCpu,
+						MemoryMegabytes: spec.InstanceShape.MemoryMegabytes,
+						MachineArch:     spec.InstanceShape.MachineArch,
+						Os:              spec.InstanceShape.Os,
+					}
+				}
+				if *machineType != "" {
+					vcpu, memoryMB, err := cluster.ParseMachineType(*machineType)
+					if err != nil {
+						return err
+					}
+					spec.InstanceShape.VirtualCpu = vcpu
+					spec.InstanceShape.MemoryMegabytes = memoryMB
+				}
+				if *machineArch != "" {
+					spec.InstanceShape.MachineArch = *machineArch
+				}
+			}
+
+			if cmd.Flags().Changed("swap_memory") {
+				spec.SwapSizeMb = *swapSizeMb
+			}
+
+			// Update custom runner image spec if dockerfile is provided
+			if *dockerfile != "" {
+				dockerfileBytes, err := oslib.ReadFile(*dockerfile)
+				if err != nil {
+					return fnerrors.Newf("failed to read dockerfile: %w", err)
+				}
+
+				spec.CustomRunnerImageSpec = &v1beta.CustomRunnerImageSpec{
+					DockerSpec: &v1beta.DockerBaseImageSpec{
+						DockerfileContent: string(dockerfileBytes),
+					},
+				}
+			}
+
+			// Update network policy if egress flags are provided
+			if cmd.Flags().Changed("egress_policy") || cmd.Flags().Changed("egress_domain_allow_list") || cmd.Flags().Changed("egress_policy_tag") {
+				if spec.NetworkPolicy == nil {
+					spec.NetworkPolicy = &v1beta.NetworkPolicy{}
+				}
+
+				egressPolicyChanged := cmd.Flags().Changed("egress_policy")
+				domainAllowListChanged := cmd.Flags().Changed("egress_domain_allow_list")
+				policyTagChanged := cmd.Flags().Changed("egress_policy_tag")
+
+				if err := applyNetworkPolicyFlags(spec.NetworkPolicy,
+					*egressPolicy, egressPolicyChanged,
+					*egressDomainAllowList, domainAllowListChanged,
+					*egressPolicyTag, policyTagChanged); err != nil {
+					return err
+				}
+			}
+
+			// Check if the spec has actually changed
+			if proto.Equal(originalSpec, spec) {
+				stdout := console.Stdout(ctx)
+				fmt.Fprintf(stdout, "Skipping update, no changes applied.\n")
+				return nil
+			}
+		}
+
+		profile, err := updateProfile(ctx, *profileId, spec, updateVersion)
+		if err != nil {
+			return err
+		}
+
+		stdout := console.Stdout(ctx)
+
+		if *output == "json" {
+			enc := json.NewEncoder(stdout)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(transformProfileForOutput(profile)); err != nil {
+				return fnerrors.InternalError("failed to encode profile as JSON output: %w", err)
+			}
+			return nil
+		}
+
+		fmt.Fprintf(stdout, "\nProfile updated successfully:\n")
+		fmt.Fprintf(stdout, "  Profile ID: %s\n", profile.ProfileId)
+		fmt.Fprintf(stdout, "  Tag: %s\n", profile.Spec.Tag)
+		fmt.Fprintf(stdout, "  Description: %s\n", profile.Spec.Description)
+		fmt.Fprintf(stdout, "  Version: %d\n", profile.Version)
+
+		return nil
+	})
+
+	return cmd
+}
+
+func newProfileDeleteCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "delete",
+		Short: "Delete a GitHub runner profile.",
+		Args:  cobra.NoArgs,
+	}
+
+	profileId := cmd.Flags().String("profile_id", "", "Profile ID to delete (required).")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if *profileId == "" {
+			return fnerrors.New("--profile_id is required")
+		}
+
+		if err := deleteProfile(ctx, *profileId); err != nil {
+			return err
+		}
+
+		stdout := console.Stdout(ctx)
+		fmt.Fprintf(stdout, "Profile %s deleted successfully.\n", *profileId)
+
+		return nil
+	})
+
+	return cmd
+}
+
+func newProfileRebuildBaseImageCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "rebuild-base-image",
+		Short: "Trigger a rebuild of a profile's custom base image.",
+		Args:  cobra.NoArgs,
+	}
+
+	profileId := cmd.Flags().String("profile_id", "", "Profile ID whose base image to rebuild (required).")
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if *profileId == "" {
+			return fnerrors.New("--profile_id is required")
+		}
+
+		status, err := rebuildProfileImage(ctx, *profileId)
+		if err != nil {
+			return err
+		}
+
+		var latest *v1beta.CustomRunnerImage
+		for _, img := range status.GetCustomRunnerImage() {
+			if latest == nil || img.GetImageStatus().GetStartedBuildAt().AsTime().After(latest.GetImageStatus().GetStartedBuildAt().AsTime()) {
+				latest = img
+			}
+		}
+
+		stdout := console.Stdout(ctx)
+
+		if *output == "json" {
+			enc := json.NewEncoder(stdout)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(latest); err != nil {
+				return fnerrors.InternalError("failed to encode status as JSON output: %w", err)
+			}
+			return nil
+		}
+
+		fmt.Fprintf(stdout, "Rebuild triggered for profile %s.\n", *profileId)
+		if latest != nil {
+			st := latest.GetImageStatus()
+			fmt.Fprintf(stdout, "  %-60s %s\n", st.GetImageRef(), st.GetStatus().String())
+		}
+
+		return nil
+	})
+
+	return cmd
+}
+
+func newProfileBuildBaseImageCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "test-build-base-image",
+		Short: "Build the base image from a GitHub runner profile's Dockerfile.",
+		Args:  cobra.NoArgs,
+	}
+
+	profileId := cmd.Flags().String("profile_id", "", "Profile ID to build from (required).")
+	osLabel := cmd.Flags().StringP("os-label", "l", "ubuntu-22.04", "Specifies the OS version of the base image.")
+	platforms := cmd.Flags().StringSliceP("platform", "p", []string{"linux/amd64", "linux/arm64"}, "Which platforms to build for (linux/amd64 or linux/arm64)")
+
+	useServerSideProxy := cmd.Flags().Bool("use_server_side_proxy", true, "If set, the client is set up to use a transparent mTLS server-side proxy instead of websockets.")
+	_ = cmd.Flags().MarkHidden("use_server_side_proxy")
+	waitUntilReady := cmd.Flags().Bool("wait_until_ready", true, "If set, wait for build cluster readiness before dialing build connections.")
+	_ = cmd.Flags().MarkHidden("wait_until_ready")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if *profileId == "" {
+			return fnerrors.New("--profile_id is required")
+		}
+
+		profiles, err := listProfiles(ctx)
+		if err != nil {
+			return err
+		}
+
+		var profile *v1beta.RunnerProfileWithStatus
+		for _, p := range profiles {
+			if p.ProfileId == *profileId {
+				profile = p
+				break
+			}
+		}
+
+		if profile == nil {
+			return fnerrors.Newf("profile not found: %s", *profileId)
+		}
+
+		if profile.Spec.CustomRunnerImageSpec == nil || profile.Spec.CustomRunnerImageSpec.DockerSpec == nil {
+			return fnerrors.New("profile does not have a custom Dockerfile specified")
+		}
+
+		dockerfileContent := profile.Spec.CustomRunnerImageSpec.DockerSpec.DockerfileContent
+		if dockerfileContent == "" {
+			return fnerrors.New("profile Dockerfile content is empty")
+		}
+
+		return buildBaseImage(ctx, []byte(dockerfileContent), *osLabel, *platforms, *useServerSideProxy, *waitUntilReady)
+	})
+
+	return cmd
+}
+
+// CRUD helper functions
+
+func createProfile(ctx context.Context, spec *v1beta.RunnerProfileSpec) (*v1beta.RunnerProfileWithStatus, error) {
+	client, err := fnapi.NewProfileServiceClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	req := connect.NewRequest(&v1beta.CreateProfileRequest{
+		Spec: spec,
+	})
+
+	res, err := client.CreateProfile(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Msg.Profile, nil
+}
+
+func listProfiles(ctx context.Context) ([]*v1beta.RunnerProfileWithStatus, error) {
+	client, err := fnapi.NewProfileServiceClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	req := connect.NewRequest(&emptypb.Empty{})
+
+	res, err := client.ListProfiles(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Msg.Profiles, nil
+}
+
+func updateProfile(ctx context.Context, profileId string, spec *v1beta.RunnerProfileSpec, updateVersion int64) (*v1beta.RunnerProfileWithStatus, error) {
+	client, err := fnapi.NewProfileServiceClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	req := connect.NewRequest(&v1beta.UpdateProfileRequest{
+		ProfileId:     profileId,
+		Spec:          spec,
+		UpdateVersion: updateVersion,
+	})
+
+	res, err := client.UpdateProfile(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Msg.Profile, nil
+}
+
+func deleteProfile(ctx context.Context, profileId string) error {
+	client, err := fnapi.NewProfileServiceClient(ctx)
+	if err != nil {
+		return err
+	}
+
+	req := connect.NewRequest(&v1beta.DeleteProfileRequest{
+		ProfileId: profileId,
+	})
+
+	_, err = client.DeleteProfile(ctx, req)
+	return err
+}
+
+func rebuildProfileImage(ctx context.Context, profileId string) (*v1beta.RunnerProfileStatus, error) {
+	client, err := fnapi.NewProfileServiceClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	req := connect.NewRequest(&v1beta.RebuildProfileImageRequest{
+		ProfileId: profileId,
+	})
+
+	res, err := client.RebuildProfileImage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Msg.Status, nil
+}
+
+// Transform functions for JSON output
+
+func transformProfiles(profiles []*v1beta.RunnerProfileWithStatus) []map[string]any {
+	var result []map[string]any
+	for _, profile := range profiles {
+		result = append(result, transformProfileForOutput(profile))
+	}
+	return result
+}
+
+// transformProfileForOutput creates a validated set of output fields which should not change.
+func transformProfileForOutput(profile *v1beta.RunnerProfileWithStatus) map[string]any {
+	m := map[string]any{
+		"profile_id":   profile.ProfileId,
+		"tag":          profile.Spec.Tag,
+		"description":  profile.Spec.Description,
+		"os":           profile.Spec.Os,
+		"swap_size_mb": profile.Spec.SwapSizeMb,
+		"version":      profile.Version,
+	}
+
+	if profile.Spec.Emoji != "" {
+		m["emoji"] = profile.Spec.Emoji
+	}
+
+	if profile.Spec.InstanceShape != nil {
+		m["instance_shape"] = map[string]any{
+			"virtual_cpu":      profile.Spec.InstanceShape.VirtualCpu,
+			"memory_megabytes": profile.Spec.InstanceShape.MemoryMegabytes,
+			"machine_arch":     profile.Spec.InstanceShape.MachineArch,
+			"os":               profile.Spec.InstanceShape.Os,
+		}
+	}
+
+	if profile.Spec.BuilderMode != v1beta.BuilderMode_BUILDER_MODE_UNSPECIFIED {
+		m["builder_mode"] = profile.Spec.BuilderMode.String()
+	}
+
+	if profile.Spec.NetworkPolicy != nil {
+		np := map[string]any{
+			"egress": profile.Spec.NetworkPolicy.Egress.String(),
+		}
+		if len(profile.Spec.NetworkPolicy.EgressDomainAllowList) > 0 {
+			np["egress_domain_allow_list"] = profile.Spec.NetworkPolicy.EgressDomainAllowList
+		}
+		if profile.Spec.NetworkPolicy.EgressPolicyTag != "" {
+			np["egress_policy_tag"] = profile.Spec.NetworkPolicy.EgressPolicyTag
+		}
+		m["network_policy"] = np
+	}
+
+	if len(profile.Spec.ExperimentalFeatures) > 0 {
+		m["experimental_features"] = profile.Spec.ExperimentalFeatures
+	}
+
+	if len(profile.Spec.CacheVolumeSettings) > 0 {
+		var volumes []map[string]any
+		for _, v := range profile.Spec.CacheVolumeSettings {
+			vol := map[string]any{
+				"volume_tag":     v.VolumeTag,
+				"volume_size_gb": v.VolumeSizeGb,
+			}
+			if v.VolumeReservedSizeGb != 0 {
+				vol["volume_reserved_size_gb"] = v.VolumeReservedSizeGb
+			}
+			if v.BundledContainerCache {
+				vol["bundled_container_cache"] = v.BundledContainerCache
+			}
+			if v.BundledBuildkitCache {
+				vol["bundled_buildkit_cache"] = v.BundledBuildkitCache
+			}
+			if v.BundledGitMirror {
+				vol["bundled_git_mirror"] = v.BundledGitMirror
+			}
+			if v.BundledRunnerToolsCache {
+				vol["bundled_runner_tools_cache"] = v.BundledRunnerToolsCache
+			}
+			if v.BundledRunnerActionsCache {
+				vol["bundled_runner_actions_cache"] = v.BundledRunnerActionsCache
+			}
+			if len(v.AllowCommitFromBranch) > 0 {
+				vol["allow_commit_from_branch"] = v.AllowCommitFromBranch
+			}
+			volumes = append(volumes, vol)
+		}
+		m["cache_volume_settings"] = volumes
+	}
+
+	if profile.CreatedAt != nil {
+		m["created_at"] = profile.CreatedAt.AsTime()
+	}
+
+	if profile.UpdatedAt != nil {
+		m["updated_at"] = profile.UpdatedAt.AsTime()
+	}
+
+	return m
+}
+
+func parseNetworkPolicy(egressPolicy string, egressDomainAllowList []string, egressPolicyTag string) (*v1beta.NetworkPolicy, error) {
+	if egressPolicy == "" && len(egressDomainAllowList) == 0 && egressPolicyTag == "" {
+		return nil, nil
+	}
+
+	np := &v1beta.NetworkPolicy{
+		EgressDomainAllowList: egressDomainAllowList,
+		EgressPolicyTag:       egressPolicyTag,
+	}
+
+	if egressPolicy != "" {
+		egress, err := parseEgressPolicy(egressPolicy)
+		if err != nil {
+			return nil, err
+		}
+		np.Egress = egress
+	}
+
+	if err := resolveNetworkPolicy(np); err != nil {
+		return nil, err
+	}
+
+	return np, nil
+}
+
+func resolveNetworkPolicy(np *v1beta.NetworkPolicy) error {
+	if np.Egress == v1beta.NetworkPolicy_EGRESS_POLICY_UNKNOWN && len(np.EgressDomainAllowList) > 0 && np.EgressPolicyTag != "" {
+		return fnerrors.New("--egress_domain_allow_list and --egress_policy_tag cannot be used together")
+	}
+	if np.Egress == v1beta.NetworkPolicy_EGRESS_POLICY_UNKNOWN {
+		if len(np.EgressDomainAllowList) > 0 {
+			np.Egress = v1beta.NetworkPolicy_EGRESS_POLICY_DOMAIN_ALLOW_LIST
+		} else if np.EgressPolicyTag != "" {
+			np.Egress = v1beta.NetworkPolicy_EGRESS_POLICY_TAG
+		}
+	}
+	return validateNetworkPolicyFlags(np)
+}
+
+func applyNetworkPolicyFlags(np *v1beta.NetworkPolicy, egressPolicy string, egressPolicyChanged bool, egressDomainAllowList []string, domainAllowListChanged bool, egressPolicyTag string, policyTagChanged bool) error {
+	if egressPolicyChanged {
+		egress, err := parseEgressPolicy(egressPolicy)
+		if err != nil {
+			return err
+		}
+		np.Egress = egress
+		if egress != v1beta.NetworkPolicy_EGRESS_POLICY_DOMAIN_ALLOW_LIST {
+			np.EgressDomainAllowList = nil
+			np.Advisory = false
+		}
+		if egress != v1beta.NetworkPolicy_EGRESS_POLICY_TAG {
+			np.EgressPolicyTag = ""
+		}
+	}
+
+	if domainAllowListChanged {
+		np.EgressDomainAllowList = egressDomainAllowList
+	}
+	if policyTagChanged {
+		np.EgressPolicyTag = egressPolicyTag
+	}
+
+	if !egressPolicyChanged {
+		if domainAllowListChanged && len(egressDomainAllowList) > 0 && policyTagChanged && egressPolicyTag != "" {
+			return fnerrors.New("--egress_domain_allow_list and --egress_policy_tag cannot be used together")
+		}
+		if policyTagChanged && egressPolicyTag != "" {
+			np.Egress = v1beta.NetworkPolicy_EGRESS_POLICY_UNKNOWN
+			np.EgressDomainAllowList = nil
+			np.Advisory = false
+		}
+		if domainAllowListChanged && len(egressDomainAllowList) > 0 {
+			np.Egress = v1beta.NetworkPolicy_EGRESS_POLICY_UNKNOWN
+			np.EgressPolicyTag = ""
+		}
+	}
+
+	return resolveNetworkPolicy(np)
+}
+
+func validateNetworkPolicyFlags(np *v1beta.NetworkPolicy) error {
+	if len(np.EgressDomainAllowList) > 0 && np.Egress != v1beta.NetworkPolicy_EGRESS_POLICY_DOMAIN_ALLOW_LIST {
+		return fnerrors.Newf("--egress_domain_allow_list is incompatible with --egress_policy=%s", np.Egress)
+	}
+	if np.EgressPolicyTag != "" && np.Egress != v1beta.NetworkPolicy_EGRESS_POLICY_TAG {
+		return fnerrors.Newf("--egress_policy_tag is incompatible with --egress_policy=%s", np.Egress)
+	}
+	if np.Egress == v1beta.NetworkPolicy_EGRESS_POLICY_DOMAIN_ALLOW_LIST && len(np.EgressDomainAllowList) == 0 {
+		return fnerrors.New("--egress_domain_allow_list is required with --egress_policy=DOMAIN_ALLOW_LIST")
+	}
+	if np.Egress == v1beta.NetworkPolicy_EGRESS_POLICY_TAG && np.EgressPolicyTag == "" {
+		return fnerrors.New("--egress_policy_tag is required with --egress_policy=TAG")
+	}
+	return nil
+}
+
+// parseEgressPolicy accepts both short-form (NONE, DOMAIN_ALLOW_LIST, TAG) and
+// full proto enum names (EGRESS_POLICY_NONE, EGRESS_POLICY_DOMAIN_ALLOW_LIST, EGRESS_POLICY_TAG).
+func parseEgressPolicy(s string) (v1beta.NetworkPolicy_EgressPolicy, error) {
+	s = strings.ToUpper(strings.TrimSpace(s))
+
+	if !strings.HasPrefix(s, "EGRESS_POLICY_") {
+		s = "EGRESS_POLICY_" + s
+	}
+
+	v, ok := v1beta.NetworkPolicy_EgressPolicy_value[s]
+	if !ok || v == int32(v1beta.NetworkPolicy_EGRESS_POLICY_UNKNOWN) {
+		return 0, fnerrors.Newf("invalid egress policy %q (valid values: NONE, DOMAIN_ALLOW_LIST, TAG)", s)
+	}
+
+	return v1beta.NetworkPolicy_EgressPolicy(v), nil
+}
+
+func readSpecFile(path string) (*v1beta.RunnerProfileSpec, error) {
+	data, err := oslib.ReadFile(path)
+	if err != nil {
+		return nil, fnerrors.Newf("failed to read spec file: %w", err)
+	}
+
+	spec := &v1beta.RunnerProfileSpec{}
+	if err := (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(data, spec); err != nil {
+		return nil, fnerrors.Newf("failed to parse spec file: %w", err)
+	}
+
+	return spec, nil
+}

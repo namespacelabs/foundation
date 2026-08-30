@@ -1,0 +1,30 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package library.oss.postgres;
+
+option go_package = "namespacelabs.dev/foundation/library/oss/postgres";
+
+import "schema/package.proto";
+import "schema/filecontents.proto";
+
+message ClusterIntent {
+    // If set, overrides the server package used to instantiate the local database cluster.
+    foundation.schema.PackageRef server = 1;
+    // If set, overrides the root password used to access the cluster.
+    foundation.schema.PackageRef password_secret = 2;
+}
+
+message DatabaseIntent {
+    // The database name is applied as is (e.g. it is case-sensitive).
+    string   name                                                                = 1;
+    repeated foundation.schema.FileContents schema                               = 2;
+    bool                                    skip_schema_initialization_if_exists = 3;
+    bool                                    provision_helper_functions           = 4;
+    // Remove the helper functions after provisioning - no matter if the deployment was successful or not.
+    bool                                    auto_remove_helper_functions         = 5;
+    bool enable_tracing = 6;
+}

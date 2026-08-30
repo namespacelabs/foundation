@@ -1,0 +1,129 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.schema.storage;
+
+option go_package = "namespacelabs.dev/foundation/schema/storage";
+
+import "google/protobuf/timestamp.proto";
+import "google/rpc/status.proto";
+import "google/protobuf/any.proto";
+import "schema/storage/task.proto";
+
+// Emitted by each individual run, regardless of kind and storage type.
+// Next ID: 7
+message UndifferentiatedRun {
+    string                    run_id        = 6;
+    string                    parent_run_id = 1;
+    google.rpc.Status         status        = 2;
+    google.protobuf.Timestamp created       = 3;
+    google.protobuf.Timestamp completed     = 4;  // Regardless of success or failure.
+    repeated google.protobuf.Any attachment = 5;
+}
+
+// Used for permanent storage.
+message SectionRun {
+    Kind   kind  = 1;
+    string label = 2;  // For human consumption.
+
+    string                    parent_run_id        = 3;
+    google.rpc.Status         status               = 4;
+    google.protobuf.Timestamp created              = 5;
+    google.protobuf.Timestamp completed            = 6;  // Regardless of success or failure.
+    repeated google.protobuf.Any attachment        = 7;  // Inline attachments.
+    repeated StoredAttachment    stored_attachment = 8;
+
+    enum Kind {
+        KIND_UNKNOWN = 0;
+        BUILD        = 1;
+        TEST         = 2;
+        DEPLOY       = 3;
+    }
+
+    // Attachments that are too large, may end being stored individually.
+    message StoredAttachment {
+        string type_url = 1;
+
+        string image_reference = 2;  // Stored in the specified image. If unset, the same image where Run is stored.
+        string image_path      = 3;  // The file path within the image that holds the contents.
+    }
+}
+
+// Next ID: 11
+message Run {
+    string   run_id                         = 2;
+    string   repository                     = 3;  // E.g. github.com/namespacelabs/foundation
+    string   commit_id                      = 4;  // E.g. c0c3859
+    string   branch                         = 5;  // E.g. main
+    string   pull_request                   = 7;
+    string   pusher_login                   = 8;   // E.g. namespace[bot]
+    string   author_login                   = 9;   // E.g. hugosantos
+    string   module_name                    = 10;  // E.g. namespacelabs.dev/foundation
+    repeated google.protobuf.Any attachment = 11;  // E.g. a GithubEvent.
+
+    repeated SectionRun section_run = 1;
+}
+
+// This is an attachment to a RunStorage Run.
+// Next ID: 6
+message NamespaceBinaryVersion {
+    string                    version        = 1;
+    string                    git_commit     = 2;
+    string                    build_time_str = 3;
+    google.protobuf.Timestamp build_time     = 4;
+    bool                      modified       = 5;
+}
+
+// This is an attachment to a RunStorage Run.
+// Next ID: 5
+message RunMetadata {
+    string          repository          = 1;  // E.g. github.com/namespacelabs/foundation
+    string          branch              = 2;  // E.g. main
+    string          commit_id           = 3;  // E.g. c782373xd
+    repeated string module_name         = 4;  // E.g. namespacelabs.dev/foundation
+    string          pipeline_name       = 5;  // E.g. autopush, preview
+    string          nspipelines_version = 6;  // E.g. sha256:7f7bcef8d0dd0a1cee824a90919644e5e8013b2a1f64850378d11c709b1e2988
+    string          author_login        = 7;  // E.g. n-g
+}
+
+// This is an attachment to a RunStorage Run.
+message InvocationDescription {
+    Kind kind = 1;
+
+    // The invocation command line that can be used to reproduce the invocation.
+    // It should include flags having semantic meaning (e.g. --include_servers)
+    // but be free of the flags specific to the exact execution environment (e.g. --run_tools_on_kubernetes)
+    string command_line = 2;
+
+    enum Kind {
+        KIND_UNKNOWN = 0;
+        BUILD        = 1;
+        TEST         = 2;
+        DEPLOY       = 3;
+        STARTER      = 4;
+    }
+}
+
+// This is an attachment to a RunStorage Run.
+message GithubEvent {
+    string serialized_json = 1;
+}
+
+// Stored in google.rpc.Status.details to provide action context for errors.
+message ActionTrace {
+    // List of actions leading to the failure (leaf action first).
+    repeated StoredTask task = 1;
+}
+
+message StackTrace {
+    repeated Frame frame = 1;
+
+    message Frame {
+        string filename = 1;
+        int32  line     = 2;
+        string symbol   = 3;
+    }
+}

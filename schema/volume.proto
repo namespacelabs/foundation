@@ -1,0 +1,83 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "google/protobuf/any.proto";
+import "schema/package.proto";
+import "schema/filecontents.proto";
+
+message Mount {
+    string     owner      = 1;  // Package that declared the mount.
+    string     path       = 2;
+    bool       readonly   = 4;
+    PackageRef volume_ref = 5;
+
+    reserved 3;
+}
+
+message Volume {
+    string owner = 1;  // Package that declared the volume.
+
+    // The type of volume.
+    string kind = 2;
+    // Explicit if defined at the file level, auto-generated if inlined.
+    // Volumes then referenced by the name from "mounts".
+    string name = 3;
+
+    // If true, runtimes may generate a new, compliant name for this volume and its mounts.
+    bool inline = 5;
+
+    google.protobuf.Any definition = 4;
+}
+
+message EphemeralVolume {
+    uint64 size_bytes = 1;
+}
+
+message PersistentVolume {
+    string id            = 1;
+    uint64 size_bytes    = 2;
+    bool template        = 3;
+    string storage_class = 4;
+}
+
+message HostPathVolume {
+    string directory = 1;
+}
+
+message WorkspaceSyncVolume {
+    // A directory, relative to package.
+    string path = 1;
+}
+
+message ConfigurableVolume {
+    repeated Entry entries = 1;
+
+    message Entry {
+        reserved 3;
+
+        // A single file or a directory, relative to the mount path.
+        string path = 1;
+
+        // One of.
+        FileContents inline                       = 2;
+        ResourceSet         inline_set            = 4;
+        PackageRef          secret_ref            = 6;
+        KubernetesSecretRef kubernetes_secret_ref = 5;
+
+        message KubernetesSecretRef {
+            string secret_name = 1;
+            string secret_key  = 2;
+        }
+    }
+}
+
+message ResourceSet {
+    repeated FileContents resource = 1;
+}

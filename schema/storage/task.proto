@@ -1,0 +1,48 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.schema.storage;
+
+option go_package = "namespacelabs.dev/foundation/schema/storage";
+
+import "google/protobuf/any.proto";
+
+// Next ID: 21
+message StoredTask {
+    string          id                   = 1;
+    string          parent_id            = 12;
+    string          anchor_id            = 13;
+    string          span_id              = 20;
+    string          name                 = 2;
+    string          human_readable_label = 3;
+    string          category             = 19;
+    int64           created_ts           = 4;   // Unix time in nanoseconds.
+    int64           completed_ts         = 5;   // Unix time in nanoseconds.
+    int64           rel_started_ts       = 17;  // started_ts = created_ts + rel_started_ts
+    int64           rel_completed_ts     = 18;  // completed_ts = created_ts + rel_completed_ts
+    repeated string scope                = 7;
+    repeated Value  argument             = 8;
+    repeated Value  result               = 9;
+    repeated Output output               = 10;
+    bool            cached               = 11;
+
+    int32    error_code                        = 15;
+    string   error_message                     = 6;  // When completed_ts is set.
+    repeated google.protobuf.Any error_details = 16;
+
+    int32 log_level = 14;
+
+    message Value {
+        string key        = 1;
+        string json_value = 2;
+    }
+
+    message Output {
+        string id           = 1;
+        string name         = 2;
+        string content_type = 3;
+    }
+}

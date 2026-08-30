@@ -1,0 +1,29 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.workspace.source;
+
+option go_package = "namespacelabs.dev/foundation/internal/codegen";
+
+import "internal/codegen/protos/filedescset.proto";
+import "schema/server.proto";
+
+message OpProtoGen {
+    string                          package_name = 1;
+    protos.FileDescriptorSetAndDeps protos       = 3;
+    foundation.schema.Framework     framework    = 5;
+
+    reserved 2, 4;
+}
+
+message OpMultiProtoGen {
+    repeated ProtosByFramework protos = 1;
+
+    message ProtosByFramework {
+        repeated protos.FileDescriptorSetAndDeps protos    = 1;
+        foundation.schema.Framework              framework = 2;
+    }
+}

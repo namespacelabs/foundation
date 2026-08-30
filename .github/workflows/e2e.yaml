@@ -1,0 +1,307 @@
+name: e2e
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - "*"
+
+  merge_group:
+    types: [checks_requested]
+
+  workflow_dispatch:
+
+permissions:
+  packages: read
+  contents: read
+  id-token: write # This is required for requesting the JWT
+
+env:
+  # Requires nscloud runner (which we use exclusively)
+  NS_DOCKERHUB_MIRROR: http://169.254.169.43:6001
+
+jobs:
+  build_fn:
+    name: Build ns from head
+    runs-on:
+      - nscloud-ubuntu-22.04-amd64-8x16-with-cache
+      - nscloud-cache-size-20gb
+      - nscloud-cache-tag-foundation-golang
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.26.x
+          cache: false
+      - name: Setup cross-invocation caching (Go)
+        uses: namespacelabs/nscloud-cache-action@v1
+        with:
+          cache: go
+      - name: Build ns
+        env:
+          CGO_ENABLED: 0
+        run: go build -v -o ns ./cmd/ns
+      - name: Upload ns
+        uses: namespace-actions/upload-artifact@v1
+        with:
+          name: ns-${{ runner.os }}
+          path: ns
+          # We don't need to persist it for long, only for the next job to download it.
+          retention-days: 1
+
+      - name: Build nsc
+        env:
+          CGO_ENABLED: 0
+        run: go build -v -o nsc ./cmd/nsc
+
+      - name: Upload nsc
+        uses: namespace-actions/upload-artifact@v1
+        with:
+          name: nsc-${{ runner.os }}
+          path: nsc
+          # We don't need to persist it for long, only for the next job to download it.
+          retention-days: 1
+
+  run_deploy:
+    name: Test local Namespace (deploy to k3d) use_prebuilts=${{ matrix.use_prebuilts }}
+    needs: build_fn
+    strategy:
+      matrix:
+        use_prebuilts: [false, true]
+    runs-on:
+      - nscloud-ubuntu-22.04-amd64-8x16-with-cache
+      - nscloud-cache-size-20gb
+      - nscloud-cache-tag-foundation-golang
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Required by buildkit gha cache.
+      - name: Expose GitHub Runtime
+        uses: crazy-max/ghaction-github-runtime@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.26.x
+          cache: false
+      - name: Setup cross-invocation caching (Go)
+        uses: namespacelabs/nscloud-cache-action@v1
+        with:
+          cache: go
+
+      - name: Download ns
+        uses: namespace-actions/download-artifact@v2
+        with:
+          name: ns-${{ runner.os }}
+
+      # ns is moved out of the workspace so we don't spend time uploading it to buildkit.
+      - name: Make ns executable
+        run: chmod +x ns && mv ns /tmp/ns
+
+      - name: Prepare development environment
+        run: /tmp/ns prepare local
+
+      - name: Print kubectl cluster-info
+        run: /tmp/ns kubectl cluster-info
+
+      # staging deployments already use buildkit, so only testing golang_use_buildkit=false here.
+      - name: Deploy internal/testdata/server/gogrpc
+        env:
+          NS_LOG_TO_FILE: /tmp/action_log
+        run: |
+          /tmp/ns deploy \
+            --debug_to_file=/tmp/debug_log \
+            --use_prebuilts=${{ matrix.use_prebuilts }} \
+            --golang_use_buildkit=false \
+            --naming_no_tls=true \
+            --use_orchestrator=false \
+            --build_in_nscloud \
+            internal/testdata/server/gogrpc
+
+      - name: Upload logs
+        uses: namespace-actions/upload-artifact@v1
+        with:
+          name: ns-logs-${{ github.job }}-use_prebuilts-${{ matrix.use_prebuilts }}
+          path: |
+            /tmp/action_log
+            /tmp/debug_log
+          retention-days: 3
+        if: always()
+
+  run_dev:
+    name: Test local Namespace dev session
+    needs: build_fn
+    runs-on:
+      - nscloud-ubuntu-22.04-amd64-8x16-with-cache
+      - nscloud-cache-size-20gb
+      - nscloud-cache-tag-foundation-golang
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.26.x
+          cache: false
+
+      - name: Setup cross-invocation caching (Go)
+        uses: namespacelabs/nscloud-cache-action@v1
+        with:
+          cache: go
+
+      - name: Download ns
+        uses: namespace-actions/download-artifact@v2
+        with:
+          name: ns-${{ runner.os }}
+
+      # ns is moved out of the workspace so we don't spend time uploading it to buildkit.
+      - name: Make ns executable
+        run: chmod +x ns && mv ns /tmp/ns
+
+      - name: Prepare development environment
+        run: /tmp/ns prepare local
+
+      - name: Print kubectl cluster-info
+        run: /tmp/ns kubectl cluster-info
+
+      - name: ns dev
+        run: |
+          ./.github/workflows/scripts/dev.sh /tmp/ns
+
+  run_e2e_tests:
+    name: e2e tests
+    needs: build_fn
+    runs-on: nscloud
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Download ns
+        uses: namespace-actions/download-artifact@v2
+        with:
+          name: ns-${{ runner.os }}
+
+      - name: Make ns executable
+        run: chmod +x ns && mv ns /tmp/ns
+
+      - name: Exchange Github token
+        run: /tmp/ns auth exchange-github-token
+
+      - name: Run tests
+        env:
+          NS_LOG_TO_FILE: /tmp/action_log
+        # Consider removing --also_report_start_events
+        run: |
+          /tmp/ns test \
+            --also_report_start_events \
+            --debug_to_file=/tmp/debug_log \
+            --use_prebuilts=true \
+            --deploy_push_prebuilts_to_registry=false \
+            --golang_use_buildkit=true \
+            --testing_use_namespace_cloud \
+            --testing_use_namespace_cloud_build \
+            --parallel \
+            --all
+
+      - name: Upload logs
+        uses: namespace-actions/upload-artifact@v1
+        with:
+          name: ns-logs-${{ github.job }}
+          path: |
+            /tmp/action_log
+            /tmp/debug_log
+          retention-days: 3
+        if: always()
+
+  run_ns_cluster_tests:
+    name: nsc tests
+    needs: build_fn
+    runs-on: nscloud-ubuntu-22.04-amd64-2x8
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Download nsc
+        uses: namespace-actions/download-artifact@v2
+        with:
+          name: nsc-${{ runner.os }}
+
+      - name: Make nsc executable
+        run: chmod +x nsc && mv nsc /tmp/nsc
+
+      - name: Exchange Github token
+        run: /tmp/nsc auth exchange-github-token
+      - name: Test nsc cluster commands
+        run: |
+          ./.github/workflows/scripts/ns_cluster_tests.sh /tmp/nsc
+
+  test_unprepare:
+    name: Test unprepare
+    needs: build_fn
+    runs-on:
+      - nscloud-ubuntu-22.04-amd64-8x16-with-cache
+      - nscloud-cache-size-20gb
+      - nscloud-cache-tag-foundation-golang
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.26.x
+          cache: false
+
+      - name: Setup cross-invocation caching (Go)
+        uses: namespacelabs/nscloud-cache-action@v1
+        with:
+          cache: go
+
+      - name: Download ns
+        uses: namespace-actions/download-artifact@v2
+        with:
+          name: ns-${{ runner.os }}
+
+      # ns is moved out of the workspace so we don't spend time uploading it to buildkit.
+      - name: Make ns executable
+        run: chmod +x ns && mv ns /tmp/ns
+
+      - name: Prepare first environment
+        run: /tmp/ns prepare local
+
+      - name: Test first environment
+        run: /tmp/ns doctor --tests=workspace,kubernetes-run
+
+      - name: Unprepare
+        run: /tmp/ns unprepare
+
+      - name: Prepare second environment
+        run: /tmp/ns prepare local
+
+      - name: Test second environment
+        run: /tmp/ns doctor --tests=workspace,kubernetes-run

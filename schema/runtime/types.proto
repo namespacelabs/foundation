@@ -1,0 +1,86 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.schema.runtime;
+
+option go_package = "namespacelabs.dev/foundation/schema/runtime";
+
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+import "schema/package.proto";
+import "schema/resolvable.proto";
+
+enum ContainerKind {
+    CONTAINER_KIND_UNSPECIFIED = 0;
+    PRIMARY                    = 1;
+    SUPPORT                    = 2;
+}
+
+message ContainerWaitStatus {
+    bool                             is_ready     = 3;
+    repeated ContainerUnitWaitStatus containers   = 1;
+    repeated ContainerUnitWaitStatus initializers = 2;
+}
+
+message ContainerUnitWaitStatus {
+    ContainerReference reference = 1;
+    string             Name      = 2;
+    Diagnostics        status    = 4;
+
+    reserved 3;
+}
+
+message ContainerReference {
+    string              unique_id      = 1;
+    string              HumanReference = 2;
+    ContainerKind       Kind           = 3;
+    google.protobuf.Any opaque         = 4;
+}
+
+message Diagnostics {
+    enum State {
+        STATE_UNKNOWN = 0;
+        RUNNING       = 1;
+        WAITING       = 2;
+        TERMINATED    = 3;
+    }
+
+    State                     state         = 11;
+    google.protobuf.Timestamp started       = 2;
+    bool                      is_ready      = 10;
+    int32                     restart_count = 9;
+
+    string waiting_reason = 4;
+    bool   crashed        = 5;
+
+    string terminated_reason = 7;
+    int32  exit_code         = 8;
+
+    reserved 1, 3, 6;
+}
+
+message SetContainerField {
+    enum ValueSource {
+        VALUE_SOURCE_UNKNOWN                    = 0;
+        RUNTIME_CONFIG                          = 1;
+        RESOURCE_CONFIG                         = 2;
+        RUNTIME_CONFIG_SERVICE_ENDPOINT         = 3;
+        RESOURCE_CONFIG_FIELD_SELECTOR          = 4;
+        RUNTIME_CONFIG_SERVICE_INGRESS_BASE_URL = 5;
+    }
+
+    repeated SetValue set_arg = 1;
+    repeated SetValue set_env = 2;
+
+    message SetValue {
+        string      container_name = 1;  // If empty, set all containers.
+        string      key            = 2;  // The target argument or environment variable.
+        ValueSource value          = 3;
+
+        foundation.schema.ServiceRef                  service_ref                    = 4;  // Only valid if RUNTIME_CONFIG_SERVICE_ENDPOINT is set.
+        foundation.schema.ResourceConfigFieldSelector resource_config_field_selector = 5;  // Only valid if RESOURCE_CONFIG_FIELD_SELECTOR is set.
+    }
+}

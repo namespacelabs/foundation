@@ -1,0 +1,37 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.workspace.tasks.protocol;
+
+option go_package = "namespacelabs.dev/foundation/std/tasks/protocol";
+
+message Task {
+    string            id                   = 1;
+    string            name                 = 2;
+    string            human_readable_label = 3;
+    int64             created_ts           = 4;   // Unix time.
+    int64             started_ts           = 13;  // Unix time.
+    int64             completed_ts         = 5;   // Unix time.
+    string            error_message        = 6;   // When completed_ts is set.
+    repeated Output   output               = 7;
+    repeated string   scope                = 11;
+    string            env_name             = 12;
+    string            state                = 14;
+    repeated Argument argument             = 15;
+
+    reserved 8, 9, 10;
+
+    message Output {
+        string id           = 3;
+        string name         = 1;
+        string content_type = 2;
+    }
+
+    message Argument {
+        string name = 1;
+        string msg  = 2;  // The stored value is serialized in a best-effort way.
+    }
+}

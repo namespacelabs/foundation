@@ -1,0 +1,36 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.runtime.kubernetes.networking.ingress;
+
+option go_package = "namespacelabs.dev/foundation/framework/kubernetes/kubedef";
+
+message OpMapAddress {
+    string description = 5;
+
+    string fdqn = 1;
+
+    // If specified, will map to the IP address of the LoadBalancer resolved.
+    string ingress_ns   = 2;
+    string ingress_name = 3;
+    // If specified, will map to the specified target.
+    string cname_target = 4;
+
+    ServiceRef ingress_service = 6;
+
+    message ServiceRef {
+        string namespace    = 1;
+        string service_name = 2;
+    }
+}
+
+message OpCleanupMigration {
+    string namespace = 1;
+}
+
+message OpEnsureIngressController {
+    string ingress_class = 1;
+}

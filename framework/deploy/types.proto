@@ -1,0 +1,15 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.framework.deploy;
+
+option go_package = "namespacelabs.dev/foundation/framework/deploy";
+
+message Deployment {
+    bool   require_reason             = 1;
+    string update_slack_channel       = 2;
+    string slack_bot_token_secret_ref = 3;
+}
