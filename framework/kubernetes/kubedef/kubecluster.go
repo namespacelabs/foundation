@@ -67,6 +67,7 @@ type IngressAnnotations struct {
 type IngressSelector struct {
 	InClusterController     kubeobj.Object // May be nil.
 	LoadBalancerServiceName string         // In the same namespace.
+	ReadinessServiceName    string         // If set, readiness also requires at least one service endpoint.
 
 	ContainerPort int
 	PodSelector   map[string]string
