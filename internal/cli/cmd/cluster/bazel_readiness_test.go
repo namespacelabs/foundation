@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	executionv2 "buf.build/gen/go/namespace/bazel/protocolbuffers/go/build/bazel/remote/execution/v2"
+	executionv2 "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"

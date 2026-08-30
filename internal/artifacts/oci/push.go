@@ -25,6 +25,10 @@ func pushImage(ctx context.Context, tag RepositoryWithAccess, img v1.Image, trac
 		return v1.Hash{}, fnerrors.InternalError("failed to parse tag: %w", err)
 	}
 
+	if err := uploadBazelRemoteLayers(ctx, ref, img); err != nil {
+		return v1.Hash{}, fnerrors.InvocationError("registry", "failed to upload image layers to %q: %w", ref.Context(), err)
+	}
+
 	remoteOpts, err := RemoteOptsWithAuth(ctx, tag.RegistryAccess, true)
 	if err != nil {
 		return v1.Hash{}, fnerrors.InternalError("failed to construct remoteops: %w", err)

@@ -3,12 +3,11 @@ module namespacelabs.dev/foundation
 go 1.26.0
 
 require (
-	buf.build/gen/go/namespace/bazel/protocolbuffers/go v1.36.11-20260717182923-633d56cd145e.1
 	buf.build/gen/go/namespace/cloud/connectrpc/go v1.20.0-20260803095335-52d3e79ff3ca.1
 	buf.build/gen/go/namespace/cloud/grpc/go v1.6.2-20260814090053-550b37c69cb1.1
 	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.11-20260814090053-550b37c69cb1.1
-	cloud.google.com/go/artifactregistry v1.17.2
-	cloud.google.com/go/container v1.45.0
+	cloud.google.com/go/artifactregistry v1.19.0
+	cloud.google.com/go/container v1.46.0
 	connectrpc.com/connect v1.20.0
 	cuelang.org/go v0.10.0
 	filippo.io/age v1.2.1
@@ -25,6 +24,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.97.3
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.6
 	github.com/aws/smithy-go v1.24.2
+	github.com/bazelbuild/remote-apis v0.0.0-20260216160025-715b73f3f9e4
+	github.com/bazelbuild/remote-apis-sdks v0.0.0-20260610142741-7ffd493e6686
 	github.com/bcicen/jstream v1.0.1
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/cenkalti/backoff v2.1.1+incompatible
@@ -135,7 +136,7 @@ require (
 	golang.org/x/term v0.44.0
 	golang.org/x/text v0.38.0
 	golang.org/x/tools v0.45.0
-	google.golang.org/api v0.260.0
+	google.golang.org/api v0.265.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20260414002931-afd174a4e478
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478
 	google.golang.org/grpc v1.82.1
@@ -158,12 +159,13 @@ require (
 )
 
 require (
-	cloud.google.com/go v0.121.6 // indirect
-	cloud.google.com/go/auth v0.18.0 // indirect
+	buf.build/gen/go/namespace/bazel/protocolbuffers/go v1.36.11-20260717182923-633d56cd145e.1 // indirect
+	cloud.google.com/go v0.123.0 // indirect
+	cloud.google.com/go/auth v0.18.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	cloud.google.com/go/iam v1.5.3 // indirect
-	cloud.google.com/go/longrunning v0.7.0 // indirect
+	cloud.google.com/go/longrunning v0.8.0 // indirect
 	cyphar.com/go-pathrs v0.2.1 // indirect
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
@@ -247,12 +249,13 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/golang/glog v1.2.5 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
-	github.com/googleapis/enterprise-certificate-proxy v0.3.9 // indirect
+	github.com/googleapis/enterprise-certificate-proxy v0.3.11 // indirect
 	github.com/googleapis/gax-go/v2 v2.16.0 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/gosuri/uitable v0.0.4 // indirect
@@ -314,6 +317,7 @@ require (
 	github.com/opencontainers/selinux v1.13.1 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/petermattis/goid v0.0.0-20240813172612-4fcff4a6cae7 // indirect
+	github.com/pkg/xattr v0.4.12 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
@@ -358,7 +362,8 @@ require (
 	golang.org/x/exp/typeparams v0.0.0-20221208152030-732eee02a75a // indirect
 	golang.org/x/telemetry v0.0.0-20260508192327-42602be52be6 // indirect
 	golang.org/x/time v0.14.0 // indirect
-	google.golang.org/genproto v0.0.0-20251202230838-ff82c1b0f217 // indirect
+	google.golang.org/genproto v0.0.0-20260203192932-546029d2fa20 // indirect
+	google.golang.org/genproto/googleapis/bytestream v0.0.0-20260203192932-546029d2fa20 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.1 // indirect
