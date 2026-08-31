@@ -38,10 +38,12 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/go-ids"
 )
@@ -357,6 +359,12 @@ type BuildFragment struct {
 }
 
 func StartBuilds(ctx context.Context, fragments []BuildFragment, makeClient func(context.Context, specs.Platform) (*client.Client, error)) ([]*client.SolveResponse, error) {
+	token, err := fnapi.FetchToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ctx = fnapi.WithToken(ctx, token)
+
 	clients := make([]*client.Client, len(fragments))
 
 	clientsEg := executor.New(ctx, "clients")
@@ -575,7 +583,17 @@ func MakeWireBuilder(useServerSideProxy bool, experimental string, waitUntilRead
 }
 
 func createMTLSBuildKitClient(ctx context.Context, remoteBp *RemoteBuildClusterInstance, conf api.BuilderConfiguration, waitUntilReady bool) (*client.Client, error) {
-	builderConfig, err := getBuilderConfigWithCerts(ctx, remoteBp.platform, conf)
+	stateDir, err := dirs.CreateUserTempDir("", "buildkit-client.")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create state directory: %w", err)
+	}
+	defer func() {
+		if err := os.RemoveAll(stateDir); err != nil {
+			fmt.Fprintf(console.Warnings(ctx), "Failed to clean up builder credentials: %v\n", err)
+		}
+	}()
+
+	builderConfig, err := getBuilderConfigWithCerts(ctx, stateDir, remoteBp.platform, conf)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get builder configuration: %w", err)
 	}
@@ -595,13 +613,7 @@ func createMTLSBuildKitClient(ctx context.Context, remoteBp *RemoteBuildClusterI
 	return connect(ctx)
 }
 
-func getBuilderConfigWithCerts(ctx context.Context, platform api.BuildPlatform, conf api.BuilderConfiguration) (BuilderConfig, error) {
-	// Get state directory for storing certificates
-	stateDir, err := DetermineStateDir("", BuildkitProxyPath)
-	if err != nil {
-		return BuilderConfig{}, fmt.Errorf("failed to get state directory: %w", err)
-	}
-
+func getBuilderConfigWithCerts(ctx context.Context, stateDir string, platform api.BuildPlatform, conf api.BuilderConfiguration) (BuilderConfig, error) {
 	builderConfigs, err := PrepareServerSideBuildxProxy(ctx, stateDir, []api.BuildPlatform{platform}, conf)
 	if err != nil {
 		return BuilderConfig{}, fmt.Errorf("failed to prepare certificates: %w", err)

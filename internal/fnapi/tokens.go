@@ -42,7 +42,17 @@ type ImpersonationSpec struct {
 	AWSIdentityPool string `json:"aws_identity_pool"`
 }
 
+type tokenContextKey struct{}
+
+func WithToken(ctx context.Context, token *localauth.Token) context.Context {
+	return context.WithValue(ctx, tokenContextKey{}, token)
+}
+
 func FetchToken(ctx context.Context) (*localauth.Token, error) {
+	if token, ok := ctx.Value(tokenContextKey{}).(*localauth.Token); ok {
+		return token, nil
+	}
+
 	return tasks.Return(ctx, tasks.Action("nsc.fetch-token").LogLevel(1), func(ctx context.Context) (*localauth.Token, error) {
 		impersonate := os.Getenv("NSC_IMPERSONATE_TENANT_ID")
 
