@@ -223,6 +223,7 @@ type CreateInstanceOpts struct {
 	Volumes                       []VolumeSpec
 	SecretIDs                     []string
 	AdditionalWorkloadPermissions []*Permission
+	IngressBaseDomain             string
 
 	WaitClusterOpts
 }
@@ -256,6 +257,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateInstanceOpts) (*Crea
 				Experimental:                  opts.Experimental,
 				Features:                      opts.ExperimentalInstanceFeatures,
 				AdditionalWorkloadPermissions: opts.AdditionalWorkloadPermissions,
+				AppDomainOverride:             opts.IngressBaseDomain,
 			}
 
 			if len(opts.Volumes) > 0 {

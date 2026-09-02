@@ -28,6 +28,7 @@ type CreateInstanceRequest struct {
 	Experimental                  map[string]any                         `json:"experimental,omitempty"`
 	Features                      any                                    `json:"features,omitempty"` // Internal API extension.
 	AdditionalWorkloadPermissions []*Permission                          `json:"additional_workload_permissions,omitempty"`
+	AppDomainOverride             string                                 `json:"app_domain_override,omitempty"`
 
 	Container []*ContainerRequest `json:"container,omitempty"`
 

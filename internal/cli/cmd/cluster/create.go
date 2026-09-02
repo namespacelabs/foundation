@@ -42,6 +42,8 @@ func NewCreateCmd() *cobra.Command {
 	selectors := cmd.Flags().StringSlice("selectors", nil, "Select platform/base image based on specific properties (prop1=value1,prop2=value2).")
 
 	ingress := cmd.Flags().String("ingress", "", "If set, configures the ingress of this instance. Valid options: wildcard.")
+	ingressBaseDomain := cmd.Flags().String("ingress_base_domain", "", "If set, the base domain used to construct ingress hostnames for this instance. The workspace must be configured to allow the requested domain.")
+	cmd.Flags().MarkHidden("ingress_base_domain")
 
 	legacyOutputPath := cmd.Flags().String("output_to", "", "If specified, write the instance id to this path.")
 	cmd.Flags().MarkDeprecated("output_to", "use cidfile instead")
@@ -82,15 +84,16 @@ func NewCreateCmd() *cobra.Command {
 		}
 
 		opts := api.CreateInstanceOpts{
-			MachineType:  *machineType,
-			KeepAtExit:   true,
-			Purpose:      *purpose,
-			Features:     *features,
-			Labels:       *labels,
-			UniqueTag:    *tag,
-			SecretIDs:    *availableSecrets,
-			Duration:     *duration,
-			Experimental: map[string]any{},
+			MachineType:       *machineType,
+			KeepAtExit:        true,
+			Purpose:           *purpose,
+			Features:          *features,
+			Labels:            *labels,
+			UniqueTag:         *tag,
+			SecretIDs:         *availableSecrets,
+			Duration:          *duration,
+			Experimental:      map[string]any{},
+			IngressBaseDomain: *ingressBaseDomain,
 		}
 
 		if *experimentalInstanceFeatures != "" {
