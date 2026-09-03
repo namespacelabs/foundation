@@ -226,36 +226,6 @@ func selectTableClusters(ctx context.Context,
 	return tableClusters(ctx, clusters, previousRuns, true)
 }
 
-type cluster api.KubernetesCluster
-
-func (d cluster) Cluster() api.KubernetesCluster { return api.KubernetesCluster(d) }
-func (d cluster) Title() string                  { return d.ClusterId }
-func (d cluster) Description() string            { return formatDescription(api.KubernetesCluster(d), false) }
-func (d cluster) FilterValue() string            { return d.ClusterId }
-
-func formatDescription(cluster api.KubernetesCluster, history bool) string {
-	cpu := "<unknown>"
-	ram := "<unknown>"
-
-	if shape := cluster.Shape; shape != nil {
-		cpu = fmt.Sprintf("%d", shape.VirtualCpu)
-		ram = humanize.IBytes(uint64(shape.MemoryMegabytes) * humanize.MiByte)
-	}
-
-	created, _ := time.Parse(time.RFC3339, cluster.Created)
-	deadline, _ := time.Parse(time.RFC3339, cluster.Deadline)
-	destroyedAt, _ := time.Parse(time.RFC3339, cluster.DestroyedAt)
-
-	if history {
-		return fmt.Sprintf("[cpu: %s ram: %s] (created %v, destroyed %v, lasted %v, dist: %s): %s",
-			cpu, ram, created.Local(), destroyedAt.Local(), destroyedAt.Sub(created),
-			cluster.KubernetesDistribution, cluster.DocumentedPurpose)
-	}
-	return fmt.Sprintf("[cpu: %s ram: %s] (created %v, for %v, dist: %s): %s",
-		cpu, ram, created.Local(), time.Until(deadline),
-		cluster.KubernetesDistribution, cluster.DocumentedPurpose)
-}
-
 func PrintCreateClusterMsg(ctx context.Context) {
 	stdout := console.Stdout(ctx)
 
