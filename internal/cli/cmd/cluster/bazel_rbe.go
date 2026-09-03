@@ -454,12 +454,12 @@ func retryBazelProvisioningWithBackoff[T any](ctx context.Context, b backoff.Bac
 
 func retryableBazelProvisioningError(err error) bool {
 	switch connect.CodeOf(err) {
-	case connect.CodeUnavailable, connect.CodeAborted, connect.CodeDeadlineExceeded:
+	case connect.CodeUnavailable, connect.CodeAborted, connect.CodeDeadlineExceeded, connect.CodeResourceExhausted:
 		return true
 	}
 
 	switch status.Code(err) {
-	case codes.Unavailable, codes.Aborted, codes.DeadlineExceeded:
+	case codes.Unavailable, codes.Aborted, codes.DeadlineExceeded, codes.ResourceExhausted:
 		return true
 	default:
 		return false
