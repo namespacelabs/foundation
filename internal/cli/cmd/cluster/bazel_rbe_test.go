@@ -341,6 +341,34 @@ func TestRetryBazelProvisioning(t *testing.T) {
 		}
 	})
 
+	for _, tc := range []struct {
+		name string
+		err  error
+	}{
+		{name: "gRPC resource exhausted", err: status.Error(codes.ResourceExhausted, "capacity unavailable")},
+		{name: "Connect resource exhausted", err: connect.NewError(connect.CodeResourceExhausted, errors.New("capacity unavailable"))},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			attempts := 0
+			result, err := retryBazelProvisioningWithBackoff(context.Background(), &backoff.ZeroBackOff{}, func() (string, error) {
+				attempts++
+				if attempts == 1 {
+					return "", tc.err
+				}
+				return "ready", nil
+			})
+			if err != nil {
+				t.Fatalf("retryBazelProvisioningWithBackoff: %v", err)
+			}
+			if result != "ready" {
+				t.Fatalf("result = %q, want ready", result)
+			}
+			if attempts != 2 {
+				t.Fatalf("attempts = %d, want 2", attempts)
+			}
+		})
+	}
+
 	t.Run("does not retry permanent failures", func(t *testing.T) {
 		attempts := 0
 		_, err := retryBazelProvisioningWithBackoff(context.Background(), &backoff.ZeroBackOff{}, func() (struct{}, error) {
