@@ -309,7 +309,7 @@ func TestRetryBazelProvisioning(t *testing.T) {
 
 	t.Run("retries transient failures", func(t *testing.T) {
 		attempts := 0
-		result, err := retryBazelProvisioningWithBackoff(context.Background(), &backoff.ZeroBackOff{}, func() (string, error) {
+		result, err := retryBazelProvisioningWithBackoff(context.Background(), &backoff.ZeroBackOff{}, func(context.Context) (string, error) {
 			attempts++
 			if attempts <= bazelProvisioningMaxRetries {
 				return "", status.Error(codes.Unavailable, "rolling out")
@@ -329,7 +329,7 @@ func TestRetryBazelProvisioning(t *testing.T) {
 
 	t.Run("stops after maximum retries", func(t *testing.T) {
 		attempts := 0
-		_, err := retryBazelProvisioningWithBackoff(context.Background(), &backoff.ZeroBackOff{}, func() (struct{}, error) {
+		_, err := retryBazelProvisioningWithBackoff(context.Background(), &backoff.ZeroBackOff{}, func(context.Context) (struct{}, error) {
 			attempts++
 			return struct{}{}, connect.NewError(connect.CodeUnavailable, errors.New("rolling out"))
 		})
@@ -350,7 +350,7 @@ func TestRetryBazelProvisioning(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			attempts := 0
-			result, err := retryBazelProvisioningWithBackoff(context.Background(), &backoff.ZeroBackOff{}, func() (string, error) {
+			result, err := retryBazelProvisioningWithBackoff(context.Background(), &backoff.ZeroBackOff{}, func(context.Context) (string, error) {
 				attempts++
 				if attempts == 1 {
 					return "", tc.err
@@ -371,12 +371,46 @@ func TestRetryBazelProvisioning(t *testing.T) {
 
 	t.Run("does not retry permanent failures", func(t *testing.T) {
 		attempts := 0
-		_, err := retryBazelProvisioningWithBackoff(context.Background(), &backoff.ZeroBackOff{}, func() (struct{}, error) {
+		_, err := retryBazelProvisioningWithBackoff(context.Background(), &backoff.ZeroBackOff{}, func(context.Context) (struct{}, error) {
 			attempts++
 			return struct{}{}, status.Error(codes.InvalidArgument, "invalid")
 		})
 		if status.Code(err) != codes.InvalidArgument {
 			t.Fatalf("error code = %v, want invalid argument", status.Code(err))
+		}
+		if attempts != 1 {
+			t.Fatalf("attempts = %d, want 1", attempts)
+		}
+	})
+
+	t.Run("sets an overall provisioning deadline", func(t *testing.T) {
+		_, err := retryBazelProvisioning(context.Background(), func(ctx context.Context) (struct{}, error) {
+			deadline, ok := ctx.Deadline()
+			if !ok {
+				t.Fatal("provisioning context has no deadline")
+			}
+			remaining := time.Until(deadline)
+			if remaining < 59*time.Second || remaining > bazelProvisioningTimeout {
+				t.Fatalf("provisioning deadline remaining = %v, want approximately %v", remaining, bazelProvisioningTimeout)
+			}
+			return struct{}{}, nil
+		})
+		if err != nil {
+			t.Fatalf("retryBazelProvisioning: %v", err)
+		}
+	})
+
+	t.Run("passes cancellation to an in-flight attempt", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		attempts := 0
+		_, err := retryBazelProvisioningWithBackoff(ctx, &backoff.ZeroBackOff{}, func(callCtx context.Context) (struct{}, error) {
+			attempts++
+			cancel()
+			<-callCtx.Done()
+			return struct{}{}, callCtx.Err()
+		})
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("error = %v, want context canceled", err)
 		}
 		if attempts != 1 {
 			t.Fatalf("attempts = %d, want 1", attempts)

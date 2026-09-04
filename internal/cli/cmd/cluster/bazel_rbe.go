@@ -36,6 +36,7 @@ const (
 	defaultBazelRbeCommand      = "build"
 	bazelProvisioningMaxRetries = 3
 	bazelProvisioningRetryWait  = 200 * time.Millisecond
+	bazelProvisioningTimeout    = time.Minute
 	bazelStorageReadOnly        = "read-only"
 	bazelStorageReadWrite       = "read-write"
 )
@@ -397,7 +398,7 @@ func ensureBazelExecutionCluster(ctx context.Context, tok api.TokenSource, key s
 	req.SetAuthMode(authMode)
 	req.SetEnableRemoteAssetApi(enableRemoteAssetAPI)
 
-	return retryBazelProvisioning(ctx, func() (*bazelv1beta.EnsureClusterResponse, error) {
+	return retryBazelProvisioning(ctx, func(ctx context.Context) (*bazelv1beta.EnsureClusterResponse, error) {
 		return client.EnsureCluster(ctx, req)
 	})
 }
@@ -411,7 +412,7 @@ func ensureBazelStorageCluster(ctx context.Context, tok api.TokenSource, key str
 
 	req := makeEnsureBazelStorageClusterRequest(key, authMode, enableRemoteAssetAPI, accessMode)
 
-	return retryBazelProvisioning(ctx, func() (*bazelv1beta.EnsureStorageClusterResponse, error) {
+	return retryBazelProvisioning(ctx, func(ctx context.Context) (*bazelv1beta.EnsureStorageClusterResponse, error) {
 		return client.EnsureStorageCluster(ctx, req)
 	})
 }
@@ -432,14 +433,17 @@ func bazelStorageAccessMode(storageMode string) bazelv1beta.BazelStorageAccessMo
 	return bazelv1beta.BazelStorageAccessMode_BAZEL_STORAGE_ACCESS_MODE_READ_WRITE
 }
 
-func retryBazelProvisioning[T any](ctx context.Context, call func() (T, error)) (T, error) {
+func retryBazelProvisioning[T any](ctx context.Context, call func(context.Context) (T, error)) (T, error) {
+	ctx, cancel := context.WithTimeout(ctx, bazelProvisioningTimeout)
+	defer cancel()
+
 	return retryBazelProvisioningWithBackoff(ctx, backoff.NewConstantBackOff(bazelProvisioningRetryWait), call)
 }
 
-func retryBazelProvisioningWithBackoff[T any](ctx context.Context, b backoff.BackOff, call func() (T, error)) (T, error) {
+func retryBazelProvisioningWithBackoff[T any](ctx context.Context, b backoff.BackOff, call func(context.Context) (T, error)) (T, error) {
 	var result T
 	err := backoff.Retry(func() error {
-		value, err := call()
+		value, err := call(ctx)
 		if err == nil {
 			result = value
 			return nil
