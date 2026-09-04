@@ -64,11 +64,13 @@ func newSetupPantsCacheCmd() *cobra.Command {
 			return err
 		}
 
-		req := connect.NewRequest(&bazelv1beta.EnsureBazelCacheRequest{
+		msg := &bazelv1beta.EnsureBazelCacheRequest{
 			Version: 1,
-		})
+		}
 
-		resp, err := client.EnsureBazelCache(ctx, req)
+		resp, err := retryBazelProvisioning(ctx, func(ctx context.Context) (*connect.Response[bazelv1beta.EnsureBazelCacheResponse], error) {
+			return client.EnsureBazelCache(ctx, connect.NewRequest(msg))
+		})
 		if err != nil {
 			return fnerrors.Newf("failed to provision bazel cache: %w", err)
 		}
