@@ -53,6 +53,11 @@ func (p *ParsedVersions) Get() *VersionConfiguration {
 }
 
 func (p *ParsedVersions) SDK(version string, platform specs.Platform, makeURL func(string, specs.Platform) (string, string)) (compute.Computable[LocalSDK], error) {
+	return p.PrepareSDK(version, platform, makeURL)
+}
+
+// PrepareSDK resolves an SDK version and platform without downloading it.
+func (p *ParsedVersions) PrepareSDK(version string, platform specs.Platform, makeURL func(string, specs.Platform) (string, string)) (*PrepareSDK, error) {
 	v := p.Get()
 
 	actualVer, has := v.Versions[version]

@@ -51,13 +51,19 @@ func MatchLatestVersion(version string) string {
 }
 
 func MatchSDK(version string, platform specs.Platform) (compute.Computable[LocalSDK], error) {
-	return SDK(vv(version), platform)
+	return SDK(version, platform)
 }
 
 func SDK(version string, platform specs.Platform) (compute.Computable[LocalSDK], error) {
-	return v.SDK(version, platform, func(ver string, platform specs.Platform) (string, string) {
-		return fmt.Sprintf("https://go.dev/dl/go%s.%s-%s.tar.gz", ver, platform.OS, platform.Architecture), "go/bin/go"
-	})
+	return SDKReference(version, platform)
+}
+
+func SDKReference(version string, platform specs.Platform) (*host.PrepareSDK, error) {
+	return v.PrepareSDK(vv(version), platform, goSDKURL)
+}
+
+func goSDKURL(ver string, platform specs.Platform) (string, string) {
+	return fmt.Sprintf("https://go.dev/dl/go%s.%s-%s.tar.gz", ver, platform.OS, platform.Architecture), "go/bin/go"
 }
 
 func GoRoot(sdk LocalSDK) string { return filepath.Join(sdk.Path, "go") }

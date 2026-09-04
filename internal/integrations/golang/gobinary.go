@@ -36,9 +36,16 @@ type GoBinary struct {
 	UnsafeCacheable bool // Unsafe because we can't guarantee that the sources used for compilation are consistent with the workspace contents.
 }
 
-var UseBuildKitForBuilding = knobs.Bool("golang_use_buildkit", "If set to true, buildkit is used for building, instead of a ko-style builder.", false)
+var (
+	UseBuildKitForBuilding = knobs.Bool("golang_use_buildkit", "If set to true, buildkit is used for building, instead of a ko-style builder.", false)
+	UseBazelRemote         = knobs.Bool("golang_use_bazel_remote", "If set to true, Go builds use a Namespace Bazel Remote Execution cluster.", false)
+)
 
 func (gb GoBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
+	if UseBazelRemote.Get(env.Configuration()) {
+		return buildBazelRemoteImage(ctx, env, gb, conf)
+	}
+
 	// if testing.UseNamespaceBuildCluster || buildkit.BuildOnNamespaceCloud.Get(env.Configuration()) || UseBuildKitForBuilding.Get(env.Configuration()) {
 	// 	return buildUsingBuildkit(ctx, env, gb, conf)
 	// }
