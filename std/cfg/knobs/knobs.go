@@ -9,6 +9,7 @@ import (
 	"reflect"
 
 	"github.com/spf13/pflag"
+	"google.golang.org/protobuf/types/known/anypb"
 
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/cfg/knobs/config"
@@ -58,6 +59,25 @@ func (knob Knob[V]) Get(src cfg.Configuration) V {
 	}
 
 	return knob.value.get().(V)
+}
+
+// Set returns a derived configuration where this knob has the specified value.
+// It is intended for command-scoped behavior which must be propagated through
+// planning without changing process-global defaults.
+func (knob Knob[V]) Set(src cfg.Configuration, value V) cfg.Configuration {
+	encoded, err := knob.value.encode(value)
+	if err != nil {
+		panic(err)
+	}
+	wrapped, err := anypb.New(&config.Knob{Name: knob.name, Value: encoded})
+	if err != nil {
+		panic(err)
+	}
+
+	return src.Derive(knob.name, func(previous cfg.ConfigurationSlice) cfg.ConfigurationSlice {
+		previous.Configuration = append([]*anypb.Any{wrapped}, previous.Configuration...)
+		return previous
+	})
 }
 
 func (knob Knob[V]) setupFlags(flags *pflag.FlagSet) {

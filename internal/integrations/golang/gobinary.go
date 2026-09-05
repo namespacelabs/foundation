@@ -7,6 +7,7 @@ package golang
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"namespacelabs.dev/foundation/framework/findroot"
@@ -24,11 +25,12 @@ type GoBinary struct {
 	PackageName schema.PackageName `json:"packageName"`
 
 	// If workspaces are not used, will be the module path. Relative to ns workspace root.
-	GoWorkspacePath string `json:"workspacePath"`
-	GoModule        string `json:"module"` // Go module name.
-	GoVersion       string `json:"goVersion"`
-	SourcePath      string `json:"sourcePath"` // Relative to GoModule.
-	BinaryName      string `json:"binaryName"`
+	GoWorkspacePath  string `json:"workspacePath"`
+	GoModule         string `json:"module"` // Go module name.
+	GoVersion        string `json:"goVersion"`
+	SourcePath       string `json:"sourcePath"`                 // Relative to GoModule.
+	BazelPackagePath string `json:"bazelPackagePath,omitempty"` // Relative to the Bazel workspace.
+	BinaryName       string `json:"binaryName"`
 
 	BinaryOnly      bool
 	StripSymbols    bool
@@ -38,7 +40,20 @@ type GoBinary struct {
 
 var UseBuildKitForBuilding = knobs.Bool("golang_use_buildkit", "If set to true, buildkit is used for building, instead of a ko-style builder.", false)
 
+const GoBuilderMaybeBazel = "maybe_bazel"
+
+var (
+	GoBuilderKind = knobs.String("go_builder", "Selects the Go binary builder. maybe_bazel uses Bazel for packages with BUILD files.", "")
+	BazelRC       = knobs.String("golang_bazelrc", "Bazel configuration used by the Go binary builder.", "")
+)
+
 func (gb GoBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
+	if GoBuilderKind.Get(env.Configuration()) == GoBuilderMaybeBazel {
+		if bazelBuildAvailable(conf.Workspace(), gb) {
+			return buildBazelImage(ctx, env, conf.Workspace(), gb, conf, BazelRC.Get(env.Configuration()))
+		}
+	}
+
 	// if testing.UseNamespaceBuildCluster || buildkit.BuildOnNamespaceCloud.Get(env.Configuration()) || UseBuildKitForBuilding.Get(env.Configuration()) {
 	// 	return buildUsingBuildkit(ctx, env, gb, conf)
 	// }
@@ -48,6 +63,18 @@ func (gb GoBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, c
 	}
 
 	return buildLocalImage(ctx, env, conf.Workspace(), gb, conf)
+}
+
+func bazelBuildAvailable(workspace build.Workspace, bin GoBinary) bool {
+	if workspace == nil || workspace.IsExternal() || bin.BazelPackagePath == "" {
+		return false
+	}
+	for _, name := range []string{"BUILD.bazel", "BUILD"} {
+		if _, err := os.Stat(filepath.Join(workspace.Abs(), bin.BazelPackagePath, name)); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func (gb GoBinary) PlatformIndependent() bool { return false }
@@ -65,6 +92,10 @@ func FromLocation(loc pkggraph.Location, pkgName string) (*GoBinary, error) {
 	if err != nil {
 		return nil, err
 	}
+	bazelPackagePath, err := filepath.Rel(loc.Module.Abs(), absSrc)
+	if err != nil {
+		return nil, err
+	}
 
 	gowork, _ := findroot.Find("go work", filepath.Dir(modFile), findroot.LookForFile("go.work"))
 	if gowork == "" {
@@ -77,11 +108,12 @@ func FromLocation(loc pkggraph.Location, pkgName string) (*GoBinary, error) {
 	}
 
 	return &GoBinary{
-		PackageName:     loc.PackageName,
-		GoWorkspacePath: relMod,
-		GoModule:        mod.Module.Mod.Path,
-		SourcePath:      pkgInsideMod,
-		GoVersion:       mod.Go.Version,
+		PackageName:      loc.PackageName,
+		GoWorkspacePath:  relMod,
+		GoModule:         mod.Module.Mod.Path,
+		SourcePath:       pkgInsideMod,
+		BazelPackagePath: bazelPackagePath,
+		GoVersion:        mod.Go.Version,
 	}, nil
 }
 

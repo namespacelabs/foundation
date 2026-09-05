@@ -12,6 +12,7 @@ import (
 
 type Value interface {
 	get() any
+	encode(any) (*anypb.Any, error)
 	decode(*anypb.Any) (any, error)
 	setupFlags(flags *pflag.FlagSet, name, description string)
 }
@@ -26,6 +27,10 @@ type boolv struct {
 
 func (b *boolv) get() any {
 	return b.value
+}
+
+func (b *boolv) encode(value any) (*anypb.Any, error) {
+	return anypb.New(wrapperspb.Bool(value.(bool)))
 }
 
 func (b *boolv) decode(any *anypb.Any) (any, error) {
@@ -50,6 +55,10 @@ type stringv struct {
 
 func (b *stringv) get() any {
 	return b.value
+}
+
+func (b *stringv) encode(value any) (*anypb.Any, error) {
+	return anypb.New(wrapperspb.String(value.(string)))
 }
 
 func (b *stringv) decode(any *anypb.Any) (any, error) {
