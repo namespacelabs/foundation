@@ -336,6 +336,8 @@ func NewBuildCmd() *cobra.Command {
 	})
 
 	cmd.AddCommand(newBuildLogsCmd())
+	cmd.AddCommand(newBuildSshCmd())
+	cmd.AddCommand(newBuildResolveCmd())
 
 	return cmd
 }
