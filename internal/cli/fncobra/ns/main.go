@@ -80,7 +80,7 @@ func DoMain(name string, opts MainOpts, registerCommands func(*cobra.Command)) {
 				module.WireModuleLoader()
 				filewatcher.SetupFileWatcher()
 
-				binary.BuildGo = golang.GoBuilder
+				binary.BuildGo = (golang.Builder{}).GoBuilder
 				binary.BuildLLBGen = genbinary.LLBBinary
 				binary.BuildAlpine = genbinary.BuildAlpine
 				binary.BuildNix = genbinary.NixImageBuilder
