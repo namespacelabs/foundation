@@ -82,19 +82,20 @@ type impl struct {
 	integrations.NoDev
 }
 
-func (impl) PrepareBuild(ctx context.Context, _ assets.AvailableBuildAssets, server planning.PlannedServer, isFocus bool) (build.Spec, error) {
+func (impl) PrepareBuild(ctx context.Context, _ assets.AvailableBuildAssets, server planning.PlannedServer, _ bool) (build.Spec, error) {
 	ext := &FrameworkExt{}
 	if err := parsing.MustExtension(server.Proto().Ext, ext); err != nil {
 		return nil, fnerrors.AttachLocation(server.Location, err)
 	}
 
 	bin := &GoBinary{
-		PackageName:     server.Location.PackageName,
-		GoWorkspacePath: ext.GoWorkspacePath,
-		GoModule:        ext.GoModule,
-		GoVersion:       ext.GoVersion,
-		SourcePath:      ext.RelPackage,
-		BinaryName:      serverName(server),
+		PackageName:      server.Location.PackageName,
+		GoWorkspacePath:  ext.GoWorkspacePath,
+		GoModule:         ext.GoModule,
+		GoVersion:        ext.GoVersion,
+		SourcePath:       ext.RelPackage,
+		BazelPackagePath: server.Location.Rel(),
+		BinaryName:       serverName(server),
 	}
 
 	return bin, nil

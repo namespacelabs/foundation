@@ -7,6 +7,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -15,12 +16,14 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/build"
+	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra/planningargs"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	golangintegration "namespacelabs.dev/foundation/internal/integrations/golang"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/schema"
@@ -56,6 +59,7 @@ func NewBuildCmd() *cobra.Command {
 		}).
 		With(
 			fncobra.ParseEnv(&env),
+			&bazelBuildParser{env: &env},
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true}),
 			planningargs.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
@@ -98,6 +102,38 @@ func NewBuildCmd() *cobra.Command {
 
 			return nil
 		})
+}
+
+type bazelBuildParser struct {
+	env *cfg.Context
+}
+
+func (p *bazelBuildParser) AddFlags(*cobra.Command) {}
+
+func (p *bazelBuildParser) Parse(ctx context.Context, _ []string) error {
+	if golangintegration.GoBuilderKind.Get((*p.env).Configuration()) != golangintegration.GoBuilderMaybeBazel {
+		return nil
+	}
+
+	bazelrc, err := os.CreateTemp("", "nsdev-bazel-*.bazelrc")
+	if err != nil {
+		return err
+	}
+	bazelrcPath := bazelrc.Name()
+	if err := bazelrc.Close(); err != nil {
+		return err
+	}
+	compute.On(ctx).Cleanup(tasks.Action("bazel.cleanup-config"), func(context.Context) error {
+		return os.Remove(bazelrcPath)
+	})
+
+	if err := cluster.SetupBazelRemoteExecution(ctx, bazelrcPath); err != nil {
+		return err
+	}
+
+	configuration := golangintegration.BazelRC.Set((*p.env).Configuration(), bazelrcPath)
+	*p.env = cfg.MakeUnverifiedContext(configuration, (*p.env).Environment())
+	return nil
 }
 
 func outputResults(ctx context.Context, results []compute.ResultWithTimestamp[deploy.ResolvedServerImages]) {

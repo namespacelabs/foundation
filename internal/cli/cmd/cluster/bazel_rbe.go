@@ -48,6 +48,14 @@ func newSetupBazelCmd() *cobra.Command {
 	return newSetupExecutionCmdWithRemoteFlag(true)
 }
 
+// SetupBazelRemoteExecution provisions the default Bazel remote-execution
+// cluster and writes a bazelrc suitable for build commands.
+func SetupBazelRemoteExecution(ctx context.Context, bazelRcPath string) error {
+	cmd := newSetupBazelCmd()
+	cmd.SetArgs([]string{"--bazelrc", bazelRcPath, "--output", "none"})
+	return cmd.ExecuteContext(ctx)
+}
+
 func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 	var bazelRcPath, output, bazelCommand, key, tokenFile, storageMode string
 	var staticDur time.Duration
@@ -221,6 +229,8 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 		}
 
 		switch output {
+		case "none":
+			// Programmatic callers don't need a second rendering of the setup.
 		case "json":
 			d := json.NewEncoder(console.Stdout(ctx))
 			d.SetIndent("", "  ")
