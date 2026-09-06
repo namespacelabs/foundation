@@ -50,7 +50,7 @@ func buildLocalImage(ctx context.Context, env pkggraph.SealedContext, workspace 
 	}
 
 	if bin.UnsafeCacheable || workspace.IsExternal() {
-		comp.localfs = memfs.DeferSnapshot(workspace.ReadOnlyFS(bin.GoWorkspacePath), memfs.SnapshotOpts{})
+		comp.sourceDigest = deferSourceDigest(workspace.ReadOnlyFS(bin.GoWorkspacePath))
 	}
 
 	layers := []oci.NamedLayer{
@@ -68,6 +68,18 @@ func buildLocalImage(ctx context.Context, env pkggraph.SealedContext, workspace 
 
 	return compute.Named(tasks.Action("go.make-binary-image").Arg("binary", bin),
 		oci.MakeImage(fmt.Sprintf("Go binary %s", bin.PackageName), base, layers...).Image()), nil
+}
+
+func deferSourceDigest(fsys fs.FS) compute.Computable[schema.Digest] {
+	return compute.Inline(tasks.Action("go.source-digest"), func(ctx context.Context) (schema.Digest, error) {
+		snapshot, err := memfs.Snapshot(fsys, memfs.SnapshotOpts{})
+		if err != nil {
+			return schema.Digest{}, err
+		}
+		// Compilation reads from disk, so retain only the digest, not a full source
+		// snapshot for every binary in the build graph.
+		return snapshot.ComputeDigest(ctx)
+	})
 }
 
 func baseImage(ctx context.Context, env pkggraph.SealedContext, target build.BuildTarget) (oci.NamedImage, error) {
@@ -159,8 +171,8 @@ func goarm(platform specs.Platform) (string, error) {
 type compilation struct {
 	workspaceAbs string // Does not by itself affect the output.
 	sdk          compute.Computable[golang.LocalSDK]
-	trigger      compute.Computable[any]   // We depend on `trigger` so we trigger a re-build on workspace changes.
-	localfs      compute.Computable[fs.FS] // If specified, this becomes a stable build.
+	trigger      compute.Computable[any] // We depend on `trigger` so we trigger a re-build on workspace changes.
+	sourceDigest compute.Computable[schema.Digest]
 	binary       GoBinary
 	platform     specs.Platform
 
@@ -185,8 +197,8 @@ func (c *compilation) Inputs() *compute.In {
 		in = in.Computable("trigger", c.trigger)
 	}
 
-	if c.localfs != nil {
-		in = in.Computable("localfs", c.localfs)
+	if c.sourceDigest != nil {
+		in = in.Computable("localfs", c.sourceDigest)
 	} else {
 		in = in.Indigestible("localfs", "not available")
 	}
