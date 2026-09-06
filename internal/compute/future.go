@@ -64,24 +64,6 @@ func makePromise[V any](c hasAction, id string) *Promise[V] {
 	return initializePromise(&Promise[V]{}, c, id)
 }
 
-func NewPromise[V any](g *Orch, action *tasks.ActionEvent, callback func(context.Context) (ResultWithTimestamp[V], error)) *Promise[V] {
-	id := tasks.NewActionID()
-	action = action.ID(id)
-	p := makePromise[V](wrapHasAction{action}, id.String())
-
-	g.Detach(action, func(ctx context.Context) error {
-		result, err := callback(ctx)
-		_ = p.resolve(result, err)
-		return nil
-	})
-
-	return p
-}
-
-type wrapHasAction struct{ action *tasks.ActionEvent }
-
-func (w wrapHasAction) Action() *tasks.ActionEvent { return w.action }
-
 func (f *Promise[V]) resolve(v ResultWithTimestamp[V], err error) error {
 	f.mu.Lock()
 	resolved := atom[V]{v, err}
