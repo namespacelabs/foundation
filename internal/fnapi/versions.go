@@ -7,8 +7,6 @@ package fnapi
 import (
 	"context"
 	"time"
-
-	"namespacelabs.dev/foundation/schema"
 )
 
 type NSRequirements struct {
@@ -31,61 +29,6 @@ type Artifact struct {
 func GetLatestVersion(ctx context.Context, req map[string]any) (*GetLatestResponse, error) {
 	var resp GetLatestResponse
 	if err := AnonymousCall(ctx, ResolveGlobalEndpoint, "nsl.versions.VersionsService/GetLatest", req, DecodeJSONResponse(&resp)); err != nil {
-		return nil, err
-	}
-
-	return &resp, nil
-}
-
-type GetLatestPrebuiltsRequest struct {
-	PackageName []string `json:"package_name,omitempty"`
-}
-
-type GetLatestPrebuiltsResponse struct {
-	Prebuilt []*GetLatestPrebuiltsResponse_Prebuilt `json:"prebuilt,omitempty"`
-}
-
-type GetLatestPrebuiltsResponse_Prebuilt struct {
-	PackageName string `json:"package_name,omitempty"`
-	Repository  string `json:"repository,omitempty"`
-	Digest      string `json:"digest,omitempty"`
-}
-
-func GetLatestPrebuilts(ctx context.Context, pkgs ...schema.PackageName) (*GetLatestPrebuiltsResponse, error) {
-	req := GetLatestPrebuiltsRequest{
-		PackageName: schema.Strs(pkgs...),
-	}
-
-	var resp GetLatestPrebuiltsResponse
-	if err := AnonymousCall(ctx, ResolveGlobalEndpoint, "nsl.versions.VersionsService/GetLatestPrebuilts", &req, DecodeJSONResponse(&resp)); err != nil {
-		return nil, err
-	}
-
-	return &resp, nil
-}
-
-type GetLatestDeployPlansRequest struct {
-	PackageName []string `json:"package_name,omitempty"`
-}
-
-type GetLatestDeployPlansResponse struct {
-	Plan []*GetLatestDeployPlansResponse_Plan `json:"plan,omitempty"`
-}
-
-type GetLatestDeployPlansResponse_Plan struct {
-	PackageName string `json:"package_name,omitempty"`
-	Version     int32  `json:"version,omitempty"`
-	Repository  string `json:"repository,omitempty"`
-	Digest      string `json:"digest,omitempty"`
-}
-
-func GetLatestDeployPlans(ctx context.Context, pkgs ...schema.PackageName) (*GetLatestDeployPlansResponse, error) {
-	req := GetLatestDeployPlansRequest{
-		PackageName: schema.Strs(pkgs...),
-	}
-
-	var resp GetLatestDeployPlansResponse
-	if err := AnonymousCall(ctx, ResolveGlobalEndpoint, "nsl.versions.VersionsService/GetLatestDeployPlans", &req, DecodeJSONResponse(&resp)); err != nil {
 		return nil, err
 	}
 
