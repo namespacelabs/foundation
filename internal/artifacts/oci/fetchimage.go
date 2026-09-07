@@ -14,7 +14,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/compute/cache"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -88,55 +87,19 @@ func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image,
 		tasks.Attachments(ctx).AddResult("index", true)
 
 		return imageForPlatform(idx, r.platform, func(h v1.Hash) (Image, error) {
-			return cacheAndReturn(ctx, ImageID{Repository: descriptor.Repository, Digest: h.String()}, r.opts)
+			return FetchRemoteImage(ctx, ImageID{Repository: descriptor.Repository, Digest: h.String()}, r.opts)
 		})
 
 	case isImageMediaType(types.MediaType(descriptor.MediaType)):
-		return cacheAndReturn(ctx, imageid, r.opts)
+		return FetchRemoteImage(ctx, imageid, r.opts)
 	}
 
 	return nil, fnerrors.BadInputError("unexpected media type: %s (expected image or image index)", descriptor.MediaType)
 }
 
-func cacheAndReturn(ctx context.Context, d ImageID, opts RegistryAccess) (Image, error) {
-	h, err := v1.NewHash(d.Digest)
-	if err != nil {
-		return nil, fnerrors.InternalError("failed to parse digest: %w", err)
-	}
-
-	img, err := lazyLoadFromCache(ctx, compute.Cache(ctx), h)
-	if err != nil {
-		return nil, err
-	}
-
-	if img != nil {
-		return img, nil
-	}
-
-	fetched, err := FetchRemoteImage(ctx, d, opts)
-	if err != nil {
-		return nil, err
-	}
-
-	if cache.IsDisabled(compute.Cache(ctx)) {
-		return fetched, nil
-	}
-
-	// We force a write, to ensure that all remote bytes have been loaded before
-	// returning. This both means that we know that the image has been fully
-	// loaded, but also that the load is done when the context is still alive.
-	//
-	// NOTE: writeImage will attach a progress to the parent action.
-	if err := writeImage(ctx, compute.Cache(ctx), fetched); err != nil {
-		return nil, fnerrors.InternalError("failed to store image: %w", err)
-	}
-
-	return lazyLoadFromCache(ctx, compute.Cache(ctx), h)
-}
-
-func EnsureCached(ctx context.Context, img Image) (Image, error) {
-	if cached, ok := img.(*cachedImage); ok {
-		return cached, nil
+func EnsureLocal(ctx context.Context, img Image) (Image, error) {
+	if local, ok := img.(*localImage); ok {
+		return local, nil
 	}
 
 	digest, err := img.Digest()
@@ -144,12 +107,13 @@ func EnsureCached(ctx context.Context, img Image) (Image, error) {
 		return nil, err
 	}
 
-	return tasks.Return(ctx, tasks.Action("oci.ensure-cached").Arg("ref", digest), func(ctx context.Context) (Image, error) {
-		if err := writeImage(ctx, compute.Cache(ctx), img); err != nil {
+	store := compute.ArtifactStore(ctx)
+	return tasks.Return(ctx, tasks.Action("oci.ensure-local").Arg("ref", digest), func(ctx context.Context) (Image, error) {
+		if err := writeImage(ctx, store, img); err != nil {
 			return nil, fnerrors.InternalError("failed to store image: %w", err)
 		}
 
-		return lazyLoadFromCache(ctx, compute.Cache(ctx), digest)
+		return loadLocalImage(ctx, store, digest)
 	})
 }
 
@@ -212,7 +176,7 @@ func (r *fetchDescriptor) Compute(ctx context.Context, deps compute.Resolved) (*
 		RawManifest: d.Manifest,
 	}
 
-	// Also cache the config manifest, if this is an image.
+	// Also fetch the config manifest if this is an image.
 	if isImageMediaType(d.MediaType) {
 		img, err := d.Image()
 		if err != nil {

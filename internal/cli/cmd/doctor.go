@@ -27,7 +27,6 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/cli/nsboot"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/compute/cache"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/dependencies/pins"
@@ -312,7 +311,7 @@ func runDiagnostic[V any](ctx context.Context, title string, f func(ctx context.
 	res := errorOr[V]{}
 	// We have to run in a separate orchestrator so that failures in one diagnostic
 	// do not prevent other diagnostics from proceeding.
-	res.err = compute.DoWithCache(ctx, cache.NoCache, func(ctx context.Context) error {
+	res.err = compute.Do(ctx, func(ctx context.Context) error {
 		v, err := tasks.Return(ctx, tasks.Action(title), func(ctx context.Context) (V, error) {
 			timedCtx, cancel := context.WithTimeout(ctx, checkTimeLimit)
 			defer cancel()

@@ -8,11 +8,8 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/compute/cache"
-	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/module"
 )
@@ -29,11 +26,9 @@ func NewCacheCmd() *cobra.Command {
 }
 
 func newPruneCmd() *cobra.Command {
-	what := []string{"foundation", "buildkit"}
-
 	cmd := &cobra.Command{
 		Use:   "prune",
-		Short: "Remove all foundation-managed caches.",
+		Short: "Remove BuildKit's cache.",
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
@@ -42,29 +37,11 @@ func newPruneCmd() *cobra.Command {
 				return err
 			}
 
-			eg := executor.New(ctx, "fn.prune")
-
-			if slices.Contains(what, "foundation") {
-				eg.Go(func(ctx context.Context) error {
-					return cache.Prune(ctx)
-				})
-			}
-
-			if slices.Contains(what, "buildkit") {
-				eg.Go(func(ctx context.Context) error {
-					// XXX make platform configurable.
-					return buildkit.Prune(ctx, cfg.MakeConfigurationWith("prune", root.Workspace(), cfg.ConfigurationSlice{
-						PlatformConfiguration: root.DevHost().ConfigurePlatform,
-					}), nil)
-				})
-			}
-
-			// XXX remove go caches?
-			return eg.Wait()
+			return buildkit.Prune(ctx, cfg.MakeConfigurationWith("prune", root.Workspace(), cfg.ConfigurationSlice{
+				PlatformConfiguration: root.DevHost().ConfigurePlatform,
+			}), nil)
 		}),
 	}
-
-	cmd.Flags().StringArrayVar(&what, "caches", what, "Which caches to prune. List of: foundation, buildkit.")
 
 	return cmd
 }

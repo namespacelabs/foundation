@@ -15,7 +15,6 @@ import (
 	"testing"
 
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/compute/cache"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -37,7 +36,7 @@ func TestSourceDigest(t *testing.T) {
 	readDigest := func() schema.Digest {
 		t.Helper()
 		var digest schema.Digest
-		err := compute.DoWithCache(ctx, cache.NoCache, func(ctx context.Context) error {
+		err := compute.Do(ctx, func(ctx context.Context) error {
 			result, err := compute.Get(ctx, deferSourceDigest(os.DirFS(dir)))
 			if err != nil {
 				return err
@@ -91,7 +90,7 @@ func TestSourceDigest(t *testing.T) {
 
 func TestSourceDigestReadError(t *testing.T) {
 	ctx := tasks.WithSink(context.Background(), simplelog.NewSink(io.Discard, 0))
-	err := compute.DoWithCache(ctx, cache.NoCache, func(ctx context.Context) error {
+	err := compute.Do(ctx, func(ctx context.Context) error {
 		_, err := compute.GetValue(ctx, deferSourceDigest(os.DirFS(filepath.Join(t.TempDir(), "missing"))))
 		return err
 	})
@@ -113,7 +112,7 @@ func BenchmarkSourceDigestRetention(b *testing.B) {
 		}
 		b.Run(name, func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				err := compute.DoWithCache(ctx, cache.NoCache, func(ctx context.Context) error {
+				err := compute.Do(ctx, func(ctx context.Context) error {
 					const builds = 64
 					nodes := make([]compute.UntypedComputable, 0, builds)
 					runtime.GC()

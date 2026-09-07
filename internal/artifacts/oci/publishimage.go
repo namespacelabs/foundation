@@ -65,7 +65,7 @@ func (pi *publishImage) Inputs() *compute.In {
 }
 
 func (pi *publishImage) Output() compute.Output {
-	return compute.Output{NotCacheable: true} // XXX capture more explicitly that there are side-effects.
+	return compute.Output{Unshareable: true}
 }
 
 func (pi *publishImage) Action() *tasks.ActionEvent {

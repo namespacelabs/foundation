@@ -154,7 +154,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 			Indigestible("packages", packages).
 			Computable("bundle", results).
 			Computable("testBundle", testBundle),
-		compute.Output{NotCacheable: true},
+		compute.Output{Unshareable: true},
 		func(ctx context.Context, deps compute.Resolved) (StoredTestResults, error) {
 			return StoredTestResults{
 				Bundle:            compute.MustGetDepValue(deps, results, "bundle"),

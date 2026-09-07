@@ -7,10 +7,8 @@ package oci
 import (
 	"context"
 
-	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/compute/cache"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -47,21 +45,10 @@ func (f *fetchPrebuilt) Compute(ctx context.Context, _ compute.Resolved) (Resolv
 			return nil, err
 		}
 
-		c := compute.Cache(ctx)
-
-		if cache.IsDisabled(c) {
-			return rawImageIndex{idx}, nil
-		}
-
-		d, err := writeImageIndex(ctx, c, idx)
-		if err != nil {
-			return nil, err
-		}
-
-		return loadCachedResolvable(ctx, c, v1.Hash(d))
+		return rawImageIndex{idx}, nil
 
 	case isImageMediaType(types.MediaType(descriptor.MediaType)):
-		img, err := cacheAndReturn(ctx, f.imgid, f.opts)
+		img, err := FetchRemoteImage(ctx, f.imgid, f.opts)
 		if err != nil {
 			return nil, err
 		}

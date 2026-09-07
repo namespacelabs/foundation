@@ -220,7 +220,6 @@ type VersionInfo struct {
 	GOOS           string                          `json:"GOOS"`
 	GOARCH         string                          `json:"GOARCH"`
 	APIVersion     int                             `json:"api_version"`
-	CacheVersion   int                             `json:"cache_version"`
 	ToolAPIVersion int                             `json:"tool_api_version"`
 }
 
@@ -244,7 +243,6 @@ func CollectVersionInfo() (*VersionInfo, error) {
 		GOOS:           runtime.GOOS,
 		GOARCH:         runtime.GOARCH,
 		APIVersion:     versions.Builtin().APIVersion,
-		CacheVersion:   versions.Builtin().CacheVersion,
 		ToolAPIVersion: versions.ToolAPIVersion,
 	}, nil
 }
@@ -253,7 +251,7 @@ func FormatVersionInfo(out io.Writer, v *VersionInfo) {
 	FormatBinaryVersion(out, v.Binary)
 	x := text.NewIndentWriter(out, []byte("  ")) // align with FormatBinaryVersion
 	fmt.Fprintf(x, "architecture %s/%s\n", v.GOOS, v.GOARCH)
-	fmt.Fprintf(x, "internal api %d (cache=%d tools=%d)\n", v.APIVersion, v.CacheVersion, v.ToolAPIVersion)
+	fmt.Fprintf(x, "internal api %d (tools=%d)\n", v.APIVersion, v.ToolAPIVersion)
 }
 
 func FormatBinaryVersion(out io.Writer, v *storage.NamespaceBinaryVersion) {

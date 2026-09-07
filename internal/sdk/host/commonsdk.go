@@ -47,7 +47,7 @@ func (p *PrepareSDK) Inputs() *compute.In {
 		JSON("platform", p.Platform).
 		Str("binary", p.Binary)
 }
-func (p *PrepareSDK) Output() compute.Output { return compute.Output{NotCacheable: true} }
+func (p *PrepareSDK) Output() compute.Output { return compute.Output{Unshareable: true} }
 func (p *PrepareSDK) Compute(ctx context.Context, _ compute.Resolved) (LocalSDK, error) {
 	// XXX security
 	// We only checksum go/bin/go, it's a robustness/performance trade-off.

@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	ns.DoMain("ns", true, func(root *cobra.Command) {
+	ns.DoMain("ns", ns.MainOpts{AutoUpdate: true}, func(root *cobra.Command) {
 		cmd.RegisterCommands(root)
 	})
 }

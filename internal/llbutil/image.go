@@ -30,12 +30,12 @@ func Prebuilt(ctx context.Context, ref string, platform specs.Platform) (llb.Sta
 }
 
 func OCILayoutFromImage(ctx context.Context, image oci.Image) (llb.State, error) {
-	cachedImage, err := oci.EnsureCached(ctx, image)
+	localImage, err := oci.EnsureLocal(ctx, image)
 	if err != nil {
 		return llb.State{}, err
 	}
 
-	d, err := cachedImage.Digest()
+	d, err := localImage.Digest()
 	if err != nil {
 		return llb.State{}, err
 	}
@@ -44,11 +44,11 @@ func OCILayoutFromImage(ctx context.Context, image oci.Image) (llb.State, error)
 }
 
 func OCILayout(digest v1.Hash, opts ...llb.OCILayoutOption) llb.State {
-	opts = append(opts, llb.OCIStore("", "cache"))
+	opts = append(opts, llb.OCIStore("", "artifacts"))
 	// Another buildkit-ism. OCILayout resolution is digest based, but because
 	// it uses reference.Parse for parsing, it needs an arbitrary
 	// not-single-word key to parse as a host.
-	return llb.OCILayout("cache/cache@"+digest.String(), opts...)
+	return llb.OCILayout("artifacts/image@"+digest.String(), opts...)
 }
 
 func Image(image string, platform specs.Platform) llb.State {

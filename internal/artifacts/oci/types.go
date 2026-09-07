@@ -10,7 +10,6 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/compute/cache"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/schema"
@@ -33,8 +32,6 @@ type ResolvableImage interface {
 	ImageForPlatform(specs.Platform) (Image, error)
 	ImageIndex() (ImageIndex, error)
 	Push(context.Context, RepositoryWithAccess, bool /* trackProgress */) (v1.Hash, error)
-
-	cache(context.Context, cache.Cache) (schema.Digest, error)
 }
 
 type imageFetchFunc func(v1.Hash) (Image, error)
@@ -95,10 +92,6 @@ func (raw rawImage) Push(ctx context.Context, tag RepositoryWithAccess, trackPro
 	return pushImage(ctx, tag, raw.image, trackProgress)
 }
 
-func (raw rawImage) cache(ctx context.Context, c cache.Cache) (schema.Digest, error) {
-	return imageCacheable{}.Cache(ctx, c, raw.image)
-}
-
 type rawImageIndex struct {
 	index v1.ImageIndex
 }
@@ -138,10 +131,6 @@ func (raw rawImageIndex) Push(ctx context.Context, tag RepositoryWithAccess, tra
 	}
 
 	return digest, nil
-}
-
-func (raw rawImageIndex) cache(ctx context.Context, c cache.Cache) (schema.Digest, error) {
-	return writeImageIndex(ctx, c, raw.index)
 }
 
 func imageForPlatform(manifest *v1.IndexManifest, p *specs.Platform, fetch imageFetchFunc) (Image, error) {

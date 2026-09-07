@@ -34,7 +34,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/format"
-	"namespacelabs.dev/foundation/internal/fnfs/fscache"
+	"namespacelabs.dev/foundation/internal/fnfs/fsdigest"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/welcome"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
@@ -54,6 +54,7 @@ var (
 type MainOpts struct {
 	Name                 string
 	AutoUpdate           bool
+	NoCache              bool
 	NotifyOnNewVersion   bool
 	FormatErr            FormatErrorFunc
 	ConsoleInhibitReport bool
@@ -91,9 +92,9 @@ func doMain(opts MainOpts) (colors.Style, error) {
 	SetupViper()
 
 	// These are required for nsboot.
-	compute.RegisterProtoCacheable()
-	compute.RegisterBytesCacheable()
-	fscache.RegisterFSCacheable()
+	compute.RegisterProtoDigester()
+	compute.RegisterByteDigesters()
+	fsdigest.Register()
 
 	vault.IssueIdToken = func(ctx context.Context, aud string, version int, duration time.Duration) (string, error) {
 		r, err := fnapi.IssueIdToken(ctx, aud, version, duration)
@@ -107,10 +108,12 @@ func doMain(opts MainOpts) (colors.Style, error) {
 	rootCtx, style, flushLogs := setupContext(context.Background(), opts.ConsoleInhibitReport, opts.ConsoleRenderer)
 
 	// Before moving forward, we check if there's a more up-to-date ns we should fork to.
-	if opts.AutoUpdate && opts.Name == "ns" { // Applies only to ns, not nsc and docker-credential-helper
-		maybeRunLatest(rootCtx, style, flushLogs, opts.Name)
-	} else {
-		maybeRunLatestFromCache(rootCtx, style, flushLogs, opts.Name)
+	if !opts.NoCache {
+		if opts.AutoUpdate && opts.Name == "ns" { // Applies only to ns, not nsc and docker-credential-helper
+			maybeRunLatest(rootCtx, style, flushLogs, opts.Name)
+		} else {
+			maybeRunLatestFromCache(rootCtx, style, flushLogs, opts.Name)
+		}
 	}
 
 	var cleanupTracer func()
@@ -195,8 +198,10 @@ func doMain(opts MainOpts) (colors.Style, error) {
 		"If set to true, employ relaxed parsing for GRPC API responses.")
 	rootCmd.PersistentFlags().BoolVar(&enableErrorTracing, "error_tracing", enableErrorTracing,
 		"If set to true, prints a trace of foundation errors leading to the root cause with source info.")
-	rootCmd.PersistentFlags().StringVar(&dirs.CacheDir, "cache_dir", dirs.CacheDir,
-		"Where to place cache contents.")
+	if !opts.NoCache {
+		rootCmd.PersistentFlags().StringVar(&dirs.CacheDir, "cache_dir", dirs.CacheDir,
+			"Where to place cache contents.")
+	}
 
 	storedrun.SetupFlags(rootCmd.PersistentFlags())
 

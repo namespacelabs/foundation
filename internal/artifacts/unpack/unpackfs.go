@@ -70,8 +70,8 @@ func (u *unpackFS) Inputs() *compute.In {
 	return compute.Inputs().Computable("fsys", u.fsys).Str("what", u.what)
 }
 func (u *unpackFS) Output() compute.Output {
-	// This node is not cacheable as we always want to validate the contents of the resulting path.
-	return compute.Output{NotCacheable: true}
+	// Always validate the contents of the resulting path.
+	return compute.Output{Unshareable: true}
 }
 
 func (u *unpackFS) Compute(ctx context.Context, deps compute.Resolved) (Unpacked, error) {

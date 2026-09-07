@@ -59,7 +59,7 @@ func (l *baseRequest[V]) Inputs() *compute.In {
 				Str(fmt.Sprintf("local%d:path", k), local.Path)
 		}
 	} else if len(l.localDirs) > 0 {
-		in = in.Indigestible("localDirs", "not cacheable")
+		in = in.Indigestible("localDirs", "no stable identity")
 	}
 
 	for k, local := range l.localDirs {
@@ -214,7 +214,7 @@ func (l *baseRequest[V]) solve(ctx context.Context, c *GatewayClient, deps compu
 	}
 
 	solveOpt.OCIStores = map[string]content.Store{}
-	solveOpt.OCIStores["cache"] = &cacheStore{compute.Cache(ctx)}
+	solveOpt.OCIStores["artifacts"] = &artifactStore{compute.ArtifactStore(ctx)}
 
 	fillInCaching(&solveOpt)
 

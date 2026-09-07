@@ -56,12 +56,23 @@ import (
 	"namespacelabs.dev/foundation/universe/aws/iam"
 )
 
-func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command)) {
+type MainOpts struct {
+	AutoUpdate bool
+	NoCache    bool
+}
+
+func DoMain(name string, opts MainOpts, registerCommands func(*cobra.Command)) {
 	var deprecatedToolsInvocation bool
+
+	if opts.NoCache {
+		binary.UsePrebuilts = false
+		orchestration.OrchestratorMode = orchestration.OrchestratorModeHead
+	}
 
 	fncobra.DoMain(fncobra.MainOpts{
 		Name:       name,
-		AutoUpdate: autoUpdate,
+		AutoUpdate: opts.AutoUpdate,
+		NoCache:    opts.NoCache,
 		RegisterCommands: func(rootCmd *cobra.Command) {
 			registerCommands(rootCmd)
 
@@ -86,8 +97,7 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 
 				deploy.RegisterDeployOps()
 
-				// Compute cacheables.
-				oci.RegisterImageCacheable()
+				oci.RegisterImageDigesters()
 
 				// Languages.
 				golang.Register()
@@ -142,10 +152,10 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 			module.SetupFlags(rootCmd.PersistentFlags())
 			cfg.SetupFlags(rootCmd.PersistentFlags())
 
-			rootCmd.PersistentFlags().BoolVar(&binary.UsePrebuilts, "use_prebuilts", binary.UsePrebuilts,
-				"If set to false, binaries are built from source rather than a corresponding prebuilt being used.")
-			rootCmd.PersistentFlags().BoolVar(&compute.CachingEnabled, "caching", compute.CachingEnabled,
-				"If set to false, compute caching is disabled.")
+			if !opts.NoCache {
+				rootCmd.PersistentFlags().BoolVar(&binary.UsePrebuilts, "use_prebuilts", binary.UsePrebuilts,
+					"If set to false, binaries are built from source rather than a corresponding prebuilt being used.")
+			}
 			rootCmd.PersistentFlags().BoolVar(&git.AssumeSSHAuth, "git_ssh_auth", !environment.IsRunningInCI(),
 				"If set to true, assume that you use SSH authentication with git (this enables us to properly instruct git when downloading private repositories).")
 
@@ -153,8 +163,6 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 			rootCmd.PersistentFlags().Var(buildkit.ExportCacheVar, "buildkit_export_cache", "Internal, set buildkit export-cache.")
 			rootCmd.PersistentFlags().StringVar(&buildkit.BuildkitSecrets, "buildkit_secrets", "", "A list of secrets to pass in to buildkit.")
 			rootCmd.PersistentFlags().BoolVar(&buildkit.ForwardKeychain, "buildkit_forward_keychain", buildkit.ForwardKeychain, "If set to true, proxy buildkit auth through namespace orchestration.")
-			rootCmd.PersistentFlags().BoolVar(&compute.VerifyCaching, "verify_compute_caching", compute.VerifyCaching,
-				"Internal, do not use cached contents of compute graph, verify that the cached content matches instead.")
 			rootCmd.PersistentFlags().StringVar(&llbutil.GitCredentialsBuildkitSecret, "golang_buildkit_git_credentials_secret", "",
 				"If set, go invocations in buildkit get the specified secret mounted as ~/.git-credentials")
 			rootCmd.PersistentFlags().BoolVar(&deploy.AlsoDeployIngress, "also_compute_ingress", deploy.AlsoDeployIngress,
@@ -203,9 +211,11 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 			rootCmd.PersistentFlags().BoolVar(&k3d.IgnoreVersionCheck, "k3d_ignore_docker_version", k3d.IgnoreVersionCheck,
 				"If set to true, does not validate Docker's verison.")
 			rootCmd.PersistentFlags().BoolVar(&kubeops.ForceApply, "kubernetes_force_apply", kubeops.ForceApply, "Whether to force-apply an Apply.")
-			rootCmd.PersistentFlags().StringVar(&orchestration.OrchestratorMode, "orchestrator", orchestration.OrchestratorMode,
-				fmt.Sprintf("Orchestrator deployment mode: %q builds from source, %q uses %s.",
-					orchestration.OrchestratorModeHead, orchestration.OrchestratorModePrebuilt, orchestration.PrebuiltOrchestratorImage))
+			if !opts.NoCache {
+				rootCmd.PersistentFlags().StringVar(&orchestration.OrchestratorMode, "orchestrator", orchestration.OrchestratorMode,
+					fmt.Sprintf("Orchestrator deployment mode: %q builds from source, %q uses %s.",
+						orchestration.OrchestratorModeHead, orchestration.OrchestratorModePrebuilt, orchestration.PrebuiltOrchestratorImage))
+			}
 
 			// We have too many flags, hide some of them from --help so users can focus on what's important.
 			for _, noisy := range []string{

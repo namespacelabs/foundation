@@ -15,7 +15,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/framework/sync/ctxmutex"
-	"namespacelabs.dev/foundation/internal/compute/cache"
+	"namespacelabs.dev/foundation/internal/artifacts/contentstore"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -23,16 +23,8 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-var (
-	// Configurable globally only for now.
-	CachingEnabled = true
-	// If enabled, does not use cached contents, but still verifies that if we do have
-	// cached contents, they match what we produced.
-	VerifyCaching = false
-)
-
 const (
-	outputCachingInformation = true
+	outputDigestInformation = true
 
 	cleanerFuncLogLevel = 2
 )
@@ -44,10 +36,10 @@ var (
 )
 
 type Orch struct {
-	cache      cache.Cache
-	origctx    context.Context
-	exec       executor.ExecutorLike
-	bestEffort executor.ExecutorLike
+	artifactStore contentstore.Store
+	origctx       context.Context
+	exec          executor.ExecutorLike
+	bestEffort    executor.ExecutorLike
 
 	mu       sync.Mutex
 	promises map[string]*Promise[any]
@@ -185,36 +177,15 @@ func deferCompute(g *Orch, p *Promise[any], opts computeInstance, inputs *comput
 }
 
 func waitCompute(ctx context.Context, g *Orch, p *Promise[any], opts computeInstance, inputs *computedInputs) error {
-	cacheable, shouldCache := opts.CacheInfo()
-
-	// Computables are cacheable (if they don't opt-out, and rely on deterministic inputs and outputs).
-	// The cache is a simple a content-addressible filesystem, where a digest of the output points to
-	// its contents. A separate index is kept that maps "inputs" digest to output digest. There are two
-	// types of input digests: "complete" and "incomplete". "complete" digests are produced by computing
-	// recursively the digest of each dependency, provided it itself is complete. A leaf Computable
-	// produces "complete" digests if all of its inputs are known and deterministic ahead of time. On
-	// the other hand "incomplete" digests are computed using the digest of the output of a Computable
-	// which doesn't have deterministic inputs. To ensuring we minimize cost while loading, two index
-	// entries are maintained pointing at the output: a "complete" one if available, and the
-	// "incomplete" one.
-
 	var resolved *Resolved
-	var hits []cacheHit
 
 	ev := opts.Action()
 	name, _ := tasks.NameOf(ev)
 
 	if err := ev.ID(p.actionID).RunWithOpts(ctx, tasks.RunOpts{
 		Wait: func(ctx context.Context) (bool, error) {
-			// If we've already calculated an inputs' digest, then attempt to load from the cache
-			// directly. If not, we'll need to wait on our dependencies to determine whether a
-			// complete digest is available then.
-			hit := checkCache(ctx, g, opts, cacheable, shouldCache, inputs, p)
-			if VerifyCaching {
-				hits = append(hits, hit)
-			}
-			if hit.VerifiedHit {
-				return true, nil
+			if outputDigestInformation {
+				addInputsToSpan(ctx, opts.Inputs(), inputs)
 			}
 
 			// If we come in through the "digest-compute" path, then we've already computed the results.
@@ -223,32 +194,18 @@ func waitCompute(ctx context.Context, g *Orch, p *Promise[any], opts computeInst
 				return false, err
 			}
 
-			if outputCachingInformation {
+			if outputDigestInformation {
 				addOutputsToSpan(ctx, results)
 			}
 
-			// Compute a new "inputs" digest based on the resolved future outputs. This
-			// provides a stable identifier we can cache on. Used below as well in `deferStore`.
+			// Compute a new inputs digest based on the resolved future outputs.
 			if err := inputs.Finalize(results); err != nil {
 				return false, err
 			}
 
-			if outputCachingInformation {
+			if outputDigestInformation {
 				span := trace.SpanFromContext(ctx)
 				span.SetAttributes(attribute.Stringer("fn.inputs.postcompute.digest", inputs.PostComputeDigest))
-			}
-
-			if shouldCache && inputs.PostComputeDigest.IsSet() {
-				// Errors are ignored in cache loading.
-				if hit, err := checkLoadCache(ctx, "cache.load.post", g, opts, cacheable, inputs.PostComputeDigest, p); err == nil && hit.Hit {
-					if VerifyCaching {
-						hit.Inputs = inputs
-						hits = append(hits, hit)
-					}
-					if hit.VerifiedHit {
-						return true, nil
-					}
-				}
 			}
 
 			resolved = &Resolved{
@@ -258,15 +215,10 @@ func waitCompute(ctx context.Context, g *Orch, p *Promise[any], opts computeInst
 			return false, nil
 		},
 		Run: func(ctx context.Context) error {
-			res, err := compute(ctx, g, p.actionID, opts, cacheable, shouldCache, inputs, *resolved)
+			res, err := compute(ctx, p.actionID, opts, *resolved)
 			if err != nil {
 				return err
 			}
-
-			if VerifyCaching {
-				verifyCacheHits(ctx, opts.Computable, hits, res.Digest)
-			}
-
 			return p.resolve(res, nil)
 		},
 	}); err != nil {
@@ -276,7 +228,7 @@ func waitCompute(ctx context.Context, g *Orch, p *Promise[any], opts computeInst
 	return nil
 }
 
-func compute(ctx context.Context, g *Orch, actionID tasks.ActionID, opts computeInstance, cacheable *cacheable, shouldCache bool, inputs *computedInputs, resolved Resolved) (ResultWithTimestamp[any], error) {
+func compute(ctx context.Context, actionID tasks.ActionID, opts computeInstance, resolved Resolved) (ResultWithTimestamp[any], error) {
 	started := time.Now()
 
 	v, err := opts.Compute(ctx, resolved)
@@ -286,24 +238,12 @@ func compute(ctx context.Context, g *Orch, actionID tasks.ActionID, opts compute
 
 	completed := time.Now()
 
-	var digester ComputeDigestFunc
-	if digester == nil && cacheable != nil {
-		digester = cacheable.ComputeDigest
-	}
-
-	d, err := computeOutputDigest(ctx, digester, v)
+	d, err := computeOutputDigest(ctx, digesterFor(opts.OutputType), v)
 	if err != nil {
-		d = schema.Digest{} // Ignore errors, but don't cache.
-		if VerifyCaching {
-			fmt.Fprintf(console.Errors(ctx), "VerifyCache: failed to compute digest for %q: %v", typeStr(opts.Computable), err)
-		}
+		d = schema.Digest{}
 	}
 
-	if shouldCache && d.IsSet() {
-		deferStore(ctx, g, opts.Computable, cacheable, d, completed, v, inputs)
-	}
-
-	if outputCachingInformation {
+	if outputDigestInformation {
 		trace.SpanFromContext(ctx).SetAttributes(attribute.Stringer("fn.output.digest", d))
 	}
 
@@ -317,26 +257,6 @@ func compute(ctx context.Context, g *Orch, actionID tasks.ActionID, opts compute
 		Started:   started,
 		Completed: completed,
 	}, nil
-}
-
-func checkCache(ctx context.Context, g *Orch, opts computeInstance, cacheable *cacheable, shouldCache bool, inputs *computedInputs, p *Promise[any]) cacheHit {
-	if outputCachingInformation {
-		addInputsToSpan(ctx, opts.Inputs(), inputs, shouldCache)
-	}
-
-	if !shouldCache || !inputs.Digest.IsSet() {
-		return cacheHit{}
-	}
-
-	// Errors are ignored in cache loading.
-	if hit, err := checkLoadCache(ctx, "cache.load.pre", g, opts, cacheable, inputs.Digest, p); err == nil && hit.Hit {
-		if VerifyCaching {
-			hit.Inputs = inputs
-		}
-		return hit
-	}
-
-	return cacheHit{}
 }
 
 func waitDeps(ctx context.Context, g *Orch, desc string, computable map[string]UntypedComputable) (map[string]ResultWithTimestamp[any], error) {
@@ -474,8 +394,8 @@ func WithGraphLifecycle[V any](ctx context.Context, f func(context.Context) (V, 
 	return f(g.origctx)
 }
 
-func Cache(ctx context.Context) cache.Cache {
-	return On(ctx).cache
+func ArtifactStore(ctx context.Context) contentstore.Store {
+	return On(ctx).artifactStore
 }
 
 func AttachOrch(parent context.Context, orch *Orch) context.Context {
@@ -489,23 +409,22 @@ func Do(parent context.Context, do func(context.Context) error) error {
 		panic("compute: action sink required in the context")
 	}
 
-	var c cache.Cache
 	if parentOrch != nil {
-		c = parentOrch.cache
-	} else {
-		var err error
-		c, err = cache.Local()
-		if err != nil {
-			return err
-		}
+		return doWithArtifactStore(parent, parentOrch.artifactStore, do)
 	}
 
-	return DoWithCache(parent, c, do)
+	store, cleanup, err := contentstore.NewTemporary()
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	return doWithArtifactStore(parent, store, do)
 }
 
-func DoWithCache(parent context.Context, cache cache.Cache, do func(context.Context) error) error {
+func doWithArtifactStore(parent context.Context, artifactStore contentstore.Store, do func(context.Context) error) error {
 	g := &Orch{
-		cache:         cache,
+		artifactStore: artifactStore,
 		promises:      map[string]*Promise[any]{},
 		serialization: map[string]*ctxmutex.Mutex{},
 	}
@@ -560,7 +479,6 @@ func Get[V any](ctx context.Context, c Computable[V]) (ResultWithTimestamp[V], e
 	var rwt ResultWithTimestamp[V]
 	rwt.Value = typed
 	rwt.Digest = r.Digest
-	rwt.Cached = r.Cached
 	rwt.NonDeterministic = r.NonDeterministic
 	rwt.Started = r.Started
 	rwt.Completed = r.Completed
@@ -572,10 +490,8 @@ func GetValue[V any](ctx context.Context, c Computable[V]) (V, error) {
 	return v.Value, err
 }
 
-func addInputsToSpan(ctx context.Context, in *In, inputs *computedInputs, shouldCache bool) {
+func addInputsToSpan(ctx context.Context, in *In, inputs *computedInputs) {
 	span := trace.SpanFromContext(ctx)
-
-	span.SetAttributes(attribute.Bool("fn.input.cacheable", in.cacheable))
 
 	for _, input := range in.ins {
 		span.SetAttributes(attribute.Bool(fmt.Sprintf("fn.input.%s.undetermined", input.Name), input.Undetermined))
@@ -590,33 +506,12 @@ func addInputsToSpan(ctx context.Context, in *In, inputs *computedInputs, should
 	}
 
 	span.SetAttributes(attribute.Bool("fn.inputs.nonDeterministic", inputs.nonDeterministic))
-	span.SetAttributes(attribute.Bool("fn.shouldCache", shouldCache))
 }
 
 func addOutputsToSpan(ctx context.Context, results map[string]ResultWithTimestamp[any]) {
 	span := trace.SpanFromContext(ctx)
 	for k, res := range results {
 		span.SetAttributes(attribute.Stringer(fmt.Sprintf("fn.output.%s.digest", k), res.Digest))
-	}
-}
-
-func verifyCacheHits(ctx context.Context, c UntypedComputable, hits []cacheHit, d schema.Digest) {
-	for _, hit := range hits {
-		if hit.Hit && hit.OutputDigest != d {
-			console.WriteJSON(console.Errors(ctx),
-				fmt.Sprintf("VerifyCache: found non-determinism evaluating %q", typeStr(c)),
-				map[string]interface{}{
-					"expected":                hit.OutputDigest,
-					"got":                     d,
-					"matching":                hit.Input,
-					"inputs.digest":           hit.Inputs.Digest,
-					"inputs.postDigest":       hit.Inputs.PostComputeDigest,
-					"inputs.digests":          hit.Inputs.digests,
-					"inputs.nonDeterministic": hit.Inputs.nonDeterministic,
-				})
-
-			_ = Explain(ctx, console.Debug(ctx), c)
-		}
 	}
 }
 

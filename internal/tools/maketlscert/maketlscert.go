@@ -129,7 +129,7 @@ func newSerialNumber() (*big.Int, error) {
 func keySize(env *schema.Environment) int {
 	if env.Purpose == schema.Environment_TESTING {
 		// Speed up tests with cheaper keys.
-		return 512
+		return 1024
 	}
 
 	if env.Purpose == schema.Environment_PRODUCTION {

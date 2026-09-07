@@ -117,7 +117,7 @@ func (g *generateRequest) Inputs() *compute.In {
 		JSON("plan", g.plan).
 		Indigestible("conf", g.conf)
 }
-func (g *generateRequest) Output() compute.Output { return compute.Output{NotCacheable: true} }
+func (g *generateRequest) Output() compute.Output { return compute.Output{Unshareable: true} }
 func (g *generateRequest) Compute(ctx context.Context, deps compute.Resolved) (*buildkit.FrontendRequest, error) {
 	req := &buildkit.FrontendRequest{
 		Frontend: "dockerfile.v0",

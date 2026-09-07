@@ -66,7 +66,7 @@ func (rs *requiredServers) Inputs() *compute.In {
 }
 
 func (rs *requiredServers) Output() compute.Output {
-	return compute.Output{NotCacheable: true}
+	return compute.Output{Unshareable: true}
 }
 
 func (rs *requiredServers) Compute(ctx context.Context, _ compute.Resolved) (*ServerSnapshot, error) {

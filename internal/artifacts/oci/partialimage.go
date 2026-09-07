@@ -9,33 +9,30 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/partial"
 )
 
-// We've forked compressedImageExtender so we can identify a previous loaded
-// cached image, and avoid re-writing.
-//
 // Copyright 2018 Google LLC All Rights Reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 
-// cachedImage implements v1.Image by extending CompressedImageCore with the
+// localImage implements v1.Image by extending CompressedImageCore with the
 // appropriate methods computed from the minimal core.
-type cachedImage struct {
+type localImage struct {
 	partial.CompressedImageCore
 }
 
 // Assert that our extender type completes the v1.Image interface
-var _ v1.Image = (*cachedImage)(nil)
+var _ v1.Image = (*localImage)(nil)
 
 // Digest implements v1.Image
-func (i *cachedImage) Digest() (v1.Hash, error) {
+func (i *localImage) Digest() (v1.Hash, error) {
 	return partial.Digest(i)
 }
 
 // ConfigName implements v1.Image
-func (i *cachedImage) ConfigName() (v1.Hash, error) {
+func (i *localImage) ConfigName() (v1.Hash, error) {
 	return partial.ConfigName(i)
 }
 
 // Layers implements v1.Image
-func (i *cachedImage) Layers() ([]v1.Layer, error) {
+func (i *localImage) Layers() ([]v1.Layer, error) {
 	hs, err := partial.FSLayers(i)
 	if err != nil {
 		return nil, err
@@ -52,7 +49,7 @@ func (i *cachedImage) Layers() ([]v1.Layer, error) {
 }
 
 // LayerByDigest implements v1.Image
-func (i *cachedImage) LayerByDigest(h v1.Hash) (v1.Layer, error) {
+func (i *localImage) LayerByDigest(h v1.Hash) (v1.Layer, error) {
 	cl, err := i.CompressedImageCore.LayerByDigest(h)
 	if err != nil {
 		return nil, err
@@ -61,7 +58,7 @@ func (i *cachedImage) LayerByDigest(h v1.Hash) (v1.Layer, error) {
 }
 
 // LayerByDiffID implements v1.Image
-func (i *cachedImage) LayerByDiffID(h v1.Hash) (v1.Layer, error) {
+func (i *localImage) LayerByDiffID(h v1.Hash) (v1.Layer, error) {
 	h, err := partial.DiffIDToBlob(i, h)
 	if err != nil {
 		return nil, err
@@ -70,16 +67,16 @@ func (i *cachedImage) LayerByDiffID(h v1.Hash) (v1.Layer, error) {
 }
 
 // ConfigFile implements v1.Image
-func (i *cachedImage) ConfigFile() (*v1.ConfigFile, error) {
+func (i *localImage) ConfigFile() (*v1.ConfigFile, error) {
 	return partial.ConfigFile(i)
 }
 
 // Manifest implements v1.Image
-func (i *cachedImage) Manifest() (*v1.Manifest, error) {
+func (i *localImage) Manifest() (*v1.Manifest, error) {
 	return partial.Manifest(i)
 }
 
 // Size implements v1.Image
-func (i *cachedImage) Size() (int64, error) {
+func (i *localImage) Size() (int64, error) {
 	return partial.Size(i)
 }

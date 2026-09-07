@@ -22,6 +22,14 @@ import (
 )
 
 func RegisterCommands(root *cobra.Command) {
+	registerCommands(root, true)
+}
+
+func RegisterCommandsWithoutCache(root *cobra.Command) {
+	registerCommands(root, false)
+}
+
+func registerCommands(root *cobra.Command, includeCache bool) {
 	root.AddCommand(NewBuildCmd())
 	root.AddCommand(NewLsCmd())
 	root.AddCommand(NewDeployCmd())
@@ -31,7 +39,9 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(NewDevCmd())
 	root.AddCommand(NewDescribeCmd())
 	root.AddCommand(NewBuildBinaryCmd())
-	root.AddCommand(NewCacheCmd())
+	if includeCache {
+		root.AddCommand(NewCacheCmd())
+	}
 	root.AddCommand(mod.NewModCmd(RunCommand))
 	root.AddCommand(mod.NewTidyCmd()) // register `ns tidy` as an alias for `ns mod tidy`
 	root.AddCommand(NewLogsCmd())

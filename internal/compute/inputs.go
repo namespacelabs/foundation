@@ -22,11 +22,10 @@ import (
 type In struct {
 	ins         []keyValue
 	marshallers []keyMarshal
-	cacheable   bool
 	named       UntypedComputable // Set by Named(). If set, short-circuits node computation and waits for this input.
 }
 
-func Inputs() *In { return &In{cacheable: true} }
+func Inputs() *In { return &In{} }
 
 type keyValue struct {
 	Name         string
@@ -96,11 +95,6 @@ func (in *In) Marshal(key string, marshaller func(context.Context, io.Writer) er
 	return in
 }
 
-func (in *In) NonCacheable() *In {
-	in.cacheable = false
-	return in
-}
-
 func (in *In) Digest(key string, d Digestible) *In {
 	in.marshallers = append(in.marshallers, keyMarshal{key, func(ctx context.Context, w io.Writer) error {
 		digest, err := d.ComputeDigest(ctx)
@@ -120,7 +114,7 @@ type keyDigest struct {
 }
 
 type computedInputs struct {
-	serial           int64 // A type-provided digest function version. Bump it with `Inputs().Version()` if the cache function changes.
+	serial           int64 // A type-provided digest function version.
 	pkgPath          string
 	typeName         string
 	digests          []keyDigest
@@ -163,7 +157,7 @@ func (c *computedInputs) Finalize(resolved map[string]ResultWithTimestamp[any]) 
 func digestWithInputs(pkgPath, typeName string, serial int64, inputs []keyDigest) (schema.Digest, error) {
 	h := sha256.New()
 
-	if _, err := fmt.Fprintf(h, "$V:%d\nPkgPath:%s\nType:%s\nVersion:%d\nInputs{\n", versions.Builtin().CacheVersion, pkgPath, typeName, serial); err != nil {
+	if _, err := fmt.Fprintf(h, "$V:%d\nPkgPath:%s\nType:%s\nVersion:%d\nInputs{\n", versions.Builtin().APIVersion, pkgPath, typeName, serial); err != nil {
 		return schema.Digest{}, err
 	}
 
@@ -218,9 +212,7 @@ func (in *In) computeDigest(ctx context.Context, c UntypedComputable, processCom
 
 		opts := depc.prepareCompute(depc)
 
-		// If the dependency can't be loaded from cache, don't bother even checking if it has
-		// a computed input digest.
-		if !opts.CanCache() {
+		if opts.Unshareable {
 			res.digests = append(res.digests, keyDigest{Name: kv.Name})
 			unsetCount++
 			continue

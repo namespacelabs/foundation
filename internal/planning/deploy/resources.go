@@ -369,7 +369,7 @@ type PlanningOutput struct {
 }
 
 func makeState(c *buildkit.GatewayClient, pkg schema.PackageName, image compute.Computable[oci.Image], opts rtypes.RunBinaryOpts) compute.Computable[*buildkit.Input] {
-	return compute.Transform("make-request", tools.EnsureCached(image), func(ctx context.Context, image oci.Image) (*buildkit.Input, error) {
+	return compute.Transform("make-request", tools.EnsureLocal(image), func(ctx context.Context, image oci.Image) (*buildkit.Input, error) {
 		d, err := image.Digest()
 		if err != nil {
 			return nil, err

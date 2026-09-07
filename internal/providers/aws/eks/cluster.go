@@ -210,7 +210,7 @@ func (cd *cachedDescribeCluster) Inputs() *compute.In {
 	return compute.Inputs().Str("session", cd.session.sesh.CacheKey()).Str("name", cd.name)
 }
 
-func (cd *cachedDescribeCluster) Output() compute.Output { return compute.Output{NotCacheable: true} }
+func (cd *cachedDescribeCluster) Output() compute.Output { return compute.Output{Unshareable: true} }
 
 func (cd *cachedDescribeCluster) Compute(ctx context.Context, _ compute.Resolved) (*AwsCluster, error) {
 	// Doing two requests to AWS in parallel since each takes 600-700ms.

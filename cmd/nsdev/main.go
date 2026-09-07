@@ -17,8 +17,8 @@ import (
 )
 
 func main() {
-	ns.DoMain("nsdev", false, func(root *cobra.Command) {
-		cmd.RegisterCommands(root)
+	ns.DoMain("nsdev", ns.MainOpts{NoCache: true}, func(root *cobra.Command) {
+		cmd.RegisterCommandsWithoutCache(root)
 		root.AddCommand(debug.NewDebugCmd())
 		root.AddCommand(image.NewImageCmd())
 		root.AddCommand(debug.NewFnServicesCmd())

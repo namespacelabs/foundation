@@ -54,7 +54,7 @@ func explain(ctx context.Context, w io.Writer, c UntypedComputable, indent strin
 	if opts.NonDeterministic {
 		fmt.Fprintf(w, "🌀 ")
 	}
-	if opts.NotCacheable {
+	if opts.Unshareable {
 		fmt.Fprintf(w, "❗ ")
 	}
 

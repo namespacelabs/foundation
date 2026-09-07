@@ -64,7 +64,6 @@ func (c *collect[V]) Compute(ctx context.Context, deps Resolved) ([]ResultWithTi
 		typed.Completed = v.Completed
 		typed.Set = true
 		typed.Value = v.Value
-		typed.Cached = v.Cached
 		typed.Digest = v.Digest
 		typed.NonDeterministic = v.NonDeterministic
 		results[k] = typed

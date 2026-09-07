@@ -49,7 +49,7 @@ func (op *observePath) Action() *tasks.ActionEvent {
 }
 
 func (op *observePath) Inputs() *compute.In {
-	in := compute.Inputs().Str("absPath", op.absPath).Indigestible("not cacheable", "true")
+	in := compute.Inputs().Str("absPath", op.absPath).Indigestible("remote workspace has no stable identity", "true")
 	for k, extra := range op.extraInputs {
 		in = in.Computable(fmt.Sprintf("extra:%d", k), extra)
 	}

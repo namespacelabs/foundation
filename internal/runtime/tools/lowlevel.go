@@ -73,7 +73,7 @@ func redact(m proto.Message, f func(proto.Message) proto.Message) proto.Message 
 }
 
 func makeState(c *buildkit.GatewayClient, pkg schema.PackageName, image compute.Computable[oci.Image], method string, req proto.Message, opts rtypes.RunBinaryOpts, oo LowLevelInvokeOptions) compute.Computable[*buildkit.Input] {
-	return compute.Transform("make-request", EnsureCached(image), func(ctx context.Context, image oci.Image) (*buildkit.Input, error) {
+	return compute.Transform("make-request", EnsureLocal(image), func(ctx context.Context, image oci.Image) (*buildkit.Input, error) {
 		attachToAction(ctx, "request", req, oo.RedactRequest)
 
 		d, err := image.Digest()
@@ -135,6 +135,6 @@ func makeState(c *buildkit.GatewayClient, pkg schema.PackageName, image compute.
 	})
 }
 
-func EnsureCached(image compute.Computable[oci.Image]) compute.Computable[oci.Image] {
-	return compute.Transform("ensure-cached", image, oci.EnsureCached)
+func EnsureLocal(image compute.Computable[oci.Image]) compute.Computable[oci.Image] {
+	return compute.Transform("ensure-local", image, oci.EnsureLocal)
 }
