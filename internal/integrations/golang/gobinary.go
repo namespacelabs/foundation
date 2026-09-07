@@ -7,6 +7,7 @@ package golang
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"namespacelabs.dev/foundation/framework/findroot"
@@ -24,21 +25,48 @@ type GoBinary struct {
 	PackageName schema.PackageName `json:"packageName"`
 
 	// If workspaces are not used, will be the module path. Relative to ns workspace root.
-	GoWorkspacePath string `json:"workspacePath"`
-	GoModule        string `json:"module"` // Go module name.
-	GoVersion       string `json:"goVersion"`
-	SourcePath      string `json:"sourcePath"` // Relative to GoModule.
-	BinaryName      string `json:"binaryName"`
+	GoWorkspacePath  string `json:"workspacePath"`
+	GoModule         string `json:"module"` // Go module name.
+	GoVersion        string `json:"goVersion"`
+	SourcePath       string `json:"sourcePath"`                 // Relative to GoModule.
+	BazelPackagePath string `json:"bazelPackagePath,omitempty"` // Relative to the Bazel workspace.
+	BinaryName       string `json:"binaryName"`
 
 	BinaryOnly      bool
 	StripSymbols    bool
 	StripDwarf      bool
 	UnsafeCacheable bool // Unsafe because we can't guarantee that the sources used for compilation are consistent with the workspace contents.
+
+	builder Builder
 }
 
 var UseBuildKitForBuilding = knobs.Bool("golang_use_buildkit", "If set to true, buildkit is used for building, instead of a ko-style builder.", false)
 
+const GoBuilderMaybeBazel = "maybe_bazel"
+
+var (
+	GoBuilderKind = knobs.String("go_builder", "Selects the Go binary builder. maybe_bazel uses Bazel for packages with BUILD files.", "")
+)
+
+type Builder struct {
+	bazelRC string
+}
+
+func MaybeBazelBuilder(bazelRC string) Builder {
+	return Builder{bazelRC: bazelRC}
+}
+
 func (gb GoBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
+	return gb.builder.buildImage(ctx, env, conf, gb)
+}
+
+func (b Builder) buildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration, gb GoBinary) (compute.Computable[oci.Image], error) {
+	if b.bazelRC != "" {
+		if bazelBuildAvailable(conf.Workspace(), gb) {
+			return buildBazelImage(ctx, env, conf.Workspace(), gb, conf, b.bazelRC)
+		}
+	}
+
 	// if testing.UseNamespaceBuildCluster || buildkit.BuildOnNamespaceCloud.Get(env.Configuration()) || UseBuildKitForBuilding.Get(env.Configuration()) {
 	// 	return buildUsingBuildkit(ctx, env, gb, conf)
 	// }
@@ -48,6 +76,18 @@ func (gb GoBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, c
 	}
 
 	return buildLocalImage(ctx, env, conf.Workspace(), gb, conf)
+}
+
+func bazelBuildAvailable(workspace build.Workspace, bin GoBinary) bool {
+	if workspace == nil || workspace.IsExternal() || bin.BazelPackagePath == "" {
+		return false
+	}
+	for _, name := range []string{"BUILD.bazel", "BUILD"} {
+		if _, err := os.Stat(filepath.Join(workspace.Abs(), bin.BazelPackagePath, name)); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func (gb GoBinary) PlatformIndependent() bool { return false }
@@ -65,6 +105,10 @@ func FromLocation(loc pkggraph.Location, pkgName string) (*GoBinary, error) {
 	if err != nil {
 		return nil, err
 	}
+	bazelPackagePath, err := filepath.Rel(loc.Module.Abs(), absSrc)
+	if err != nil {
+		return nil, err
+	}
 
 	gowork, _ := findroot.Find("go work", filepath.Dir(modFile), findroot.LookForFile("go.work"))
 	if gowork == "" {
@@ -77,15 +121,16 @@ func FromLocation(loc pkggraph.Location, pkgName string) (*GoBinary, error) {
 	}
 
 	return &GoBinary{
-		PackageName:     loc.PackageName,
-		GoWorkspacePath: relMod,
-		GoModule:        mod.Module.Mod.Path,
-		SourcePath:      pkgInsideMod,
-		GoVersion:       mod.Go.Version,
+		PackageName:      loc.PackageName,
+		GoWorkspacePath:  relMod,
+		GoModule:         mod.Module.Mod.Path,
+		SourcePath:       pkgInsideMod,
+		BazelPackagePath: bazelPackagePath,
+		GoVersion:        mod.Go.Version,
 	}, nil
 }
 
-func GoBuilder(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, plan *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error) {
+func (b Builder) GoBuilder(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, plan *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error) {
 	gobin, err := FromLocation(loc, plan.RelPath)
 	if err != nil {
 		return nil, fnerrors.AttachLocation(loc, err)
@@ -96,6 +141,7 @@ func GoBuilder(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Loca
 	gobin.StripDwarf = plan.StripDwarf || plan.Strip
 	gobin.BinaryName = plan.BinaryName
 	gobin.UnsafeCacheable = unsafeCacheable
+	gobin.builder = b
 
 	return gobin, nil
 }
