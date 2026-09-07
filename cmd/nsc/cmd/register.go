@@ -63,12 +63,14 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(cluster.NewGitCheckoutCmd())                // nsc git-checkout [hidden]
 	root.AddCommand(private.NewInternalCmd())                   // nsc internal [hidden]
 	root.AddCommand(cluster.NewBazelCmd())
+	root.AddCommand(cluster.NewBuck2Cmd())
 	root.AddCommand(cluster.NewGradleCmd())
 	root.AddCommand(cluster.NewPantsCmd())
 	cacheCmd := &cobra.Command{Use: "cache", Short: "Build cache related functionality."}
 	cacheCmd.AddCommand(cluster.NewSccacheCmd())
 	cacheCmd.AddCommand(cluster.NewGradleCacheCmd())
 	cacheCmd.AddCommand(cluster.NewBazelCacheCmd())
+	cacheCmd.AddCommand(cluster.NewBuck2CacheCmd())
 	cacheCmd.AddCommand(cluster.NewPantsCacheCmd())
 	cacheCmd.AddCommand(cluster.NewTurborepoCmd())
 	root.AddCommand(cacheCmd)
