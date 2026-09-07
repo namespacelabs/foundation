@@ -117,32 +117,63 @@ func newCreateCacheTokenCmd(cfg createTokenConfig) *cobra.Command {
 }
 
 func newBazelCreateTokenCmd() *cobra.Command {
+	return newReapiTokenCmd(reapiTokenCommandConfig{
+		short:            "Create a revocable token for Bazel remote execution.",
+		tokenPrefix:      "bazel-execution",
+		tokenDescription: "Bazel remote execution access token",
+		invocation:       "bazel",
+		setupLabel:       "Bazel remote execution",
+		setupCommand:     "nsc bazel setup",
+	})
+}
+
+func newReapiCreateTokenCmd() *cobra.Command {
+	return newReapiTokenCmd(reapiTokenCommandConfig{
+		short:            "Create a revocable token for Remote Execution API access.",
+		tokenPrefix:      "reapi",
+		tokenDescription: "Remote Execution API access token",
+		invocation:       "reapi",
+		setupLabel:       "Remote Execution API access",
+		setupCommand:     "nsc reapi setup <bazel|buck2>",
+	})
+}
+
+type reapiTokenCommandConfig struct {
+	short            string
+	tokenPrefix      string
+	tokenDescription string
+	invocation       string
+	setupLabel       string
+	setupCommand     string
+}
+
+func newReapiTokenCmd(cfg reapiTokenCommandConfig) *cobra.Command {
 	var tokenFile, scope string
 	var expiresIn time.Duration
 
 	return fncobra.Cmd(&cobra.Command{
 		Use:   "create-token",
-		Short: "Create a revocable token for Bazel remote execution.",
+		Short: cfg.short,
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		flags.StringVar(&tokenFile, "token", "token.json", "Write token to this file in JSON format.")
 		fncobra.DurationVar(flags, &expiresIn, "expires_in", 90*24*time.Hour, "Duration until the token expires.")
 		flags.StringVar(&scope, "scope", "user", "Set the scope of the generated access token. Valid options: tenant, user. Tokens with user scope are bound to the tenant membership of the current user.")
 	}).Do(func(ctx context.Context) error {
 		expiresAt := time.Now().Add(expiresIn)
-		tokenName := fmt.Sprintf("bazel-execution-%s", ids.NewRandomBase32ID(4))
-		req, err := newBazelTokenRequest(tokenName, expiresAt, scope)
+		tokenName := fmt.Sprintf("%s-%s", cfg.tokenPrefix, ids.NewRandomBase32ID(4))
+		req, err := newReapiTokenRequest(tokenName, cfg.tokenDescription, expiresAt, scope)
 		if err != nil {
 			return err
 		}
 
 		tokenSource, err := fnapi.FetchToken(ctx)
 		if err != nil {
-			return fnerrors.InvocationError("bazel", "failed to get authentication token: %w", err)
+			return fnerrors.InvocationError(cfg.invocation, "failed to get authentication token: %w", err)
 		}
 
 		iamClient, err := iam.NewClient(ctx, tokenSource)
 		if err != nil {
-			return fnerrors.InvocationError("bazel", "failed to create IAM client: %w", err)
+			return fnerrors.InvocationError(cfg.invocation, "failed to create IAM client: %w", err)
 		}
 		defer iamClient.Close()
 
@@ -159,19 +190,23 @@ func newBazelCreateTokenCmd() *cobra.Command {
 		fmt.Fprintf(console.Stdout(ctx), "Name:        %s\n", resp.Token.GetName())
 		fmt.Fprintf(console.Stdout(ctx), "Expires At:  %s\n", expiresAt.Format(time.RFC3339))
 		fmt.Fprintf(console.Stdout(ctx), "\nWrote token contents to %q\n\n", tokenFile)
-		fmt.Fprintln(console.Stdout(ctx), "Set up Bazel remote execution with:")
+		fmt.Fprintf(console.Stdout(ctx), "Set up %s with:\n", cfg.setupLabel)
 
 		style := colors.Ctx(ctx)
-		fmt.Fprintf(console.Stdout(ctx), "  %s\n", style.Highlight.Apply(fmt.Sprintf("nsc bazel execution setup --token %s --bazelrc=namespace.bazelrc", tokenFile)))
+		fmt.Fprintf(console.Stdout(ctx), "  %s\n", style.Highlight.Apply(fmt.Sprintf("%s --token %s", cfg.setupCommand, tokenFile)))
 
 		return nil
 	})
 }
 
 func newBazelTokenRequest(name string, expiresAt time.Time, scope string) (*iamv1beta.CreateRevokableTokenRequest, error) {
+	return newReapiTokenRequest(name, "Bazel remote execution access token", expiresAt, scope)
+}
+
+func newReapiTokenRequest(name, description string, expiresAt time.Time, scope string) (*iamv1beta.CreateRevokableTokenRequest, error) {
 	req := &iamv1beta.CreateRevokableTokenRequest{
 		Name:        name,
-		Description: "Bazel remote execution access token",
+		Description: description,
 		ExpiresAt:   timestamppb.New(expiresAt),
 		Access: &iamv1beta.AccessPolicy{
 			Grants: []*iamv1beta.Permission{
