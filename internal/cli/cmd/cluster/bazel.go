@@ -347,7 +347,7 @@ func newSetupCacheCmd() *cobra.Command {
 
 		msg := makeEnsureBazelCacheRequest(version, experimentalDirect, enableRemoteAssetAPI, experimentalCacheName)
 
-		resp, err := retryBazelProvisioning(ctx, func() (*connect.Response[bazelv1beta.EnsureBazelCacheResponse], error) {
+		resp, err := retryBazelProvisioning(ctx, func(ctx context.Context) (*connect.Response[bazelv1beta.EnsureBazelCacheResponse], error) {
 			return client.EnsureBazelCache(ctx, connect.NewRequest(msg))
 		})
 		if err != nil {
