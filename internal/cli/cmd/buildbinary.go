@@ -258,7 +258,7 @@ func (i *transformImg) Inputs() *compute.In {
 }
 
 func (i *transformImg) Output() compute.Output {
-	return compute.Output{NotCacheable: true}
+	return compute.Output{Unshareable: true}
 }
 
 func (i *transformImg) Compute(ctx context.Context, deps compute.Resolved) (Binary, error) {

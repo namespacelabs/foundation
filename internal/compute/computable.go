@@ -6,16 +6,15 @@ package compute
 
 import (
 	"context"
-	"reflect"
 
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/go-ids"
 )
 
 // A computable represents a node in a computation graph. Each computation node produces a value,
-// which is computed by its `Compute` method. A node's output can be cached, and is keyed by all
-// declared inputs. For correctness, it is required that all meaningful inputs that may impact
-// the semantics of the output (and its digest), be listed in `Inputs`. A node can also depend on
+// which is computed by its `Compute` method. Computations may be shared within a graph based on
+// their declared inputs. For correctness, all meaningful inputs that may impact the semantics of
+// the output (and its digest) must be listed in `Inputs`. A node can also depend on
 // other nodes, and use their computed values. That relationship is established by declaring another
 // Computable as an Input to this one. The resulting value, will then be available in `Resolved`.
 // If any of node's dependencies fails to compute, the node implicitly fails as well (with the
@@ -118,26 +117,6 @@ func prepareInstance[V any](rc UntypedComputable, global, precomputed bool) comp
 
 func (opts computeInstance) Action() *tasks.ActionEvent { return opts.Computable.Action() }
 func (opts computeInstance) Inputs() *In                { return opts.Computable.Inputs() }
-
-func (opts computeInstance) CacheInfo() (*cacheable, bool) {
-	if opts.IsPrecomputed {
-		return nil, false
-	}
-
-	cacheable := cacheableFor(opts.OutputType)
-	shouldCache := CachingEnabled && opts.CanCache() && cacheable != nil
-	return cacheable, shouldCache
-}
-
-func (opts computeInstance) NewInstance() interface{} {
-	// OutputType is a *V
-	typ := reflect.TypeOf(opts.OutputType).Elem()
-	if typ.Kind() == reflect.Ptr {
-		// If it's a pointer, e.g. a proto pointer, then instantiate the value instead.
-		return reflect.New(typ.Elem()).Interface()
-	}
-	return reflect.New(typ).Elem().Interface()
-}
 
 type hasUnwrap interface {
 	Unwrap() UntypedComputable

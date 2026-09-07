@@ -23,7 +23,7 @@ type codegenTrigger struct {
 
 func (c *codegenTrigger) Action() *tasks.ActionEvent { return tasks.Action("codegen") }
 func (c *codegenTrigger) Inputs() *compute.In {
-	return compute.Inputs().Indigestible("not cacheable", "true")
+	return compute.Inputs().Indigestible("no stable identity", "true")
 }
 func (c *codegenTrigger) Compute(ctx context.Context, _ compute.Resolved) (any, error) {
 	return "codegen", codegenServer(ctx, c.srv)

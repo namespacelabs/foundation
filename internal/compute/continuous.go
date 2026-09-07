@@ -337,15 +337,7 @@ func (o *observable) Loop(ctx context.Context) error {
 		return err
 	}
 
-	orch := On(ctx)
-
-	cacheable, shouldCache := o.computable.CacheInfo()
-
 	p := makePromise[any](o.computable.Computable, tasks.NewActionID().String())
-	hit := checkCache(ctx, orch, o.computable, cacheable, shouldCache, deplessInputs, p)
-	if hit.VerifiedHit {
-		o.newValue(ctx, p.resolved.value)
-	}
 
 	sinkInputs := Inputs()
 
@@ -380,18 +372,10 @@ func (o *observable) Loop(ctx context.Context) error {
 					return false, err
 				}
 
-				p := makePromise[any](o.computable.Computable, tasks.NewActionID().String())
-
-				if hit, err := checkLoadCache(ctx, "cache.load.post", orch, o.computable, cacheable, inputs.PostComputeDigest, p); err == nil && hit.VerifiedHit {
-					o.newValue(ctx, p.resolved.value)
-					// Continue listening.
-					return true, nil
-				}
-
 				return false, nil
 			},
 			Run: func(ctx context.Context) error {
-				if res, err := compute(ctx, orch, p.actionID, o.computable, cacheable, shouldCache, inputs, resolved); err != nil {
+				if res, err := compute(ctx, p.actionID, o.computable, resolved); err != nil {
 					if err = o.inv.transformErr(err); err != nil {
 						return err
 					}
@@ -437,7 +421,6 @@ func (o *observable) newValue(ctx context.Context, latest ResultWithTimestamp[an
 
 func (o *observable) newVersion(result ResultWithTimestamp[any], node ObserveNote) {
 	o.mu.Lock()
-	// XXX new versions are not cached.
 	broadcast := o.doUpdate(result)
 	if node == ObserveDone {
 		o.listenerCancel = nil

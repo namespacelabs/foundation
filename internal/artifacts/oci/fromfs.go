@@ -72,7 +72,7 @@ func (ll *loadLayer) Action() *tasks.ActionEvent {
 func (ll *loadLayer) Inputs() *compute.In {
 	return compute.Inputs().Indigestible("vfs", ll.vfs).Str("path", ll.path)
 }
-func (ll *loadLayer) Output() compute.Output { return compute.Output{NotCacheable: true} }
+func (ll *loadLayer) Output() compute.Output { return compute.Output{Unshareable: true} }
 func (ll *loadLayer) Compute(ctx context.Context, _ compute.Resolved) (Layer, error) {
 	return tarball.LayerFromOpener(func() (io.ReadCloser, error) {
 		return ll.vfs.Open(ll.path)

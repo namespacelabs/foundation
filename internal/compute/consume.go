@@ -15,7 +15,7 @@ import (
 // Consume.
 func Consume[V any](action *tasks.ActionEvent, from Computable[V], compute func(context.Context, ResultWithTimestamp[V]) error) Computable[V] {
 	return Map(action, Inputs().Computable("from", from), Output{
-		NotCacheable: true, // There's no value in retaining these intermediary artifacts.
+		Unshareable: true,
 	}, func(ctx context.Context, r Resolved) (V, error) {
 		v, ok := GetDep(r, from, "from")
 		if !ok {

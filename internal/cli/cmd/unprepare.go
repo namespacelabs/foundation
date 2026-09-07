@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/compute/cache"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
@@ -19,22 +18,21 @@ import (
 )
 
 func NewUnprepareCmd() *cobra.Command {
-	var pruneCache bool
+	short := "Removes Namespace-created Docker containers."
+	prompt := `If you've run Namespace before, various containers were set up within
+your Docker instance.
 
+Do you wish to remove these?
+
+Type "unprepare" for them to be removed.`
 	cmd := &cobra.Command{
 		Use:   "unprepare",
-		Short: "Removes Namespace-created docker containers and user-level caches.",
+		Short: short,
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			result, err := tui.Ask(ctx, "Do you want to remove all of Namespace's locally managed resources?",
-				`If you've run Namespace before, various resources were set up on your
-workstation, including a result cache, but most importantly a series of
-containers running within your Docker instance.
-
-Do you wish to remove these?
-
-Type "unprepare" for them to be removed.`, "")
+				prompt, "")
 
 			if result != "unprepare" {
 				return context.Canceled
@@ -54,20 +52,11 @@ Type "unprepare" for them to be removed.`, "")
 				return err
 			}
 
-			if pruneCache {
-				// Prune cached build artifacts and command history artifacts.
-				if err := cache.Prune(ctx); err != nil {
-					return err
-				}
-			}
-
 			fmt.Fprintf(console.Stdout(ctx), "The contents of your %q are no longer valid.\n", devhost.DevHostFilename)
 
 			return nil
 		}),
 	}
-
-	cmd.Flags().BoolVar(&pruneCache, "prune_cache", pruneCache, "If set, also triggers a global cache prune.")
 
 	return cmd
 }

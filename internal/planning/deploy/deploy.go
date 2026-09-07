@@ -157,7 +157,7 @@ func (m *makeDeployGraph) Inputs() *compute.In {
 }
 
 func (m *makeDeployGraph) Output() compute.Output {
-	return compute.Output{NotCacheable: true}
+	return compute.Output{Unshareable: true}
 }
 
 func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*Plan, error) {

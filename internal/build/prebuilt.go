@@ -64,7 +64,7 @@ func (p prebuiltImage) Action() *tasks.ActionEvent {
 }
 func (p prebuiltImage) Inputs() *compute.In { return compute.Inputs().Stringer("ref", p.imgid) }
 func (p prebuiltImage) Output() compute.Output {
-	return compute.Output{NotCacheable: true}
+	return compute.Output{Unshareable: true}
 }
 func (p prebuiltImage) Compute(context.Context, compute.Resolved) (oci.ImageID, error) {
 	return p.imgid, nil

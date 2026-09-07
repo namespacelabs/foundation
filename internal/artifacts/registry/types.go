@@ -96,7 +96,7 @@ func StaticRepository(parent Manager, repository string, access oci.RegistryAcce
 		JSON("repository", repository).
 		Indigestible("parent", parent).
 		Indigestible("keychain", access.Keychain),
-		compute.Output{NotCacheable: true},
+		compute.Output{Unshareable: true},
 		func(ctx context.Context, r compute.Resolved) (oci.RepositoryWithParent, error) {
 			return oci.RepositoryWithParent{
 				Parent: parent,
@@ -124,7 +124,7 @@ func (r precomputedTag) Inputs() *compute.In {
 }
 
 func (r precomputedTag) Output() compute.Output {
-	return compute.Output{NotCacheable: true}
+	return compute.Output{Unshareable: true}
 }
 
 func (r precomputedTag) Action() *tasks.ActionEvent {

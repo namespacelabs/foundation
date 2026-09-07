@@ -21,7 +21,7 @@ func Map[V any](action *tasks.ActionEvent, inputs *In, output Output,
 func Inline[To any](action *tasks.ActionEvent, compute func(context.Context) (To, error)) Computable[To] {
 	return &inline[To]{
 		action: action,
-		inputs: Inputs().Indigestible("inline is not cacheable", "true"),
+		inputs: Inputs().Indigestible("inline has no stable identity", "true"),
 		output: Output{},
 		compute: func(ctx context.Context, _ Resolved) (To, error) {
 			return compute(ctx)
@@ -33,7 +33,7 @@ func Transform[From, To any](desc string, from Computable[From], compute func(co
 		return fmt.Sprintf("%s: %s", original, desc)
 	})
 	return Map(newAction, Inputs().Computable("from", from).Indigestible("transform doesnt trust closures", "true"), Output{
-		NotCacheable: true, // There's no value in retaining these intermediary artifacts.
+		Unshareable: true,
 	}, func(ctx context.Context, r Resolved) (To, error) {
 		return compute(ctx, MustGetDepValue(r, from, "from"))
 	})
@@ -96,7 +96,7 @@ func (p precomputed[V]) Inputs() *In {
 		return err
 	})
 }
-func (p precomputed[V]) Output() Output { return Output{NotCacheable: true} }
+func (p precomputed[V]) Output() Output { return Output{Unshareable: true} }
 func (p precomputed[V]) Compute(ctx context.Context, deps Resolved) (V, error) {
 	return p.value, p.err
 }
@@ -130,7 +130,11 @@ func (in *named[V]) Inputs() *In {
 	}
 	return inputs
 }
-func (in *named[V]) Output() Output { return in.c.Output().DontCache() } // Caching here is redundant.
+func (in *named[V]) Output() Output {
+	output := in.c.Output()
+	output.Unshareable = true
+	return output
+}
 func (in *named[V]) Compute(ctx context.Context, deps Resolved) (V, error) {
 	name, _ := tasks.NameOf(in.action)
 	return MustGetDepValue(deps, in.c, name), nil

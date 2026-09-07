@@ -35,8 +35,7 @@ func PrepareMultiPlatformImage(ctx context.Context, env pkggraph.SealedContext, 
 
 			tasks.Attachments(ctx).
 				AddResult("package_name", p.SourcePackage).
-				AddResult("digest", d.String()).
-				AddResult("cached", v.Cached)
+				AddResult("digest", d.String())
 
 			var platforms []string
 			for _, plat := range p.Platforms {
@@ -47,7 +46,6 @@ func PrepareMultiPlatformImage(ctx context.Context, env pkggraph.SealedContext, 
 				ActionId:  v.ActionID.String(),
 				Package:   p.SourcePackage.String(),
 				Kind:      p.BuildKind,
-				Cached:    v.Cached,
 				Started:   timestamppb.New(v.Started),
 				Completed: timestamppb.New(v.Completed),
 				Platform:  platforms,

@@ -52,7 +52,7 @@ func (w devModule) ChangeTrigger(rel string, excludes []string) compute.Computab
 			in = in.Computable(fmt.Sprintf("extra:%d", k), extra)
 		}
 
-		return compute.Map(tasks.Action("dev.trigger-actions"), in, compute.Output{NotCacheable: true}, func(ctx context.Context, r compute.Resolved) (any, error) {
+		return compute.Map(tasks.Action("dev.trigger-actions"), in, compute.Output{Unshareable: true}, func(ctx context.Context, r compute.Resolved) (any, error) {
 			return "no action", nil
 		})
 	}

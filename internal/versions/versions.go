@@ -29,7 +29,6 @@ type InternalVersions struct {
 	// error that says our version of Namespace is too recent. This is used during
 	// development when maintaining backwards compatibility is too expensive.
 	MinimumAPIVersion int `json:"minimum_api_version"`
-	CacheVersion      int `json:"cache_version"`
 }
 
 var (
@@ -78,7 +77,6 @@ func LastNonJSONVersion() InternalVersions {
 	return InternalVersions{
 		APIVersion:        44,
 		MinimumAPIVersion: 40,
-		CacheVersion:      1,
 	}
 }
 
