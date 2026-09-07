@@ -131,6 +131,7 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 			// used to authenticate it in the default mTLS mode) when build event
 			// ingestion is enabled for the workspace.
 			out.BuildEventEndpoint = res.GetBuildEventEndpoint()
+			out.BuildEventResultsURL = res.GetBuildEventResultsUrl()
 			out.CredentialHelperDomains = res.GetCredentialHelperDomains()
 		} else {
 			res, err := ensureBazelStorageCluster(ctx, tok, key, authMode, enableRemoteAssetAPI, bazelStorageAccessMode(storageMode))
@@ -142,18 +143,6 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 			}
 
 			out = bazelStorageSetup(res)
-		}
-
-		if out.BuildEventEndpoint != "" && !disableBuildEvents {
-			tenant, err := fnapi.GetTenantWithToken(ctx, tok)
-			if err != nil {
-				return fnerrors.Newf("failed to resolve tenant for build event results: %w", err)
-			}
-			if tenant.Tenant == nil || tenant.Tenant.TenantId == "" {
-				return fnerrors.New("received incomplete tenant response")
-			}
-
-			out.TenantID = tenant.Tenant.TenantId
 		}
 
 		if static {
@@ -263,7 +252,6 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 }
 
 type bazelRbeSetup struct {
-	TenantID                 string        `json:"-"`
 	SchedulerEndpoint        string        `json:"scheduler_endpoint,omitempty"`
 	StorageEndpoint          string        `json:"storage_endpoint,omitempty"`
 	RemoteAssetEndpoint      string        `json:"remote_asset_endpoint,omitempty"`
@@ -276,6 +264,7 @@ type bazelRbeSetup struct {
 	RemoteLocalFallback      bool          `json:"remote_local_fallback,omitempty"`
 	RemoteDownloadOutputs    string        `json:"remote_download_outputs,omitempty"`
 	BuildEventEndpoint       string        `json:"build_event_endpoint,omitempty"`
+	BuildEventResultsURL     string        `json:"build_event_results_url,omitempty"`
 	CredentialHelperDomains  []string      `json:"credential_helper_domains,omitempty"`
 }
 
@@ -332,10 +321,10 @@ func toBazelExecutionConfig(ctx context.Context, out bazelRbeSetup, command stri
 	}
 
 	if out.BuildEventEndpoint != "" && !disableBuildEvents {
-		lines = append(lines,
-			fmt.Sprintf("--bes_backend=%s", out.BuildEventEndpoint),
-			fmt.Sprintf("--bes_results_url=https://cloud.namespace.so/%s/bazel/invocation/", out.TenantID),
-		)
+		lines = append(lines, fmt.Sprintf("--bes_backend=%s", out.BuildEventEndpoint))
+		if out.BuildEventResultsURL != "" {
+			lines = append(lines, fmt.Sprintf("--bes_results_url=%s", out.BuildEventResultsURL))
+		}
 
 		if out.IngressAuthToken != "" {
 			lines = append(lines,

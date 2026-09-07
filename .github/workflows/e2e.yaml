@@ -218,6 +218,7 @@ jobs:
           /tmp/ns test \
             --also_report_start_events \
             --debug_to_file=/tmp/debug_log \
+            --log_dir=/tmp/test_logs \
             --use_prebuilts=true \
             --deploy_push_prebuilts_to_registry=false \
             --golang_use_buildkit=true \
@@ -233,6 +234,7 @@ jobs:
           path: |
             /tmp/action_log
             /tmp/debug_log
+            /tmp/test_logs
           retention-days: 3
         if: always()
 
