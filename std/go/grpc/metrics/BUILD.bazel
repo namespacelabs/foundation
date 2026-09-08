@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "metrics",
+    srcs = [
+        "deps.fn.go",
+        "wiremetrics.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/std/go/grpc/metrics",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//std/go/core",
+        "//std/go/grpc/interceptors",
+        "@com_github_grpc_ecosystem_go_grpc_prometheus//:go-grpc-prometheus",
+    ],
+)

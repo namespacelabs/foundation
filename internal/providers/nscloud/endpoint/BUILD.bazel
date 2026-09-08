@@ -1,0 +1,12 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "endpoint",
+    srcs = ["endpoint.go"],
+    importpath = "namespacelabs.dev/foundation/internal/providers/nscloud/endpoint",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/fnapi",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

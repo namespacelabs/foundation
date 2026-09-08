@@ -1,0 +1,25 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "invocation",
+    srcs = ["invocation.go"],
+    importpath = "namespacelabs.dev/foundation/internal/planning/invocation",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts/oci",
+        "//internal/build/binary",
+        "//internal/build/buildkit",
+        "//internal/compute",
+        "//internal/fnerrors",
+        "//internal/fnfs/memfs",
+        "//internal/keys",
+        "//internal/planning/tool/protocol",
+        "//internal/protos",
+        "//internal/support",
+        "//schema",
+        "//std/cfg",
+        "//std/pkggraph",
+        "@com_github_opencontainers_image_spec//specs-go/v1:specs-go",
+        "@org_golang_x_exp//slices",
+    ],
+)

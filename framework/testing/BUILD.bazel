@@ -1,0 +1,17 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "testing",
+    srcs = [
+        "do.go",
+        "http.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/framework/testing",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/testing/testboot",
+        "//schema",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//credentials/insecure",
+    ],
+)

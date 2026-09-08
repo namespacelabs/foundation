@@ -1,0 +1,27 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "snapshot",
+    srcs = ["compute.go"],
+    importpath = "namespacelabs.dev/foundation/internal/planning/snapshot",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//framework/rpcerrors/multierr",
+        "//internal/bytestream",
+        "//internal/compute",
+        "//internal/console",
+        "//internal/filewatcher",
+        "//internal/fnerrors",
+        "//internal/fnfs",
+        "//internal/parsing",
+        "//internal/planning",
+        "//internal/planning/eval",
+        "//internal/runtime",
+        "//internal/wscontents",
+        "//schema",
+        "//std/cfg",
+        "//std/pkggraph",
+        "//std/tasks",
+        "@com_github_fsnotify_fsnotify//:fsnotify",
+    ],
+)

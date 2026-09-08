@@ -1,0 +1,28 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "sentry",
+    srcs = [
+        "deps.fn.go",
+        "wire.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/universe/monitoring/sentry",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//std/core/info",
+        "//std/core/types",
+        "//std/go/core",
+        "//std/go/grpc/interceptors",
+        "//std/go/http/middleware",
+        "//std/grpc",
+        "//std/grpc/logging",
+        "//std/grpc/requestid",
+        "@com_github_getsentry_sentry_go//:sentry-go",
+        "@com_github_getsentry_sentry_go//http",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//metadata",
+        "@org_golang_google_grpc//peer",
+        "@org_golang_google_grpc//status",
+    ],
+)

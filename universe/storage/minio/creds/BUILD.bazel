@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "creds",
+    srcs = [
+        "deps.fn.go",
+        "provider.pb.go",
+        "provision.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/universe/storage/minio/creds",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//framework/resources",
+        "//std/go/core",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

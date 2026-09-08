@@ -1,0 +1,28 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "cmd",
+    srcs = ["register.go"],
+    importpath = "namespacelabs.dev/foundation/cmd/nsc/cmd",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/cli/cmd/admin",
+        "//internal/cli/cmd/auth",
+        "//internal/cli/cmd/aws",
+        "//internal/cli/cmd/cluster",
+        "//internal/cli/cmd/cluster/baseimage",
+        "//internal/cli/cmd/cluster/github",
+        "//internal/cli/cmd/cluster/macos",
+        "//internal/cli/cmd/cluster/private",
+        "//internal/cli/cmd/devbox",
+        "//internal/cli/cmd/gcp",
+        "//internal/cli/cmd/integrations",
+        "//internal/cli/cmd/scratch",
+        "//internal/cli/cmd/sdk",
+        "//internal/cli/cmd/token",
+        "//internal/cli/cmd/vault",
+        "//internal/cli/cmd/version",
+        "//internal/cli/cmd/workspace",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)

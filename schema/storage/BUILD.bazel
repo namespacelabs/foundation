@@ -1,0 +1,27 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "storage",
+    srcs = [
+        "build.pb.go",
+        "deploy.go",
+        "deploy.pb.go",
+        "diagnostics.pb.go",
+        "logs.pb.go",
+        "runs.pb.go",
+        "task.pb.go",
+        "tests.pb.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/schema/storage",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/planning/constants",
+        "//schema",
+        "//schema/runtime",
+        "@org_golang_google_genproto_googleapis_rpc//status",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+        "@org_golang_google_protobuf//types/known/anypb",
+        "@org_golang_google_protobuf//types/known/timestamppb",
+    ],
+)

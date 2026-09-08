@@ -2,10 +2,16 @@ load("@gazelle//:def.bzl", "gazelle")
 
 # gazelle:prefix namespacelabs.dev/foundation
 # gazelle:proto disable_global
+# gazelle:exclude internal/testdata
+# gazelle:exclude tools
+# gazelle:exclude cmd/bazel-credential-nsc
+# gazelle:exclude cmd/docker-credential-nsc
+# gazelle:exclude cmd/nsc/gendoc
 
 gazelle(
     name = "gazelle",
     args = [
+        "-exclude=**/*_test.go",
         "-proto=disable_global",
     ],
 )

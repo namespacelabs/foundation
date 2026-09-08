@@ -1,0 +1,25 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "database_lib",
+    srcs = ["main.go"],
+    importpath = "namespacelabs.dev/foundation/library/oss/cockroach/prepare/database",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//framework/resources/provider",
+        "//library/database/cockroach",
+        "//library/oss/cockroach",
+        "//library/oss/postgres",
+        "//library/oss/postgres/prepare/database/helpers",
+        "//universe/db/postgres",
+        "@com_github_cenkalti_backoff_v4//:backoff",
+        "@com_github_google_uuid//:uuid",
+        "@com_github_rs_zerolog//:zerolog",
+    ],
+)
+
+go_binary(
+    name = "database",
+    embed = [":database_lib"],
+    visibility = ["//visibility:public"],
+)

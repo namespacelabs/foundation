@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "kubeclient",
+    srcs = [
+        "makeconfig.go",
+        "staticconfig.pb.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/framework/kubernetes/kubeclient",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@io_k8s_client_go//tools/clientcmd/api",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

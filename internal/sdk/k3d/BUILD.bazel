@@ -1,0 +1,25 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "k3d",
+    srcs = ["k3d.go"],
+    importpath = "namespacelabs.dev/foundation/internal/sdk/k3d",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts",
+        "//internal/artifacts/oci",
+        "//internal/artifacts/unpack",
+        "//internal/compute",
+        "//internal/console",
+        "//internal/disk",
+        "//internal/fnerrors",
+        "//internal/localexec",
+        "//internal/runtime/docker",
+        "//internal/workspace/dirs",
+        "//schema",
+        "//std/tasks",
+        "@com_github_opencontainers_image_spec//specs-go/v1:specs-go",
+        "@io_k8s_sigs_yaml//:yaml",
+        "@org_golang_x_mod//semver",
+    ],
+)

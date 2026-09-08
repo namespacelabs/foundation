@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "public",
+    srcs = [
+        "builder.go",
+        "grpc.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/providers/nscloud/api/public",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/console",
+        "//internal/fnapi",
+        "//internal/providers/nscloud/endpoint",
+        "@dev_namespacelabs_integrations//proto/namespace/cloud/builder/v1beta",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//credentials",
+        "@org_golang_google_grpc//metadata",
+    ],
+)

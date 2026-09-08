@@ -1,0 +1,33 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "eks",
+    srcs = [
+        "cmd.go",
+        "computeirsa.go",
+        "generateconfig.go",
+        "generatetoken.go",
+        "setupautopush.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/cli/cmd/eks",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cli/fncobra",
+        "//internal/compute",
+        "//internal/console",
+        "//internal/console/colors",
+        "//internal/fnerrors",
+        "//internal/providers/aws",
+        "//internal/providers/aws/auth",
+        "//internal/providers/aws/eks",
+        "//internal/runtime",
+        "//std/cfg",
+        "//std/execution",
+        "//universe/aws/eks",
+        "@com_github_spf13_cobra//:cobra",
+        "@com_github_spf13_pflag//:pflag",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:meta",
+        "@io_k8s_client_go//pkg/apis/clientauthentication/v1:clientauthentication",
+        "@org_golang_google_protobuf//encoding/prototext",
+    ],
+)

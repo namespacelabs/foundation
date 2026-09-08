@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "build",
+    srcs = [
+        "configuration.go",
+        "prebuilt.go",
+        "types.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/build",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts/oci",
+        "//internal/compute",
+        "//internal/parsing/platform",
+        "//schema",
+        "//schema/storage",
+        "//std/pkggraph",
+        "//std/tasks",
+        "@com_github_opencontainers_image_spec//specs-go/v1:specs-go",
+    ],
+)

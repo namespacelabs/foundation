@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "portforward",
+    srcs = ["ingressblock.go"],
+    importpath = "namespacelabs.dev/foundation/internal/portforward",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//framework/rpcerrors/multierr",
+        "//internal/fnerrors",
+        "//internal/planning/deploy/storage",
+        "//internal/runtime",
+        "//schema",
+        "//schema/storage",
+    ],
+)

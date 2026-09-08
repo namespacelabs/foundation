@@ -1,0 +1,25 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "unpack",
+    srcs = [
+        "makefs.go",
+        "unpackfs.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/artifacts/unpack",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts",
+        "//internal/artifacts/download",
+        "//internal/bytestream",
+        "//internal/compute",
+        "//internal/executor",
+        "//internal/fnerrors",
+        "//internal/fnfs",
+        "//internal/fnfs/memfs",
+        "//internal/workspace/dirs",
+        "//schema",
+        "//std/tasks",
+        "@org_golang_x_exp//slices",
+    ],
+)
