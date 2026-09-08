@@ -41,3 +41,9 @@ func TestRulesGoPlatform(t *testing.T) {
 		t.Fatal("expected variant to be rejected")
 	}
 }
+
+func TestMaybeBazelBuilderWithoutBazelRC(t *testing.T) {
+	if builder := MaybeBazelBuilder(""); builder.bazel != nil {
+		t.Fatal("empty Bazel configuration unexpectedly enabled the Bazel builder")
+	}
+}
