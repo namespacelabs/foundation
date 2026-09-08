@@ -44,7 +44,7 @@ func NewBazelCmd() *cobra.Command {
 		Short: "Bazel-related activities.",
 	}
 
-	cache := &cobra.Command{Use: "cache", Short: "Bazel cache related functionality."}
+	cache := &cobra.Command{Use: "cache", Short: "Bazel cache related functionality.", Hidden: true}
 	cache.AddCommand(newSetupCacheCmd())
 
 	execution := &cobra.Command{

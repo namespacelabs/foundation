@@ -65,7 +65,7 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 	return fncobra.Cmd(&cobra.Command{
 		Use:    "setup",
 		Short:  "Set up a remote Bazel execution cluster and generate a bazelrc to use it.",
-		Hidden: true,
+		Hidden: !includeRemoteFlag,
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		flags.StringVar(&bazelRcPath, "bazelrc", "", "If specified, write the bazelrc to this path.")
 		flags.StringVarP(&output, "output", "o", "plain", "One of plain or json.")

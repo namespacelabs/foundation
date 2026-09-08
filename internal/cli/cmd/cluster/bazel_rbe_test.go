@@ -201,8 +201,8 @@ func TestNewBazelCmdSetupAlias(t *testing.T) {
 	if err != nil {
 		t.Fatalf("finding bazel setup: %v", err)
 	}
-	if !setup.Hidden {
-		t.Fatal("bazel setup must be hidden")
+	if setup.Hidden {
+		t.Fatal("bazel setup must be visible")
 	}
 
 	remote := setup.Flags().Lookup("remote")
