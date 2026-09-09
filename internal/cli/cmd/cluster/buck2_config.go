@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
 const (
@@ -202,7 +203,15 @@ func emitBuck2Config(ctx context.Context, out buck2Setup, configPath, output, co
 		return err
 	}
 	if len(out.clientIdentity) > 0 {
-		out.TLSClientCert, err = filepath.Abs(path + ".tls.pem")
+		identityPath := path + ".tls.pem"
+		switch filepath.Base(filepath.Dir(path)) {
+		case buck2ConfigDirName, "buckconfig.d":
+			identityPath, err = dirs.ConfigSubdir(filepath.Join("buck2", "client.pem"))
+			if err != nil {
+				return fnerrors.Newf("failed to resolve the Namespace configuration directory: %w", err)
+			}
+		}
+		out.TLSClientCert, err = filepath.Abs(identityPath)
 		if err != nil {
 			return fnerrors.Newf("failed to resolve the client identity path: %w", err)
 		}
