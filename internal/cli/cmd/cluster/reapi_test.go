@@ -217,6 +217,43 @@ func TestEmitReapiBuck2Config(t *testing.T) {
 	}
 }
 
+func TestEmitReapiBuck2ConfigDefaultPathKeepsIdentityOutsideConfigDirectory(t *testing.T) {
+	home := t.TempDir()
+	configHome := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", configHome)
+	configPath := filepath.Join(home, ".buckconfig.d", "50-namespace")
+
+	result := reapiSetupResult{
+		bazelRbeSetup: bazelRbeSetup{
+			SchedulerEndpoint: "grpcs://scheduler.example:443",
+			StorageEndpoint:   "grpcs://storage.example:443",
+		},
+		clientCertPEM: []byte("certificate"),
+		clientKeyPEM:  []byte("private-key"),
+	}
+	if err := emitReapiBuck2Config(context.Background(), result, "", "json", true, time.Hour); err != nil {
+		t.Fatalf("emitReapiBuck2Config: %v", err)
+	}
+
+	identityPath := filepath.Join(configHome, "ns", "buck2", "client.pem")
+	assertCredentialFile(t, identityPath, "certificate\nprivate-key")
+	config, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "tls_client_cert = " + identityPath + "\n"; !strings.Contains(string(config), want) {
+		t.Fatalf("config does not contain %q:\n%s", want, config)
+	}
+
+	result.clientCertPEM = []byte("replacement-certificate")
+	result.clientKeyPEM = []byte("replacement-private-key")
+	if err := emitReapiBuck2Config(context.Background(), result, "", "json", true, time.Hour); err != nil {
+		t.Fatalf("second emitReapiBuck2Config: %v", err)
+	}
+	assertCredentialFile(t, identityPath, "replacement-certificate\nreplacement-private-key")
+}
+
 func assertFileMode(t *testing.T, path string, want os.FileMode) {
 	t.Helper()
 	info, err := os.Stat(path)
