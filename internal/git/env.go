@@ -45,24 +45,6 @@ func NoPromptEnv() TupleList {
 	return env.Deterministic()
 }
 
-func ResetConfigGlobal() (TupleList, func(), error) {
-	f, err := os.CreateTemp(os.TempDir(), "empty")
-	if err != nil {
-		return TupleList{}, nil, err
-	}
-
-	if err := f.Close(); err != nil {
-		os.Remove(f.Name())
-		return TupleList{}, nil, err
-	}
-
-	env := EnvVars{"GIT_CONFIG_GLOBAL": f.Name()}
-
-	return env.Deterministic(), func() {
-		os.Remove(f.Name())
-	}, nil
-}
-
 type TupleList [][2]string
 
 func (vars EnvVars) Deterministic() TupleList {
