@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/moby/sys/atomicwriter"
@@ -407,8 +408,19 @@ type tenantTokenBinaryRequest struct {
 }
 
 type ResolvedTenantToken struct {
-	BearerToken string `json:"bearer_token"`
+	BearerToken string     `json:"bearer_token"`
+	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
 }
+
+type tenantTokenBinaryCacheKey struct {
+	path     string
+	tenantID string
+}
+
+var tenantTokenBinaryCache = struct {
+	sync.Mutex
+	tokens map[tenantTokenBinaryCacheKey]ResolvedTenantToken
+}{tokens: map[tenantTokenBinaryCacheKey]ResolvedTenantToken{}}
 
 func LoadTokenFromBinary(ctx context.Context) (*Token, error) {
 	binary := "nsc-credential-helper"
@@ -420,6 +432,17 @@ func LoadTokenFromBinary(ctx context.Context) (*Token, error) {
 		return nil, err
 	}
 
+	cacheKey := tenantTokenBinaryCacheKey{path: path, tenantID: impersonatingTenantID}
+	tenantTokenBinaryCache.Lock()
+	defer tenantTokenBinaryCache.Unlock()
+
+	if cached, ok := tenantTokenBinaryCache.tokens[cacheKey]; ok {
+		if cached.ExpiresAt.After(time.Now()) {
+			return &Token{StoredToken: StoredToken{TenantToken: cached.BearerToken}}, nil
+		}
+		delete(tenantTokenBinaryCache.tokens, cacheKey)
+	}
+
 	input, err := json.Marshal(tenantTokenBinaryRequest{TenantID: impersonatingTenantID})
 	if err != nil {
 		return nil, err
@@ -428,6 +451,9 @@ func LoadTokenFromBinary(ctx context.Context) (*Token, error) {
 	resolved, err := runTokenBinary(ctx, rtypes.StdIO(ctx), input, path, "impersonate")
 	if err != nil {
 		return nil, err
+	}
+	if resolved.ExpiresAt != nil && resolved.ExpiresAt.After(time.Now()) {
+		tenantTokenBinaryCache.tokens[cacheKey] = resolved
 	}
 
 	return &Token{StoredToken: StoredToken{TenantToken: resolved.BearerToken}}, nil
