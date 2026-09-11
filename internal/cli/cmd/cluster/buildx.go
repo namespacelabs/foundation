@@ -14,6 +14,7 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -59,6 +60,7 @@ func newSetupBuildxCmd() *cobra.Command {
 	}
 
 	name := cmd.Flags().String("name", defaultBuilder, "The name of the builder to set up.")
+	platforms := cmd.Flags().StringArray("platform", nil, "Only set up builders for the specified platforms (amd64 or arm64, optionally prefixed with linux/). Repeat to select multiple platforms.")
 	tag := cmd.Flags().String("tag", "", "If set, target a specific remote builder.")
 	use := cmd.Flags().Bool("use", false, "If true, changes the current builder to nsc-remote.")
 	background := cmd.Flags().Bool("background", false, "If true, runs the remote builder context in the background.")
@@ -113,6 +115,11 @@ func newSetupBuildxCmd() *cobra.Command {
 		}
 
 		available, err := determineAvailable(ctx)
+		if err != nil {
+			return err
+		}
+
+		available, err = selectBuildxPlatforms(available, *platforms)
 		if err != nil {
 			return err
 		}
@@ -617,6 +624,28 @@ func newWireBuildxCommand(hidden bool) *cobra.Command {
 	})
 
 	return cmd
+}
+
+func selectBuildxPlatforms(available []api.BuildPlatform, requested []string) ([]api.BuildPlatform, error) {
+	if len(requested) == 0 {
+		return available, nil
+	}
+
+	var selected []api.BuildPlatform
+	for _, value := range requested {
+		plat, err := api.ParseBuildPlatform(strings.TrimPrefix(value, "linux/"))
+		if err != nil {
+			return nil, err
+		}
+		if !slices.Contains(available, plat) {
+			return nil, fnerrors.Newf("build platform %q is not available (available platforms: %v)", value, available)
+		}
+		if !slices.Contains(selected, plat) {
+			selected = append(selected, plat)
+		}
+	}
+
+	return selected, nil
 }
 
 func determineAvailable(ctx context.Context) ([]api.BuildPlatform, error) {
