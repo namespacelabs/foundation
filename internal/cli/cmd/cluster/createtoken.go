@@ -150,18 +150,20 @@ type reapiTokenCommandConfig struct {
 func newReapiTokenCmd(cfg reapiTokenCommandConfig) *cobra.Command {
 	var tokenFile, scope string
 	var expiresIn time.Duration
+	var noExpiry bool
 
-	return fncobra.Cmd(&cobra.Command{
+	cmd := fncobra.Cmd(&cobra.Command{
 		Use:   "create-token",
 		Short: cfg.short,
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		flags.StringVar(&tokenFile, "token", "token.json", "Write token to this file in JSON format.")
 		fncobra.DurationVar(flags, &expiresIn, "expires_in", 90*24*time.Hour, "Duration until the token expires.")
+		flags.BoolVar(&noExpiry, "no_expiry", false, "Create a token with unlimited duration.")
 		flags.StringVar(&scope, "scope", "user", "Set the scope of the generated access token. Valid options: tenant, user. Tokens with user scope are bound to the tenant membership of the current user.")
 	}).Do(func(ctx context.Context) error {
 		expiresAt := time.Now().Add(expiresIn)
 		tokenName := fmt.Sprintf("%s-%s", cfg.tokenPrefix, ids.NewRandomBase32ID(4))
-		req, err := newReapiTokenRequest(tokenName, cfg.tokenDescription, expiresAt, scope)
+		req, err := newReapiTokenRequest(tokenName, cfg.tokenDescription, expiresAt, scope, noExpiry)
 		if err != nil {
 			return err
 		}
@@ -188,7 +190,11 @@ func newReapiTokenCmd(cfg reapiTokenCommandConfig) *cobra.Command {
 
 		fmt.Fprintf(console.Stdout(ctx), "Token ID:    %s\n", resp.Token.GetTokenId())
 		fmt.Fprintf(console.Stdout(ctx), "Name:        %s\n", resp.Token.GetName())
-		fmt.Fprintf(console.Stdout(ctx), "Expires At:  %s\n", expiresAt.Format(time.RFC3339))
+		if noExpiry {
+			fmt.Fprintln(console.Stdout(ctx), "Expires At:  Never")
+		} else {
+			fmt.Fprintf(console.Stdout(ctx), "Expires At:  %s\n", expiresAt.Format(time.RFC3339))
+		}
 		fmt.Fprintf(console.Stdout(ctx), "\nWrote token contents to %q\n\n", tokenFile)
 		fmt.Fprintf(console.Stdout(ctx), "Set up %s with:\n", cfg.setupLabel)
 
@@ -197,17 +203,19 @@ func newReapiTokenCmd(cfg reapiTokenCommandConfig) *cobra.Command {
 
 		return nil
 	})
+	cmd.MarkFlagsMutuallyExclusive("expires_in", "no_expiry")
+
+	return cmd
 }
 
-func newBazelTokenRequest(name string, expiresAt time.Time, scope string) (*iamv1beta.CreateRevokableTokenRequest, error) {
-	return newReapiTokenRequest(name, "Bazel remote execution access token", expiresAt, scope)
+func newBazelTokenRequest(name string, expiresAt time.Time, scope string, noExpiry bool) (*iamv1beta.CreateRevokableTokenRequest, error) {
+	return newReapiTokenRequest(name, "Bazel remote execution access token", expiresAt, scope, noExpiry)
 }
 
-func newReapiTokenRequest(name, description string, expiresAt time.Time, scope string) (*iamv1beta.CreateRevokableTokenRequest, error) {
+func newReapiTokenRequest(name, description string, expiresAt time.Time, scope string, noExpiry bool) (*iamv1beta.CreateRevokableTokenRequest, error) {
 	req := &iamv1beta.CreateRevokableTokenRequest{
 		Name:        name,
 		Description: description,
-		ExpiresAt:   timestamppb.New(expiresAt),
 		Access: &iamv1beta.AccessPolicy{
 			Grants: []*iamv1beta.Permission{
 				{ResourceType: "bazel/execution", ResourceId: "*", Actions: []string{"ensure"}},
@@ -216,9 +224,15 @@ func newReapiTokenRequest(name, description string, expiresAt time.Time, scope s
 			},
 		},
 	}
+	if !noExpiry {
+		req.ExpiresAt = timestamppb.New(expiresAt)
+	}
 
 	switch scope {
 	case "tenant":
+		if noExpiry {
+			return nil, fnerrors.BadInputError("--no_expiry requires --scope=user")
+		}
 		req.Scope = iamv1beta.RevokableToken_TENANT_SCOPE
 	case "user":
 		req.Scope = iamv1beta.RevokableToken_TENANT_MEMBERSHIP_SCOPE
