@@ -1,0 +1,36 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "lsp",
+    srcs = [
+        "cmd.go",
+        "docsync.go",
+        "handler.go",
+        "workspaces.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/cli/cmd/lsp",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cli/fncobra",
+        "//internal/console",
+        "//internal/fnfs",
+        "//internal/fnfs/memfs",
+        "//internal/frontend/cuefrontend",
+        "//internal/frontend/fncue",
+        "//internal/parsing",
+        "//schema",
+        "//std/cfg",
+        "//std/module",
+        "@com_github_spf13_cobra//:cobra",
+        "@dev_lsp_go_jsonrpc2//:jsonrpc2",
+        "@dev_lsp_go_protocol//:protocol",
+        "@dev_lsp_go_uri//:uri",
+        "@org_cuelang_go//cue",
+        "@org_cuelang_go//cue/ast",
+        "@org_cuelang_go//cue/ast/astutil",
+        "@org_cuelang_go//cue/errors",
+        "@org_cuelang_go//cue/parser",
+        "@org_cuelang_go//cue/token",
+        "@org_uber_go_zap//:zap",
+    ],
+)

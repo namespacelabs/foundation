@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "eks",
+    srcs = [
+        "details.pb.go",
+        "prepareirsa.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/universe/aws/eks",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//framework/kubernetes/kubedef",
+        "//internal/fnerrors",
+        "//schema",
+        "//std/execution/defs",
+        "//universe/aws/iam",
+        "@com_github_aws_aws_sdk_go_v2//aws/arn",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

@@ -1,0 +1,12 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "kubenaming",
+    srcs = [
+        "domainfrag.go",
+        "naming.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/framework/kubernetes/kubenaming",
+    visibility = ["//visibility:public"],
+    deps = ["@dev_namespacelabs_go_ids//:go-ids"],
+)

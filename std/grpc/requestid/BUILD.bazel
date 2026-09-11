@@ -1,0 +1,17 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "requestid",
+    srcs = ["requestid.go"],
+    importpath = "namespacelabs.dev/foundation/std/grpc/requestid",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//std/go/core",
+        "//std/protocol",
+        "@dev_namespacelabs_go_ids//:go-ids",
+        "@io_opentelemetry_go_otel//attribute",
+        "@io_opentelemetry_go_otel_trace//:trace",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//status",
+    ],
+)

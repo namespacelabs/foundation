@@ -1,0 +1,30 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "provisioning",
+    srcs = [
+        "bootstrap.go",
+        "handlers.go",
+        "protocol.go",
+        "stack.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/framework/provisioning",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//framework/rpcerrors",
+        "//framework/rpcerrors/multierr",
+        "//internal/compression",
+        "//internal/fnerrors",
+        "//internal/fnfs/memfs",
+        "//internal/planning/tool/protocol",
+        "//schema",
+        "//std/execution/defs",
+        "@com_github_klauspost_compress//zstd",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//encoding/protojson",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//types/known/anypb",
+    ],
+)

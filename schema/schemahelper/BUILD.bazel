@@ -1,0 +1,13 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "schemahelper",
+    srcs = ["networking.go"],
+    importpath = "namespacelabs.dev/foundation/schema/schemahelper",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/fnerrors",
+        "//schema",
+        "@org_golang_google_protobuf//proto",
+    ],
+)

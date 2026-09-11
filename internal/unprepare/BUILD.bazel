@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "unprepare",
+    srcs = ["k3d.go"],
+    importpath = "namespacelabs.dev/foundation/internal/unprepare",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//framework/rpcerrors/multierr",
+        "//internal/sdk/host",
+        "//internal/sdk/k3d",
+        "//std/tasks",
+        "@io_k8s_utils//strings/slices",
+    ],
+)

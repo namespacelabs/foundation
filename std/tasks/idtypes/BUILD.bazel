@@ -1,0 +1,17 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "idtypes",
+    srcs = [
+        "id.go",
+        "known.go",
+        "serialize.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/std/tasks/idtypes",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_cespare_xxhash_v2//:xxhash",
+        "@org_golang_google_protobuf//encoding/protojson",
+        "@org_golang_google_protobuf//proto",
+    ],
+)

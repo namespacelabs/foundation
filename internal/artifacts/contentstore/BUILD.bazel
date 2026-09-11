@@ -1,0 +1,13 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "contentstore",
+    srcs = ["store.go"],
+    importpath = "namespacelabs.dev/foundation/internal/artifacts/contentstore",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/fnerrors",
+        "//schema",
+        "@dev_namespacelabs_go_ids//:go-ids",
+    ],
+)

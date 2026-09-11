@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "registry",
+    srcs = [
+        "static.go",
+        "types.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/artifacts/registry",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts/oci",
+        "//internal/build/registry",
+        "//internal/cli/fncobra/name",
+        "//internal/compute",
+        "//internal/fnerrors",
+        "//schema",
+        "//std/cfg",
+        "//std/tasks",
+        "@com_github_google_go_containerregistry//pkg/authn",
+    ],
+)

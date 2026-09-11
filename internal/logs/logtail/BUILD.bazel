@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "logtail",
+    srcs = ["logobserver.go"],
+    importpath = "namespacelabs.dev/foundation/internal/logs/logtail",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cli/keyboard",
+        "//internal/compute",
+        "//internal/console",
+        "//internal/console/colors",
+        "//internal/runtime",
+        "//schema",
+        "//schema/runtime",
+        "//std/cfg",
+        "//std/tasks",
+        "@org_golang_x_exp//slices",
+        "@org_uber_go_atomic//:atomic",
+    ],
+)

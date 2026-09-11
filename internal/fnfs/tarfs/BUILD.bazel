@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "tarfs",
+    srcs = [
+        "computable.go",
+        "tarfs.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/fnfs/tarfs",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts",
+        "//internal/bytestream",
+        "//internal/compute",
+        "//internal/fnerrors",
+        "//internal/fnfs",
+        "//internal/fnfs/memfs",
+        "//std/tasks",
+    ],
+)

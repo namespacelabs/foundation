@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "resources",
+    srcs = ["op.pb.go"],
+    importpath = "namespacelabs.dev/foundation/internal/resources",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/codegen/protos",
+        "//schema",
+        "//schema/runtime",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

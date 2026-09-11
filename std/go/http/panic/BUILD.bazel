@@ -1,0 +1,8 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "panic",
+    srcs = ["panic.go"],
+    importpath = "namespacelabs.dev/foundation/std/go/http/panic",
+    visibility = ["//visibility:public"],
+)

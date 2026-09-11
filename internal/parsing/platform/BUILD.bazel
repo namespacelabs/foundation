@@ -1,0 +1,13 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "platform",
+    srcs = ["platform.go"],
+    importpath = "namespacelabs.dev/foundation/internal/parsing/platform",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//schema",
+        "@com_github_containerd_platforms//:platforms",
+        "@com_github_opencontainers_image_spec//specs-go/v1:specs-go",
+    ],
+)

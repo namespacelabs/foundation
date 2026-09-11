@@ -1,0 +1,29 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "wsremote",
+    srcs = [
+        "context.go",
+        "protocol.pb.go",
+        "protocol_grpc.pb.go",
+        "remote.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/bytestream",
+        "//internal/compute",
+        "//internal/console",
+        "//internal/fnfs/digestfs",
+        "//internal/fnfs/memfs",
+        "//internal/wscontents",
+        "//schema",
+        "//std/tasks",
+        "@com_github_moby_patternmatcher//:patternmatcher",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

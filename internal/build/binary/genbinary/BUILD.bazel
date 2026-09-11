@@ -1,0 +1,36 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "genbinary",
+    srcs = [
+        "alpine.go",
+        "llbgen.go",
+        "nix.go",
+        "staticfilesserver.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/build/binary/genbinary",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts/oci",
+        "//internal/build",
+        "//internal/build/baseimage",
+        "//internal/build/binary",
+        "//internal/build/buildkit",
+        "//internal/compute",
+        "//internal/console",
+        "//internal/dependencies/pins",
+        "//internal/fnerrors",
+        "//internal/fnfs/digestfs",
+        "//internal/fnfs/memfs",
+        "//internal/llbutil",
+        "//internal/parsing/invariants",
+        "//internal/parsing/platform",
+        "//internal/runtime/docker",
+        "//internal/runtime/rtypes",
+        "//schema",
+        "//std/pkggraph",
+        "//std/tasks",
+        "@com_github_moby_buildkit//client/llb",
+        "@org_golang_x_exp//slices",
+    ],
+)

@@ -1,0 +1,17 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "keyboard",
+    srcs = ["term.go"],
+    importpath = "namespacelabs.dev/foundation/internal/cli/keyboard",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//framework/console/termios",
+        "//internal/console",
+        "//internal/executor",
+        "//internal/observers",
+        "//internal/protos",
+        "@com_github_charmbracelet_bubbletea//:bubbletea",
+        "@com_github_morikuni_aec//:aec",
+    ],
+)

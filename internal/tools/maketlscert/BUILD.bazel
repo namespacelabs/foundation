@@ -1,0 +1,13 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "maketlscert",
+    srcs = ["maketlscert.go"],
+    importpath = "namespacelabs.dev/foundation/internal/tools/maketlscert",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//schema",
+        "//std/tasks",
+        "//std/types",
+    ],
+)

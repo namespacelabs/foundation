@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "vault",
+    srcs = [
+        "credentials.go",
+        "types.pb.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/universe/vault",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//framework/rpcerrors",
+        "//internal/console",
+        "//internal/workspace/dirs",
+        "@com_github_hashicorp_vault_client_go//:vault-client-go",
+        "@com_github_hashicorp_vault_client_go//schema",
+        "@com_github_pkg_browser//:browser",
+        "@com_github_rs_zerolog//:zerolog",
+        "@dev_namespacelabs_go_ids//:go-ids",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

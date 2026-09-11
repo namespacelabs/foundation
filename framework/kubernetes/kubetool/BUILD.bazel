@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "kubetool",
+    srcs = [
+        "hostenv.pb.go",
+        "kubetool.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/framework/kubernetes/kubetool",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//framework/rpcerrors",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

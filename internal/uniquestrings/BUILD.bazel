@@ -1,0 +1,12 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "uniquestrings",
+    srcs = ["uniquestrings.go"],
+    importpath = "namespacelabs.dev/foundation/internal/uniquestrings",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "@org_golang_x_exp//maps",
+        "@org_golang_x_exp//slices",
+    ],
+)
