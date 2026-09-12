@@ -7,20 +7,16 @@ package opaque
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/assets"
 	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
-	"namespacelabs.dev/foundation/internal/hotreload"
 	hrconstants "namespacelabs.dev/foundation/internal/hotreload/constants"
 	"namespacelabs.dev/foundation/internal/integrations"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/runtime"
-	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/runtime/constants"
@@ -115,19 +111,6 @@ func (OpaqueIntegration) PrepareRun(ctx context.Context, server planning.Planned
 	return nil
 }
 
-func (OpaqueIntegration) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, server planning.PlannedServer) (context.Context, integrations.DevObserver, error) {
-	filesyncConfig, err := getFilesyncWorkspacePath(server)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if filesyncConfig != nil {
-		return hotreload.ConfigureFileSyncDevObserver(ctx, cluster, server.Server)
-	}
-
-	return ctx, nil, nil
-}
-
 func (OpaqueIntegration) PreParseServer(ctx context.Context, loc pkggraph.Location, ext *parsing.ServerFrameworkExt) error {
 	return nil
 }
@@ -138,40 +121,6 @@ func (OpaqueIntegration) PostParseServer(ctx context.Context, _ *parsing.Sealed)
 
 func (OpaqueIntegration) DevelopmentPackages() []schema.PackageName {
 	return nil
-}
-
-func (OpaqueIntegration) PrepareHotReload(ctx context.Context, remote *wsremote.SinkRegistrar, srv planning.PlannedServer) *integrations.HotReloadOpts {
-	if remote == nil {
-		return nil
-	}
-
-	filesyncConfig, err := getFilesyncWorkspacePath(srv)
-	if err != nil {
-		// Shouldn't happen because getFilesyncWorkspacePath() is already called in PrepareDev().
-		panic(fnerrors.InternalError("Error from getFilesyncWorkspacePath in PrepareHotReload, shouldn't happen: %v", err))
-	}
-
-	if filesyncConfig == nil {
-		return nil
-	}
-
-	return &integrations.HotReloadOpts{
-		// "ModuleName" and "Rel" are empty because we have only one module in the image and
-		// we put the package content directly under the root "/app" directory.
-		Sink: remote.For(&wsremote.Signature{ModuleName: "", Rel: ""}),
-		EventProcessor: func(ev *wscontents.FileEvent) *wscontents.FileEvent {
-			if strings.HasPrefix(ev.Path, filesyncConfig.srcPath+"/") {
-				return &wscontents.FileEvent{
-					Event:       ev.Event,
-					Path:        ev.Path[len(filesyncConfig.srcPath)+1:],
-					NewContents: ev.NewContents,
-					Mode:        ev.Mode,
-				}
-			} else {
-				return nil
-			}
-		},
-	}
 }
 
 type filesyncConfig struct {

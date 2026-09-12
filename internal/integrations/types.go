@@ -6,15 +6,12 @@ package integrations
 
 import (
 	"context"
-	"io"
 
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/assets"
-	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/runtime"
-	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -35,23 +32,6 @@ type Integration interface {
 	// Called on `ns generate`.
 	GenerateNode(*pkggraph.Package, []*schema.Node) ([]*schema.SerializedInvocation, error)
 	GenerateServer(*pkggraph.Package, []*schema.Node) ([]*schema.SerializedInvocation, error)
-
-	// Called on `ns dev`.
-	PrepareDev(context.Context, runtime.ClusterNamespace, planning.PlannedServer) (context.Context, DevObserver, error)
-	PrepareHotReload(context.Context, *wsremote.SinkRegistrar, planning.PlannedServer) *HotReloadOpts
-}
-
-type DevObserver interface {
-	io.Closer
-	OnDeployment(context.Context)
-}
-
-type HotReloadOpts struct {
-	Sink wsremote.Sink
-	// If "eventProcessor" is set:
-	//   - If it returns nil, a full rebuild will be triggered instead of a hot reload.
-	//   - If it returns a non-nil event, that event will be used instead of the original event.
-	EventProcessor func(*wscontents.FileEvent) *wscontents.FileEvent
 }
 
 var (
@@ -96,15 +76,5 @@ func (MaybeTidy) TidyNode(context.Context, cfg.Context, pkggraph.PackageLoader, 
 }
 
 func (MaybeTidy) TidyServer(context.Context, cfg.Context, pkggraph.PackageLoader, pkggraph.Location, *schema.Server) error {
-	return nil
-}
-
-type NoDev struct{}
-
-func (NoDev) PrepareDev(ctx context.Context, _ runtime.ClusterNamespace, _ planning.PlannedServer) (context.Context, DevObserver, error) {
-	return ctx, nil, nil
-}
-
-func (NoDev) PrepareHotReload(context.Context, *wsremote.SinkRegistrar, planning.PlannedServer) *HotReloadOpts {
 	return nil
 }

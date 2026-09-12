@@ -93,7 +93,7 @@ message Endpoint {
 
     string service_label = 10;
 
-    // Present only when running `ns dev`, NetworkPlan is not stored in this case.
+    // Present only while port forwarding; not stored in the NetworkPlan.
     uint32 local_port  = 11;
     string server_name = 12;
 

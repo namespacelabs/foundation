@@ -84,7 +84,6 @@ func ConfigureBuilder(builder Builder) {
 
 type impl struct {
 	integrations.MaybeTidy
-	integrations.NoDev
 	builder Builder
 }
 

@@ -49,11 +49,11 @@ func (mod *Module) ErrorLocation() string {
 	return mod.loadedFrom.AbsPath
 }
 
-func (mod *Module) Abs() string                                                         { return mod.loadedFrom.AbsPath }
-func (mod *Module) DefinitionFiles() []string                                           { return mod.loadedFrom.DefinitionFiles }
-func (mod *Module) ModuleName() string                                                  { return mod.Workspace.ModuleName }
-func (mod *Module) Version() string                                                     { return mod.version }
-func (mod *Module) ChangeTrigger(rel string, excludes []string) compute.Computable[any] { return nil }
+func (mod *Module) Abs() string                                { return mod.loadedFrom.AbsPath }
+func (mod *Module) DefinitionFiles() []string                  { return mod.loadedFrom.DefinitionFiles }
+func (mod *Module) ModuleName() string                         { return mod.Workspace.ModuleName }
+func (mod *Module) Version() string                            { return mod.version }
+func (mod *Module) BuildPrerequisite() compute.Computable[any] { return nil }
 
 // An external module is downloaded from a remote location and stored in the cache. It always has a version.
 func (mod *Module) IsExternal() bool { return mod.version != "" }

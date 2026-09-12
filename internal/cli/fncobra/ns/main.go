@@ -19,7 +19,6 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/environment"
-	"namespacelabs.dev/foundation/internal/filewatcher"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/entity"
 	integrationparsing "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/api"
@@ -78,7 +77,6 @@ func DoMain(name string, opts MainOpts, registerCommands func(*cobra.Command)) {
 
 			fncobra.PushPreParse(rootCmd, func(ctx context.Context, args []string) error {
 				module.WireModuleLoader()
-				filewatcher.SetupFileWatcher()
 
 				binary.BuildGo = (golang.Builder{}).GoBuilder
 				binary.BuildLLBGen = genbinary.LLBBinary
@@ -206,8 +204,6 @@ func DoMain(name string, opts MainOpts, registerCommands func(*cobra.Command)) {
 				"Slack channel to send deployment notifications to.")
 			rootCmd.PersistentFlags().BoolVar(&gcloud.UseHostGCloudBinary, "gcloud_use_host_binary", gcloud.UseHostGCloudBinary,
 				"If set to true, uses a gcloud binary that is available at the host, rather than ns's builtin.")
-			rootCmd.PersistentFlags().BoolVar(&filewatcher.FileWatcherUsePolling, "filewatcher_use_polling",
-				filewatcher.FileWatcherUsePolling, "If set to true, uses polling to observe file system events.")
 			rootCmd.PersistentFlags().BoolVar(&k3d.IgnoreVersionCheck, "k3d_ignore_docker_version", k3d.IgnoreVersionCheck,
 				"If set to true, does not validate Docker's verison.")
 			rootCmd.PersistentFlags().BoolVar(&kubeops.ForceApply, "kubernetes_force_apply", kubeops.ForceApply, "Whether to force-apply an Apply.")
@@ -247,7 +243,6 @@ func DoMain(name string, opts MainOpts, registerCommands func(*cobra.Command)) {
 				"use_head_orchestrator",
 				"update_orchestrator",
 				"gcloud_use_host_binary",
-				"filewatcher_use_polling",
 				"k3d_ignore_docker_version",
 				"kubernetes_force_apply",
 				"slack_token",
