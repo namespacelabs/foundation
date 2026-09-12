@@ -320,7 +320,7 @@ func newRoot(name string, preRunE func(cmd *cobra.Command, args []string) error)
 	case "ns":
 		root.Example = `  ns prepare local  Prepares the local workspace for development or production.
   ns test           Run all functional end-to-end tests in the current workspace.
-  ns dev            Starts a development session, continuously building and deploying servers.`
+  ns deploy         Build and deploy servers.`
 
 	case "nsc":
 		root.Example = `  nsc login    Log in to use Namespace.

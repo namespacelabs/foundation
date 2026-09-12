@@ -44,8 +44,6 @@ type ResultWithTimestamp[V any] struct {
 	ActionID  tasks.ActionID
 	Started   time.Time
 	Completed time.Time // When this value was computed (if known).
-
-	revision uint64 // Used in a Continuous() flow.
 }
 
 type atom[V any] struct {

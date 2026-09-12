@@ -56,12 +56,9 @@ type Workspace interface {
 	IsExternal() bool
 	ReadOnlyFS(rel ...string) fs.FS
 
-	// ChangeTrigger returns an observable which will get a new value whenever a
-	// path under `rel` is modified, and the filter function doesn't reject.
-	// Excludes is a list of excluded files, in buildkit format. Implementations
-	// are REQUIRED to depend on ChangeTrigger if they rely on the contents of
-	// the workspace.
-	ChangeTrigger(rel string, excludes []string) compute.Computable[any]
+	// BuildPrerequisite returns work, such as code generation, that must complete
+	// before building from this workspace. It may be nil.
+	BuildPrerequisite() compute.Computable[any]
 }
 
 type BuildTarget interface {
