@@ -18,6 +18,7 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/mod/semver"
 	"namespacelabs.dev/foundation/internal/artifacts"
+	"namespacelabs.dev/foundation/internal/artifacts/download"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/unpack"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -114,7 +115,7 @@ func SDK(ctx context.Context, p specs.Platform) (compute.Computable[K3D], error)
 		}
 	}
 
-	w := unpack.Unpack("k3d", unpack.MakeFilesystem("k3d", 0755, ref))
+	w := unpack.Unpack("k3d", unpack.MakeFilesystem("k3d", 0755, ref, download.WithCache()))
 
 	return compute.Map(
 		tasks.Action("k3d.ensure").Arg("version", version).HumanReadablef("Ensuring k3d %s is installed", version),

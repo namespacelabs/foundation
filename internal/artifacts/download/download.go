@@ -31,8 +31,20 @@ import (
 // Maximum total time we'll spend retrying transient download failures.
 const downloadMaxElapsed = 2 * time.Minute
 
-func URL(ref artifacts.Reference) compute.Computable[bytestream.ByteStream] {
-	return &downloadUrl{url: ref.URL, digest: &ref.Digest}
+func URL(ref artifacts.Reference, opts ...Option) compute.Computable[bytestream.ByteStream] {
+	dl := &downloadUrl{url: ref.URL, digest: &ref.Digest}
+	for _, opt := range opts {
+		opt(dl)
+	}
+	return dl
+}
+
+type Option func(*downloadUrl)
+
+// WithCache retains digest-verified SDK downloads across commands. Ordinary
+// downloads remain uncached so development builds observe source changes.
+func WithCache() Option {
+	return func(dl *downloadUrl) { dl.cache = true }
 }
 
 // Must only be used when it's guaranteed that the output does not change based on the presence of Namespace headers.
@@ -47,6 +59,7 @@ func UnverifiedURL(url string) compute.Computable[bytestream.ByteStream] {
 type downloadUrl struct {
 	url                 string
 	digest              *schema.Digest
+	cache               bool
 	useNamespaceHeaders bool       // Does not affect the output.
 	additionalValues    url.Values // Does not affect the output.
 
@@ -62,7 +75,7 @@ func (dl *downloadUrl) Action() *tasks.ActionEvent {
 }
 
 func (dl *downloadUrl) Inputs() *compute.In {
-	inputs := compute.Inputs().Str("url", dl.url)
+	inputs := compute.Inputs().Str("url", dl.url).Bool("cache", dl.cache)
 	if dl.digest != nil {
 		return inputs.Digest("digest", dl.digest)
 	} else {
@@ -71,6 +84,13 @@ func (dl *downloadUrl) Inputs() *compute.In {
 }
 
 func (dl *downloadUrl) Compute(ctx context.Context, _ compute.Resolved) (bytestream.ByteStream, error) {
+	if dl.cache {
+		return dl.downloadCached(ctx)
+	}
+	return dl.download(ctx)
+}
+
+func (dl *downloadUrl) download(ctx context.Context) (bytestream.ByteStream, error) {
 	url := dl.url
 
 	if query := dl.additionalValues.Encode(); query != "" {

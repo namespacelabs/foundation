@@ -51,7 +51,7 @@ func (p *PrepareSDK) Output() compute.Output { return compute.Output{Unshareable
 func (p *PrepareSDK) Compute(ctx context.Context, _ compute.Resolved) (LocalSDK, error) {
 	// XXX security
 	// We only checksum go/bin/go, it's a robustness/performance trade-off.
-	fsys := unpack.Unpack(fmt.Sprintf("%s-sdk", p.Name), tarfs.TarGunzip(download.URL(p.Ref)), unpack.WithChecksumPaths(p.Binary))
+	fsys := unpack.Unpack(fmt.Sprintf("%s-sdk", p.Name), tarfs.TarGunzip(download.URL(p.Ref, download.WithCache())), unpack.WithChecksumPaths(p.Binary))
 
 	// The contents of the sdk are unpacked here, rather than as an input to
 	// this computable, as DoScoped Computables must have a deterministic set of

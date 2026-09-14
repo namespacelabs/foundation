@@ -21,8 +21,8 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func MakeFilesystem(filename string, mode fs.FileMode, ref artifacts.Reference) compute.Computable[fs.FS] {
-	return &makeFS{ref: ref, dirent: memfs.FileDirent{Path: filename, FileMode: mode}, contents: download.URL(ref)}
+func MakeFilesystem(filename string, mode fs.FileMode, ref artifacts.Reference, opts ...download.Option) compute.Computable[fs.FS] {
+	return &makeFS{ref: ref, dirent: memfs.FileDirent{Path: filename, FileMode: mode}, contents: download.URL(ref, opts...)}
 }
 
 type makeFS struct {
