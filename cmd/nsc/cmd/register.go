@@ -9,6 +9,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/admin"
 	"namespacelabs.dev/foundation/internal/cli/cmd/auth"
 	"namespacelabs.dev/foundation/internal/cli/cmd/aws"
+	"namespacelabs.dev/foundation/internal/cli/cmd/buildkite"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/baseimage"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/github"
@@ -31,6 +32,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(auth.NewLogoutCmd())
 	root.AddCommand(aws.NewAwsCmd())
 	root.AddCommand(gcp.NewGcpCmd())
+	root.AddCommand(buildkite.NewBuildkiteCmd())
 
 	root.AddCommand(version.NewVersionCmd())
 
