@@ -24,3 +24,16 @@ func NewBuildkiteJobsServiceClient(ctx context.Context) (buildkiteconnect.JobsSe
 		connect.WithInterceptors(newAuthInterceptor(tok)),
 	), nil
 }
+
+func NewBuildkiteQueueServiceClient(ctx context.Context) (buildkiteconnect.QueueServiceClient, error) {
+	tok, err := FetchToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return buildkiteconnect.NewQueueServiceClient(
+		http.DefaultClient,
+		GlobalEndpoint(),
+		connect.WithInterceptors(newAuthInterceptor(tok)),
+	), nil
+}
