@@ -5,22 +5,19 @@
 package golang
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
 
-	"github.com/bazelbuild/bazelisk/core"
-	"github.com/bazelbuild/bazelisk/repositories"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
+	buildbazel "namespacelabs.dev/foundation/internal/build/bazel"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -31,23 +28,34 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func buildBazelImage(ctx context.Context, env pkggraph.SealedContext, workspace build.Workspace, bin GoBinary, target build.BuildTarget, bazelrc string) (compute.Computable[oci.Image], error) {
+func buildBazelImage(ctx context.Context, env pkggraph.SealedContext, workspace build.Workspace, bin GoBinary, target build.BuildTarget, builder *buildbazel.Builder) (compute.Computable[oci.Image], error) {
 	if workspace == nil {
 		return nil, fnerrors.InternalError("bazel: workspace is missing")
 	}
 	if target.TargetPlatform() == nil {
 		return nil, fnerrors.InternalError("bazel: target platform is missing")
 	}
-	if bazelrc == "" {
-		return nil, fnerrors.InternalError("bazel: bazelrc is missing")
+	if builder == nil {
+		return nil, fnerrors.InternalError("bazel: builder is missing")
 	}
 
-	comp := &bazelCompilation{
-		binary:       bin,
-		platform:     *target.TargetPlatform(),
-		workspaceAbs: workspace.Abs(),
-		bazelrc:      bazelrc,
+	label, err := bazelTarget(bin)
+	if err != nil {
+		return nil, err
 	}
+	goPlatform, err := rulesGoPlatform(*target.TargetPlatform())
+	if err != nil {
+		return nil, err
+	}
+	output, err := builder.AddTarget(ctx, buildbazel.Target{
+		WorkspaceAbs: workspace.Abs(),
+		Label:        label,
+		BuildArgs:    []string{"--platforms=" + goPlatform},
+	})
+	if err != nil {
+		return nil, err
+	}
+	comp := &bazelCompilation{binary: bin, target: label, output: output}
 
 	layers := []oci.NamedLayer{oci.MakeLayer(fmt.Sprintf("go binary layer %s", bin.PackageName), comp)}
 	if bin.BinaryOnly {
@@ -84,61 +92,24 @@ func rulesGoPlatform(p specs.Platform) (string, error) {
 }
 
 type bazelCompilation struct {
-	workspaceAbs string
-	bazelrc      string
-	binary       GoBinary
-	platform     specs.Platform
+	binary GoBinary
+	target string
+	output compute.Computable[string]
 
 	compute.LocalScoped[fs.FS]
 }
 
 func (c *bazelCompilation) Action() *tasks.ActionEvent {
-	return tasks.Action("go.build.binary.bazel").Arg("binary", c.binary.BinaryName).Arg("target", c.binary.BazelPackagePath).Arg("platform", platform.FormatPlatform(c.platform))
+	return tasks.Action("go.build.binary.bazel").Arg("binary", c.binary.BinaryName).Arg("target", c.target)
 }
 
 func (c *bazelCompilation) Inputs() *compute.In {
-	return compute.Inputs().JSON("binary", c.binary).JSON("platform", c.platform).Str("bazelrc", c.bazelrc)
+	return compute.Inputs().JSON("binary", c.binary).Computable("bazel", c.output)
 }
 
-func (c *bazelCompilation) Compute(ctx context.Context, _ compute.Resolved) (fs.FS, error) {
-	target, err := bazelTarget(c.binary)
-	if err != nil {
-		return nil, err
-	}
-	goPlatform, err := rulesGoPlatform(c.platform)
-	if err != nil {
-		return nil, err
-	}
+func (c *bazelCompilation) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
+	source := compute.MustGetDepValue(deps, c.output, "bazel")
 
-	config := core.MakeDefaultConfig()
-	gcs := &repositories.GCSRepo{}
-	github := repositories.CreateGitHubRepo(config.Get("BAZELISK_GITHUB_TOKEN"))
-	repos := core.CreateRepositories(gcs, github, gcs, gcs, true)
-	installation, err := core.GetBazelInstallation(repos, config)
-	if err != nil {
-		return nil, fnerrors.Newf("bazel: failed to install Bazel: %w", err)
-	}
-
-	startup := []string{"--bazelrc=" + c.bazelrc}
-	buildArgs := append(startup, "build", "--platforms="+goPlatform, "--remote_download_outputs=all", target)
-	if err := runBazel(ctx, installation.Path, c.workspaceAbs, buildArgs...); err != nil {
-		return nil, err
-	}
-
-	var stdout bytes.Buffer
-	cqueryArgs := append(startup, "cquery", "--output=files", "--platforms="+goPlatform, target)
-	if err := runBazelWithOutput(ctx, installation.Path, c.workspaceAbs, &stdout, cqueryArgs...); err != nil {
-		return nil, err
-	}
-	outputs := strings.Fields(stdout.String())
-	if len(outputs) != 1 {
-		return nil, fnerrors.Newf("bazel: target %s produced %d files, expected one: %q", target, len(outputs), stdout.String())
-	}
-
-	source := outputs[0]
-	if !filepath.IsAbs(source) {
-		source = filepath.Join(c.workspaceAbs, source)
-	}
 	targetDir, err := dirs.CreateUserTempDir("bazel", "build")
 	if err != nil {
 		return nil, err
@@ -173,19 +144,4 @@ func copyExecutable(source, destination string) error {
 		return err
 	}
 	return dst.Close()
-}
-
-func runBazel(ctx context.Context, binary, dir string, args ...string) error {
-	return runBazelWithOutput(ctx, binary, dir, console.Output(ctx, "bazel"), args...)
-}
-
-func runBazelWithOutput(ctx context.Context, binary, dir string, stdout io.Writer, args ...string) error {
-	cmd := exec.CommandContext(ctx, binary, args...)
-	cmd.Dir = dir
-	cmd.Stdout = stdout
-	cmd.Stderr = console.Output(ctx, "bazel")
-	if err := cmd.Run(); err != nil {
-		return fnerrors.Newf("bazel: command failed: %w", err)
-	}
-	return nil
 }
