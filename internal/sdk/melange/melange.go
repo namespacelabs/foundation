@@ -71,7 +71,7 @@ func SDK(ctx context.Context, p specs.Platform) (compute.Computable[Melange], er
 		return nil, fnerrors.Newf("platform not supported: %s", key)
 	}
 
-	w := unpack.Unpack("melange", tarfs.TarGunzip(download.URL(ref)))
+	w := unpack.Unpack("melange", tarfs.TarGunzip(download.URL(ref, download.WithCache())))
 
 	return compute.Map(
 		tasks.Action("melange.ensure").Arg("version", version).HumanReadablef("Ensuring melange %s is installed", version),

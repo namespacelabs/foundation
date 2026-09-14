@@ -11,6 +11,7 @@ import (
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts"
+	"namespacelabs.dev/foundation/internal/artifacts/download"
 	"namespacelabs.dev/foundation/internal/artifacts/unpack"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -69,7 +70,7 @@ func SDK(ctx context.Context, p specs.Platform) (compute.Computable[Kubectl], er
 		return nil, fnerrors.Newf("platform not supported: %s", key)
 	}
 
-	w := unpack.Unpack("kubectl", unpack.MakeFilesystem("kubectl", 0755, ref))
+	w := unpack.Unpack("kubectl", unpack.MakeFilesystem("kubectl", 0755, ref, download.WithCache()))
 
 	return compute.Map(
 		tasks.Action("kubectl.ensure").Arg("version", version).HumanReadablef("Ensuring kubectl %s is installed", version),
