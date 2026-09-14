@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "tools",
+    srcs = [
+        "cmd.go",
+        "grpcurl.go",
+        "kubectl.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/cli/cmd/tools",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cli/fncobra",
+        "//internal/console",
+        "//internal/fnerrors",
+        "//internal/localexec",
+        "//internal/runtime/kubernetes",
+        "//internal/sdk/grpcurl",
+        "//internal/sdk/host",
+        "//internal/sdk/kubectl",
+        "//std/cfg",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)

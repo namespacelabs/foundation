@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "iam",
+    srcs = [
+        "op.pb.go",
+        "ops.go",
+        "policy.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/universe/aws/iam",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/fnerrors",
+        "//internal/providers/aws",
+        "//schema",
+        "//std/execution",
+        "@com_github_aws_aws_sdk_go_v2_service_iam//:iam",
+        "@com_github_aws_aws_sdk_go_v2_service_iam//types",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

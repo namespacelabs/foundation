@@ -1,0 +1,19 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "serverinstance_lib",
+    srcs = ["main.go"],
+    importpath = "namespacelabs.dev/foundation/library/oss/localstack/prepare/serverinstance",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//framework/provisioning",
+        "//library/oss/localstack",
+        "//schema",
+    ],
+)
+
+go_binary(
+    name = "serverinstance",
+    embed = [":serverinstance_lib"],
+    visibility = ["//visibility:public"],
+)

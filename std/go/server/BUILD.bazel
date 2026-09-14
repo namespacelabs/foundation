@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "server",
+    srcs = ["grpcserver.go"],
+    importpath = "namespacelabs.dev/foundation/std/go/server",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//framework/rpcerrors",
+        "//framework/runtime",
+        "//std/go/core",
+        "//std/go/grpc/servercore",
+        "@org_golang_google_grpc//codes",
+    ],
+)

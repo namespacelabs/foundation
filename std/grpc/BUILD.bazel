@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "grpc",
+    srcs = [
+        "deps.fn.go",
+        "methodname.go",
+        "provider.pb.go",
+        "wire.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/std/grpc",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//std/go/core",
+        "//std/go/grpc/client",
+        "//std/go/server",
+        "//std/grpc/protos",
+        "//std/proto",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//credentials/insecure",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

@@ -1,0 +1,28 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "opaque",
+    srcs = [
+        "dev.go",
+        "opaque.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/integrations/opaque",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/build",
+        "//internal/build/assets",
+        "//internal/build/binary",
+        "//internal/fnerrors",
+        "//internal/fnfs/workspace/wsremote",
+        "//internal/hotreload",
+        "//internal/hotreload/constants",
+        "//internal/integrations",
+        "//internal/parsing",
+        "//internal/planning",
+        "//internal/runtime",
+        "//internal/wscontents",
+        "//schema",
+        "//std/pkggraph",
+        "//std/runtime/constants",
+    ],
+)

@@ -1,0 +1,14 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "helpers",
+    srcs = ["helperfunctions.go"],
+    importpath = "namespacelabs.dev/foundation/library/oss/postgres/prepare/database/helpers",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//library/oss/postgres",
+        "//universe/db/postgres",
+        "@com_github_cenkalti_backoff_v4//:backoff",
+        "@com_github_jackc_pgx_v5//:pgx",
+    ],
+)

@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "client",
+    srcs = [
+        "deps.fn.go",
+        "factory.go",
+        "types.pb.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/universe/aws/client",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//std/go/core",
+        "//std/monitoring/tracing",
+        "@com_github_aws_aws_sdk_go_v2//aws",
+        "@com_github_aws_aws_sdk_go_v2_config//:config",
+        "@io_opentelemetry_go_contrib_instrumentation_github_com_aws_aws_sdk_go_v2_otelaws//:otelaws",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

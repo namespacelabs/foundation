@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "configure_lib",
+    srcs = ["main.go"],
+    importpath = "namespacelabs.dev/foundation/universe/aws/ecr/configure",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//framework/provisioning",
+        "//internal/fnerrors",
+        "//schema",
+        "//std/execution/defs",
+        "//universe/aws/eks",
+        "//universe/aws/iam",
+    ],
+)
+
+go_binary(
+    name = "configure",
+    embed = [":configure_lib"],
+    visibility = ["//visibility:public"],
+)

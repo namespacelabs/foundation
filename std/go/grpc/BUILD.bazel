@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "grpc",
+    srcs = [
+        "drain.go",
+        "grpccore.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/std/go/grpc",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//schema",
+        "//std/go/core",
+        "@org_golang_google_grpc//credentials",
+    ],
+)

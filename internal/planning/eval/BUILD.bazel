@@ -1,0 +1,17 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "eval",
+    srcs = [
+        "allocator.go",
+        "portalloc.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/planning/eval",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/fnerrors",
+        "//schema",
+        "//std/pkggraph",
+        "@com_github_cespare_xxhash_v2//:xxhash",
+    ],
+)
