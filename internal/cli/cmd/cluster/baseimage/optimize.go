@@ -26,6 +26,7 @@ func newOptimizeCmd() *cobra.Command {
 
 	imageRef := cmd.Flags().String("image_ref", "", "Which image ref to optimize.")
 	site := cmd.Flags().String("site", "", "Which site to optimize on. Leave blank for Namespace to decide.")
+	pushTag := cmd.Flags().String("push_tag", "", "Publish this tag in the source image's repository after optimization succeeds. The tag points to the source image digest that was optimized.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
 		if *imageRef == "" {
@@ -45,6 +46,7 @@ func newOptimizeCmd() *cobra.Command {
 		c, err := cli.Compute.OptimizeImage(ctx, &computev1beta.OptimizeImageRequest{
 			ImageRef: *imageRef,
 			Site:     *site,
+			PushTag:  *pushTag,
 		})
 		if err != nil {
 			return err
