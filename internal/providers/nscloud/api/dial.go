@@ -88,13 +88,3 @@ func DialEndpointWithToken(ctx context.Context, token fnapi.Token, endpoint stri
 
 	return cnet.NewWebSocketConn(wsConn), nil
 }
-
-type forwardClose struct {
-	net.Conn
-	close func()
-}
-
-func (an forwardClose) Close() error {
-	an.close()
-	return an.Conn.Close()
-}
