@@ -35,13 +35,7 @@ func parseTransport(ctx context.Context, t *registry.RegistryTransport) ([]remot
 
 		var teleportProxy *ssh.TeleportProxy
 		if tp := t.Ssh.GetTeleportProxy(); tp != nil {
-			teleportProxy = &ssh.TeleportProxy{
-				ProfileName:     tp.ProfileName,
-				Host:            tp.Host,
-				TbotIdentityDir: tp.TbotIdentityDir,
-				Cluster:         tp.Cluster,
-				ProxyAddress:    tp.ProxyAddress,
-			}
+			teleportProxy = &ssh.TeleportProxy{}
 		}
 
 		deferred, err := ssh.Establish(ctx, ssh.Endpoint{

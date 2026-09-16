@@ -33,13 +33,7 @@ type Endpoint struct {
 	TeleportProxy  *TeleportProxy
 }
 
-type TeleportProxy struct {
-	ProfileName     string
-	Host            string
-	TbotIdentityDir string
-	ProxyAddress    string
-	Cluster         string
-}
+type TeleportProxy struct{}
 
 type Deferred struct {
 	CacheKey string

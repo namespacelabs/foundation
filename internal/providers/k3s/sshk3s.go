@@ -82,13 +82,7 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 
 	var teleportProxy *ssh.TeleportProxy
 	if tp := conf.TeleportProxy; tp != nil {
-		teleportProxy = &ssh.TeleportProxy{
-			ProfileName:     tp.ProfileName,
-			Host:            tp.Host,
-			TbotIdentityDir: tp.TbotIdentityDir,
-			Cluster:         tp.Cluster,
-			ProxyAddress:    tp.ProxyAddress,
-		}
+		teleportProxy = &ssh.TeleportProxy{}
 	}
 	// XXX use ssh tunnel
 	config, err := makeRemoteConfig(ctx, fmt.Sprintf("https://%s:6443", conf.Address), ssh.Endpoint{
