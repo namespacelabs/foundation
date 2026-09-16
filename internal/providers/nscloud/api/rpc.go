@@ -51,7 +51,6 @@ type API struct {
 	GetKubernetesConfig         fnapi.Call[GetKubernetesConfigRequest]
 	GetImageRegistry            fnapi.Call[emptypb.Empty]
 	TailClusterLogs             fnapi.Call[TailLogsRequest]
-	GetClusterLogs              fnapi.Call[GetLogsRequest]
 	FetchClusterLogs            fnapi.Call[FetchLogsRequest]
 	GetProfile                  fnapi.Call[emptypb.Empty]
 	RegisterIngress             fnapi.Call[RegisterIngressRequest]
@@ -112,11 +111,6 @@ func MakeAPI() API {
 		TailClusterLogs: fnapi.Call[TailLogsRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "nsl.vm.logging.LoggingService/TailLogs",
-		},
-
-		GetClusterLogs: fnapi.Call[GetLogsRequest]{
-			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "nsl.vm.logging.LoggingService/GetLogs",
 		},
 
 		FetchClusterLogs: fnapi.Call[FetchLogsRequest]{
@@ -751,26 +745,6 @@ func TailClusterLogs(ctx context.Context, api API, opts *LogsOpts, handle func(L
 			return fnerrors.Newf("cluster log stream closed with error: %w", err)
 		}
 		return nil
-	})
-}
-
-func GetClusterLogs(ctx context.Context, api API, opts *LogsOpts) (*GetLogsResponse, error) {
-	return tasks.Return(ctx, tasks.Action("nscloud.get-cluster-logs"), func(ctx context.Context) (*GetLogsResponse, error) {
-		req := GetLogsRequest{
-			ClusterID:      opts.ClusterID,
-			UseBlockLabels: true,
-			StartTs:        opts.StartTs,
-			EndTs:          opts.EndTs,
-			Include:        opts.Include,
-			Exclude:        opts.Exclude,
-		}
-
-		var response GetLogsResponse
-		if err := api.GetClusterLogs.Do(ctx, req, MaybeEndpoint(opts.ApiEndpoint), fnapi.DecodeJSONResponse(&response)); err != nil {
-			return nil, err
-		}
-
-		return &response, nil
 	})
 }
 
