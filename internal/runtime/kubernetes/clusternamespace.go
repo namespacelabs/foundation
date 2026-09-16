@@ -17,7 +17,6 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
@@ -108,21 +107,6 @@ func (r *ClusterNamespace) FetchEnvironmentDiagnostics(ctx context.Context) (*st
 	diag.RuntimeSpecific = append(diag.RuntimeSpecific, serializedKube)
 
 	return diag, nil
-}
-
-func (r *ClusterNamespace) startTerminal(ctx context.Context, cli *kubernetes.Clientset, server runtime.Deployable, rio runtime.TerminalIO, cmd []string) error {
-	pod, err := r.resolvePod(ctx, cli, rio.Stderr, server)
-	if err != nil {
-		return err
-	}
-
-	return r.underlying.lowLevelAttachTerm(ctx, cli, pod.Namespace, pod.Name, rio, "exec", &corev1.PodExecOptions{
-		Command: cmd,
-		Stdin:   rio.Stdin != nil,
-		Stdout:  rio.Stdout != nil,
-		Stderr:  rio.Stderr != nil,
-		TTY:     rio.TTY,
-	})
 }
 
 func shouldLog(start, lastMsg time.Time) bool {
@@ -433,10 +417,6 @@ func WatchDeployable[V any](ctx context.Context, actionName string, cli *k8s.Cli
 		})
 }
 
-func (r *ClusterNamespace) resolvePod(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, obj runtime.Deployable) (corev1.Pod, error) {
-	return resolvePodByLabels(ctx, cli, w, r.target.namespace, kubedef.SelectById(obj))
-}
-
 func (r *ClusterNamespace) DeployedConfigImageID(ctx context.Context, deployable runtime.Deployable) (oci.ImageID, error) {
 	return tasks.Return(ctx, tasks.Action("kubernetes.resolve-config-image-id").Scope(deployable.GetPackageRef().AsPackageName()),
 		func(ctx context.Context) (oci.ImageID, error) {
@@ -484,12 +464,6 @@ func (r *ClusterNamespace) DeployedConfigImageID(ctx context.Context, deployable
 
 			return imgid, nil
 		})
-}
-
-func (r *ClusterNamespace) StartTerminal(ctx context.Context, server runtime.Deployable, rio runtime.TerminalIO, command string, rest ...string) error {
-	cmd := append([]string{command}, rest...)
-
-	return r.startTerminal(ctx, r.underlying.cli, server, rio, cmd)
 }
 
 func (r *ClusterNamespace) DeleteRecursively(ctx context.Context, wait bool) (bool, error) {

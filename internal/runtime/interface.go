@@ -180,11 +180,6 @@ type ClusterNamespace interface {
 	// Fetch environment diagnostics, e.g. event list.
 	FetchEnvironmentDiagnostics(context.Context) (*storage.EnvironmentDiagnostics, error)
 
-	// Starts a new shell in the container of a previously deployed server. The
-	// image of the server must contain the specified command. For ephemeral
-	// containers, see #329.
-	StartTerminal(ctx context.Context, server Deployable, io TerminalIO, command string, rest ...string) error
-
 	// Forwards a single port.
 	// XXX remove; callers should instead implement their own TCP net.Listener
 	// and call DialServer as needed.
