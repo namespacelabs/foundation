@@ -46,6 +46,7 @@ func newTrustAddCmd() *cobra.Command {
 	audience := cmd.Flags().String("audience", "", "Expected audience value.")
 	defaultPermissions := cmd.Flags().StringArray("grant", nil, `Grant default permission as JSON object (can be specified multiple times). Format: {"resource_type":"...","resource_id":"...","actions":["..."]}`)
 	defaultTokenDuration := cmd.Flags().String("default_token_duration", "", `Default token duration (e.g. "3600s").`)
+	maximumTokenDuration := cmd.Flags().String("maximum_token_duration", "86400s", `Maximum token duration (up to "86400s").`)
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if *issuer == "" {
@@ -61,7 +62,7 @@ func newTrustAddCmd() *cobra.Command {
 			return err
 		}
 
-		return addTrustRelationship(ctx, *issuer, *subjectMatch, *audience, permissions, *defaultTokenDuration)
+		return addTrustRelationship(ctx, *issuer, *subjectMatch, *audience, permissions, *defaultTokenDuration, *maximumTokenDuration)
 	})
 }
 
@@ -94,6 +95,7 @@ func newTrustUpdateCmd() *cobra.Command {
 	audience := cmd.Flags().String("audience", "", "Expected audience value.")
 	defaultPermissions := cmd.Flags().StringArray("grant", nil, `Grant default permission as JSON object (can be specified multiple times). Replaces all existing grants. Format: {"resource_type":"...","resource_id":"...","actions":["..."]}`)
 	defaultTokenDuration := cmd.Flags().String("default_token_duration", "", `Default token duration (e.g. "3600s").`)
+	maximumTokenDuration := cmd.Flags().String("maximum_token_duration", "", `Maximum token duration (e.g. "86400s"). Pass an empty value to clear it.`)
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if *id == "" {
@@ -115,6 +117,9 @@ func newTrustUpdateCmd() *cobra.Command {
 		if flags.Changed("default_token_duration") {
 			update.defaultTokenDuration = defaultTokenDuration
 		}
+		if flags.Changed("maximum_token_duration") {
+			update.maximumTokenDuration = maximumTokenDuration
+		}
 		if flags.Changed("grant") {
 			permissions, err := token.ParseGrants(*defaultPermissions)
 			if err != nil {
@@ -123,8 +128,8 @@ func newTrustUpdateCmd() *cobra.Command {
 			update.defaultPermissions = &permissions
 		}
 
-		if update.issuer == nil && update.subjectMatch == nil && update.audience == nil && update.defaultTokenDuration == nil && update.defaultPermissions == nil {
-			return fnerrors.Newf("nothing to update: specify at least one of --issuer, --subject-match, --audience, --grant, or --default_token_duration")
+		if update.issuer == nil && update.subjectMatch == nil && update.audience == nil && update.defaultTokenDuration == nil && update.maximumTokenDuration == nil && update.defaultPermissions == nil {
+			return fnerrors.Newf("nothing to update: specify at least one of --issuer, --subject-match, --audience, --grant, --default_token_duration, or --maximum_token_duration")
 		}
 
 		return updateTrustRelationship(ctx, *id, update)
@@ -150,7 +155,7 @@ func newTrustRemoveCmd() *cobra.Command {
 	})
 }
 
-func addTrustRelationship(ctx context.Context, issuer, subjectMatch, audience string, defaultPermissions []*v1beta.Permission, defaultTokenDuration string) error {
+func addTrustRelationship(ctx context.Context, issuer, subjectMatch, audience string, defaultPermissions []*v1beta.Permission, defaultTokenDuration, maximumTokenDuration string) error {
 	current, err := fnapi.ListTrustRelationships(ctx)
 	if err != nil {
 		return err
@@ -166,6 +171,7 @@ func addTrustRelationship(ctx context.Context, issuer, subjectMatch, audience st
 		Audience:             audience,
 		DefaultPermissions:   defaultPermissions,
 		DefaultTokenDuration: defaultTokenDuration,
+		MaximumTokenDuration: maximumTokenDuration,
 	}
 
 	updatedTrustRelationships := append(current.TrustRelationships, newTrustRelationship)
@@ -184,6 +190,7 @@ type trustRelationshipUpdate struct {
 	audience             *string
 	defaultPermissions   *[]*v1beta.Permission
 	defaultTokenDuration *string
+	maximumTokenDuration *string
 }
 
 func updateTrustRelationship(ctx context.Context, id string, update trustRelationshipUpdate) error {
@@ -204,7 +211,23 @@ func updateTrustRelationship(ctx context.Context, id string, update trustRelatio
 		return fnerrors.Newf("trust relationship with ID %q not found", id)
 	}
 
-	tr := current.TrustRelationships[idx]
+	tr := updatedTrustRelationship(current.TrustRelationships[idx], update)
+	current.TrustRelationships[idx] = tr
+
+	fmt.Fprintf(console.Stderr(ctx), "Updating trust relationship...\n")
+	fmt.Fprintf(console.Stderr(ctx), "ID: %s\n", tr.Id)
+	fmt.Fprintf(console.Stderr(ctx), "Issuer: %s\n", tr.Issuer)
+	fmt.Fprintf(console.Stderr(ctx), "Subject Match: %s\n", tr.SubjectMatch)
+
+	if err := fnapi.UpdateTrustRelationships(ctx, current.Generation, current.TrustRelationships); err != nil {
+		return err
+	}
+
+	fmt.Fprintf(console.Stdout(ctx), "Successfully updated trust relationship.\n")
+	return nil
+}
+
+func updatedTrustRelationship(tr fnapi.StoredTrustRelationship, update trustRelationshipUpdate) fnapi.StoredTrustRelationship {
 	if update.issuer != nil {
 		tr.Issuer = *update.issuer
 	}
@@ -220,19 +243,13 @@ func updateTrustRelationship(ctx context.Context, id string, update trustRelatio
 	if update.defaultTokenDuration != nil {
 		tr.DefaultTokenDuration = *update.defaultTokenDuration
 	}
-	current.TrustRelationships[idx] = tr
-
-	fmt.Fprintf(console.Stderr(ctx), "Updating trust relationship...\n")
-	fmt.Fprintf(console.Stderr(ctx), "ID: %s\n", tr.Id)
-	fmt.Fprintf(console.Stderr(ctx), "Issuer: %s\n", tr.Issuer)
-	fmt.Fprintf(console.Stderr(ctx), "Subject Match: %s\n", tr.SubjectMatch)
-
-	if err := fnapi.UpdateTrustRelationships(ctx, current.Generation, current.TrustRelationships); err != nil {
-		return err
+	if update.maximumTokenDuration != nil {
+		tr.MaximumTokenDuration = *update.maximumTokenDuration
+		if tr.MaximumTokenDuration == "" {
+			tr.MaximumTokenDuration = "0s"
+		}
 	}
-
-	fmt.Fprintf(console.Stdout(ctx), "Successfully updated trust relationship.\n")
-	return nil
+	return tr
 }
 
 func listTrustRelationships(ctx context.Context, output string) error {
@@ -276,6 +293,9 @@ func listTrustRelationships(ctx context.Context, output string) error {
 		}
 		if tr.DefaultTokenDuration != "" {
 			fmt.Fprintf(console.Stdout(ctx), "  Default Token Duration: %s\n", tr.DefaultTokenDuration)
+		}
+		if tr.MaximumTokenDuration != "" {
+			fmt.Fprintf(console.Stdout(ctx), "  Maximum Token Duration: %s\n", tr.MaximumTokenDuration)
 		}
 		if tr.CreatedAt != nil {
 			fmt.Fprintf(console.Stdout(ctx), "  Created At: %s\n", tr.CreatedAt.Format("2006-01-02 15:04:05 UTC"))

@@ -23,6 +23,7 @@ func NewExchangeOIDCTokenCmd() *cobra.Command {
 
 	token := cmd.Flags().String("token", "", "The OIDC token to use for authentication.")
 	tenantId := cmd.Flags().String("tenant_id", "", "What tenant to authenticate.")
+	duration := fncobra.Duration(cmd.Flags(), "duration", 0, "How long the exchanged Namespace token should last (maximum 24h).")
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if *token == "" {
@@ -33,7 +34,7 @@ func NewExchangeOIDCTokenCmd() *cobra.Command {
 			return fnerrors.Newf("--tenant_id is required")
 		}
 
-		res, err := fnapi.ExchangeOIDCToken(ctx, *tenantId, *token)
+		res, err := fnapi.ExchangeOIDCToken(ctx, *tenantId, *token, *duration)
 		if err != nil {
 			return err
 		}

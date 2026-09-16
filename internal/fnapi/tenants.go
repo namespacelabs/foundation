@@ -7,6 +7,8 @@ package fnapi
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -42,6 +44,7 @@ type ExchangeAWSCognitoJWTRequest struct {
 type ExchangeOIDCTokenRequest struct {
 	TenantId  string `json:"tenant_id,omitempty"`
 	OidcToken string `json:"oidc_token,omitempty"`
+	Duration  string `json:"duration,omitempty"`
 }
 
 type ExchangeTenantTokenForClientCertRequest struct {
@@ -120,8 +123,11 @@ func ExchangeCircleciToken(ctx context.Context, token string) (ExchangeCircleciT
 	return res, nil
 }
 
-func ExchangeOIDCToken(ctx context.Context, tenantID, token string) (ExchangeTokenResponse, error) {
+func ExchangeOIDCToken(ctx context.Context, tenantID, token string, duration time.Duration) (ExchangeTokenResponse, error) {
 	req := ExchangeOIDCTokenRequest{TenantId: tenantID, OidcToken: token}
+	if duration > 0 {
+		req.Duration = protobufDuration(duration)
+	}
 
 	var res ExchangeTokenResponse
 	if err := (Call[ExchangeOIDCTokenRequest]{
@@ -132,6 +138,17 @@ func ExchangeOIDCToken(ctx context.Context, tenantID, token string) (ExchangeTok
 	}
 
 	return res, nil
+}
+
+func protobufDuration(duration time.Duration) string {
+	seconds := duration / time.Second
+	nanos := duration % time.Second
+	if nanos == 0 {
+		return fmt.Sprintf("%ds", seconds)
+	}
+
+	fraction := strings.TrimRight(fmt.Sprintf("%09d", nanos), "0")
+	return fmt.Sprintf("%d.%ss", seconds, fraction)
 }
 
 func ExchangeAWSCognitoJWT(ctx context.Context, tenantID, token string) (ExchangeTokenResponse, error) {
@@ -296,6 +313,7 @@ type StoredTrustRelationship struct {
 
 	DefaultPermissions   []*v1beta.Permission `json:"default_permissions,omitempty"`
 	DefaultTokenDuration string               `json:"default_token_duration,omitempty"`
+	MaximumTokenDuration string               `json:"maximum_token_duration,omitempty"`
 }
 
 type UpdateTrustRelationshipsRequest struct {
