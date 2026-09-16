@@ -16,7 +16,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/credentials"
 )
@@ -65,7 +65,7 @@ func CreateTracerForExporter(exp tracesdk.SpanExporter) *tracesdk.TracerProvider
 	}
 
 	if env := os.Getenv("FOUNDATION_TRACING_ENVIRONMENT"); env != "" {
-		attrs = append(attrs, semconv.DeploymentEnvironmentNameKey.String(env))
+		attrs = append(attrs, semconv.DeploymentEnvironmentName(env))
 	}
 
 	return tracesdk.NewTracerProvider(
