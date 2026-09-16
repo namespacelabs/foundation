@@ -8,8 +8,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -38,7 +41,11 @@ func newOptimizeCmd() *cobra.Command {
 			return err
 		}
 
-		cli, err := compute.NewClient(ctx, token)
+		cli, err := compute.NewClient(ctx, token, grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			// Keep the connection alive while optimization is ongoing.
+			Time:    1 * time.Minute,
+			Timeout: 30 * time.Second,
+		}))
 		if err != nil {
 			return err
 		}
