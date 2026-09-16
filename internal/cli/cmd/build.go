@@ -7,6 +7,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -15,12 +16,15 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/build"
+	"namespacelabs.dev/foundation/internal/build/binary"
+	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra/planningargs"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	golangintegration "namespacelabs.dev/foundation/internal/integrations/golang"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/schema"
@@ -31,7 +35,6 @@ import (
 func NewBuildCmd() *cobra.Command {
 	var (
 		explain                = false
-		continuously           = false
 		prebuiltBaseRepository string
 		env                    cfg.Context
 		locs                   fncobra.Locations
@@ -48,7 +51,6 @@ func NewBuildCmd() *cobra.Command {
 		WithFlags(func(flags *pflag.FlagSet) {
 			flags.BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
 			flags.Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
-			flags.BoolVarP(&continuously, "continuously", "c", continuously, "If set to true, builds continuously, listening to changes to the workspace.")
 			flags.StringVar(&prebuiltBaseRepository, "base_repository", "", "If set, also uploads the server binary build to the target prebuilt repository.")
 
 			// "base_repository" is used to keep consistency with `build-binary`.
@@ -56,13 +58,12 @@ func NewBuildCmd() *cobra.Command {
 		}).
 		With(
 			fncobra.ParseEnv(&env),
+			&bazelBuildParser{env: &env},
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true}),
 			planningargs.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
-			if prebuiltBaseRepository != "" {
-				if explain || continuously {
-					return fnerrors.BadInputError("base_repository is not compatible with explain or continuously")
-				}
+			if prebuiltBaseRepository != "" && explain {
+				return fnerrors.BadInputError("base_repository is not compatible with explain")
 			}
 
 			p, err := planning.NewPlanner(ctx, env)
@@ -81,10 +82,6 @@ func NewBuildCmd() *cobra.Command {
 				return compute.Explain(ctx, console.Stdout(ctx), buildAll)
 			}
 
-			if continuously {
-				return compute.Continuously(ctx, continuousBuild{allImages: buildAll}, nil)
-			}
-
 			res, err := compute.GetValue(ctx, buildAll)
 			if err != nil {
 				return err
@@ -98,6 +95,39 @@ func NewBuildCmd() *cobra.Command {
 
 			return nil
 		})
+}
+
+type bazelBuildParser struct {
+	env *cfg.Context
+}
+
+func (p *bazelBuildParser) AddFlags(*cobra.Command) {}
+
+func (p *bazelBuildParser) Parse(ctx context.Context, _ []string) error {
+	if golangintegration.GoBuilderKind.Get((*p.env).Configuration()) != golangintegration.GoBuilderMaybeBazel {
+		return nil
+	}
+
+	bazelrc, err := os.CreateTemp("", "nsdev-bazel-*.bazelrc")
+	if err != nil {
+		return err
+	}
+	bazelrcPath := bazelrc.Name()
+	if err := bazelrc.Close(); err != nil {
+		return err
+	}
+	compute.On(ctx).Cleanup(tasks.Action("bazel.cleanup-config"), func(context.Context) error {
+		return os.Remove(bazelrcPath)
+	})
+
+	if err := cluster.SetupBazelRemoteExecution(ctx, bazelrcPath); err != nil {
+		return err
+	}
+
+	builder := golangintegration.MaybeBazelBuilder(bazelrcPath)
+	binary.BuildGo = builder.GoBuilder
+	golangintegration.ConfigureBuilder(builder)
+	return nil
 }
 
 func outputResults(ctx context.Context, results []compute.ResultWithTimestamp[deploy.ResolvedServerImages]) {
@@ -164,19 +194,6 @@ func spacesN(n int) string {
 		str[x] = ' '
 	}
 	return string(str)
-}
-
-type continuousBuild struct {
-	allImages compute.Computable[[]compute.ResultWithTimestamp[deploy.ResolvedServerImages]]
-}
-
-func (c continuousBuild) Inputs() *compute.In {
-	return compute.Inputs().Computable("all-images", c.allImages)
-}
-func (c continuousBuild) Cleanup(context.Context) error { return nil }
-func (c continuousBuild) Updated(ctx context.Context, deps compute.Resolved) error {
-	outputResults(ctx, compute.MustGetDepValue(deps, c.allImages, "all-images"))
-	return nil
 }
 
 func writePrebuilts(ctx context.Context, baseRepository string, results []compute.ResultWithTimestamp[deploy.ResolvedServerImages]) error {

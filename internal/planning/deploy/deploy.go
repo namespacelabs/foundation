@@ -641,7 +641,7 @@ func prepareServerImages(ctx context.Context, planner planning.Planner, stack *p
 			return nil, err
 		}
 
-		p, err := MakeBuildPlan(ctx, planner.Runtime, srv, stack.Focus.Has(srv.PackageName()), spec)
+		p, err := MakeBuildPlan(ctx, planner.Runtime, srv, spec)
 		if err != nil {
 			return nil, err
 		}

@@ -36,7 +36,6 @@ func registerCommands(root *cobra.Command, includeCache bool) {
 	root.AddCommand(NewDoctorCmd())
 	root.AddCommand(NewFmtCmd())
 	root.AddCommand(NewUnprepareCmd())
-	root.AddCommand(NewDevCmd())
 	root.AddCommand(NewDescribeCmd())
 	root.AddCommand(NewBuildBinaryCmd())
 	if includeCache {

@@ -166,7 +166,7 @@ func addDeprecatedFields(r *storage.NetworkPlan) {
 
 	domains := filterAndDedupDomains(r.IngressFragments, nil)
 	for _, n := range domains {
-		// Local domains need `ns dev` for port forwarding.
+		// Local domains need `ns attach` for port forwarding.
 		if n.Domain.GetManaged() == storage.Domain_USER_SPECIFIED {
 			nonLocalNonManaged = append(nonLocalNonManaged, n)
 		} else if n.Domain.GetManaged() == storage.Domain_CLOUD_MANAGED || n.Domain.GetManaged() == storage.Domain_USER_SPECIFIED_TLS_MANAGED {

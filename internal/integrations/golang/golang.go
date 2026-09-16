@@ -41,8 +41,7 @@ const (
 )
 
 func Register() {
-	integrations.Register(schema.Framework_GO, impl{})
-	planning.RegisterEndpointProvider(schema.Framework_GO, impl{})
+	ConfigureBuilder(Builder{})
 
 	execution.RegisterFuncs(execution.Funcs[*OpGenNode]{
 		Handle: func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenNode) (*execution.HandleResult, error) {
@@ -77,24 +76,32 @@ func Register() {
 	})
 }
 
-type impl struct {
-	integrations.MaybeTidy
-	integrations.NoDev
+func ConfigureBuilder(builder Builder) {
+	implementation := impl{builder: builder}
+	integrations.Register(schema.Framework_GO, implementation)
+	planning.RegisterEndpointProvider(schema.Framework_GO, implementation)
 }
 
-func (impl) PrepareBuild(ctx context.Context, _ assets.AvailableBuildAssets, server planning.PlannedServer, isFocus bool) (build.Spec, error) {
+type impl struct {
+	integrations.MaybeTidy
+	builder Builder
+}
+
+func (i impl) PrepareBuild(ctx context.Context, _ assets.AvailableBuildAssets, server planning.PlannedServer, _ bool) (build.Spec, error) {
 	ext := &FrameworkExt{}
 	if err := parsing.MustExtension(server.Proto().Ext, ext); err != nil {
 		return nil, fnerrors.AttachLocation(server.Location, err)
 	}
 
 	bin := &GoBinary{
-		PackageName:     server.Location.PackageName,
-		GoWorkspacePath: ext.GoWorkspacePath,
-		GoModule:        ext.GoModule,
-		GoVersion:       ext.GoVersion,
-		SourcePath:      ext.RelPackage,
-		BinaryName:      serverName(server),
+		PackageName:      server.Location.PackageName,
+		GoWorkspacePath:  ext.GoWorkspacePath,
+		GoModule:         ext.GoModule,
+		GoVersion:        ext.GoVersion,
+		SourcePath:       ext.RelPackage,
+		BazelPackagePath: server.Location.Rel(),
+		BinaryName:       serverName(server),
+		builder:          i.builder,
 	}
 
 	return bin, nil

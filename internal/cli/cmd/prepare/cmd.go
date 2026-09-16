@@ -350,7 +350,7 @@ func successMessage(env cfg.Context, cmd *cobra.Command) string {
 		envParam = fmt.Sprintf(" --env=%s", env.Environment().Name)
 	}
 
-	b.WriteString(fmt.Sprintf(" You can now run servers using `ns dev%s`, tests using `ns test%s`, and more.\n", envParam, envParam))
+	b.WriteString(fmt.Sprintf(" You can now run servers using `ns deploy%s`, tests using `ns test%s`, and more.\n", envParam, envParam))
 	b.WriteString("\n Find out more at https://namespace.so/docs.")
 
 	return b.String()

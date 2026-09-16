@@ -260,12 +260,6 @@ func completeDeployment(ctx context.Context, env cfg.Context, cluster runtime.Cl
 		highlight := colors.Ctx(ctx).Highlight
 		hints = append(hints, fmt.Sprintf("Tail server logs: %s", highlight.Apply(fmt.Sprintf("ns logs %s %s", envLabel, loc))))
 		hints = append(hints, fmt.Sprintf("Attach to the deployment (port forward to workstation): %s", highlight.Apply(fmt.Sprintf("ns attach %s %s", envLabel, loc))))
-
-		if env.Environment().Purpose == schema.Environment_DEVELOPMENT {
-			hints = append(hints, fmt.Sprintf("Try out a stateful development session with %s.",
-				highlight.Apply(fmt.Sprintf("ns dev %s %s", envLabel, loc))))
-		}
-
 	}
 
 	hints = append(hints, fmt.Sprintf("Inspecting your deployment: %s",

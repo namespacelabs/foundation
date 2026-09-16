@@ -1,0 +1,11 @@
+load("@gazelle//:def.bzl", "gazelle")
+
+# gazelle:prefix namespacelabs.dev/foundation
+# gazelle:proto disable_global
+
+gazelle(
+    name = "gazelle",
+    args = [
+        "-proto=disable_global",
+    ],
+)

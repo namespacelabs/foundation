@@ -12,11 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
-	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
-	"namespacelabs.dev/foundation/internal/hotreload"
-	"namespacelabs.dev/foundation/internal/integrations"
 	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/config"
@@ -29,7 +25,7 @@ import (
 
 var RunCodegen = true
 
-func MakeBuildPlan(ctx context.Context, rc runtime.Planner, server planning.PlannedServer, focused bool, spec build.Spec) (build.Plan, error) {
+func MakeBuildPlan(ctx context.Context, rc runtime.Planner, server planning.PlannedServer, spec build.Spec) (build.Plan, error) {
 	return tasks.Return(ctx, tasks.Action("planning.prepare-server-image").Scope(server.PackageName()),
 		func(ctx context.Context) (build.Plan, error) {
 			platforms, err := rc.TargetPlatforms(ctx)
@@ -39,32 +35,12 @@ func MakeBuildPlan(ctx context.Context, rc runtime.Planner, server planning.Plan
 
 			tasks.Attachments(ctx).AddResult("platforms", platform.FormatPlatforms(platforms))
 
-			var ws build.Workspace = server.Module()
-
-			remote := wsremote.Ctx(ctx)
-
-			// If there's no sink, we don't need to keep a full copy of the files.
-			digestMode := remote == nil
-
-			fmt.Fprintf(console.Debug(ctx), "prepare-server-image: %s: remoteSink=%v digestMode=%v focused=%v external=%v\n",
-				server.PackageName(), remote != nil, digestMode, focused, server.Module().IsExternal())
-
-			observeChanges := focused && !server.Module().IsExternal()
-
-			opts := integrations.IntegrationFor(server.Framework()).PrepareHotReload(ctx, remote, server)
-			fmt.Fprintf(console.Debug(ctx), "prepare-server-image: %s: framework=%v opts=%v\n",
-				server.PackageName(), server.Framework(), opts != nil)
-
-			if opts == nil {
-				opts = &integrations.HotReloadOpts{}
-			}
-
 			return build.Plan{
 				SourceLabel:   fmt.Sprintf("Server %s", server.PackageName()),
 				SourcePackage: server.PackageName(),
 				BuildKind:     storage.Build_SERVER,
 				Spec:          spec,
-				Workspace:     hotreload.NewDevModule(ws, observeChanges, digestMode, *opts, &codegenTrigger{srv: server.Server}),
+				Workspace:     codegenWorkspace{Workspace: server.Module(), codegen: &codegenTrigger{srv: server.Server}},
 				Platforms:     platforms,
 			}, nil
 		})

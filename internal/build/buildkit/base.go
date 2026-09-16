@@ -50,7 +50,7 @@ func (l *baseRequest[V]) Inputs() *compute.In {
 		Computable("req", l.req)
 
 	if !PreDigestLocalInputs {
-		// Local contents are added as dependencies to trigger continuous builds.
+		// Include local contents in the build's cache key.
 		for k, local := range l.localDirs {
 			in = in.
 				Computable(fmt.Sprintf("local%d:contents", k), memfs.DeferSnapshot(local.Module.ReadOnlyFS(local.Path), memfs.SnapshotOpts{
@@ -63,7 +63,7 @@ func (l *baseRequest[V]) Inputs() *compute.In {
 	}
 
 	for k, local := range l.localDirs {
-		if trigger := local.Module.ChangeTrigger(local.Path, local.ExcludePatterns); trigger != nil {
+		if trigger := local.Module.BuildPrerequisite(); trigger != nil {
 			in = in.Computable(fmt.Sprintf("trigger:%d", k), trigger)
 		}
 	}

@@ -131,6 +131,12 @@ func newDescribeCmd() *cobra.Command {
 			return fnerrors.Newf("--key requires --output=json")
 		}
 
+		token, err := fnapi.FetchToken(ctx)
+		if err != nil {
+			return err
+		}
+		ctx = fnapi.WithToken(ctx, token)
+
 		res, err := fnapi.GetTenant(ctx)
 		if err != nil {
 			return err

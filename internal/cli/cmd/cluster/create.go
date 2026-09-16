@@ -155,6 +155,9 @@ func NewCreateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if err := validateImageSelectors(*machineType, sels); err != nil {
+				return err
+			}
 			opts.Experimental["image_selectors"] = sels
 		}
 
@@ -352,6 +355,20 @@ func ParseImageSelectors(selectors []string) ([]*api.LabelEntry, error) {
 		sels = append(sels, &api.LabelEntry{Name: k, Value: v})
 	}
 	return sels, nil
+}
+
+func validateImageSelectors(machineType string, selectors []*api.LabelEntry) error {
+	if strings.HasPrefix(machineType, "mac") {
+		return nil
+	}
+
+	for _, selector := range selectors {
+		if strings.HasPrefix(selector.Name, "macos") {
+			return fnerrors.Newf("selector %q requires a mac --machine_type", selector.Name)
+		}
+	}
+
+	return nil
 }
 
 func ParseVolumeFlag(def string) (api.VolumeSpec, error) {

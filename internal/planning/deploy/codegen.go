@@ -7,6 +7,7 @@ package deploy
 import (
 	"context"
 
+	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/codegen/genpackage"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/planning"
@@ -14,6 +15,13 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
 )
+
+type codegenWorkspace struct {
+	build.Workspace
+	codegen compute.Computable[any]
+}
+
+func (w codegenWorkspace) BuildPrerequisite() compute.Computable[any] { return w.codegen }
 
 type codegenTrigger struct {
 	srv planning.Server

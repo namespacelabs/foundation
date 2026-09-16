@@ -262,7 +262,7 @@ type Endpoint struct {
 	ServiceMetadata []*Endpoint_ServiceMetadata `protobuf:"bytes,8,rep,name=service_metadata,json=serviceMetadata,proto3" json:"service_metadata,omitempty"`
 	HttpPath        []*IngressHttpPath          `protobuf:"bytes,9,rep,name=http_path,json=httpPath,proto3" json:"http_path,omitempty"` // Only valid if type=INTERNET_FACING.
 	ServiceLabel    string                      `protobuf:"bytes,10,opt,name=service_label,json=serviceLabel,proto3" json:"service_label,omitempty"`
-	// Present only when running `ns dev`, NetworkPlan is not stored in this case.
+	// Present only while port forwarding; not stored in the NetworkPlan.
 	LocalPort  uint32 `protobuf:"varint,11,opt,name=local_port,json=localPort,proto3" json:"local_port,omitempty"`
 	ServerName string `protobuf:"bytes,12,opt,name=server_name,json=serverName,proto3" json:"server_name,omitempty"`
 }

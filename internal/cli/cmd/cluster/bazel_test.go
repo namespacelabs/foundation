@@ -29,6 +29,7 @@ func TestNewBazelCreateTokenCmd(t *testing.T) {
 	for name, wantDefault := range map[string]string{
 		"token":      "token.json",
 		"expires_in": "2160h0m0s",
+		"no_expiry":  "false",
 		"scope":      "user",
 	} {
 		flag := createToken.Flags().Lookup(name)
@@ -266,7 +267,7 @@ func TestNewBazelTokenRequest(t *testing.T) {
 	t.Parallel()
 
 	expiresAt := time.Now().Add(30 * 24 * time.Hour)
-	req, err := newBazelTokenRequest("rbe-ci-token", expiresAt, "user")
+	req, err := newBazelTokenRequest("rbe-ci-token", expiresAt, "user", false)
 	if err != nil {
 		t.Fatalf("newBazelTokenRequest: %v", err)
 	}
@@ -275,6 +276,9 @@ func TestNewBazelTokenRequest(t *testing.T) {
 	}
 	if req.GetScope() != iamv1beta.RevokableToken_TENANT_MEMBERSHIP_SCOPE {
 		t.Fatalf("token scope = %v, want user scope", req.GetScope())
+	}
+	if !req.GetExpiresAt().AsTime().Equal(expiresAt) {
+		t.Fatalf("token expiration = %v, want %v", req.GetExpiresAt(), expiresAt)
 	}
 
 	grants := req.GetAccess().GetGrants()
@@ -291,7 +295,15 @@ func TestNewBazelTokenRequest(t *testing.T) {
 	assertGrant(grants[1], "bazel/storage", "write")
 	assertGrant(grants[2], "ingress", "access")
 
-	tenantReq, err := newBazelTokenRequest("rbe-ci-token", expiresAt, "tenant")
+	noExpiryReq, err := newBazelTokenRequest("rbe-ci-token", expiresAt, "user", true)
+	if err != nil {
+		t.Fatalf("newBazelTokenRequest without expiry: %v", err)
+	}
+	if noExpiryReq.GetExpiresAt() != nil {
+		t.Fatalf("unlimited token expiration = %v, want nil", noExpiryReq.GetExpiresAt())
+	}
+
+	tenantReq, err := newBazelTokenRequest("rbe-ci-token", expiresAt, "tenant", false)
 	if err != nil {
 		t.Fatalf("newBazelTokenRequest tenant scope: %v", err)
 	}
@@ -299,7 +311,11 @@ func TestNewBazelTokenRequest(t *testing.T) {
 		t.Fatalf("token scope = %v, want tenant scope", tenantReq.GetScope())
 	}
 
-	if _, err := newBazelTokenRequest("rbe-ci-token", expiresAt, "invalid"); err == nil {
+	if _, err := newBazelTokenRequest("rbe-ci-token", expiresAt, "tenant", true); err == nil {
+		t.Fatal("expected unlimited tenant token error")
+	}
+
+	if _, err := newBazelTokenRequest("rbe-ci-token", expiresAt, "invalid", false); err == nil {
 		t.Fatal("expected invalid token scope error")
 	}
 }

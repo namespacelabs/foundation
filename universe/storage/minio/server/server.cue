@@ -8,7 +8,7 @@ server: fn.#OpaqueServer & {
 
 	isStateful: true
 
-	binary: image: "minio/minio@sha256:de46799fc1ced82b784554ba4602b677a71966148b77f5028132fc50adf37b1f"
+	binary: image: "quay.io/minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e"
 
 	env: {
 		MINIO_ROOT_USER: fromSecret:     "namespacelabs.dev/foundation/universe/storage/minio/creds:root-user"

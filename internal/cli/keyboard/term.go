@@ -223,8 +223,7 @@ func handleEvents(ctx context.Context, obs observers.StackSession, handlers []Ha
 					handler.Ch <- Event{
 						EventID:   fmt.Sprintf("%d", eventID),
 						Operation: OpStackUpdate,
-						// Decouple changes made by devsession. Handlers should be able
-						// to assume that the received event data is immutable.
+						// Handlers should be able to assume that the received event data is immutable.
 						StackUpdate: protos.Clone(update),
 					}
 				}

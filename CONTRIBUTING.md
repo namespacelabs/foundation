@@ -161,22 +161,6 @@ FN_ENABLE_TRACING=true ns build ...
 
 Check out the trace at [http://localhost:20000/](http://localhost:20000/).
 
-### Iterating on the internal Dev UI
-
-```bash
-ns dev --devweb internal/testdata/server/gogrpc
-```
-
-Adding `--devweb` starts a development web frontend. Yarn and NodeJS are required for `--devweb`.
-Also, run `yarn install` in the `devworkflow/web` directory to fetch and link node dependencies.
-
-```bash
-ns dev -H 0.0.0.0:4001 --devweb internal/testdata/server/gogrpc
-```
-
-Use `-H` to change the listening hostname/port, in case you're running `ns dev` in a machine or VM
-different from your workstation.
-
 ### Using `age` for simple secret management
 
 When a server has secrets required for deployment, sharing those secrets between different users can

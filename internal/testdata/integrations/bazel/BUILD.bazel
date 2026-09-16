@@ -1,0 +1,14 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "bazel_lib",
+    srcs = ["main.go"],
+    importpath = "namespacelabs.dev/foundation/internal/testdata/integrations/bazel",
+    visibility = ["//visibility:private"],
+)
+
+go_binary(
+    name = "bazel",
+    embed = [":bazel_lib"],
+    visibility = ["//:__subpackages__"],
+)

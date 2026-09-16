@@ -46,7 +46,7 @@ func buildLocalImage(ctx context.Context, env pkggraph.SealedContext, workspace 
 		binary:       bin,
 		platform:     *target.TargetPlatform(),
 		workspaceAbs: workspace.Abs(),
-		trigger:      workspace.ChangeTrigger(bin.GoWorkspacePath, nil),
+		trigger:      workspace.BuildPrerequisite(),
 	}
 
 	if bin.UnsafeCacheable || workspace.IsExternal() {
@@ -171,7 +171,7 @@ func goarm(platform specs.Platform) (string, error) {
 type compilation struct {
 	workspaceAbs string // Does not by itself affect the output.
 	sdk          compute.Computable[golang.LocalSDK]
-	trigger      compute.Computable[any] // We depend on `trigger` so we trigger a re-build on workspace changes.
+	trigger      compute.Computable[any] // Code generation must finish before compilation.
 	sourceDigest compute.Computable[schema.Digest]
 	binary       GoBinary
 	platform     specs.Platform
