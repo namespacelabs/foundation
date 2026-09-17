@@ -212,7 +212,7 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 				return err
 			}
 
-			if err := writeFile(bazelRcPath, data); err != nil {
+			if err := writeCredentialFile(bazelRcPath, data); err != nil {
 				return err
 			}
 		}

@@ -413,7 +413,7 @@ func newSetupCacheCmd() *cobra.Command {
 			} else {
 				out.ClientCert = filepath.Join(certPath, "client.cert")
 
-				if err := writeFile(out.ClientCert, []byte(clientCertPem)); err != nil {
+				if err := writeCredentialFile(out.ClientCert, []byte(clientCertPem)); err != nil {
 					return err
 				}
 			}
@@ -428,7 +428,7 @@ func newSetupCacheCmd() *cobra.Command {
 			} else {
 				out.ClientKey = filepath.Join(certPath, "client.key")
 
-				if err := writeFile(out.ClientKey, privateKeyPem); err != nil {
+				if err := writeCredentialFile(out.ClientKey, privateKeyPem); err != nil {
 					return err
 				}
 			}
@@ -450,7 +450,7 @@ func newSetupCacheCmd() *cobra.Command {
 				} else {
 					out.ServerCaCert = filepath.Join(certPath, "server_ca.cert")
 
-					if err := writeFile(out.ServerCaCert, []byte(response.GetServerCaPem())); err != nil {
+					if err := writeCredentialFile(out.ServerCaCert, []byte(response.GetServerCaPem())); err != nil {
 						return err
 					}
 				}
@@ -467,7 +467,7 @@ func newSetupCacheCmd() *cobra.Command {
 				} else {
 					out.ClientCert = filepath.Join(certPath, "client.cert")
 
-					if err := writeFile(out.ClientCert, []byte(response.GetClientCertPem())); err != nil {
+					if err := writeCredentialFile(out.ClientCert, []byte(response.GetClientCertPem())); err != nil {
 						return err
 					}
 				}
@@ -484,7 +484,7 @@ func newSetupCacheCmd() *cobra.Command {
 				} else {
 					out.ClientKey = filepath.Join(certPath, "client.key")
 
-					if err := writeFile(out.ClientKey, []byte(response.GetClientKeyPem())); err != nil {
+					if err := writeCredentialFile(out.ClientKey, []byte(response.GetClientKeyPem())); err != nil {
 						return err
 					}
 				}
@@ -548,7 +548,7 @@ func newSetupCacheCmd() *cobra.Command {
 				return err
 			}
 
-			if err := writeFile(bazelRcPath, data); err != nil {
+			if err := writeCredentialFile(bazelRcPath, data); err != nil {
 				return err
 			}
 		}
@@ -653,20 +653,6 @@ func writeTempFile(base, pattern string, content []byte) (string, error) {
 	}
 
 	return f.Name(), nil
-}
-
-func writeFile(path string, content []byte) error {
-	if dir := filepath.Dir(path); dir != "" {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return fnerrors.Newf("failed to create directory %q: %w", dir, err)
-		}
-	}
-
-	if err := os.WriteFile(path, content, 0644); err != nil {
-		return fnerrors.Newf("failed to write %q: %w", path, err)
-	}
-
-	return nil
 }
 
 func toBazelConfig(ctx context.Context, out bazelSetup, useAbsoluteCredHelperPath bool, command string, disableBuildEvents bool) ([]byte, error) {
