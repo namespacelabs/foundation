@@ -181,6 +181,30 @@ func TestEmitReapiBazelConfig(t *testing.T) {
 	assertFileMode(t, configPath, 0600)
 }
 
+func TestWriteCredentialFileTightensExistingPermissions(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "namespace.bazelrc")
+	if err := os.WriteFile(path, []byte("old config"), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := os.Chmod(path, 0644); err != nil {
+		t.Fatalf("Chmod: %v", err)
+	}
+	if err := writeCredentialFile(path, []byte("new config")); err != nil {
+		t.Fatalf("writeCredentialFile: %v", err)
+	}
+
+	assertFileMode(t, path, 0600)
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	if got, want := string(content), "new config"; got != want {
+		t.Fatalf("content = %q, want %q", got, want)
+	}
+}
+
 func TestEmitReapiBuck2Config(t *testing.T) {
 	t.Parallel()
 
