@@ -157,8 +157,13 @@ func newDockerLoginCmd(hidden bool) *cobra.Command {
 
 	outputRegistryPath := cmd.Flags().String("output_registry_to", "", "If specified, write the registry address to this path.")
 	useCredentialHelper := cmd.Flags().Bool("use_credential_helper", true, "Use nsc's credential helper instead of embedding the credentials.")
+	tokenDuration := fncobra.Duration(cmd.Flags(), "token_duration", 8*time.Hour, "The duration of the embedded token (requires --use_credential_helper=false).")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if *useCredentialHelper && cmd.Flags().Changed("token_duration") {
+			return fnerrors.Newf("--token_duration requires --use_credential_helper=false")
+		}
+
 		stdout := console.Stdout(ctx)
 
 		response, err := api.GetImageRegistry(ctx, api.Methods)
@@ -184,7 +189,7 @@ func newDockerLoginCmd(hidden bool) *cobra.Command {
 
 					delete(cfg.AuthConfigs, reg.EndpointAddress)
 				} else {
-					token, err := fnapi.IssueToken(ctx, 8*time.Hour)
+					token, err := fnapi.IssueToken(ctx, *tokenDuration)
 					if err != nil {
 						return err
 					}
