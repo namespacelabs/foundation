@@ -23,22 +23,11 @@ var (
 	sshTransports = tcache.NewCache[*ssh.Client]()
 )
 
-type DialFunc func(context.Context, string) (net.Conn, error)
-
 type Endpoint struct {
 	User           string
 	PrivateKeyPath string
 	AgentSockPath  string
 	Address        string
-	TeleportProxy  *TeleportProxy
-}
-
-type TeleportProxy struct {
-	ProfileName     string
-	Host            string
-	TbotIdentityDir string
-	ProxyAddress    string
-	Cluster         string
 }
 
 type Deferred struct {
@@ -66,44 +55,37 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 		return nil, err
 	}
 
-	var config *ssh.ClientConfig
-	var dialer DialFunc
+	config := &ssh.ClientConfig{
+		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+			fmt.Fprintf(console.Debug(ctx), "ssh: connected to %q (%s)\n", hostname, remote)
+			return nil
+		},
+	}
 
-	if teleportProxy := endpoint.TeleportProxy; teleportProxy != nil {
-		return nil, fnerrors.Newf("transport.ssh: teleport not supported")
-	} else {
-		config = &ssh.ClientConfig{
-			HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-				fmt.Fprintf(console.Debug(ctx), "ssh: connected to %q (%s)\n", hostname, remote)
-				return nil
-			},
+	dialer := func(ctx context.Context, addr string) (net.Conn, error) {
+		var d net.Dialer
+		return d.DialContext(ctx, "tcp", addr)
+	}
+
+	if key != nil {
+		config.Auth = append(config.Auth, key)
+	}
+
+	if endpoint.AgentSockPath != "" {
+		path, err := dirs.ExpandHome(os.ExpandEnv(endpoint.AgentSockPath))
+		if err != nil {
+			return nil, fnerrors.Newf("failed to resolve ssh agent path: %w", err)
 		}
 
-		dialer = func(ctx context.Context, addr string) (net.Conn, error) {
-			var d net.Dialer
-			return d.DialContext(ctx, "tcp", addr)
+		keyKey += ":agent=" + path
+
+		conn, err := net.Dial("unix", path)
+		if err != nil {
+			return nil, fnerrors.Newf("failed to connect to ssh agent: %w", err)
 		}
 
-		if key != nil {
-			config.Auth = append(config.Auth, key)
-		}
-
-		if endpoint.AgentSockPath != "" {
-			path, err := dirs.ExpandHome(os.ExpandEnv(endpoint.AgentSockPath))
-			if err != nil {
-				return nil, fnerrors.Newf("failed to resolve ssh agent path: %w", err)
-			}
-
-			keyKey += ":agent=" + path
-
-			conn, err := net.Dial("unix", path)
-			if err != nil {
-				return nil, fnerrors.Newf("failed to connect to ssh agent: %w", err)
-			}
-
-			agentClient := agent.NewClient(conn)
-			config.Auth = append(config.Auth, ssh.PublicKeysCallback(agentClient.Signers))
-		}
+		agentClient := agent.NewClient(conn)
+		config.Auth = append(config.Auth, ssh.PublicKeysCallback(agentClient.Signers))
 	}
 
 	config.User = endpoint.User
