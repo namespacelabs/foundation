@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "binary",
+    srcs = [
+        "image.go",
+        "invocation.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/frontend/cuefrontend/binary",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/fnerrors",
+        "//internal/frontend/cuefrontend/args",
+        "//internal/frontend/cuefrontend/integration/api",
+        "//internal/frontend/fncue",
+        "//internal/parsing",
+        "//internal/parsing/integration/api",
+        "//schema",
+        "//std/pkggraph",
+        "@io_k8s_utils//strings/slices",
+        "@org_cuelang_go//cue",
+        "@org_golang_x_exp//maps",
+    ],
+)

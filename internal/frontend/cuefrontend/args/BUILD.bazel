@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "args",
+    srcs = [
+        "args.go",
+        "env.go",
+        "resolvable.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/frontend/cuefrontend/args",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//framework/jsonreparser",
+        "//internal/fnerrors",
+        "//internal/parsing/invariants",
+        "//internal/protos",
+        "//schema",
+        "//std/pkggraph",
+        "@org_golang_x_exp//maps",
+        "@org_golang_x_exp//slices",
+    ],
+)

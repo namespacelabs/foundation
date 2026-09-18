@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "image",
+    srcs = ["image.go"],
+    embedsrcs = ["versions.json"],
+    importpath = "namespacelabs.dev/foundation/internal/sdk/buf/image",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/dependencies/pins",
+        "//internal/llbutil",
+        "@com_github_moby_buildkit//client/llb",
+        "@com_github_moby_buildkit//util/system",
+        "@com_github_opencontainers_image_spec//specs-go/v1:specs-go",
+    ],
+)

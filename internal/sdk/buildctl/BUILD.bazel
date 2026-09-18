@@ -1,0 +1,19 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "buildctl",
+    srcs = ["buildctl.go"],
+    importpath = "namespacelabs.dev/foundation/internal/sdk/buildctl",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts",
+        "//internal/artifacts/download",
+        "//internal/artifacts/unpack",
+        "//internal/compute",
+        "//internal/fnerrors",
+        "//internal/fnfs/tarfs",
+        "//schema",
+        "//std/tasks",
+        "@com_github_opencontainers_image_spec//specs-go/v1:specs-go",
+    ],
+)

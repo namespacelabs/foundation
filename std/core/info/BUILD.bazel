@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "info",
+    srcs = [
+        "deps.fn.go",
+        "wire.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/std/core/info",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//std/core/types",
+        "//std/go/core",
+    ],
+)

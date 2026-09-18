@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "nsingress",
+    srcs = [
+        "certificates.go",
+        "kubecert.go",
+        "nsingress.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/providers/nscloud/nsingress",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//framework/kubernetes/kubedef",
+        "//internal/fnapi",
+        "//internal/networking/ingress/nginx",
+        "//internal/runtime",
+        "//internal/tools/maketlscert",
+        "//schema",
+        "//std/execution/defs",
+        "//std/types",
+        "@io_k8s_api//core/v1:core",
+        "@io_k8s_client_go//applyconfigurations/core/v1:core",
+    ],
+)

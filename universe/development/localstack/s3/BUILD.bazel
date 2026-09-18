@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "s3",
+    srcs = [
+        "deps.fn.go",
+        "provider.pb.go",
+        "wire.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/universe/development/localstack/s3",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//std/core",
+        "//std/go/core",
+        "//universe/aws/s3",
+        "@com_github_aws_aws_sdk_go_v2//aws",
+        "@com_github_aws_aws_sdk_go_v2_config//:config",
+        "@com_github_aws_aws_sdk_go_v2_service_s3//:s3",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

@@ -1,0 +1,14 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "pages",
+    srcs = ["welcome.go"],
+    embedsrcs = [
+        "logo.png",
+        "output.css",
+        "welcome.html.template",
+    ],
+    importpath = "namespacelabs.dev/foundation/framework/pages",
+    visibility = ["//visibility:public"],
+    deps = ["//framework/runtime"],
+)

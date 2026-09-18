@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "auth",
+    srcs = [
+        "tokens.go",
+        "userauth.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/auth",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/clerk",
+        "//internal/console",
+        "//internal/fnerrors",
+        "//internal/providers/nscloud/metadata",
+        "//internal/runtime/rtypes",
+        "//internal/workspace/dirs",
+        "@com_github_moby_sys_atomicwriter//:atomicwriter",
+        "@com_github_spf13_pflag//:pflag",
+        "@dev_namespacelabs_integrations//auth",
+    ],
+)

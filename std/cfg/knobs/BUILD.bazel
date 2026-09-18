@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "knobs",
+    srcs = [
+        "knobs.go",
+        "types.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/std/cfg/knobs",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//std/cfg",
+        "//std/cfg/knobs/config",
+        "@com_github_spf13_pflag//:pflag",
+        "@org_golang_google_protobuf//types/known/anypb",
+        "@org_golang_google_protobuf//types/known/wrapperspb",
+    ],
+)

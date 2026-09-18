@@ -1,0 +1,14 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "devbox",
+    srcs = ["cmd.go"],
+    importpath = "namespacelabs.dev/foundation/internal/cli/cmd/devbox",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cli/fncobra",
+        "//internal/console",
+        "//internal/fnerrors",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)

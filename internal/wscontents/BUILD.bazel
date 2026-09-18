@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "wscontents",
+    srcs = [
+        "types.pb.go",
+        "wscontents.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/wscontents",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/filewatcher",
+        "//internal/fnerrors",
+        "//internal/fnfs/memfs",
+        "//internal/workspace/dirs",
+        "@com_github_cespare_xxhash_v2//:xxhash",
+        "@com_github_fsnotify_fsnotify//:fsnotify",
+        "@com_github_moby_patternmatcher//:patternmatcher",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

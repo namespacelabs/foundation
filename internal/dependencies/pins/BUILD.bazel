@@ -1,0 +1,10 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "pins",
+    srcs = ["pins.go"],
+    embedsrcs = ["pins.json"],
+    importpath = "namespacelabs.dev/foundation/internal/dependencies/pins",
+    visibility = ["//:__subpackages__"],
+    deps = ["//internal/fnerrors"],
+)
