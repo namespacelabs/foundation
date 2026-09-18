@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/framework/findroot"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
+	buildbazel "namespacelabs.dev/foundation/internal/build/bazel"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/gosupport"
@@ -49,11 +50,14 @@ var (
 )
 
 type Builder struct {
-	bazelRC string
+	bazel *buildbazel.Builder
 }
 
 func MaybeBazelBuilder(bazelRC string) Builder {
-	return Builder{bazelRC: bazelRC}
+	if bazelRC == "" {
+		return Builder{}
+	}
+	return Builder{bazel: buildbazel.NewBuilder(bazelRC)}
 }
 
 func (gb GoBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
@@ -61,9 +65,9 @@ func (gb GoBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, c
 }
 
 func (b Builder) buildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration, gb GoBinary) (compute.Computable[oci.Image], error) {
-	if b.bazelRC != "" {
+	if b.bazel != nil {
 		if bazelBuildAvailable(conf.Workspace(), gb) {
-			return buildBazelImage(ctx, env, conf.Workspace(), gb, conf, b.bazelRC)
+			return buildBazelImage(ctx, env, conf.Workspace(), gb, conf, b.bazel)
 		}
 	}
 
