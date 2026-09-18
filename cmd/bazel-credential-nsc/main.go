@@ -7,7 +7,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 	ia "namespacelabs.dev/foundation/internal/auth"
-	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
+	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/credhelper"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/endpoint"
 )
@@ -16,12 +16,12 @@ import (
 // https://github.com/bazelbuild/proposals/blob/main/designs/2022-06-07-bazel-credential-helpers.md
 func main() {
 	fncobra.DoMain(fncobra.MainOpts{
-		Name: cluster.BazelCredHelperBinary,
+		Name: credhelper.BazelCredHelperBinary,
 		RegisterCommands: func(root *cobra.Command) {
 			endpoint.SetupFlags("", root.PersistentFlags(), false)
 			ia.SetupFlags(root.PersistentFlags())
 
-			root.AddCommand(cluster.NewBazelCredHelperGetCmd())
+			root.AddCommand(credhelper.NewBazelCredHelperGetCmd())
 		},
 	})
 }
