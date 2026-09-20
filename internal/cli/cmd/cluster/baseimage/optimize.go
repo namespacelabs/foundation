@@ -43,7 +43,7 @@ func newOptimizeCmd() *cobra.Command {
 
 		cli, err := compute.NewClient(ctx, token, grpc.WithKeepaliveParams(keepalive.ClientParameters{
 			// Keep the connection alive while optimization is ongoing.
-			Time:    1 * time.Minute,
+			Time:    5 * time.Minute,
 			Timeout: 30 * time.Second,
 		}))
 		if err != nil {
