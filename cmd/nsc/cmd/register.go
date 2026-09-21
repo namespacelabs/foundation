@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/github"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/macos"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/private"
+	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/windows"
 	"namespacelabs.dev/foundation/internal/cli/cmd/devbox"
 	"namespacelabs.dev/foundation/internal/cli/cmd/gcp"
 	"namespacelabs.dev/foundation/internal/cli/cmd/integrations"
@@ -97,7 +98,8 @@ func RegisterCommands(root *cobra.Command) {
 
 	root.AddCommand(scratch.NewScratchCmd()) // nsc scratch
 
-	root.AddCommand(macos.NewMacOSCmd()) // nsc macos [hidden]
+	root.AddCommand(macos.NewMacOSCmd())     // nsc macos [hidden]
+	root.AddCommand(windows.NewWindowsCmd()) // nsc windows [hidden]
 
 	root.AddCommand(devbox.NewDevboxCmd()) // nsc devbox [hidden]
 }
