@@ -6,10 +6,14 @@ package postgres
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/exaring/otelpgx"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
 	"go.opentelemetry.io/otel/trace"
@@ -24,7 +28,7 @@ func ConnectToResource(ctx context.Context, res *resources.Parsed, resourceRef s
 		return nil, err
 	}
 
-	return NewDatabaseFromConnectionUriWithOverrides(ctx, db, db.ConnectionUri, tp, client, overrides)
+	return newDatabaseFromConnectionURI(ctx, db, db.ConnectionUri, db.CaCert, tp, client, overrides)
 }
 
 func ConnectToReplicaResource(ctx context.Context, res *resources.Parsed, resourceRef string, tp trace.TracerProvider, client string, overrides *ConfigOverrides) (*DB, error) {
@@ -34,11 +38,13 @@ func ConnectToReplicaResource(ctx context.Context, res *resources.Parsed, resour
 	}
 
 	connUri := db.ReplicaConnectionUri
+	caCert := db.ReplicaCaCert
 	if connUri == "" {
 		connUri = db.ConnectionUri
+		caCert = db.CaCert
 	}
 
-	return NewDatabaseFromConnectionUriWithOverrides(ctx, db, connUri, tp, client, overrides)
+	return newDatabaseFromConnectionURI(ctx, db, connUri, caCert, tp, client, overrides)
 }
 
 type ConfigOverrides struct {
@@ -49,6 +55,7 @@ type ConfigOverrides struct {
 	StatementTimeout                time.Duration
 	LockTimeout                     time.Duration
 	ConnectTimeout                  time.Duration
+	VerifyServerCertificate         bool
 }
 
 func NewDatabaseFromConnectionUri(ctx context.Context, db DBInstance, connuri string, tp trace.TracerProvider, client string) (*DB, error) {
@@ -56,9 +63,24 @@ func NewDatabaseFromConnectionUri(ctx context.Context, db DBInstance, connuri st
 }
 
 func NewDatabaseFromConnectionUriWithOverrides(ctx context.Context, db DBInstance, connuri string, tp trace.TracerProvider, client string, overrides *ConfigOverrides) (*DB, error) {
+	var caCert string
+	if dbWithCA, ok := db.(interface{ GetCaCert() string }); ok {
+		caCert = dbWithCA.GetCaCert()
+	}
+
+	return newDatabaseFromConnectionURI(ctx, db, connuri, caCert, tp, client, overrides)
+}
+
+func newDatabaseFromConnectionURI(ctx context.Context, db DBInstance, connuri, caCert string, tp trace.TracerProvider, client string, overrides *ConfigOverrides) (*DB, error) {
 	config, err := pgxpool.ParseConfig(connuri)
 	if err != nil {
 		return nil, err
+	}
+
+	if overrides != nil && overrides.VerifyServerCertificate {
+		if err := configureFullVerification(&config.ConnConfig.Config, caCert); err != nil {
+			return nil, err
+		}
 	}
 
 	var t trace.Tracer
@@ -104,4 +126,37 @@ func NewDatabaseFromConnectionUriWithOverrides(ctx context.Context, db DBInstanc
 	}
 
 	return newDatabase(db, conn, t, client), nil
+}
+
+func configureFullVerification(config *pgconn.Config, caCert string) error {
+	var roots *x509.CertPool
+	if caCert != "" {
+		roots = x509.NewCertPool()
+		if !roots.AppendCertsFromPEM([]byte(caCert)) {
+			return errors.New("failed to parse database CA certificate")
+		}
+	}
+
+	configureTLS := func(config *tls.Config, host string) *tls.Config {
+		if config == nil {
+			config = &tls.Config{}
+		} else {
+			config = config.Clone()
+		}
+
+		if roots != nil {
+			config.RootCAs = roots
+		}
+		config.InsecureSkipVerify = false
+		config.VerifyPeerCertificate = nil
+		config.ServerName = host
+		return config
+	}
+
+	config.TLSConfig = configureTLS(config.TLSConfig, config.Host)
+	for _, fallback := range config.Fallbacks {
+		fallback.TLSConfig = configureTLS(fallback.TLSConfig, fallback.Host)
+	}
+
+	return nil
 }

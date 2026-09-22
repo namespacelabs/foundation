@@ -96,6 +96,7 @@ func run(ctx context.Context, p *provider.Provider[*cockroach.DatabaseIntent]) e
 		EnableTracing:  p.Intent.EnableTracing,
 		SurvivalGoal:   p.Intent.SurvivalGoal,
 		Regions:        p.Intent.Regions,
+		CaCert:         cluster.CaCert,
 	}
 
 	client := fmt.Sprintf("provider:%s", p.Intent.Name)

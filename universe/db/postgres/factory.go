@@ -12,9 +12,10 @@ import (
 )
 
 type Factory struct {
-	res    *resources.Parsed
-	tp     trace.TracerProvider
-	client string
+	res                     *resources.Parsed
+	tp                      trace.TracerProvider
+	client                  string
+	verifyServerCertificate bool
 }
 
 func ProvideFactory(ctx context.Context, args *FactoryArgs, deps ExtensionDeps) (Factory, error) {
@@ -28,9 +29,16 @@ func ProvideFactory(ctx context.Context, args *FactoryArgs, deps ExtensionDeps) 
 		return Factory{}, err
 	}
 
-	return Factory{res, tp, args.GetClient()}, nil
+	return Factory{
+		res:                     res,
+		tp:                      tp,
+		client:                  args.GetClient(),
+		verifyServerCertificate: verifyServerCertificate(args.VerifyServerCertificate),
+	}, nil
 }
 
 func (f Factory) Provide(ctx context.Context, ref string) (*DB, error) {
-	return ConnectToResource(ctx, f.res, ref, f.tp, f.client, nil)
+	return ConnectToResource(ctx, f.res, ref, f.tp, f.client, &ConfigOverrides{
+		VerifyServerCertificate: f.verifyServerCertificate,
+	})
 }

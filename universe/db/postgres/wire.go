@@ -47,7 +47,8 @@ func provideDatabase(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps, 
 	}
 
 	overrides := &ConfigOverrides{
-		MaxConns: db.GetMaxConns(),
+		MaxConns:                db.GetMaxConns(),
+		VerifyServerCertificate: verifyServerCertificate(db.VerifyServerCertificate),
 	}
 
 	if db.GetMaxConnsFromEnv() != "" {
@@ -84,6 +85,10 @@ func provideDatabase(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps, 
 	}
 
 	return connect(ctx, res, db.ResourceRef, tp, db.GetClient(), overrides)
+}
+
+func verifyServerCertificate(configured *bool) bool {
+	return configured != nil && *configured
 }
 
 // Workaround the fact that foundation doesn't know about primitive types.

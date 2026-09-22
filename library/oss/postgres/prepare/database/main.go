@@ -71,6 +71,7 @@ func run(ctx context.Context, p *provider.Provider[*postgres.DatabaseIntent]) er
 		ClusterPort:    cluster.Port,
 		SslMode:        cluster.SslMode,
 		EnableTracing:  p.Intent.EnableTracing,
+		CaCert:         cluster.CaCert,
 	}
 
 	replica := &postgresclass.ClusterInstance{}
@@ -81,6 +82,7 @@ func run(ctx context.Context, p *provider.Provider[*postgres.DatabaseIntent]) er
 		instance.ReplicaClusterAddress = replica.Address
 		instance.ReplicaClusterHost = replica.Host
 		instance.ReplicaClusterPort = replica.Port
+		instance.ReplicaCaCert = replica.CaCert
 	}
 
 	if !exists || !p.Intent.SkipSchemaInitializationIfExists {
