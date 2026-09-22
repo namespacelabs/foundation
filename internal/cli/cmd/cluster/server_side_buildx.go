@@ -20,7 +20,9 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/cenkalti/backoff"
 	"github.com/docker/cli/cli/command"
 	controlapi "github.com/moby/buildkit/api/services/control"
 	"github.com/natefinch/atomic"
@@ -32,6 +34,8 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	store "namespacelabs.dev/foundation/internal/cli/cmd/cluster/buildxstore"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
@@ -180,7 +184,7 @@ func CreateGrpcClientConn(bc BuilderConfig) (*grpc.ClientConn, error) {
 	return cl, nil
 }
 
-func setupServerSideBuildxProxy(ctx context.Context, stateDir, builderName string, use, defaultLoad bool, dockerCli *command.DockerCli, platforms []api.BuildPlatform, conf api.BuilderConfiguration) error {
+func setupServerSideBuildxProxy(ctx context.Context, stateDir, builderName string, use, defaultLoad bool, waitTimeout time.Duration, dockerCli *command.DockerCli, platforms []api.BuildPlatform, conf api.BuilderConfiguration) error {
 	builderConfigs, err := PrepareServerSideBuildxProxy(ctx, stateDir, platforms, conf)
 	if err != nil {
 		return err
@@ -191,7 +195,54 @@ func setupServerSideBuildxProxy(ctx context.Context, stateDir, builderName strin
 		return err
 	}
 
+	if waitTimeout > 0 {
+		return waitForBuildxBuilders(ctx, builderConfigs, waitTimeout)
+	}
+
 	return nil
+}
+
+func waitForBuildxBuilders(ctx context.Context, configs []BuilderConfig, waitTimeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(ctx, waitTimeout)
+	defer cancel()
+
+	eg := executor.New(ctx, "buildx.wait-for-builders")
+	for _, cfg := range configs {
+		eg.Go(func(ctx context.Context) error {
+			conn, err := CreateGrpcClientConn(cfg)
+			if err != nil {
+				return fmt.Errorf("%s builder: %w", cfg.Platform, err)
+			}
+			defer conn.Close()
+
+			fmt.Fprintf(console.Info(ctx), "Waiting for %s builder to be ready...\n", cfg.Platform)
+			started := time.Now()
+			client := controlapi.NewControlClient(conn)
+			b := backoff.NewExponentialBackOff()
+			b.MaxInterval = 5 * time.Second
+			b.MaxElapsedTime = 0 // The context controls the overall wait timeout.
+			if err := backoff.Retry(func() error {
+				attemptCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+				defer cancel()
+
+				// Unlike static ListWorkers responses, DiskUsage requires a running BuildKit instance.
+				_, err := client.DiskUsage(attemptCtx, &controlapi.DiskUsageRequest{})
+				if status.Code(err) == codes.Unauthenticated || status.Code(err) == codes.PermissionDenied {
+					return backoff.Permanent(err)
+				}
+				return err
+			}, backoff.WithContext(b, ctx)); err != nil {
+				if ctx.Err() != nil {
+					err = ctx.Err()
+				}
+				return fmt.Errorf("%s builder did not become ready: %w", cfg.Platform, err)
+			}
+
+			fmt.Fprintf(console.Info(ctx), "%s builder is ready (took %v).\n", cfg.Platform, time.Since(started))
+			return nil
+		})
+	}
+	return eg.Wait()
 }
 
 func RefreshSessionClientCert(ctx context.Context) (bool, error) {
