@@ -57,6 +57,7 @@ func newSetupBuildxCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "setup",
 		Short: "Set up buildx on the current machine to use Namespace Remote builders.",
+		Args:  cobra.NoArgs,
 	}
 
 	name := cmd.Flags().String("name", defaultBuilder, "The name of the builder to set up.")
@@ -65,6 +66,8 @@ func newSetupBuildxCmd() *cobra.Command {
 	use := cmd.Flags().Bool("use", false, "If true, changes the current builder to nsc-remote.")
 	background := cmd.Flags().Bool("background", false, "If true, runs the remote builder context in the background.")
 	createAtStartup := cmd.Flags().Bool("create_at_startup", false, "If true, creates the build clusters eagerly.")
+	waitForBuilder := cmd.Flags().Duration("wait-for-builder", 0, "Wait for the selected remote builders to be ready (5m if no value is given, or use --wait-for-builder=30s). Requires --platform and the server-side proxy.")
+	cmd.Flags().Lookup("wait-for-builder").NoOptDefVal = "5m"
 	stateDir := cmd.Flags().String("state", "", "If set, stores the remote builder context details in this directory.")
 	debugDir := cmd.Flags().String("background_debug_dir", "", "If set with --background, the tool populates the specified directory with debug log files.")
 	_ = cmd.Flags().MarkHidden("background_debug_dir")
@@ -89,6 +92,18 @@ func newSetupBuildxCmd() *cobra.Command {
 	_ = cmd.Flags().MarkHidden("builder_shape")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if cmd.Flags().Changed("wait-for-builder") && *waitForBuilder <= 0 {
+			return fnerrors.Newf("--wait-for-builder must be greater than zero")
+		}
+
+		if cmd.Flags().Changed("wait-for-builder") && len(*platforms) == 0 {
+			return fnerrors.Newf("--wait-for-builder requires --platform")
+		}
+
+		if cmd.Flags().Changed("wait-for-builder") && !*useServerSideProxy {
+			return fnerrors.Newf("--wait-for-builder requires --use_server_side_proxy")
+		}
+
 		if *debugDir != "" && !*background {
 			return fnerrors.Newf("--background_debug_dir requires --background")
 		}
@@ -139,7 +154,7 @@ func newSetupBuildxCmd() *cobra.Command {
 				return err
 			}
 
-			if err := setupServerSideBuildxProxy(ctx, state, *name, *use, *defaultLoad, dockerCli, available, api.BuilderConfiguration{
+			if err := setupServerSideBuildxProxy(ctx, state, *name, *use, *defaultLoad, *waitForBuilder, dockerCli, available, api.BuilderConfiguration{
 				SkipPrespawn: !*createAtStartup,
 				Name:         *tag,
 				Experimental: *experimental,
