@@ -272,6 +272,8 @@ func TestBazelStorageSetup(t *testing.T) {
 		StorageEndpoint:                          "grpcs://storage.example:444",
 		RemoteAssetEndpoint:                      "grpcs://asset.example:444",
 		RecommendedBazelRemoteUploadLocalResults: true,
+		BuildEventEndpoint:                       "grpcs://scheduler.example:444",
+		BuildEventResultsUrl:                     "https://cloud.namespace.so/test/bazel/invocation/",
 	}
 
 	readWrite := bazelStorageSetup(response)
@@ -280,6 +282,9 @@ func TestBazelStorageSetup(t *testing.T) {
 	}
 	if readWrite.StorageEndpoint != response.GetStorageEndpoint() || readWrite.RemoteAssetEndpoint != response.GetRemoteAssetEndpoint() {
 		t.Fatalf("read-write setup = %#v, want response endpoints", readWrite)
+	}
+	if readWrite.BuildEventEndpoint != response.GetBuildEventEndpoint() || readWrite.BuildEventResultsURL != response.GetBuildEventResultsUrl() {
+		t.Fatalf("read-write setup = %#v, want response build event configuration", readWrite)
 	}
 
 	response.SetRecommendedBazelRemoteUploadLocalResults(false)
