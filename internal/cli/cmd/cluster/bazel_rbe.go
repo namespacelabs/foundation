@@ -284,6 +284,8 @@ func bazelStorageSetup(response *bazelv1beta.EnsureStorageClusterResponse) bazel
 		StorageEndpoint:          response.GetStorageEndpoint(),
 		RemoteAssetEndpoint:      response.GetRemoteAssetEndpoint(),
 		RemoteUploadLocalResults: &remoteUploadLocalResults,
+		BuildEventEndpoint:       response.GetBuildEventEndpoint(),
+		BuildEventResultsURL:     response.GetBuildEventResultsUrl(),
 	}
 }
 
