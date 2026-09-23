@@ -303,7 +303,7 @@ func newSetupCacheCmd() *cobra.Command {
 		flags.StringVar(&bazelRcPath, "bazelrc", "", "If specified, write the bazelrc to this path.")
 		flags.StringVarP(&output, "output", "o", "plain", "One of plain or json.")
 		flags.StringVar(&certPath, "cred_path", "", "If specified, write credentials to this directory. Using this flag also ensures stable file names for all emitted credentials.")
-		flags.BoolVar(&sendBuildEvents, "send_build_events", false, "If specified, send build events to the build event service.")
+		flags.BoolVar(&sendBuildEvents, "send_build_events", true, "Deprecated: build events are sent by default; use --disable_build_events to opt out.")
 		flags.BoolVar(&disableBuildEvents, "disable_build_events", false, "If specified, do not configure Bazel to send build events.")
 		flags.BoolVar(&useAbsoluteCredHelperPath, "use_absolute_credentialhelper_path", false, "If specified, use an absolute path to the credential helper binary.")
 		flags.StringVar(&tokenFile, "token", "", "Use the bearer token stored at this location for authentication instead of the default. Implies --static.")
@@ -320,6 +320,8 @@ func newSetupCacheCmd() *cobra.Command {
 		flags.MarkHidden("send_build_events")
 		flags.MarkHidden("version")
 	}).Do(func(ctx context.Context) error {
+		disableBuildEvents = disableBuildEvents || !sendBuildEvents
+
 		var tokenSource api.TokenSource
 		if tokenFile != "" {
 			loaded, err := loadTokenFromFile(tokenFile)
@@ -341,10 +343,6 @@ func newSetupCacheCmd() *cobra.Command {
 			return fnerrors.Newf("--experimental_direct may not be used with --static")
 		}
 
-		if experimentalDirect && sendBuildEvents {
-			return fnerrors.Newf("--experimental_direct may not be used with --send_build_events")
-		}
-
 		msg := makeEnsureBazelCacheRequest(version, experimentalDirect, enableRemoteAssetAPI, experimentalCacheName)
 
 		resp, err := retryBazelProvisioning(ctx, func() (*connect.Response[bazelv1beta.EnsureBazelCacheResponse], error) {
@@ -362,10 +360,6 @@ func newSetupCacheCmd() *cobra.Command {
 		useWorkloadMtls := response.GetUseWorkloadMtls()
 		if useWorkloadMtls && static {
 			return fnerrors.Newf("server requires workload mTLS; --static may not be used")
-		}
-
-		if useWorkloadMtls && sendBuildEvents {
-			return fnerrors.Newf("server requires workload mTLS; --send_build_events may not be used")
 		}
 
 		if certPath != "" {
@@ -501,22 +495,12 @@ func newSetupCacheCmd() *cobra.Command {
 				return fnerrors.Newf("failed to issue bearer token: %w", err)
 			}
 
-			out = bazelSetup{
-				Endpoint:    response.GetHttpsCacheEndpoint(),
-				StaticToken: token,
-			}
-		}
-
-		if sendBuildEvents {
-			if response.GetBuildEventEndpoint() == "" {
-				return fnerrors.Newf("did not receive a valid build events endpoint but was asked to send build events")
-			}
-
-			if len(response.GetCredentialHelperDomains()) == 0 {
-				return fnerrors.Newf("the credential helper is not enabled but it is required to send build events")
-			}
-
-			out.BuildEventEndpoint = response.GetBuildEventEndpoint()
+			out.Endpoint = response.GetHttpsCacheEndpoint()
+			out.ServerCaCert = ""
+			out.ClientCert = ""
+			out.ClientKey = ""
+			out.CredentialHelperDomains = nil
+			out.StaticToken = token
 		}
 
 		if response.GetRemoteAssetEndpoint() != "" {
@@ -539,6 +523,9 @@ func newSetupCacheCmd() *cobra.Command {
 			waitTimeout: bazelCacheReadinessTimeout,
 		}); err != nil {
 			return fnerrors.Newf("failed waiting for bazel cache readiness: %w", err)
+		}
+		if disableBuildEvents {
+			out.BuildEventEndpoint = ""
 		}
 
 		// If set, we always generate a bazelrc file.
@@ -604,16 +591,14 @@ func makeEnsureBazelCacheRequest(version int64, experimentalDirect, enableRemote
 
 func baseBazelSetup(response *bazelv1beta.EnsureBazelCacheResponse, expiresAt *time.Time) bazelSetup {
 	out := bazelSetup{
-		Endpoint:  response.GetCacheEndpoint(),
-		ExpiresAt: expiresAt,
+		Endpoint:           response.GetCacheEndpoint(),
+		ExpiresAt:          expiresAt,
+		BuildEventEndpoint: response.GetBuildEventEndpoint(),
 	}
 
 	if len(response.GetCredentialHelperDomains()) > 0 && !response.GetUseWorkloadMtls() {
-		out = bazelSetup{
-			Endpoint:                response.GetHttpsCacheEndpoint(),
-			ExpiresAt:               expiresAt,
-			CredentialHelperDomains: response.GetCredentialHelperDomains(),
-		}
+		out.Endpoint = response.GetHttpsCacheEndpoint()
+		out.CredentialHelperDomains = response.GetCredentialHelperDomains()
 	}
 
 	return out
@@ -694,6 +679,14 @@ func toBazelConfig(ctx context.Context, out bazelSetup, useAbsoluteCredHelperPat
 	if out.StaticToken != "" {
 		if _, err := buffer.WriteString(fmt.Sprintf("%s --remote_header=x-nsc-ingress-auth=Bearer\\ %s\n", command, out.StaticToken)); err != nil {
 			return nil, fnerrors.Newf("failed to append x-nsc-ingress-auth header: %w", err)
+		}
+		if out.BuildEventEndpoint != "" && !disableBuildEvents {
+			if _, err := buffer.WriteString(fmt.Sprintf("%s --bes_header=Authorization=Bearer\\ %s\n", command, out.StaticToken)); err != nil {
+				return nil, fnerrors.Newf("failed to append authorization BES header: %w", err)
+			}
+			if _, err := buffer.WriteString(fmt.Sprintf("%s --bes_header=x-nsc-ingress-auth=Bearer\\ %s\n", command, out.StaticToken)); err != nil {
+				return nil, fnerrors.Newf("failed to append x-nsc-ingress-auth BES header: %w", err)
+			}
 		}
 	} else if len(out.CredentialHelperDomains) > 0 {
 		path, err := exec.LookPath(BazelCredHelperBinary)
