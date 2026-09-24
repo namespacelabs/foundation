@@ -65,9 +65,11 @@ func WithLogs(err error, readerF func() io.Reader) error {
 }
 
 func IsOfKind(err error, kind ErrorKind) bool {
-	var be *BaseError
-	if errors.As(err, &be) {
-		return be.Kind == kind
+	var kinded interface {
+		errorKind() ErrorKind
+	}
+	if errors.As(err, &kinded) {
+		return kinded.errorKind() == kind
 	}
 
 	return false
@@ -162,6 +164,8 @@ func (e *BaseError) Error() string {
 
 	return fmt.Sprintf("%s%v", locStr, e.OriginalErr)
 }
+
+func (e *BaseError) errorKind() ErrorKind { return e.Kind }
 
 func (e *BaseError) IsExpectedError() (error, bool) {
 	return e, e.Kind == Kind_USER
