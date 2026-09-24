@@ -13,7 +13,6 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
-	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -54,14 +53,6 @@ type Delete struct {
 	SetNamespace bool
 	Namespace    string
 	Name         string
-}
-
-type DeleteList struct {
-	Description  string
-	Resource     string
-	SetNamespace bool
-	Namespace    string
-	Selector     map[string]string
 }
 
 type Create struct {
@@ -115,10 +106,6 @@ type ExtendSpec struct {
 
 type ExtendContainer struct {
 	With *ContainerExtension
-}
-
-type ExtendInitContainer struct {
-	With *InitContainerExtension
 }
 
 func (a Apply) ToDefinitionImpl(scope ...schema.PackageName) (*schema.SerializedInvocation, *OpApply, error) {
@@ -193,24 +180,6 @@ func (d Delete) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInv
 		Namespace:    d.Namespace,
 		Name:         d.Name,
 		SetNamespace: d.SetNamespace,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return &schema.SerializedInvocation{
-		Description: d.Description,
-		Impl:        x,
-		Scope:       scopeToStrings(scope),
-	}, nil
-}
-
-func (d DeleteList) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInvocation, error) {
-	x, err := anypb.New(&OpDeleteList{
-		Resource:      d.Resource,
-		Namespace:     d.Namespace,
-		SetNamespace:  d.SetNamespace,
-		LabelSelector: kubeobj.SerializeSelector(d.Selector),
 	})
 	if err != nil {
 		return nil, err
@@ -394,15 +363,6 @@ func (es ExtendSpec) ToDefinition() (*schema.DefExtension, error) {
 }
 
 func (ec ExtendContainer) ToDefinition() (*schema.DefExtension, error) {
-	x, err := anypb.New(ec.With)
-	if err != nil {
-		return nil, err
-	}
-
-	return &schema.DefExtension{Impl: x}, nil
-}
-
-func (ec ExtendInitContainer) ToDefinition() (*schema.DefExtension, error) {
 	x, err := anypb.New(ec.With)
 	if err != nil {
 		return nil, err
