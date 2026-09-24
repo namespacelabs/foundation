@@ -798,6 +798,9 @@ func ComputeStackAndImages(ctx context.Context, planner planning.Planner, server
 }
 
 func computeStackAndImages(ctx context.Context, planner planning.Planner, stack *planning.Stack, opts serverImagesOpts) ([]schema.PackageName, []compute.Computable[ResolvedServerImages], error) {
+	buildGraph := build.NewGraph()
+	ctx = build.WithGraph(ctx, buildGraph)
+
 	imageMap, err := prepareServerImages(ctx, planner, stack, opts)
 	if err != nil {
 		return nil, nil, err
@@ -805,6 +808,9 @@ func computeStackAndImages(ctx context.Context, planner planning.Planner, stack 
 
 	sidecarImages, err := prepareSidecarAndInitImages(ctx, planner.Runtime, planner.Registry, stack, makeBuildAssets(opts.IngressFragments))
 	if err != nil {
+		return nil, nil, err
+	}
+	if err := buildGraph.Finalize(); err != nil {
 		return nil, nil, err
 	}
 
