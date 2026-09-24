@@ -1,0 +1,9 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "certificates",
+    srcs = ["certificates.go"],
+    importpath = "namespacelabs.dev/foundation/internal/certificates",
+    visibility = ["//:__subpackages__"],
+    deps = ["//internal/fnerrors"],
+)

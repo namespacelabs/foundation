@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "client",
+    srcs = ["client.go"],
+    importpath = "namespacelabs.dev/foundation/orchestration/client",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/compute",
+        "//internal/console",
+        "//internal/runtime",
+        "//orchestration/proto",
+        "//orchestration/server/constants",
+        "//schema",
+        "//std/cfg",
+        "//std/tasks",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//credentials/insecure",
+    ],
+)

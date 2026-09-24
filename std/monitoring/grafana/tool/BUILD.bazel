@@ -1,0 +1,25 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "tool_lib",
+    srcs = [
+        "embed.go",
+        "main.go",
+    ],
+    embedsrcs = ["default-dashboard.json"],
+    importpath = "namespacelabs.dev/foundation/std/monitoring/grafana/tool",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//framework/kubernetes/kubedef",
+        "//framework/kubernetes/kubetool",
+        "//framework/provisioning",
+        "//schema",
+        "@io_k8s_client_go//applyconfigurations/core/v1:core",
+    ],
+)
+
+go_binary(
+    name = "tool",
+    embed = [":tool_lib"],
+    visibility = ["//visibility:public"],
+)

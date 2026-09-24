@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "fsops",
+    srcs = [
+        "merge.go",
+        "prefix.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/artifacts/fsops",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/bytestream",
+        "//internal/compute",
+        "//internal/fnfs",
+        "//internal/fnfs/memfs",
+        "//std/tasks",
+    ],
+)

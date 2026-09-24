@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "source",
+    srcs = [
+        "bufgenerate.go",
+        "cmd.go",
+        "newid.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/cli/cmd/source",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cli/fncobra",
+        "//internal/codegen",
+        "//internal/console",
+        "//internal/fnerrors",
+        "//internal/parsing",
+        "//schema",
+        "//std/cfg",
+        "@com_github_spf13_cobra//:cobra",
+        "@com_github_spf13_pflag//:pflag",
+        "@dev_namespacelabs_go_ids//:go-ids",
+    ],
+)

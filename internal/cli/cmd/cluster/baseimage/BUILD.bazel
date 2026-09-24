@@ -1,0 +1,28 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "baseimage",
+    srcs = [
+        "cmd.go",
+        "optimize.go",
+        "upload_base_image.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/cli/cmd/cluster/baseimage",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts/oci",
+        "//internal/cli/cmd/cluster/github",
+        "//internal/cli/fncobra",
+        "//internal/console",
+        "//internal/console/colors",
+        "//internal/fnapi",
+        "//internal/providers/nscloud/api",
+        "@com_github_google_go_containerregistry//pkg/name",
+        "@com_github_google_go_containerregistry//pkg/v1:pkg",
+        "@com_github_google_go_containerregistry//pkg/v1/mutate",
+        "@com_github_google_go_containerregistry//pkg/v1/remote",
+        "@com_github_spf13_cobra//:cobra",
+        "@dev_namespacelabs_integrations//api/compute",
+        "@dev_namespacelabs_integrations//proto/namespace/cloud/compute/v1beta",
+    ],
+)

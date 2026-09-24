@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "resources",
+    srcs = [
+        "endpoint.go",
+        "parsing.go",
+        "secrets.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/framework/resources",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//framework/jsonreparser",
+        "//framework/rpcerrors",
+        "//framework/runtime",
+        "//internal/fnerrors",
+        "//library/runtime",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+    ],
+)

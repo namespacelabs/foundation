@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "database_lib",
+    srcs = ["main.go"],
+    importpath = "namespacelabs.dev/foundation/library/oss/postgres/prepare/database",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//framework/resources/provider",
+        "//library/database/postgres",
+        "//library/oss/postgres",
+        "//library/oss/postgres/prepare/database/helpers",
+        "//universe/db/postgres",
+    ],
+)
+
+go_binary(
+    name = "database",
+    embed = [":database_lib"],
+    visibility = ["//visibility:public"],
+)

@@ -34,6 +34,27 @@ go install -v ./cmd/ns
 ns
 ```
 
+### Bazel
+
+Using Bazelisk to select the Bazel version from `.bazelversion`, build the CLIs with:
+
+```bash
+bazel build //cmd/nsc //cmd/nsdev //cmd/ns
+```
+
+Run a CLI with `bazel run //cmd/nsc -- --help` (or the corresponding `nsdev` or `ns`
+target). Bazel downloads the pinned Go toolchain and the dependencies from `go.mod`.
+The build uses checked-in generated Go protobuf files; it does not regenerate protos.
+
+After changing Go imports or adding packages, regenerate the build definitions:
+
+```bash
+bazel mod tidy
+bazel run //:gazelle
+```
+
+The Gazelle target excludes Go tests; these build definitions cover production code.
+
 ## Committing
 
 We use `pre-commit` to enforce consistent code formatting. Please,

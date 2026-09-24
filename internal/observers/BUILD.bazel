@@ -1,0 +1,17 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "observers",
+    srcs = [
+        "session.go",
+        "types.pb.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/observers",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//schema",
+        "//schema/storage",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

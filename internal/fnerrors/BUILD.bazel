@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "fnerrors",
+    srcs = [
+        "codegenerror.go",
+        "dependencyerror.go",
+        "errors.go",
+        "location.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/fnerrors",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cli/fncobra/name",
+        "//internal/fnerrors/stacktrace",
+        "//internal/github/env",
+        "//schema/tasks",
+        "//std/tasks/protocol",
+        "@org_golang_google_grpc//status",
+    ],
+)

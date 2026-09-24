@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "logging",
+    srcs = [
+        "deps.fn.go",
+        "logging.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/std/grpc/logging",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//std/go/core",
+        "//std/go/grpc/interceptors",
+        "//std/go/http/middleware",
+        "//std/grpc",
+        "//std/grpc/requestid",
+        "@com_github_rs_zerolog//:zerolog",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//metadata",
+        "@org_golang_google_grpc//peer",
+        "@org_golang_google_grpc//status",
+        "@org_golang_x_exp//slices",
+    ],
+)

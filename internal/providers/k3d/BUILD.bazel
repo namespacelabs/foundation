@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "k3d",
+    srcs = [
+        "configuration.pb.go",
+        "k3dregistry.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/providers/k3d",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts/oci",
+        "//internal/artifacts/registry",
+        "//internal/build/buildkit",
+        "//internal/compute",
+        "//internal/fnerrors",
+        "//internal/runtime/docker",
+        "//internal/tcache",
+        "//std/cfg",
+        "@com_github_moby_moby_api//types/network",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

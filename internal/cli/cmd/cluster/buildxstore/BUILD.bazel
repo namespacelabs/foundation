@@ -1,0 +1,31 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "buildxstore",
+    srcs = [
+        "config.go",
+        "config_unix.go",
+        "config_windows.go",
+        "dockerutil.go",
+        "localstate.go",
+        "nodegroup.go",
+        "platform.go",
+        "store.go",
+        "util.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/cli/cmd/cluster/buildxstore",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "@com_github_containerd_platforms//:platforms",
+        "@com_github_docker_cli//cli/command",
+        "@com_github_docker_cli//cli/context/docker",
+        "@com_github_gofrs_flock//:flock",
+        "@com_github_moby_sys_atomicwriter//:atomicwriter",
+        "@com_github_opencontainers_go_digest//:go-digest",
+        "@com_github_opencontainers_image_spec//specs-go/v1:specs-go",
+        "@com_github_pkg_errors//:errors",
+        "@com_github_sirupsen_logrus//:logrus",
+        "@com_github_tonistiigi_fsutil//copy",
+        "@org_golang_x_sync//errgroup",
+    ],
+)

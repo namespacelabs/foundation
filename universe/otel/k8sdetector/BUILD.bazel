@@ -1,0 +1,17 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "k8sdetector",
+    srcs = [
+        "deps.fn.go",
+        "wire.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/universe/otel/k8sdetector",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//std/go/core",
+        "//std/monitoring/tracing",
+        "@io_opentelemetry_go_otel//semconv/v1.40.0:v1_40_0",
+        "@io_opentelemetry_go_otel_sdk//resource",
+    ],
+)

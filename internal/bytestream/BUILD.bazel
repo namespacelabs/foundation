@@ -1,0 +1,9 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "bytestream",
+    srcs = ["bytestream.go"],
+    importpath = "namespacelabs.dev/foundation/internal/bytestream",
+    visibility = ["//:__subpackages__"],
+    deps = ["//schema"],
+)

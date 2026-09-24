@@ -1,0 +1,14 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "maketarfs",
+    srcs = ["stream.go"],
+    importpath = "namespacelabs.dev/foundation/internal/fnfs/maketarfs",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/bytestream",
+        "//internal/fnerrors",
+        "//internal/fnfs",
+        "//internal/uniquestrings",
+    ],
+)
