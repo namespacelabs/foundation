@@ -28,11 +28,6 @@ type PackageList struct {
 	l uniquestrings.List
 }
 
-type PackageRefList struct {
-	l    uniquestrings.List
-	refs []*PackageRef
-}
-
 func (pl *PackageList) Add(pkg PackageName) bool {
 	return pl.l.Add(pkg.String())
 }
@@ -66,19 +61,6 @@ func (pl PackageList) Clone() PackageList {
 	return PackageList{l: pl.l.Clone()}
 }
 
-func (pl *PackageRefList) Add(ref *PackageRef) bool {
-	if pl.l.Add(ref.Canonical()) {
-		pl.refs = append(pl.refs, ref)
-		return true
-	}
-
-	return false
-}
-
-func (pl PackageRefList) Refs() []*PackageRef {
-	return pl.refs
-}
-
 func PackageNames(strs ...string) []PackageName {
 	o := make([]PackageName, len(strs))
 	for k, s := range strs {
@@ -93,12 +75,6 @@ func Strs(sch ...PackageName) []string {
 		o[k] = s.String()
 	}
 	return o
-}
-
-func List(packages []PackageName) PackageList {
-	var pl PackageList
-	pl.AddMultiple(packages...)
-	return pl
 }
 
 func IsParent(moduleName string, sch PackageName) (string, bool) {
