@@ -101,10 +101,14 @@ func newProfileCreateCmd() *cobra.Command {
 					VirtualCpu:      vcpu,
 					MemoryMegabytes: memoryMB,
 					MachineArch:     *machineArch,
-					Os:              "linux",
+					Os:              profilePlatformOS(*os, "linux"),
 				},
 				BuilderMode: v1beta.BuilderMode(builderModeValue),
 				Emoji:       *emoji,
+			}
+
+			if spec.InstanceShape.Os == "windows" && !cmd.Flags().Changed("builder_mode") {
+				spec.BuilderMode = v1beta.BuilderMode_NO_CACHING
 			}
 
 			if cmd.Flags().Changed("swap_memory") {
@@ -421,6 +425,10 @@ func newProfileUpdateCmd() *cobra.Command {
 			}
 			if *os != "" {
 				spec.Os = *os
+				if spec.InstanceShape == nil {
+					spec.InstanceShape = &computev1beta.InstanceShape{}
+				}
+				spec.InstanceShape.Os = profilePlatformOS(*os, spec.InstanceShape.Os)
 			}
 			if *emoji != "" {
 				spec.Emoji = *emoji
@@ -662,6 +670,16 @@ func newProfileBuildBaseImageCmd() *cobra.Command {
 }
 
 // CRUD helper functions
+
+func profilePlatformOS(osLabel, currentOS string) string {
+	if strings.HasPrefix(osLabel, "windows-") {
+		return "windows"
+	}
+	if strings.HasPrefix(osLabel, "ubuntu-") || currentOS == "" {
+		return "linux"
+	}
+	return currentOS
+}
 
 func createProfile(ctx context.Context, spec *v1beta.RunnerProfileSpec) (*v1beta.RunnerProfileWithStatus, error) {
 	client, err := fnapi.NewProfileServiceClient(ctx)
