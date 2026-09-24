@@ -13,7 +13,6 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/process"
-	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/endpoint"
 )
 
@@ -50,18 +49,6 @@ func setupBackgroundProxy(ctx context.Context, clusterId, kind, sockPath, pidFil
 	}
 
 	return nil
-}
-
-func ensureCluster(ctx context.Context, clusterID string) (*api.CreateClusterResult, error) {
-	response, err := api.EnsureCluster(ctx, api.Methods, nil, clusterID)
-	if err != nil {
-		return nil, err
-	}
-
-	return &api.CreateClusterResult{
-		ClusterId: response.Cluster.ClusterId,
-		Cluster:   response.Cluster,
-	}, nil
 }
 
 func waitForFile(ctx context.Context, path string) error {
