@@ -264,22 +264,6 @@ func (ft impl) GuessPackageType(ctx context.Context, pkg schema.PackageName) (pa
 	return parsing.PackageType_None, nil
 }
 
-func (ft impl) HasNodePackage(ctx context.Context, pkg schema.PackageName) (bool, error) {
-	firstPass, err := ft.evalctx.EvalPackage(ctx, pkg.String())
-	if err != nil {
-		return false, err
-	}
-
-	var topLevels = []string{"service", "extension"}
-	for _, topLevel := range topLevels {
-		if firstPass.LookupPath(topLevel).Exists() {
-			return true, nil
-		}
-	}
-
-	return false, nil
-}
-
 type WorkspaceLoader struct {
 	PackageLoader parsing.EarlyPackageLoader
 }
