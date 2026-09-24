@@ -22,20 +22,6 @@ func CopyFrom(src llb.State, srcPath, destPath string, copyInfo ...copyOpt) llb.
 	}
 }
 
-func CopyFromExcluding(src llb.State, srcPath string, destPath string, exclude []string) llb.StateOption {
-	return func(s llb.State) llb.State {
-		copyInfo := &llb.CopyInfo{
-			CreateDestPath:  true,
-			AttemptUnpack:   true,
-			AllowWildcard:   true,
-			IncludePatterns: []string{"**/*"},
-			ExcludePatterns: exclude,
-		}
-
-		return s.File(llb.Copy(src, srcPath, destPath, copyInfo), llb.WithCustomNamef("COPY %s to %s", srcPath, destPath))
-	}
-}
-
 func copy(src llb.State, srcPath string, dest llb.State, destPath string, opts ...copyOpt) llb.State {
 	copyInfo := &llb.CopyInfo{
 		AllowWildcard:  true,
