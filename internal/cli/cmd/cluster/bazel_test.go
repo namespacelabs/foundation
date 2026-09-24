@@ -328,6 +328,7 @@ func TestBaseBazelSetup(t *testing.T) {
 		CacheEndpoint:           "grpcs://cache.example:444",
 		HttpsCacheEndpoint:      "grpcs://ingress.example:443",
 		CredentialHelperDomains: []string{"api.example.com"},
+		BuildEventEndpoint:      "grpcs://bes.example:443",
 	}
 
 	t.Run("uses credential helper config by default", func(t *testing.T) {
@@ -340,6 +341,9 @@ func TestBaseBazelSetup(t *testing.T) {
 		if len(out.CredentialHelperDomains) != 1 || out.CredentialHelperDomains[0] != "api.example.com" {
 			t.Fatalf("unexpected credential helper domains: %v", out.CredentialHelperDomains)
 		}
+		if out.BuildEventEndpoint != response.GetBuildEventEndpoint() {
+			t.Fatalf("unexpected build event endpoint: %q", out.BuildEventEndpoint)
+		}
 	})
 
 	t.Run("uses direct cache endpoint when response requires workload mtls", func(t *testing.T) {
@@ -349,6 +353,7 @@ func TestBaseBazelSetup(t *testing.T) {
 			CacheEndpoint:           response.GetCacheEndpoint(),
 			HttpsCacheEndpoint:      response.GetHttpsCacheEndpoint(),
 			CredentialHelperDomains: append([]string(nil), response.GetCredentialHelperDomains()...),
+			BuildEventEndpoint:      response.GetBuildEventEndpoint(),
 		}
 		response.SetUseWorkloadMtls(true)
 
@@ -359,7 +364,22 @@ func TestBaseBazelSetup(t *testing.T) {
 		if len(out.CredentialHelperDomains) != 0 {
 			t.Fatalf("unexpected credential helper domains: %v", out.CredentialHelperDomains)
 		}
+		if out.BuildEventEndpoint != response.GetBuildEventEndpoint() {
+			t.Fatalf("unexpected build event endpoint: %q", out.BuildEventEndpoint)
+		}
 	})
+}
+
+func TestSetupCacheBuildEventsOptOut(t *testing.T) {
+	t.Parallel()
+
+	cmd := newSetupCacheCmd()
+	if got := cmd.Flags().Lookup("send_build_events").DefValue; got != "true" {
+		t.Fatalf("send_build_events default = %q, want true", got)
+	}
+	if got := cmd.Flags().Lookup("disable_build_events").DefValue; got != "false" {
+		t.Fatalf("disable_build_events default = %q, want false", got)
+	}
 }
 
 func TestMakeEnsureBazelCacheRequest(t *testing.T) {
@@ -475,6 +495,30 @@ func TestToBazelConfigBuildEventsDisabled(t *testing.T) {
 	for _, want := range []string{
 		"build --remote_cache=grpcs://cache.example:444\n",
 		"build --remote_header=x-nsc-ingress-auth=Bearer\\ tok123\n",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("missing config line %q in %q", want, got)
+		}
+	}
+}
+
+func TestToBazelConfigBuildEventsEnabledWithStaticToken(t *testing.T) {
+	t.Parallel()
+
+	config, err := toBazelConfig(context.Background(), bazelSetup{
+		Endpoint:           "https://cache.example",
+		BuildEventEndpoint: "grpcs://bes.example:443",
+		StaticToken:        "tok123",
+	}, false, "build", false)
+	if err != nil {
+		t.Fatalf("toBazelConfig: %v", err)
+	}
+
+	got := string(config)
+	for _, want := range []string{
+		"build --bes_backend=grpcs://bes.example:443\n",
+		"build --bes_header=Authorization=Bearer\\ tok123\n",
+		"build --bes_header=x-nsc-ingress-auth=Bearer\\ tok123\n",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing config line %q in %q", want, got)
