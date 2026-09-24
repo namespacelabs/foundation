@@ -7,9 +7,7 @@ package testing
 import (
 	"context"
 	"flag"
-	"fmt"
 	"log"
-	"net"
 	"time"
 
 	"google.golang.org/grpc"
@@ -30,23 +28,6 @@ type Test struct {
 func (t Test) NewClient(endpoint *schema.Endpoint) (*grpc.ClientConn, error) {
 	return grpc.NewClient(endpoint.Address(),
 		grpc.WithTransportCredentials(insecure.NewCredentials())) ///  XXX mTLS etc.
-}
-
-func (t Test) WaitForEndpoint(ctx context.Context, endpoint *schema.Endpoint) error {
-	ctx, done := context.WithTimeout(ctx, 30*time.Second)
-	defer done()
-
-	for {
-		if err := ctx.Err(); err != nil {
-			return fmt.Errorf("endpoint not ready: %v", err)
-		}
-
-		conn, err := net.DialTimeout("tcp", endpoint.Address(), 500*time.Millisecond)
-		if err == nil {
-			conn.Close()
-			return nil
-		}
-	}
 }
 
 func (t Test) MustEndpoint(owner, name string) *schema.Endpoint {
