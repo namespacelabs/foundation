@@ -7,22 +7,12 @@ package certificates
 import (
 	"crypto/x509"
 	"encoding/pem"
-	"os"
 	"time"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 const oneMonthDuration = 30 * 24 * time.Hour
-
-func CertFileIsValidFor(certFile string, forDuration time.Duration) (bool, time.Time, error) {
-	b, err := os.ReadFile(certFile)
-	if err != nil {
-		return false, time.Time{}, err
-	}
-
-	return CertIsValidFor(b, forDuration)
-}
 
 func CertIsValidFor(bundle []byte, forDuration time.Duration) (bool, time.Time, error) {
 	now := time.Now()
