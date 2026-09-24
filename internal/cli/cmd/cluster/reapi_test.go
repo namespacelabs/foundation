@@ -5,12 +5,15 @@
 package cluster
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"namespacelabs.dev/foundation/internal/console/colors"
 )
 
 func TestReapiSetupCommandFlags(t *testing.T) {
@@ -55,6 +58,20 @@ func TestReapiSetupCommandFlags(t *testing.T) {
 		if createToken.Flag(name) == nil {
 			t.Errorf("create-token is missing --%s", name)
 		}
+	}
+}
+
+func TestReapiCreateTokenSetupCommands(t *testing.T) {
+	t.Parallel()
+
+	var output bytes.Buffer
+	writeReapiSetupCommands(&output, colors.NoColors, "Remote Execution API access", reapiSetupCommands, "reapi-token.json")
+
+	want := "Set up Remote Execution API access with:\n" +
+		"  nsc reapi setup bazel --token reapi-token.json\n" +
+		"  nsc reapi setup buck2 --token reapi-token.json\n"
+	if got := output.String(); got != want {
+		t.Fatalf("setup instructions = %q, want %q", got, want)
 	}
 }
 

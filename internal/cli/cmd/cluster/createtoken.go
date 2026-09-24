@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
@@ -31,6 +32,11 @@ type createTokenConfig struct {
 	SetupCmd    string // e.g. "nsc gradle cache setup" or "nsc cache sccache setup".
 
 	GetRequiredPerms func(ctx context.Context, cacheName string) ([]*iamv1beta.Permission, error)
+}
+
+var reapiSetupCommands = []string{
+	"nsc reapi setup bazel",
+	"nsc reapi setup buck2",
 }
 
 func newCreateCacheTokenCmd(cfg createTokenConfig) *cobra.Command {
@@ -123,7 +129,7 @@ func newBazelCreateTokenCmd() *cobra.Command {
 		tokenDescription: "Bazel remote execution access token",
 		invocation:       "bazel",
 		setupLabel:       "Bazel remote execution",
-		setupCommand:     "nsc bazel setup",
+		setupCommands:    []string{"nsc bazel setup"},
 	})
 }
 
@@ -134,7 +140,7 @@ func newReapiCreateTokenCmd() *cobra.Command {
 		tokenDescription: "Remote Execution API access token",
 		invocation:       "reapi",
 		setupLabel:       "Remote Execution API access",
-		setupCommand:     "nsc reapi setup <bazel|buck2>",
+		setupCommands:    reapiSetupCommands,
 	})
 }
 
@@ -144,7 +150,7 @@ type reapiTokenCommandConfig struct {
 	tokenDescription string
 	invocation       string
 	setupLabel       string
-	setupCommand     string
+	setupCommands    []string
 }
 
 func newReapiTokenCmd(cfg reapiTokenCommandConfig) *cobra.Command {
@@ -196,16 +202,20 @@ func newReapiTokenCmd(cfg reapiTokenCommandConfig) *cobra.Command {
 			fmt.Fprintf(console.Stdout(ctx), "Expires At:  %s\n", expiresAt.Format(time.RFC3339))
 		}
 		fmt.Fprintf(console.Stdout(ctx), "\nWrote token contents to %q\n\n", tokenFile)
-		fmt.Fprintf(console.Stdout(ctx), "Set up %s with:\n", cfg.setupLabel)
-
-		style := colors.Ctx(ctx)
-		fmt.Fprintf(console.Stdout(ctx), "  %s\n", style.Highlight.Apply(fmt.Sprintf("%s --token %s", cfg.setupCommand, tokenFile)))
+		writeReapiSetupCommands(console.Stdout(ctx), colors.Ctx(ctx), cfg.setupLabel, cfg.setupCommands, tokenFile)
 
 		return nil
 	})
 	cmd.MarkFlagsMutuallyExclusive("expires_in", "no_expiry")
 
 	return cmd
+}
+
+func writeReapiSetupCommands(w io.Writer, style colors.Style, setupLabel string, setupCommands []string, tokenFile string) {
+	fmt.Fprintf(w, "Set up %s with:\n", setupLabel)
+	for _, setupCommand := range setupCommands {
+		fmt.Fprintf(w, "  %s\n", style.Highlight.Apply(fmt.Sprintf("%s --token %s", setupCommand, tokenFile)))
+	}
 }
 
 func newBazelTokenRequest(name string, expiresAt time.Time, scope string, noExpiry bool) (*iamv1beta.CreateRevokableTokenRequest, error) {
