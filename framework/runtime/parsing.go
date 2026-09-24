@@ -107,13 +107,3 @@ func FirstIngress(srv *Server, name string) *string {
 
 	return nil
 }
-
-func ServerEndpoint(rtcfg *runtime.RuntimeConfig, pkg, name string) (string, error) {
-	for _, e := range rtcfg.StackEntry {
-		if e.PackageName == pkg {
-			return Endpoint(e, name)
-		}
-	}
-
-	return "", fmt.Errorf("server %s not found in runtime config stack", pkg)
-}
