@@ -8,17 +8,22 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/integrations/api/compute"
 	computev1beta "namespacelabs.dev/integrations/proto/namespace/cloud/compute/v1beta"
 )
+
+const maxOptimizeImageRetries = 5
 
 func newOptimizeCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -50,30 +55,13 @@ func newOptimizeCmd() *cobra.Command {
 			return err
 		}
 
-		c, err := cli.Compute.OptimizeImage(ctx, &computev1beta.OptimizeImageRequest{
+		err = optimizeImage(ctx, cli.Compute, &computev1beta.OptimizeImageRequest{
 			ImageRef: *imageRef,
 			Site:     *site,
 			PushTag:  *pushTag,
-		})
+		}, console.Stdout(ctx))
 		if err != nil {
 			return err
-		}
-
-		for {
-			progress, err := c.Recv()
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-
-				return err
-			}
-
-			fmt.Fprintf(console.Stdout(ctx), "Optimization: %s\n", progress.Status.String())
-
-			if progress.GetStatus() == computev1beta.OptimizeImageProgress_DONE {
-				break
-			}
 		}
 
 		fmt.Fprintf(console.Stdout(ctx), "\nOptimization complete.\n\n")
@@ -82,4 +70,72 @@ func newOptimizeCmd() *cobra.Command {
 	})
 
 	return cmd
+}
+
+func optimizeImage(ctx context.Context, client computev1beta.ComputeServiceClient, req *computev1beta.OptimizeImageRequest, output io.Writer) error {
+	var cursor []byte
+	retries := 0
+
+	for {
+		var stream grpc.ServerStreamingClient[computev1beta.OptimizeImageProgress]
+		var err error
+		if len(cursor) == 0 {
+			stream, err = client.OptimizeImage(ctx, req)
+		} else {
+			stream, err = client.WaitOptimizeImage(ctx, &computev1beta.WaitOptimizeImageRequest{OptimizeCursor: cursor})
+		}
+		if err != nil {
+			retries, err = waitToRetryOptimizeImage(ctx, cursor, retries, err)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		for {
+			progress, err := stream.Recv()
+			if err == io.EOF {
+				return nil
+			}
+			if err != nil {
+				retries, err = waitToRetryOptimizeImage(ctx, cursor, retries, err)
+				if err != nil {
+					return err
+				}
+				break
+			}
+
+			if len(progress.GetOptimizeCursor()) != 0 {
+				cursor = progress.GetOptimizeCursor()
+			}
+			fmt.Fprintf(output, "Optimization: %s\n", progress.Status.String())
+			if progress.GetStatus() == computev1beta.OptimizeImageProgress_DONE {
+				return nil
+			}
+		}
+	}
+}
+
+func waitToRetryOptimizeImage(ctx context.Context, cursor []byte, retries int, streamErr error) (int, error) {
+	if len(cursor) == 0 || !isRetryableOptimizeImageError(streamErr) {
+		return retries, streamErr
+	}
+
+	retries++
+	if retries > maxOptimizeImageRetries {
+		return retries, fmt.Errorf("optimize image stream failed after %d retries: %w", retries, streamErr)
+	}
+
+	timer := time.NewTimer(time.Duration(retries) * time.Second)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return retries, ctx.Err()
+	case <-timer.C:
+		return retries, nil
+	}
+}
+
+func isRetryableOptimizeImageError(err error) bool {
+	return status.Code(err) == codes.Unavailable || strings.Contains(err.Error(), "stream terminated by RST_STREAM")
 }
