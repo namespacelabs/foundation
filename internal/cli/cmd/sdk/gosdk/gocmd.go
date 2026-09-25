@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package sdk
+package gosdk
 
 import (
 	"context"
@@ -19,7 +19,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func newGoCmd(goVersion string) *cobra.Command {
+func NewGoCmd(goVersion string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                "go -- ...",
 		Short:              "Run Go.",

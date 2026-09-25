@@ -16,6 +16,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/credhelper"
 )
 
 func TestToBazelExecutionConfigBuildEventsStatic(t *testing.T) {
@@ -69,7 +70,7 @@ func TestToBazelExecutionConfigBuildEventsMTLS(t *testing.T) {
 	for _, want := range []string{
 		"build --bes_backend=grpcs://api.us-east1.namespaceapis.com\n",
 		"build --bes_results_url=https://cloud.namespace.so/test/bazel/invocation/\n",
-		"build --credential_helper=*.api.us-east1.namespaceapis.com=" + BazelCredHelperBinary + "\n",
+		"build --credential_helper=*.api.us-east1.namespaceapis.com=" + credhelper.BazelCredHelperBinary + "\n",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing config line %q in %q", want, got)

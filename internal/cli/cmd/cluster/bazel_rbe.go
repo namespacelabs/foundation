@@ -22,6 +22,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/credhelper"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -362,23 +363,23 @@ func toBazelExecutionConfig(ctx context.Context, out bazelRbeSetup, command stri
 }
 
 func appendExecutionBuildEventCredentialHelper(ctx context.Context, buf *bytes.Buffer, command string, domains []string) error {
-	if _, err := exec.LookPath(BazelCredHelperBinary); err != nil {
+	if _, err := exec.LookPath(credhelper.BazelCredHelperBinary); err != nil {
 		stdout := console.Stdout(ctx)
 		style := colors.Ctx(ctx)
 
 		if errors.Is(err, exec.ErrNotFound) {
 			fmt.Fprintln(stdout)
-			fmt.Fprint(stdout, style.Highlight.Apply(fmt.Sprintf("We didn't find %s in your $PATH.", BazelCredHelperBinary)))
-			fmt.Fprintf(stdout, "\nIt's usually installed along-side nsc; so if you have added nsc to the $PATH, %s will also be available.\n", BazelCredHelperBinary)
+			fmt.Fprint(stdout, style.Highlight.Apply(fmt.Sprintf("We didn't find %s in your $PATH.", credhelper.BazelCredHelperBinary)))
+			fmt.Fprintf(stdout, "\nIt's usually installed along-side nsc; so if you have added nsc to the $PATH, %s will also be available.\n", credhelper.BazelCredHelperBinary)
 			fmt.Fprintf(stdout, "\nWhile your $PATH is not updated, sending build events won't work.\n")
 		}
 		if !errors.Is(err, exec.ErrNotFound) {
-			return fnerrors.Newf("failed to look up %s in $PATH: %w", BazelCredHelperBinary, err)
+			return fnerrors.Newf("failed to look up %s in $PATH: %w", credhelper.BazelCredHelperBinary, err)
 		}
 	}
 
 	for _, domain := range domains {
-		if _, err := fmt.Fprintf(buf, "%s --credential_helper=*.%s=%s\n", command, domain, BazelCredHelperBinary); err != nil {
+		if _, err := fmt.Fprintf(buf, "%s --credential_helper=*.%s=%s\n", command, domain, credhelper.BazelCredHelperBinary); err != nil {
 			return fnerrors.Newf("failed to append credential_helper: %w", err)
 		}
 	}
