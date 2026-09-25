@@ -101,10 +101,14 @@ func newProfileCreateCmd() *cobra.Command {
 					VirtualCpu:      vcpu,
 					MemoryMegabytes: memoryMB,
 					MachineArch:     *machineArch,
-					Os:              "linux",
+					Os:              profilePlatformOS(*os, "linux"),
 				},
 				BuilderMode: v1beta.BuilderMode(builderModeValue),
 				Emoji:       *emoji,
+			}
+
+			if spec.InstanceShape.Os == "windows" && !cmd.Flags().Changed("builder_mode") {
+				spec.BuilderMode = v1beta.BuilderMode_NO_CACHING
 			}
 
 			if cmd.Flags().Changed("swap_memory") {
@@ -421,6 +425,10 @@ func newProfileUpdateCmd() *cobra.Command {
 			}
 			if *os != "" {
 				spec.Os = *os
+				if spec.InstanceShape == nil {
+					spec.InstanceShape = &computev1beta.InstanceShape{}
+				}
+				spec.InstanceShape.Os = profilePlatformOS(*os, spec.InstanceShape.Os)
 			}
 			if *emoji != "" {
 				spec.Emoji = *emoji
@@ -973,4 +981,29 @@ func readSpecFile(path string) (*v1beta.RunnerProfileSpec, error) {
 	}
 
 	return spec, nil
+}
+
+// profilePlatformOS maps an OS label to its instance platform. Unknown labels
+// retain the current platform because they may refer to custom or future images.
+func profilePlatformOS(osLabel, currentOS string) string {
+	if isMacOS(osLabel) {
+		return "macos"
+	}
+	if strings.HasPrefix(osLabel, "windows-") {
+		return "windows"
+	}
+	if strings.HasPrefix(osLabel, "ubuntu-") || currentOS == "" {
+		return "linux"
+	}
+	return currentOS
+}
+
+func isMacOS(osLabel string) bool {
+	macOSes := []string{"sonoma", "sequoia", "tahoe", "goldengate"}
+	for _, macOS := range macOSes {
+		if strings.Contains(osLabel, macOS) {
+			return true
+		}
+	}
+	return false
 }
