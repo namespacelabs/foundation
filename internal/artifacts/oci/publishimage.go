@@ -129,8 +129,7 @@ func (pi *publishImage) Compute(ctx context.Context, deps compute.Resolved) (Ima
 func maybeAsPermanent(err error) error {
 	var netErr *net.OpError
 	if fnerrors.IsOfKind(err, fnerrors.Kind_INVOCATION) && errors.As(err, &netErr) {
-		var errno syscall.Errno
-		if errors.As(netErr.Err, &errno) && errno.Is(syscall.EHOSTUNREACH) {
+		if errors.Is(netErr.Err, syscall.ECONNREFUSED) || errors.Is(netErr.Err, syscall.EHOSTUNREACH) {
 			return err
 		}
 	}
