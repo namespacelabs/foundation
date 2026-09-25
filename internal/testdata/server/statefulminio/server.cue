@@ -1,7 +1,7 @@
 server: {
 	name: "minio-server"
 
-	image: "quay.io/minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e"
+	image: "public.registry.namespace.systems/minio/minio:RELEASE.2025-06-13T11-33-47Z@sha256:6bec3986282f95cdf90dedf776bbbed2d84f2a2a8c234cda369fe1036f31960a"
 
 	// MinIO acts as an object store which requires a stateful deployment (more conservative update strategy).
 	class: "stateful"
