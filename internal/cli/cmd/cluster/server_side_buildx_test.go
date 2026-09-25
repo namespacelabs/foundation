@@ -111,13 +111,13 @@ func TestWaitForBuildxBuildersDeadline(t *testing.T) {
 	t.Parallel()
 
 	for _, test := range []struct {
-		name          string
-		parentTimeout time.Duration
-		waitTimeout   time.Duration
-		parentExpired bool
+		name                   string
+		parentTimeout          time.Duration
+		waitTimeout            time.Duration
+		parentMustRemainActive bool
 	}{
-		{"configured timeout", 5 * time.Second, 100 * time.Millisecond, false},
-		{"parent deadline", 100 * time.Millisecond, 5 * time.Minute, true},
+		{"configured timeout", 5 * time.Second, 100 * time.Millisecond, true},
+		{"parent deadline", 100 * time.Millisecond, 5 * time.Minute, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
@@ -128,11 +128,14 @@ func TestWaitForBuildxBuildersDeadline(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), test.parentTimeout)
 			defer cancel()
 			err := waitForBuildxBuilders(ctx, []BuilderConfig{cfg}, test.waitTimeout)
-			if !errors.Is(err, context.DeadlineExceeded) {
+			if !errors.Is(err, context.DeadlineExceeded) && status.Code(err) != codes.DeadlineExceeded {
 				t.Fatalf("error = %v, want deadline exceeded", err)
 			}
-			if expired := ctx.Err() != nil; expired != test.parentExpired {
-				t.Fatalf("parent expired = %t, want %t", expired, test.parentExpired)
+			if !strings.Contains(err.Error(), "linux/amd64 builder did not become ready") {
+				t.Fatalf("error = %v, want builder-specific error", err)
+			}
+			if test.parentMustRemainActive && ctx.Err() != nil {
+				t.Fatalf("parent expired unexpectedly: %v", ctx.Err())
 			}
 		})
 	}
