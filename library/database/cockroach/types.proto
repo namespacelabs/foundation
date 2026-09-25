@@ -41,4 +41,6 @@ message DatabaseInstance {
 
     repeated string regions = 10;
     string survival_goal = 11;
+
+    string ca_cert = 12;
 }

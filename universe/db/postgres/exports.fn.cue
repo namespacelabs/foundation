@@ -16,6 +16,7 @@ package postgres
 		connectTimeoutMs?:                  int
 		maxConnsIdleTimeMs?:                int
 		maxConnLifetimeJitterMs?:           int
+		verifyServerCertificate?:           bool
 
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/universe/db/postgres"
@@ -57,6 +58,7 @@ package postgres
 		connectTimeoutMs?:                  int
 		maxConnsIdleTimeMs?:                int
 		maxConnLifetimeJitterMs?:           int
+		verifyServerCertificate?:           bool
 
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/universe/db/postgres"
@@ -70,7 +72,8 @@ package postgres
 		}
 	}
 	Factory: {
-		client?: string
+		client?:                  string
+		verifyServerCertificate?: bool
 
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/universe/db/postgres"

@@ -45,5 +45,8 @@ message DatabaseInstance {
     string replica_cluster_host    = 13;
     string replica_cluster_port    = 14;
 
+    string ca_cert         = 15;
+    string replica_ca_cert = 16;
+
     reserved 2;
 }
