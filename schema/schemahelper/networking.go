@@ -11,18 +11,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-type HasGetServiceMetadata interface {
-	GetServiceMetadata() []*schema.ServiceMetadata
-}
-
-func CombineServiceMetadata[V HasGetServiceMetadata](list []V) []*schema.ServiceMetadata {
-	var combined []*schema.ServiceMetadata
-	for _, m := range list {
-		combined = append(combined, m.GetServiceMetadata()...)
-	}
-	return combined
-}
-
 func UnmarshalServiceMetadata[V proto.Message](mds []*schema.ServiceMetadata, kind string) (V, error) {
 	var empty V
 
