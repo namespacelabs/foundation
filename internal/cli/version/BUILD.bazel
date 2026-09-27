@@ -1,0 +1,14 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "version",
+    srcs = ["version.go"],
+    importpath = "namespacelabs.dev/foundation/internal/cli/version",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/environment",
+        "//internal/fnerrors",
+        "//schema/storage",
+        "@org_golang_google_protobuf//types/known/timestamppb",
+    ],
+)

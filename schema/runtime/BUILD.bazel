@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "runtime",
+    srcs = [
+        "config.pb.go",
+        "deployable.go",
+        "deployable.pb.go",
+        "types.go",
+        "types.pb.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/schema/runtime",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//schema",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+        "@org_golang_google_protobuf//types/known/anypb",
+        "@org_golang_google_protobuf//types/known/timestamppb",
+    ],
+)

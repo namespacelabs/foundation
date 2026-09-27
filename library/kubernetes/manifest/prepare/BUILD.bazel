@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "prepare_lib",
+    srcs = ["main.go"],
+    importpath = "namespacelabs.dev/foundation/library/kubernetes/manifest/prepare",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//framework/kubernetes/kubeparser",
+        "//framework/provisioning",
+        "//library/kubernetes/manifest",
+        "//schema",
+    ],
+)
+
+go_binary(
+    name = "prepare",
+    embed = [":prepare_lib"],
+    visibility = ["//visibility:public"],
+)

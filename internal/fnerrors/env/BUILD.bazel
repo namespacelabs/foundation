@@ -1,0 +1,9 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "env",
+    srcs = ["incompatibleenv.go"],
+    importpath = "namespacelabs.dev/foundation/internal/fnerrors/env",
+    visibility = ["//:__subpackages__"],
+    deps = ["//schema"],
+)

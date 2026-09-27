@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "planninghooks",
+    srcs = ["hooks.go"],
+    importpath = "namespacelabs.dev/foundation/internal/planning/planninghooks",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/fnerrors",
+        "//internal/runtime/rtypes",
+        "//schema",
+        "//std/cfg",
+        "//std/tasks",
+    ],
+)

@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "zipfs",
+    srcs = ["zipfs.go"],
+    importpath = "namespacelabs.dev/foundation/internal/fnfs/zipfs",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/bytestream",
+        "//internal/compute",
+        "//internal/fnerrors",
+        "//internal/fnfs",
+        "//internal/fnfs/memfs",
+        "//std/tasks",
+    ],
+)

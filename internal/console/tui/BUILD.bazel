@@ -1,0 +1,26 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "tui",
+    srcs = [
+        "ask.go",
+        "asksecret.go",
+        "list.go",
+        "styles.go",
+        "table.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/console/tui",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/console",
+        "@com_github_charmbracelet_bubbles//help",
+        "@com_github_charmbracelet_bubbles//key",
+        "@com_github_charmbracelet_bubbles//list",
+        "@com_github_charmbracelet_bubbles//table",
+        "@com_github_charmbracelet_bubbles//textinput",
+        "@com_github_charmbracelet_bubbletea//:bubbletea",
+        "@com_github_charmbracelet_lipgloss//:lipgloss",
+        "@com_github_muesli_reflow//wordwrap",
+        "@org_golang_x_term//:term",
+    ],
+)

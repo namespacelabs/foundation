@@ -1,0 +1,13 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "dirs",
+    srcs = [
+        "constants.go",
+        "dirs.go",
+        "temp.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/workspace/dirs",
+    visibility = ["//:__subpackages__"],
+    deps = ["//internal/fnfs"],
+)

@@ -1,0 +1,19 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "scratch",
+    srcs = [
+        "cmd.go",
+        "ssh.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/cli/cmd/scratch",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cli/cmd/cluster",
+        "//internal/cli/fncobra",
+        "//internal/console",
+        "//internal/fnerrors",
+        "//internal/providers/nscloud/api",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)

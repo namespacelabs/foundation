@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "configure_lib",
+    srcs = ["main.go"],
+    importpath = "namespacelabs.dev/foundation/universe/development/localstack/s3/internal/configure",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//framework/kubernetes/kubedef",
+        "//framework/provisioning",
+        "//schema",
+        "//universe/development/localstack/s3",
+        "@org_golang_google_protobuf//proto",
+    ],
+)
+
+go_binary(
+    name = "configure",
+    embed = [":configure_lib"],
+    visibility = ["//universe/development/localstack/s3:__subpackages__"],
+)

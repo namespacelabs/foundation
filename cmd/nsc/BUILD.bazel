@@ -1,0 +1,34 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "nsc_lib",
+    srcs = ["main.go"],
+    importpath = "namespacelabs.dev/foundation/cmd/nsc",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//cmd/nsc/cmd",
+        "//internal/auth",
+        "//internal/cli/fncobra",
+        "//internal/console/colors",
+        "//internal/console/consolesink",
+        "//internal/github/env",
+        "//internal/providers/nscloud/endpoint",
+        "//internal/text/timefmt",
+        "//public/nscloud/proto/v1:proto",
+        "//std/protocol",
+        "//std/tasks",
+        "@com_connectrpc_connect//:connect",
+        "@com_github_muesli_reflow//wordwrap",
+        "@com_github_spf13_cobra//:cobra",
+        "@dev_namespacelabs_integrations//proto/namespace/cloud/iam/v1beta",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//proto",
+    ],
+)
+
+go_binary(
+    name = "nsc",
+    embed = [":nsc_lib"],
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,13 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "testing",
+    srcs = ["testing.go"],
+    importpath = "namespacelabs.dev/foundation/internal/planning/deploy/testing",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "@org_golang_google_protobuf//encoding/protojson",
+        "@org_golang_google_protobuf//proto",
+        "@tools_gotest//assert",
+    ],
+)

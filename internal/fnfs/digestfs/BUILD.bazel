@@ -1,0 +1,12 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "digestfs",
+    srcs = ["digestfs.go"],
+    importpath = "namespacelabs.dev/foundation/internal/fnfs/digestfs",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/fnfs/maketarfs",
+        "//schema",
+    ],
+)

@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "view",
+    srcs = [
+        "keybinding.go",
+        "networkplan.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/planning/deploy/view",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//framework/planning/render",
+        "//internal/cli/keyboard",
+        "//internal/console",
+        "//internal/console/colors",
+        "//schema/storage",
+        "//std/tasks/idtypes",
+        "@com_github_kr_text//:text",
+        "@com_github_muesli_reflow//padding",
+    ],
+)

@@ -1,0 +1,29 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "hotreload",
+    srcs = [
+        "devmodule.go",
+        "devobserver.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/hotreload",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//framework/rpcerrors/multierr",
+        "//internal/build",
+        "//internal/cli/fncobra/name",
+        "//internal/compute",
+        "//internal/console",
+        "//internal/fnerrors",
+        "//internal/fnfs/workspace/wsremote",
+        "//internal/hotreload/constants",
+        "//internal/integrations",
+        "//internal/planning",
+        "//internal/runtime",
+        "//internal/wscontents",
+        "//schema",
+        "//std/tasks",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//credentials/insecure",
+    ],
+)

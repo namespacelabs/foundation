@@ -1,0 +1,32 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "execution",
+    srcs = [
+        "execute.go",
+        "injection.go",
+        "inputs.go",
+        "plan.go",
+        "registry.go",
+        "schemainjection.go",
+        "values.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/std/execution",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//framework/rpcerrors/multierr",
+        "//internal/console",
+        "//internal/executor",
+        "//internal/fnerrors",
+        "//internal/protos",
+        "//schema",
+        "//schema/orchestration",
+        "//std/cfg",
+        "//std/tasks",
+        "@com_github_philopon_go_toposort//:go-toposort",
+        "@io_opentelemetry_go_otel_trace//:trace",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_x_exp//maps",
+        "@org_golang_x_exp//slices",
+    ],
+)

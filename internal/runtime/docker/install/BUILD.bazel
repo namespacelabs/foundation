@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "install",
+    srcs = ["persistent.go"],
+    importpath = "namespacelabs.dev/foundation/internal/runtime/docker/install",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts/oci",
+        "//internal/compute",
+        "//internal/console",
+        "//internal/parsing/platform",
+        "//internal/runtime/docker",
+        "//std/tasks",
+        "@com_github_containerd_errdefs//:errdefs",
+        "@com_github_google_go_containerregistry//pkg/name",
+        "@com_github_moby_moby_api//types/container",
+        "@com_github_moby_moby_api//types/network",
+        "@com_github_moby_moby_client//:client",
+    ],
+)

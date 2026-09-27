@@ -1,0 +1,11 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "ulimit",
+    srcs = [
+        "ulimit_unix.go",
+        "ulimit_windows.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/framework/ulimit",
+    visibility = ["//visibility:public"],
+)

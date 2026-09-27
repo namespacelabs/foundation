@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "gcp",
+    srcs = [
+        "cmd.go",
+        "federation.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/cli/cmd/gcp",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cli/fncobra",
+        "//internal/console",
+        "//internal/fnapi",
+        "//internal/fnerrors",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)

@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "token",
+    srcs = ["token.go"],
+    importpath = "namespacelabs.dev/foundation/internal/cli/cmd/token",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cli/fncobra",
+        "//internal/console",
+        "//internal/console/colors",
+        "//internal/console/tui",
+        "//internal/fnapi",
+        "//internal/fnerrors",
+        "@com_github_spf13_cobra//:cobra",
+        "@dev_namespacelabs_integrations//api/iam",
+        "@dev_namespacelabs_integrations//proto/namespace/cloud/iam/v1beta",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//encoding/protojson",
+        "@org_golang_google_protobuf//types/known/durationpb",
+        "@org_golang_google_protobuf//types/known/timestamppb",
+    ],
+)

@@ -1,0 +1,19 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "prebuiltnodejs_lib",
+    srcs = ["main.go"],
+    importpath = "namespacelabs.dev/foundation/internal/sdk/buf/image/prebuiltnodejs",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//internal/parsing/platform",
+        "//internal/sdk/buf/image",
+        "@com_github_moby_buildkit//client/llb",
+    ],
+)
+
+go_binary(
+    name = "prebuiltnodejs",
+    embed = [":prebuiltnodejs_lib"],
+    visibility = ["//:__subpackages__"],
+)

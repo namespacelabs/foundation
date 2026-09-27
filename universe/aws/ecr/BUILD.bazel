@@ -1,0 +1,19 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "ecr",
+    srcs = [
+        "client.go",
+        "deps.fn.go",
+        "provider.pb.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/universe/aws/ecr",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//std/go/core",
+        "//universe/aws/client",
+        "@com_github_aws_aws_sdk_go_v2_service_ecr//:ecr",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

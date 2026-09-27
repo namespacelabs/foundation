@@ -1,0 +1,35 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "genpackage",
+    srcs = [
+        "genall.go",
+        "node.go",
+        "op.pb.go",
+        "server.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/codegen/genpackage",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/codegen/protos",
+        "//internal/console",
+        "//internal/fnerrors",
+        "//internal/fnfs",
+        "//internal/integrations",
+        "//internal/parsing",
+        "//internal/planning",
+        "//internal/uniquestrings",
+        "//schema",
+        "//std/cfg",
+        "//std/execution",
+        "//std/execution/defs",
+        "//std/pkggraph",
+        "//std/proto",
+        "@org_cuelang_go//cue/format",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protodesc",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+        "@org_golang_google_protobuf//types/descriptorpb",
+    ],
+)

@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "api",
+    srcs = [
+        "integration.go",
+        "types.go",
+        "util.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/parsing/integration/api",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/fnerrors",
+        "//internal/protos",
+        "//schema",
+        "//std/pkggraph",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//types/known/anypb",
+    ],
+)

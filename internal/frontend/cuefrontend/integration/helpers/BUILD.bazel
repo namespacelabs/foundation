@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "helpers",
+    srcs = ["jsonparser.go"],
+    importpath = "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/helpers",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/frontend/fncue",
+        "//internal/parsing",
+        "//schema",
+        "//std/pkggraph",
+        "@org_golang_google_protobuf//proto",
+    ],
+)

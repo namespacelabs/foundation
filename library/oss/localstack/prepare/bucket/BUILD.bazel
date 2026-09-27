@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "bucket_lib",
+    srcs = ["main.go"],
+    importpath = "namespacelabs.dev/foundation/library/oss/localstack/prepare/bucket",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//framework/resources/provider",
+        "//library/oss/localstack",
+        "//library/storage/s3",
+        "@com_github_aws_aws_sdk_go_v2//aws",
+        "@com_github_aws_aws_sdk_go_v2_config//:config",
+        "@com_github_aws_aws_sdk_go_v2_credentials//:credentials",
+    ],
+)
+
+go_binary(
+    name = "bucket",
+    embed = [":bucket_lib"],
+    visibility = ["//visibility:public"],
+)

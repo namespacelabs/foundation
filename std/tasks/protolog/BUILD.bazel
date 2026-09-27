@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "protolog",
+    srcs = [
+        "log.pb.go",
+        "logger.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/std/tasks/protolog",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//std/tasks",
+        "//std/tasks/idtypes",
+        "//std/tasks/protocol",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

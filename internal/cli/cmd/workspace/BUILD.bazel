@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "workspace",
+    srcs = ["cmd.go"],
+    importpath = "namespacelabs.dev/foundation/internal/cli/cmd/workspace",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cli/fncobra",
+        "//internal/console",
+        "//internal/fnapi",
+        "//internal/fnerrors",
+        "//internal/providers/nscloud/api",
+        "@com_github_charmbracelet_bubbles//progress",
+        "@com_github_charmbracelet_lipgloss//:lipgloss",
+        "@com_github_dustin_go_humanize//:go-humanize",
+        "@com_github_spf13_cobra//:cobra",
+        "@dev_namespacelabs_integrations//api/compute",
+        "@dev_namespacelabs_integrations//proto/namespace/cloud/compute/v1beta",
+        "@org_golang_google_protobuf//encoding/protojson",
+    ],
+)

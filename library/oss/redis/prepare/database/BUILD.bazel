@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "database_lib",
+    srcs = ["main.go"],
+    importpath = "namespacelabs.dev/foundation/library/oss/redis/prepare/database",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//framework/resources/provider",
+        "//library/database/redis",
+        "//library/oss/redis",
+        "@com_github_go_redis_redis_v8//:redis",
+    ],
+)
+
+go_binary(
+    name = "database",
+    embed = [":database_lib"],
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,35 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "tools",
+    srcs = [
+        "invoke.go",
+        "lowlevel.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/runtime/tools",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//framework/secrets",
+        "//internal/artifacts/oci",
+        "//internal/build",
+        "//internal/build/binary",
+        "//internal/build/buildkit",
+        "//internal/build/multiplatform",
+        "//internal/compute",
+        "//internal/console",
+        "//internal/fnerrors",
+        "//internal/llbutil",
+        "//internal/planning/tool/protocol",
+        "//internal/protos",
+        "//internal/runtime/rtypes",
+        "//internal/versions",
+        "//schema",
+        "//std/pkggraph",
+        "//std/tasks",
+        "//std/types",
+        "@com_github_moby_buildkit//client/llb",
+        "@com_github_opencontainers_image_spec//specs-go/v1:specs-go",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_x_exp//slices",
+    ],
+)

@@ -1,0 +1,9 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "circleci",
+    srcs = ["env.go"],
+    importpath = "namespacelabs.dev/foundation/internal/circleci",
+    visibility = ["//:__subpackages__"],
+    deps = ["//internal/fnerrors"],
+)

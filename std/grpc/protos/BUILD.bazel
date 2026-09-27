@@ -1,0 +1,13 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "protos",
+    srcs = ["provider.pb.go"],
+    importpath = "namespacelabs.dev/foundation/std/grpc/protos",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//std/proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

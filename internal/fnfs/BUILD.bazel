@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "fnfs",
+    srcs = [
+        "copy.go",
+        "fstypes.go",
+        "local.go",
+        "size.go",
+        "visitfiles.go",
+        "walk.go",
+        "workspace.go",
+        "writefs.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/fnfs",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/bytestream",
+        "//internal/ctxio",
+        "//internal/fnerrors",
+        "//schema",
+        "@com_github_mattn_go_zglob//:go-zglob",
+    ],
+)

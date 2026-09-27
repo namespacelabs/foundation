@@ -1,0 +1,9 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "api",
+    srcs = ["integration.go"],
+    importpath = "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/api",
+    visibility = ["//:__subpackages__"],
+    deps = ["//internal/frontend/cuefrontend/entity"],
+)

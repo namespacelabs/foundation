@@ -1,0 +1,28 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "ecr",
+    srcs = [
+        "auth.go",
+        "ecr.go",
+        "keychain.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/providers/aws/ecr",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts/oci",
+        "//internal/artifacts/registry",
+        "//internal/compute",
+        "//internal/fnerrors",
+        "//internal/providers/aws",
+        "//internal/providers/aws/auth",
+        "//std/cfg",
+        "//std/tasks",
+        "@com_github_aws_aws_sdk_go_v2//aws",
+        "@com_github_aws_aws_sdk_go_v2_service_ecr//:ecr",
+        "@com_github_aws_aws_sdk_go_v2_service_ecr//types",
+        "@com_github_aws_aws_sdk_go_v2_service_sts//:sts",
+        "@com_github_docker_cli//cli/config/types",
+        "@com_github_google_go_containerregistry//pkg/authn",
+    ],
+)

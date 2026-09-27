@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "renderwait",
+    srcs = [
+        "console.go",
+        "plain.go",
+        "renderwait.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/console/renderwait",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/console",
+        "//internal/text/timefmt",
+        "//schema/orchestration",
+        "@com_github_kr_text//:text",
+        "@com_github_morikuni_aec//:aec",
+        "@org_golang_x_exp//maps",
+        "@org_golang_x_exp//slices",
+    ],
+)

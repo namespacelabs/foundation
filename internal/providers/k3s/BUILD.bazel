@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "k3s",
+    srcs = ["sshk3s.go"],
+    importpath = "namespacelabs.dev/foundation/internal/providers/k3s",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//framework/kubernetes/kubeclient",
+        "//framework/rpcerrors",
+        "//internal/build/registry",
+        "//internal/console",
+        "//internal/fnerrors",
+        "//internal/runtime/kubernetes/client",
+        "//internal/ssh",
+        "//std/cfg",
+        "//std/tasks",
+        "//universe/k3s/configuration",
+        "@io_k8s_client_go//tools/clientcmd",
+        "@io_k8s_client_go//tools/clientcmd/api",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_protobuf//proto",
+    ],
+)

@@ -1,0 +1,17 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "versioncheck",
+    srcs = ["fetch.go"],
+    importpath = "namespacelabs.dev/foundation/internal/cli/versioncheck",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/console",
+        "//internal/fnapi",
+        "//internal/fnerrors",
+        "//internal/frontend/cuefrontend",
+        "//schema",
+        "//schema/storage",
+        "@org_golang_x_mod//semver",
+    ],
+)

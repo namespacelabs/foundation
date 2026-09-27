@@ -1,0 +1,17 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "resolver",
+    srcs = ["resolver.go"],
+    importpath = "namespacelabs.dev/foundation/internal/codegen/protos/resolver",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/codegen/protos",
+        "//internal/fnerrors",
+        "//schema",
+        "//std/pkggraph",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//reflect/protoregistry",
+        "@org_golang_google_protobuf//types/dynamicpb",
+    ],
+)

@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "integrations",
+    srcs = ["cmd.go"],
+    importpath = "namespacelabs.dev/foundation/internal/cli/cmd/integrations",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cli/fncobra",
+        "//internal/console",
+        "//internal/fnapi",
+        "//internal/fnerrors",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)

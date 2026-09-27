@@ -1,0 +1,19 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "buildkit",
+    srcs = [
+        "jobdef.go",
+        "readiness.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/framework/build/buildkit",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/fnerrors",
+        "@com_github_moby_buildkit//client",
+        "@io_k8s_api//apps/v1:apps",
+        "@io_k8s_api//core/v1:core",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:meta",
+        "@io_k8s_utils//ptr",
+    ],
+)

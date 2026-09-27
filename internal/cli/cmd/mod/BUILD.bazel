@@ -1,0 +1,31 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "mod",
+    srcs = [
+        "cmd.go",
+        "download.go",
+        "format.go",
+        "get.go",
+        "init.go",
+        "tidy.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/cli/cmd/mod",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//framework/findroot",
+        "//framework/rpcerrors/multierr",
+        "//internal/cli/fncobra",
+        "//internal/console",
+        "//internal/fnerrors",
+        "//internal/fnfs",
+        "//internal/integrations",
+        "//internal/parsing",
+        "//internal/workspace",
+        "//schema",
+        "//std/cfg",
+        "//std/module",
+        "//std/pkggraph",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)

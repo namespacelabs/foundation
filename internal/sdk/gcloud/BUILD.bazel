@@ -1,0 +1,27 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "gcloud",
+    srcs = [
+        "gcloud.go",
+        "tokensource.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/sdk/gcloud",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts/oci",
+        "//internal/compute",
+        "//internal/console",
+        "//internal/fnerrors",
+        "//internal/localexec",
+        "//internal/parsing/platform",
+        "//internal/runtime/docker",
+        "//internal/runtime/rtypes",
+        "//internal/workspace/dirs",
+        "//schema",
+        "//std/tasks",
+        "//std/tasks/idtypes",
+        "@com_github_natefinch_atomic//:atomic",
+        "@org_golang_x_oauth2//:oauth2",
+    ],
+)

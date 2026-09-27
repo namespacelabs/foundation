@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "prepare_lib",
+    srcs = ["main.go"],
+    importpath = "namespacelabs.dev/foundation/library/kubernetes/helm/prepare",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//framework/provisioning",
+        "//internal/fnerrors",
+        "//internal/runtime/kubernetes/helm",
+        "//library/kubernetes/helm",
+        "//schema",
+        "//std/execution/defs",
+    ],
+)
+
+go_binary(
+    name = "prepare",
+    embed = [":prepare_lib"],
+    visibility = ["//visibility:public"],
+)
