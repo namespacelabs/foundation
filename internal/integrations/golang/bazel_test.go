@@ -8,6 +8,9 @@ import (
 	"testing"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"gotest.tools/assert"
+	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 func TestBazelTarget(t *testing.T) {
@@ -43,7 +46,13 @@ func TestRulesGoPlatform(t *testing.T) {
 }
 
 func TestMaybeBazelBuilderWithoutBazelRC(t *testing.T) {
-	if builder := MaybeBazelBuilder(""); builder.bazel != nil {
+	if builder := MaybeBazelBuilder("", "/workspace"); builder.bazel != nil {
 		t.Fatal("empty Bazel configuration unexpectedly enabled the Bazel builder")
 	}
+}
+
+func TestGoModuleVersion(t *testing.T) {
+	mod := pkggraph.NewModule(&schema.Workspace{ModuleName: "example.com/acme"}, nil, "0123456789ab")
+	assert.Equal(t, "0123456789ab", goModuleVersion(mod, "example.com/acme"))
+	assert.Equal(t, goModuleVersion(mod, "example.com/acme/nested"), "")
 }

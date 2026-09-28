@@ -28,8 +28,8 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func buildBazelImage(ctx context.Context, env pkggraph.SealedContext, workspace build.Workspace, bin GoBinary, target build.BuildTarget, builder *buildbazel.Builder) (compute.Computable[oci.Image], error) {
-	if workspace == nil {
+func buildBazelImage(ctx context.Context, env pkggraph.SealedContext, workspaceAbs, label string, bin GoBinary, target build.BuildTarget, builder *buildbazel.Builder) (compute.Computable[oci.Image], error) {
+	if workspaceAbs == "" {
 		return nil, fnerrors.InternalError("bazel: workspace is missing")
 	}
 	if target.TargetPlatform() == nil {
@@ -39,18 +39,14 @@ func buildBazelImage(ctx context.Context, env pkggraph.SealedContext, workspace 
 		return nil, fnerrors.InternalError("bazel: builder is missing")
 	}
 
-	label, err := bazelTarget(bin)
-	if err != nil {
-		return nil, err
-	}
 	goPlatform, err := rulesGoPlatform(*target.TargetPlatform())
 	if err != nil {
 		return nil, err
 	}
 	output, err := builder.AddTarget(ctx, buildbazel.Target{
-		WorkspaceAbs: workspace.Abs(),
+		WorkspaceAbs: workspaceAbs,
 		Label:        label,
-		BuildArgs:    []string{"--platforms=" + goPlatform},
+		Platform:     goPlatform,
 	})
 	if err != nil {
 		return nil, err

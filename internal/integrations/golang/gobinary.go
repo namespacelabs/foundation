@@ -28,6 +28,7 @@ type GoBinary struct {
 	// If workspaces are not used, will be the module path. Relative to ns workspace root.
 	GoWorkspacePath  string `json:"workspacePath"`
 	GoModule         string `json:"module"` // Go module name.
+	ModuleVersion    string `json:"moduleVersion,omitempty"`
 	GoVersion        string `json:"goVersion"`
 	SourcePath       string `json:"sourcePath"`                 // Relative to GoModule.
 	BazelPackagePath string `json:"bazelPackagePath,omitempty"` // Relative to the Bazel workspace.
@@ -50,14 +51,15 @@ var (
 )
 
 type Builder struct {
-	bazel *buildbazel.Builder
+	bazel          *buildbazel.Builder
+	bazelWorkspace string
 }
 
-func MaybeBazelBuilder(bazelRC string) Builder {
+func MaybeBazelBuilder(bazelRC, workspaceAbs string) Builder {
 	if bazelRC == "" {
 		return Builder{}
 	}
-	return Builder{bazel: buildbazel.NewBuilder(bazelRC)}
+	return Builder{bazel: buildbazel.NewBuilder(bazelRC), bazelWorkspace: workspaceAbs}
 }
 
 func (gb GoBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
@@ -66,8 +68,25 @@ func (gb GoBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, c
 
 func (b Builder) buildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration, gb GoBinary) (compute.Computable[oci.Image], error) {
 	if b.bazel != nil {
+		if conf.Workspace() != nil && conf.Workspace().IsExternal() && gb.ModuleVersion != "" && b.bazelWorkspace != "" {
+			label, err := bazelTarget(gb)
+			if err != nil {
+				return nil, err
+			}
+			label, err = b.bazel.ExternalGoTarget(ctx, b.bazelWorkspace, gb.GoModule, gb.ModuleVersion, label)
+			if err != nil {
+				return nil, err
+			}
+			if label != "" {
+				return buildBazelImage(ctx, env, b.bazelWorkspace, label, gb, conf, b.bazel)
+			}
+		}
 		if bazelBuildAvailable(conf.Workspace(), gb) {
-			return buildBazelImage(ctx, env, conf.Workspace(), gb, conf, b.bazel)
+			label, err := bazelTarget(gb)
+			if err != nil {
+				return nil, err
+			}
+			return buildBazelImage(ctx, env, conf.Workspace().Abs(), label, gb, conf, b.bazel)
 		}
 	}
 
@@ -128,10 +147,19 @@ func FromLocation(loc pkggraph.Location, pkgName string) (*GoBinary, error) {
 		PackageName:      loc.PackageName,
 		GoWorkspacePath:  relMod,
 		GoModule:         mod.Module.Mod.Path,
+		ModuleVersion:    goModuleVersion(loc.Module, mod.Module.Mod.Path),
 		SourcePath:       pkgInsideMod,
 		BazelPackagePath: bazelPackagePath,
 		GoVersion:        mod.Go.Version,
 	}, nil
+}
+
+func goModuleVersion(mod *pkggraph.Module, goModule string) string {
+	// A nested Go module need not have the same revision as its Namespace module.
+	if mod.ModuleName() != goModule {
+		return ""
+	}
+	return mod.Version()
 }
 
 func (b Builder) GoBuilder(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, plan *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error) {
