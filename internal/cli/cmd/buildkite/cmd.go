@@ -31,12 +31,16 @@ func NewBuildkiteCmd() *cobra.Command {
 		Short:   "Manage Buildkite resources.",
 	}
 	cmd.AddCommand(newQueuesCmd())
+	queues := newQueuesCmd()
+	queues.Use = "queues"
+	queues.Hidden = true
+	cmd.AddCommand(queues)
 	return cmd
 }
 
 func newQueuesCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "queues",
+		Use:   "queue",
 		Short: "Manage Namespace-managed Buildkite queues.",
 	}
 	cmd.AddCommand(newQueuesListCmd(), newQueuesGetCmd(), newQueuesUpdateCmd())
@@ -56,7 +60,7 @@ func newQueuesListCmd() *cobra.Command {
 		}
 		resp, err := client.ListQueues(ctx, connect.NewRequest(&buildkitepb.ListQueuesRequest{}))
 		if err != nil {
-			return fnerrors.InvocationError("buildkite queues list", "failed to list queues: %w", err)
+			return fnerrors.InvocationError("buildkite queue list", "failed to list queues: %w", err)
 		}
 		return printJSON(ctx, resp.Msg)
 	})
@@ -75,7 +79,7 @@ func newQueuesGetCmd() *cobra.Command {
 		}
 		resp, err := client.GetQueue(ctx, connect.NewRequest(&buildkitepb.GetQueueRequest{QueueId: args[0]}))
 		if err != nil {
-			return fnerrors.InvocationError("buildkite queues get", "failed to get queue: %w", err)
+			return fnerrors.InvocationError("buildkite queue get", "failed to get queue: %w", err)
 		}
 		return printJSON(ctx, resp.Msg)
 	})
@@ -113,7 +117,7 @@ func newQueuesUpdateCmd() *cobra.Command {
 			}
 			resp, err := client.UpdateQueue(ctx, connect.NewRequest(&buildkitepb.UpdateQueueRequest{QueueId: args[0], Settings: settings}))
 			if err != nil {
-				return fnerrors.InvocationError("buildkite queues update", "failed to update queue: %w", err)
+				return fnerrors.InvocationError("buildkite queue update", "failed to update queue: %w", err)
 			}
 			return printJSON(ctx, resp.Msg)
 		}
@@ -135,7 +139,7 @@ func newQueuesUpdateCmd() *cobra.Command {
 		}
 		current, err := client.GetQueue(ctx, connect.NewRequest(&buildkitepb.GetQueueRequest{QueueId: args[0]}))
 		if err != nil {
-			return fnerrors.InvocationError("buildkite queues update", "failed to get current queue settings: %w", err)
+			return fnerrors.InvocationError("buildkite queue update", "failed to get current queue settings: %w", err)
 		}
 
 		settings := &buildkitepb.QueueSettings{}
@@ -156,7 +160,7 @@ func newQueuesUpdateCmd() *cobra.Command {
 		}
 		resp, err := client.UpdateQueue(ctx, connect.NewRequest(&buildkitepb.UpdateQueueRequest{QueueId: args[0], Settings: settings}))
 		if err != nil {
-			return fnerrors.InvocationError("buildkite queues update", "failed to update queue: %w", err)
+			return fnerrors.InvocationError("buildkite queue update", "failed to update queue: %w", err)
 		}
 		return printJSON(ctx, resp.Msg)
 	})
