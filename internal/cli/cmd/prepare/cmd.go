@@ -13,6 +13,7 @@ import (
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
+	"namespacelabs.dev/foundation/internal/cli/cmd/buildsetup"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/renderwait"
@@ -197,6 +198,10 @@ func runPrepare(callback func(context.Context, cfg.Context) ([]prepare.Stage, er
 
 			env, err := cfg.LoadContext(root, envRef)
 			if err != nil {
+				return err
+			}
+
+			if err := buildsetup.ConfigureGoBuilder(ctx, env); err != nil {
 				return err
 			}
 

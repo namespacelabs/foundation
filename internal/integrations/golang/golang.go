@@ -97,6 +97,7 @@ func (i impl) PrepareBuild(ctx context.Context, _ assets.AvailableBuildAssets, s
 		PackageName:      server.Location.PackageName,
 		GoWorkspacePath:  ext.GoWorkspacePath,
 		GoModule:         ext.GoModule,
+		ModuleVersion:    goModuleVersion(server.Location.Module, ext.GoModule),
 		GoVersion:        ext.GoVersion,
 		SourcePath:       ext.RelPackage,
 		BazelPackagePath: server.Location.Rel(),
