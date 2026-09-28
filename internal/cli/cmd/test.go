@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
+	"namespacelabs.dev/foundation/internal/cli/cmd/buildsetup"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
@@ -89,6 +90,10 @@ func NewTestCmd() *cobra.Command {
 	})
 
 	return fncobra.With(cmd, func(originalCtx context.Context) error {
+		if err := buildsetup.ConfigureGoBuilder(originalCtx, *env); err != nil {
+			return err
+		}
+
 		if parallel && concurrentTests == 1 {
 			concurrentTests = 5
 		}
