@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -29,10 +30,12 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/integrations/api/storage"
 	storagev1beta "namespacelabs.dev/integrations/proto/namespace/cloud/storage/v1beta"
+	"namespacelabs.dev/integrations/proto/namespace/stdlib"
 	"namespacelabs.dev/integrations/storage/downloader"
 )
 
@@ -53,6 +56,7 @@ func NewArtifactCmd() *cobra.Command {
 	cmd.AddCommand(newArtifactExpireCmd())
 	cmd.AddCommand(newArtifactExtendCmd())
 	cmd.AddCommand(newArtifactDescribeCmd())
+	cmd.AddCommand(newArtifactListCmd())
 
 	return cmd
 }
@@ -825,4 +829,164 @@ func newArtifactDescribeCmd() *cobra.Command {
 			return fnerrors.BadInputError("invalid output format: %s", output)
 		}
 	})
+}
+
+func newArtifactListCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "List artifacts.",
+		Args:  cobra.NoArgs,
+		Example: `nsc artifact list
+nsc artifact list --namespaces main,cache
+nsc artifact list --labels branch=main --include_expired
+nsc artifact list --match_path_regex '^builds/.+\.zip$'
+nsc artifact list --output json`,
+	}
+
+	namespaces := cmd.Flags().StringSlice("namespaces", nil, "Only return artifacts that belong to any of these namespaces.")
+	labels := cmd.Flags().StringToString("labels", nil, "Only return artifacts with these labels.")
+	matchPathRegex := cmd.Flags().String("match_path_regex", "", "Only return artifacts whose path matches this regular expression.")
+	includeExpired := cmd.Flags().Bool("include_expired", false, "Include expired entries.")
+	maxEntries := cmd.Flags().Int32("max_entries", 50, "Maximum number of artifacts to return (up to 10,000).")
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, _ []string) error {
+		if *output != "plain" && *output != "json" {
+			return fnerrors.BadInputError("invalid output format: %s", *output)
+		}
+		if *maxEntries <= 0 || *maxEntries > 10_000 {
+			return fnerrors.BadInputError("max_entries must be between 1 and 10,000")
+		}
+
+		token, err := fnapi.FetchToken(ctx)
+		if err != nil {
+			return err
+		}
+
+		cli, err := storage.NewClient(ctx, token)
+		if err != nil {
+			return err
+		}
+		defer cli.Close()
+
+		labelFilter := make([]*stdlib.LabelFilterEntry, 0, len(*labels))
+		for name, value := range *labels {
+			labelFilter = append(labelFilter, &stdlib.LabelFilterEntry{
+				Name:  name,
+				Value: value,
+				Op:    stdlib.LabelFilterEntry_EQUAL,
+			})
+		}
+
+		var pathMatcher *stdlib.StringMatcher
+		if *matchPathRegex != "" {
+			pathMatcher = &stdlib.StringMatcher{
+				Op:     stdlib.StringMatcher_IS_ANY_OF,
+				Values: []string{*matchPathRegex},
+			}
+		}
+
+		res, err := cli.Artifacts.ListArtifacts(ctx, &storagev1beta.ListArtifactsRequest{
+			Namespaces:     *namespaces,
+			LabelFilter:    labelFilter,
+			MatchPathRegex: pathMatcher,
+			SkipExpired:    !*includeExpired,
+			MaxEntries:     *maxEntries,
+			OrderBy:        storagev1beta.ListArtifactsRequest_CreatedAt_Desc,
+		})
+		if err != nil {
+			return err
+		}
+
+		artifacts := res.GetArtifacts()
+		stdout := console.Stdout(ctx)
+
+		switch *output {
+		case "json":
+			entries := make([]artifactDescribeJSONOutput, 0, len(artifacts))
+			for _, artifact := range artifacts {
+				entry := artifactDescribeJSONOutput{
+					ID:        artifact.GetId(),
+					Path:      artifact.GetPath(),
+					Namespace: artifact.GetNamespace(),
+					Size:      artifact.GetSize(),
+					Status:    artifact.GetStatus().String(),
+					WebURL:    artifact.GetWebUrl(),
+				}
+				if artifact.GetCreatedAt() != nil {
+					t := artifact.GetCreatedAt().AsTime()
+					entry.CreatedAt = &t
+				}
+				if artifact.GetExpiresAt() != nil {
+					t := artifact.GetExpiresAt().AsTime()
+					entry.ExpiresAt = &t
+				}
+				if len(artifact.GetLabels()) > 0 {
+					entry.Labels = make(map[string]string, len(artifact.GetLabels()))
+					for _, label := range artifact.GetLabels() {
+						entry.Labels[label.GetName()] = label.GetValue()
+					}
+				}
+				entries = append(entries, entry)
+			}
+
+			enc := json.NewEncoder(stdout)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(entries); err != nil {
+				return fnerrors.InternalError("failed to encode artifacts as JSON output: %w", err)
+			}
+			return nil
+
+		case "plain":
+			if len(artifacts) == 0 {
+				fmt.Fprintln(stdout, "No artifacts.")
+				return nil
+			}
+
+			cols := []tui.Column{
+				{Key: "id", Title: "ID", MinWidth: 20, MaxWidth: math.MaxInt},
+				{Key: "path", Title: "Path", MinWidth: 20, MaxWidth: math.MaxInt},
+				{Key: "namespace", Title: "Namespace", MinWidth: 10, MaxWidth: math.MaxInt},
+				{Key: "size", Title: "Size", MinWidth: 8, MaxWidth: math.MaxInt},
+			}
+			if *includeExpired {
+				cols = append(cols, tui.Column{Key: "status", Title: "Status", MinWidth: 10, MaxWidth: math.MaxInt})
+			}
+			cols = append(cols,
+				tui.Column{Key: "created", Title: "Created At", MinWidth: 20, MaxWidth: math.MaxInt},
+				tui.Column{Key: "expires", Title: "Expires", MinWidth: 20, MaxWidth: math.MaxInt},
+			)
+
+			rows := make([]tui.Row, 0, len(artifacts))
+			for _, artifact := range artifacts {
+				created := "-"
+				if artifact.GetCreatedAt() != nil {
+					created = artifact.GetCreatedAt().AsTime().Format(time.RFC3339)
+				}
+				expires := "-"
+				if artifact.GetExpiresAt() != nil {
+					expires = artifact.GetExpiresAt().AsTime().Format(time.RFC3339)
+				}
+
+				row := tui.Row{
+					"id":        artifact.GetId(),
+					"path":      artifact.GetPath(),
+					"namespace": artifact.GetNamespace(),
+					"size":      humanize.Bytes(uint64(artifact.GetSize())),
+					"created":   created,
+					"expires":   expires,
+				}
+				if *includeExpired {
+					row["status"] = artifact.GetStatus().String()
+				}
+				rows = append(rows, row)
+			}
+			return tui.StaticTable(ctx, cols, rows)
+
+		default:
+			return fnerrors.BadInputError("invalid output format: %s", *output)
+		}
+	})
+
+	return cmd
 }
