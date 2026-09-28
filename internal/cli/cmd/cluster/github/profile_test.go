@@ -4,7 +4,11 @@
 
 package github
 
-import "testing"
+import (
+	"testing"
+
+	v1beta "namespacelabs.dev/integrations/proto/namespace/cloud/github/v1beta"
+)
 
 func TestProfilePlatformOS(t *testing.T) {
 	tests := []struct {
@@ -27,6 +31,30 @@ func TestProfilePlatformOS(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := profilePlatformOS(tt.label, tt.currentOS); got != tt.want {
 				t.Errorf("profilePlatformOS(%q, %q) = %q; want %q", tt.label, tt.currentOS, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTransformProfileForOutputIncludesAccessLevel(t *testing.T) {
+	tests := []struct {
+		name        string
+		accessLevel v1beta.AccessLevel
+		want        string
+	}{
+		{name: "configured", accessLevel: v1beta.AccessLevel_ACCESS_LEVEL_LIMITED, want: "ACCESS_LEVEL_LIMITED"},
+		{name: "default", accessLevel: v1beta.AccessLevel_ACCESS_LEVEL_UNSPECIFIED, want: "ACCESS_LEVEL_PERMISSIVE"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			profile := &v1beta.RunnerProfileWithStatus{
+				Spec: &v1beta.RunnerProfileSpec{AccessLevel: tt.accessLevel},
+			}
+
+			got := transformProfileForOutput(profile)["access_level"]
+			if got != tt.want {
+				t.Errorf("access_level = %v; want %q", got, tt.want)
 			}
 		})
 	}

@@ -276,6 +276,7 @@ func newProfileDescribeCmd() *cobra.Command {
 			fmt.Fprintf(stdout, "Description:  %s\n", profile.Spec.Description)
 		}
 		fmt.Fprintf(stdout, "OS:           %s\n", profile.Spec.Os)
+		fmt.Fprintf(stdout, "Access Level: %s\n", effectiveAccessLevel(profile.Spec.AccessLevel).String())
 
 		if profile.Spec.InstanceShape != nil {
 			fmt.Fprintf(stdout, "\nInstance Shape:\n")
@@ -794,6 +795,7 @@ func transformProfileForOutput(profile *v1beta.RunnerProfileWithStatus) map[stri
 	if profile.Spec.BuilderMode != v1beta.BuilderMode_BUILDER_MODE_UNSPECIFIED {
 		m["builder_mode"] = profile.Spec.BuilderMode.String()
 	}
+	m["access_level"] = effectiveAccessLevel(profile.Spec.AccessLevel).String()
 
 	if profile.Spec.NetworkPolicy != nil {
 		np := map[string]any{
@@ -854,6 +856,13 @@ func transformProfileForOutput(profile *v1beta.RunnerProfileWithStatus) map[stri
 	}
 
 	return m
+}
+
+func effectiveAccessLevel(accessLevel v1beta.AccessLevel) v1beta.AccessLevel {
+	if accessLevel == v1beta.AccessLevel_ACCESS_LEVEL_UNSPECIFIED {
+		return v1beta.AccessLevel_ACCESS_LEVEL_PERMISSIVE
+	}
+	return accessLevel
 }
 
 func parseNetworkPolicy(egressPolicy string, egressDomainAllowList []string, egressPolicyTag string) (*v1beta.NetworkPolicy, error) {
