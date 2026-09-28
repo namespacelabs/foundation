@@ -5,6 +5,7 @@
 package buildkite
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"os"
@@ -55,24 +56,52 @@ func (f *fakeQueueServiceClient) UpdateQueue(_ context.Context, request *connect
 }
 
 func TestQueuesList(t *testing.T) {
-	fake := installFakeClient(t)
-	stdout, err := runBuildkiteCommand(t, "queues", "list")
-	if err != nil {
-		t.Fatalf("command failed: %v", err)
+	for _, name := range []string{"queue", "queues"} {
+		t.Run(name, func(t *testing.T) {
+			fake := installFakeClient(t)
+			stdout, err := runBuildkiteCommand(t, name, "list")
+			if err != nil {
+				t.Fatalf("command failed: %v", err)
+			}
+			output := &buildkitepb.ListQueuesResponse{}
+			if err := protojson.Unmarshal(stdout, output); err != nil {
+				t.Fatalf("decode output: %v", err)
+			}
+			if !fake.listed || len(output.GetQueues()) != 1 || output.GetQueues()[0].GetQueueName() != "default" {
+				t.Fatalf("listed = %v, output = %#v", fake.listed, output)
+			}
+		})
 	}
-	output := &buildkitepb.ListQueuesResponse{}
-	if err := protojson.Unmarshal(stdout, output); err != nil {
-		t.Fatalf("decode output: %v", err)
-	}
-	if !fake.listed || len(output.GetQueues()) != 1 || output.GetQueues()[0].GetQueueName() != "default" {
-		t.Fatalf("listed = %v, output = %#v", fake.listed, output)
+}
+
+func TestQueuesAliasHidden(t *testing.T) {
+	for _, args := range [][]string{{"--help"}, {"queue", "--help"}, {"__complete", "queue"}} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			cmd := NewBuildkiteCmd()
+			var output bytes.Buffer
+			cmd.SetOut(&output)
+			cmd.SetErr(&output)
+			cmd.SetArgs(args)
+			if err := cmd.Execute(); err != nil {
+				t.Fatalf("command failed: %v", err)
+			}
+			if !strings.Contains(output.String(), "queue") {
+				t.Fatalf("output missing queue command: %s", &output)
+			}
+			for _, line := range strings.Split(output.String(), "\n") {
+				fields := strings.Fields(line)
+				if len(fields) > 0 && fields[0] == "queues" {
+					t.Fatalf("output advertises hidden alias: %s", &output)
+				}
+			}
+		})
 	}
 }
 
 func TestQueuesGet(t *testing.T) {
 	fake := installFakeClient(t)
 	fake.currentSettings.EgressPolicyTag = "restricted"
-	stdout, err := runBuildkiteCommand(t, "queues", "get", "queue-1")
+	stdout, err := runBuildkiteCommand(t, "queue", "get", "queue-1")
 	if err != nil {
 		t.Fatalf("command failed: %v", err)
 	}
@@ -93,7 +122,7 @@ func TestQueuesUpdateCustomPermissions(t *testing.T) {
 	existingSettings = append(existingSettings, unknownSetting...)
 	fake.currentSettings.ProtoReflect().SetUnknown(existingSettings)
 	stdout, err := runBuildkiteCommand(t,
-		"queues", "update", "queue-1",
+		"queue", "update", "queue-1",
 		"--workload_permissions", `{"resource_type":"vault/object","resource_id":"secret-1","actions":["read"]}`,
 	)
 	if err != nil {
