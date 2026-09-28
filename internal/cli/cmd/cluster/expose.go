@@ -28,9 +28,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeclient"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -628,13 +627,15 @@ func selectBackend(ctx context.Context, cluster *api.KubernetesCluster, ns, serv
 			return nil, fnerrors.Newf("failed to load kubernetes configuration: %w", err)
 		}
 
-		cli, err := k8s.NewForConfig(restcfg)
+		cli, err := kubeclient.NewREST(restcfg)
 		if err != nil {
 			return nil, fnerrors.Newf("failed to create kubernetes client: %w", err)
 		}
 
-		svc, err := cli.CoreV1().Services(ns).Get(ctx, service, metav1.GetOptions{})
-		if err != nil {
+		svcPath := fmt.Sprintf("/api/v1/namespaces/%s/services/%s", ns, service)
+
+		var svc corev1.Service
+		if err := cli.Get(ctx, svcPath, &svc); err != nil {
 			return nil, fnerrors.InvocationError("kubernetes", "failed to query service %q: %w", service, err)
 		}
 
@@ -642,48 +643,45 @@ func selectBackend(ctx context.Context, cluster *api.KubernetesCluster, ns, serv
 			return nil, fnerrors.Newf("service %q is not of type %s (found type %s)", service, corev1.ServiceTypeLoadBalancer, svc.Spec.Type)
 		}
 
-		port, err := selectPort(svc, port)
+		port, err := selectPort(&svc, port)
 		if err != nil {
 			return nil, err
 		}
 
 		if wait {
-			w, err := cli.CoreV1().Services(ns).Watch(ctx, metav1.ListOptions{})
-			if err != nil {
-				return nil, err
-			}
-			defer w.Stop()
+			var found *api.IngressBackendEndpoint
 
-			for ev := range w.ResultChan() {
+			query := url.Values{"fieldSelector": {"metadata.name=" + service}}
+			if err := cli.Watch(ctx, fmt.Sprintf("/api/v1/namespaces/%s/services", ns), query, func(raw json.RawMessage) (bool, error) {
 				fmt.Fprintf(console.Debug(ctx), "saw a new event\n")
 
-				svc, ok := ev.Object.(*corev1.Service)
-				if !ok {
-					continue
+				var svc corev1.Service
+				if err := json.Unmarshal(raw, &svc); err != nil {
+					return false, nil
 				}
 
-				if svc.Name != service {
-					continue
-				}
-
-				ipAddr, err := selectIpAddr(svc)
+				ipAddr, err := selectIpAddr(&svc)
 				if err != nil {
 					var noIp noIpError
 					if errors.As(err, &noIp) {
-						continue
+						return false, nil
 					}
 
-					return nil, err
+					return false, err
 				}
 
-				return &api.IngressBackendEndpoint{
-					IpAddr: ipAddr,
-					Port:   port,
-				}, nil
+				found = &api.IngressBackendEndpoint{IpAddr: ipAddr, Port: port}
+				return true, nil
+			}); err != nil {
+				return nil, err
+			}
+
+			if found != nil {
+				return found, nil
 			}
 		}
 
-		ipAddr, err := selectIpAddr(svc)
+		ipAddr, err := selectIpAddr(&svc)
 		if err != nil {
 			return nil, err
 		}

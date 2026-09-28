@@ -7,7 +7,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 	ia "namespacelabs.dev/foundation/internal/auth"
-	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
+	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/credhelper"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/endpoint"
 )
@@ -19,10 +19,10 @@ func main() {
 			endpoint.SetupFlags("", root.PersistentFlags(), false)
 			ia.SetupFlags(root.PersistentFlags())
 
-			root.AddCommand(cluster.NewDockerCredHelperStoreCmd(false))
-			root.AddCommand(cluster.NewDockerCredHelperGetCmd(false))
-			root.AddCommand(cluster.NewDockerCredHelperListCmd(false))
-			root.AddCommand(cluster.NewDockerCredHelperEraseCmd(false))
+			root.AddCommand(credhelper.NewDockerCredHelperStoreCmd(false))
+			root.AddCommand(credhelper.NewDockerCredHelperGetCmd(false))
+			root.AddCommand(credhelper.NewDockerCredHelperListCmd(false))
+			root.AddCommand(credhelper.NewDockerCredHelperEraseCmd(false))
 		},
 	})
 }

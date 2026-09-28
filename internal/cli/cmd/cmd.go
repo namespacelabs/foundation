@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/mod"
 	"namespacelabs.dev/foundation/internal/cli/cmd/prepare"
 	"namespacelabs.dev/foundation/internal/cli/cmd/sdk"
+	"namespacelabs.dev/foundation/internal/cli/cmd/sdk/gosdk"
 	"namespacelabs.dev/foundation/internal/cli/cmd/secrets"
 	"namespacelabs.dev/foundation/internal/cli/cmd/tools"
 	"namespacelabs.dev/foundation/internal/cli/cmd/version"
@@ -51,7 +52,7 @@ func registerCommands(root *cobra.Command, includeCache bool) {
 	root.AddCommand(NewKeysCmd())
 	root.AddCommand(NewTestCmd())
 	root.AddCommand(NewDebugShellCmd())
-	root.AddCommand(sdk.NewSdkCmd(false))
+	root.AddCommand(sdk.NewSdkCmd(false, gosdk.NewGoCmd(sdk.DefaultGoVersion)))
 	root.AddCommand(version.NewVersionCmd())
 	root.AddCommand(NewAttachCmd())
 	root.AddCommand(NewDeploymentCmd())

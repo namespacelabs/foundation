@@ -33,10 +33,13 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func NewSdkCmd(hidden bool) *cobra.Command {
+// DefaultGoVersion is the Go SDK that `sdk go` runs with.
+const DefaultGoVersion = "1.26"
+
+func NewSdkCmd(hidden bool, extra ...*cobra.Command) *cobra.Command {
 	sdks := []string{"go", "k3d", "kubectl", "grpcurl", "deno", "buildctl", "melange"}
 
-	goSdkVersion := "1.26"
+	goSdkVersion := DefaultGoVersion
 
 	cmd := &cobra.Command{
 		Use:    "sdk",
@@ -54,8 +57,8 @@ func NewSdkCmd(hidden bool) *cobra.Command {
 	cmd.AddCommand(newSdkShellCmd(selectedSdkList))
 	cmd.AddCommand(newSdkDownloadCmd(selectedSdkList))
 	cmd.AddCommand(newSdkVerifyCmd(selectedSdkList))
-	cmd.AddCommand(newGoCmd(goSdkVersion))
 	cmd.AddCommand(newGcloudCmd())
+	cmd.AddCommand(extra...)
 
 	return cmd
 }
