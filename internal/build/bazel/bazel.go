@@ -223,7 +223,7 @@ func (inv *invocation) Compute(ctx context.Context, _ compute.Resolved) (outputs
 	targets := inv.targetList()
 	startup := []string{"--bazelrc=" + inv.bazelRC}
 	buildArgs := append([]string{}, startup...)
-	buildArgs = append(buildArgs, "build", "--remote_download_outputs=all")
+	buildArgs = append(buildArgs, "build", "--remote_download_outputs=toplevel")
 	buildArgs = append(buildArgs, inv.buildArgs()...)
 	buildArgs = append(buildArgs, targets...)
 	if err := runBazel(ctx, installation, inv.workspaceAbs, buildArgs...); err != nil {
