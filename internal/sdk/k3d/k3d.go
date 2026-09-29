@@ -198,12 +198,28 @@ func (k3d K3D) ListClusters(ctx context.Context) ([]Cluster, error) {
 func (k3d K3D) CreateCluster(ctx context.Context, name, registry, image string, updateDefault bool) error {
 	fmt.Fprintf(console.Stdout(ctx), "Creating a Kubernetes cluster, this may take up to a minute (image=%s).\n", image)
 
+	// Local deployments start many short-lived provisioner pods in parallel.
+	// The k3s version used by prepare defaults to a kubelet API budget of 5 QPS
+	// with a burst of 10. Those pods can finish executing while their status
+	// updates are still throttled, leaving the deployment waiting for results
+	// that already exist. Raising nsdev's own client budget does not remove this
+	// independent, node-side bottleneck.
+	//
+	// Use 50 QPS / burst 100 to absorb these deployment bursts while keeping a
+	// finite request budget. This improved real local deployment measurements;
+	// it is not a claim that the API server can sustain unlimited concurrency.
+	// We create one server node, which also runs the workloads, so target server:0.
+	// These arguments only apply when creating a cluster: restarting or reusing
+	// an existing cluster does not change its kubelet configuration. Picking up
+	// these defaults therefore requires recreating that local cluster.
 	args := []string{
 		"cluster", "create",
 		"--registry-use", registry,
 		"--image", image,
 		fmt.Sprintf("--kubeconfig-update-default=%v", updateDefault),
 		"--k3s-arg", "--disable=traefik@server:0",
+		"--k3s-arg", "--kubelet-arg=kube-api-qps=50@server:0",
+		"--k3s-arg", "--kubelet-arg=kube-api-burst=100@server:0",
 		"--wait", name,
 	}
 

@@ -351,7 +351,7 @@ func (r *ClusterNamespace) WaitForTermination(ctx context.Context, object runtim
 	podName := kubedef.MakeDeploymentId(object)
 
 	return WatchDeployable(ctx, "deployable.wait-until-done", cli, namespace, object, func(pod corev1.Pod) ([]runtime.ContainerStatus, bool, error) {
-		if pod.Status.Phase != corev1.PodFailed && pod.Status.Phase != corev1.PodSucceeded {
+		if !podHasTerminated(pod) {
 			return nil, false, nil
 		}
 
@@ -376,6 +376,70 @@ func (r *ClusterNamespace) WaitForTermination(ctx context.Context, object runtim
 
 		return status, true, nil
 	})
+}
+
+// podHasTerminated checks whether a one-shot workload has finished executing,
+// not whether Kubernetes has finished cleaning up the pod. In Kubernetes 1.26,
+// kubelet's status manager preserves the old, non-terminal phase until the pod
+// worker finishes termination, including stopping the sandbox. We observed
+// provisioners exit almost immediately but remain Pending/Running for seconds
+// afterwards, delaying every resource that depends on their results.
+// See mergePodStatus:
+// https://github.com/kubernetes/kubernetes/blob/v1.26.2/pkg/kubelet/status/status_manager.go
+//
+// For non-restarting containers, current Terminated states let us collect results
+// before that cleanup completes. Completion does not imply success: the caller
+// still checks each exit code, including init-container failures. Nor does it
+// guarantee log retention; fetching logs can still fail after deletion or GC,
+// just as it can after observing a terminal pod phase.
+func podHasTerminated(pod corev1.Pod) bool {
+	// Keep the terminal-phase path authoritative. A failed init container can
+	// prevent regular containers from ever starting, so requiring complete
+	// container statuses here would turn an already-failed pod into a wait.
+	if pod.Status.Phase == corev1.PodFailed || pod.Status.Phase == corev1.PodSucceeded {
+		return true
+	}
+
+	// A terminated attempt is not final when restarts are allowed. Ephemeral
+	// containers are outside the regular/init status sets below; conservatively
+	// retain phase-based waiting for pods with those debugging workloads.
+	if pod.Spec.RestartPolicy != corev1.RestartPolicyNever || len(pod.Spec.EphemeralContainers) > 0 {
+		return false
+	}
+
+	// Status is populated asynchronously. Every declared container must have a
+	// status before we can conclude that all work has finished; an absent status
+	// can mean the container has not started yet, rather than that it has exited.
+	if len(pod.Status.ContainerStatuses) != len(pod.Spec.Containers) ||
+		len(pod.Status.InitContainerStatuses) != len(pod.Spec.InitContainers) {
+		return false
+	}
+
+	// Newer Kubernetes versions allow container-level policies/rules to override
+	// the pod's Never policy. Native sidecars are also init containers with their
+	// own restart policy. Fall back to pod phase rather than trying to reproduce
+	// kubelet's restart decisions for these cases, even for an explicit Never
+	// container policy that could potentially be handled more aggressively.
+	for _, containers := range [][]corev1.Container{pod.Spec.Containers, pod.Spec.InitContainers} {
+		for _, container := range containers {
+			if container.RestartPolicy != nil || len(container.RestartPolicyRules) > 0 {
+				return false
+			}
+		}
+	}
+
+	// Only the current state is evidence of completion. LastTerminationState
+	// describes a previous attempt and must not let a waiting/running container
+	// satisfy this check. Inspect all regular and init containers, not only the
+	// main container whose output the provisioner protocol usually consumes.
+	for _, statuses := range [][]corev1.ContainerStatus{pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses} {
+		for _, status := range statuses {
+			if status.State.Terminated == nil {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func (r *ClusterNamespace) ForwardPort(ctx context.Context, server runtime.Deployable, containerPort int32, localAddrs []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {
