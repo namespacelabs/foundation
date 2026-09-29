@@ -5,10 +5,11 @@
 package cluster
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"iter"
 	"strings"
 	"syscall"
 	"time"
@@ -22,7 +23,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/integrations/api/builds"
@@ -159,13 +159,35 @@ func newRegistryListCmd() *cobra.Command {
 		Use:   "list [repository]",
 		Short: "List images or repositories in the registry.",
 		Args:  cobra.MaximumNArgs(1),
+		Example: `  # List up to 100 images in a repository.
+  nsc registry list myrepo
+
+  # List up to 500 images.
+  nsc registry list --limit 500
+
+  # List all repositories.
+  nsc registry list --repositories --no_limit
+
+  # Stream all images across every page.
+  nsc registry list --no_limit
+
+  # List images created within an exclusive time range.
+  nsc registry list --created_after 2026-09-01T00:00:00Z --created_before 2026-09-02T00:00:00Z
+
+  # List images expiring before a timestamp (excludes non-expiring images).
+  nsc registry list --expires_before 2026-10-01T00:00:00Z
+
+  # Include deleted images and output JSON.
+  nsc registry list myrepo --include_deleted --output json`,
 	}
 
 	repositories := cmd.Flags().Bool("repositories", false, "List repositories instead of images")
 	output := cmd.Flags().StringP("output", "o", "table", "Output format: table, json")
 	matchRepo := cmd.Flags().String("repository", "", "Filter images by repository name")
 	includeDeleted := cmd.Flags().Bool("include_deleted", false, "Include deleted images in results")
-	limit := cmd.Flags().Int("limit", 0, "The maximum number of images/repositories to list. Fewer entries might be returned")
+	limit := cmd.Flags().Int("limit", 100, "The maximum number of images/repositories to list (must be positive)")
+	noLimit := cmd.Flags().Bool("no_limit", false, "List all matching images/repositories across every page")
+	cmd.MarkFlagsMutuallyExclusive("limit", "no_limit")
 	createdAfter := cmd.Flags().String("created_after", "", "Only list images created strictly after this RFC3339 timestamp")
 	createdBefore := cmd.Flags().String("created_before", "", "Only list images created strictly before this RFC3339 timestamp")
 	expiresAfter := cmd.Flags().String("expires_after", "", "Only list images expiring strictly after this RFC3339 timestamp; excludes non-expiring images")
@@ -175,6 +197,16 @@ func newRegistryListCmd() *cobra.Command {
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if *output != "table" && *output != "json" {
+			return fnerrors.BadInputError("invalid output format: %s", *output)
+		}
+		if *limit <= 0 {
+			return fnerrors.BadInputError("--limit must be positive; use --no_limit to list all results")
+		}
+		maxResults := *limit
+		if *noLimit {
+			maxResults = 0
+		}
 		// Use positional argument if provided, unless --repository flag is explicitly set
 		repository := *matchRepo
 		if len(args) > 0 && repository == "" {
@@ -212,136 +244,79 @@ func newRegistryListCmd() *cobra.Command {
 		defer client.Close()
 
 		if *repositories {
-			repos, err := listRegistryRepositories(ctx, client.ContainerRegistry, *limit)
-			if err != nil {
-				return fnerrors.InvocationError("registry", "failed to list repositories: %w", err)
-			}
-
-			switch *output {
-			case "json":
-				var b bytes.Buffer
-				fmt.Fprint(&b, "[")
-				for k, repo := range repos {
-					if k > 0 {
-						fmt.Fprint(&b, ",")
-					}
-
-					bb, err := protojson.MarshalOptions{UseProtoNames: true, Multiline: true}.Marshal(repo)
-					if err != nil {
-						return err
-					}
-
-					fmt.Fprintf(&b, "\n%s", bb)
-				}
-				fmt.Fprint(&b, "\n]\n")
-
-				console.Stdout(ctx).Write(b.Bytes())
-
-				return nil
-			case "table":
-				return printRepositoriesTable(ctx, repos)
-			default:
-				return fnerrors.BadInputError("invalid output format: %s", *output)
-			}
-		} else {
-			images, err := listRegistryImages(ctx, client.ContainerRegistry, req, *includeDeleted, *limit)
-			if err != nil {
-				return fnerrors.InvocationError("registry", "failed to list images: %w", err)
-			}
-
-			switch *output {
-			case "json":
-				// Convert to JSON and add image_ref field
-				var result []map[string]interface{}
-				for _, img := range images {
-					// Marshal to JSON first
-					bb, err := protojson.Marshal(img)
-					if err != nil {
-						return err
-					}
-
-					var imgMap map[string]interface{}
-					if err := json.Unmarshal(bb, &imgMap); err != nil {
-						return err
-					}
-
-					// Add image_ref field at the beginning
-					imageRef := formatImageReference(nscrBase, img.Repository, img.Digest)
-					imgMap["image_ref"] = imageRef
-
-					result = append(result, imgMap)
-				}
-
-				// Marshal back to JSON with indentation
-				bb, err := json.MarshalIndent(result, "", "  ")
-				if err != nil {
-					return err
-				}
-
-				fmt.Fprintln(console.Stdout(ctx), string(bb))
-				return nil
-			case "table":
-				return printImagesTable(ctx, nscrBase, images)
-			default:
-				return fnerrors.BadInputError("invalid output format: %s", *output)
-			}
+			return printRegistryRepositories(console.Stdout(ctx), listRegistryRepositories(ctx, client.ContainerRegistry, maxResults), *output)
 		}
+		return printRegistryImages(console.Stdout(ctx), nscrBase, listRegistryImages(ctx, client.ContainerRegistry, req, *includeDeleted, maxResults), *output)
 	})
 
 	return cmd
 }
 
-func listRegistryRepositories(ctx context.Context, client registryv1beta.ContainerRegistryServiceClient, limit int) ([]*registryv1beta.Repository, error) {
-	var repositories []*registryv1beta.Repository
-	req := &registryv1beta.ListRepositoriesRequest{}
-	for {
-		req.MaxEntries = 1000
-		if limit > 0 {
-			req.MaxEntries = min(req.MaxEntries, int64(limit-len(repositories)))
+func listRegistryRepositories(ctx context.Context, client registryv1beta.ContainerRegistryServiceClient, limit int) iter.Seq2[*registryv1beta.Repository, error] {
+	return func(yield func(*registryv1beta.Repository, error) bool) {
+		count := 0
+		req := &registryv1beta.ListRepositoriesRequest{}
+		for {
+			req.MaxEntries = 1000
+			if limit > 0 {
+				req.MaxEntries = min(req.MaxEntries, int64(limit-count))
+			}
+			resp, err := client.ListRepositories(ctx, req)
+			if err != nil {
+				yield(nil, err)
+				return
+			}
+			for _, repo := range resp.Repositories {
+				if !yield(repo, nil) {
+					return
+				}
+				count++
+				if limit > 0 && count >= limit {
+					return
+				}
+			}
+			if len(resp.PaginationCursor) == 0 {
+				return
+			}
+			req.PaginationCursor = resp.PaginationCursor
 		}
-		resp, err := client.ListRepositories(ctx, req)
-		if err != nil {
-			return nil, err
-		}
-		repositories = append(repositories, resp.Repositories...)
-		if limit > 0 && len(repositories) >= limit {
-			return repositories[:limit], nil
-		}
-		if len(resp.PaginationCursor) == 0 {
-			return repositories, nil
-		}
-		req.PaginationCursor = resp.PaginationCursor
 	}
 }
 
-func listRegistryImages(ctx context.Context, client registryv1beta.ContainerRegistryServiceClient, req *registryv1beta.ListImagesRequest, includeDeleted bool, limit int) ([]*registryv1beta.Image, error) {
-	var images []*registryv1beta.Image
-	for {
-		req.MaxEntries = 10000
-		if limit > 0 {
-			maxEntries := limit
-			// Keep pages full when filtering, to avoid tiny requests through deleted images.
-			if includeDeleted {
-				maxEntries -= len(images)
+func listRegistryImages(ctx context.Context, client registryv1beta.ContainerRegistryServiceClient, req *registryv1beta.ListImagesRequest, includeDeleted bool, limit int) iter.Seq2[*registryv1beta.Image, error] {
+	return func(yield func(*registryv1beta.Image, error) bool) {
+		count := 0
+		for {
+			req.MaxEntries = 10000
+			if limit > 0 {
+				maxEntries := limit
+				// Keep pages full when filtering, to avoid tiny requests through deleted images.
+				if includeDeleted {
+					maxEntries -= count
+				}
+				req.MaxEntries = min(req.MaxEntries, int64(maxEntries))
 			}
-			req.MaxEntries = min(req.MaxEntries, int64(maxEntries))
-		}
-		resp, err := client.ListImages(ctx, req)
-		if err != nil {
-			return nil, err
-		}
-		for _, img := range resp.Images {
-			if includeDeleted || img.DeletedAt == nil {
-				images = append(images, img)
+			resp, err := client.ListImages(ctx, req)
+			if err != nil {
+				yield(nil, err)
+				return
 			}
+			for _, img := range resp.Images {
+				if includeDeleted || img.DeletedAt == nil {
+					if !yield(img, nil) {
+						return
+					}
+					count++
+					if limit > 0 && count >= limit {
+						return
+					}
+				}
+			}
+			if len(resp.PaginationCursor) == 0 {
+				return
+			}
+			req.PaginationCursor = resp.PaginationCursor
 		}
-		if limit > 0 && len(images) >= limit {
-			return images[:limit], nil
-		}
-		if len(resp.PaginationCursor) == 0 {
-			return images, nil
-		}
-		req.PaginationCursor = resp.PaginationCursor
 	}
 }
 
@@ -513,48 +488,95 @@ Alternatively, use --repository and --digest flags.`,
 	return cmd
 }
 
-func printRepositoriesTable(ctx context.Context, repositories []*registryv1beta.Repository) error {
-	if len(repositories) == 0 {
-		fmt.Fprintf(console.Stdout(ctx), "No repositories found.\n")
-		return nil
-	}
-
-	cols := []tui.Column{
-		{Key: "name", Title: "Repository Name", MinWidth: 20, MaxWidth: 60},
-		{Key: "last_push", Title: "Last Push", MinWidth: 20, MaxWidth: 30},
-	}
-
-	rows := []tui.Row{}
-	for _, repo := range repositories {
+func printRegistryRepositories(w io.Writer, repositories iter.Seq2[*registryv1beta.Repository, error], output string) error {
+	first := true
+	for repo, err := range repositories {
+		if err != nil {
+			return fnerrors.InvocationError("registry", "failed to list repositories: %w", err)
+		}
+		if output == "json" {
+			bb, err := protojson.MarshalOptions{UseProtoNames: true, Multiline: true}.Marshal(repo)
+			if err != nil {
+				return err
+			}
+			separator := ","
+			if first {
+				separator = "["
+			}
+			if _, err := fmt.Fprintf(w, "%s\n%s\n", separator, bb); err != nil {
+				return err
+			}
+			first = false
+			continue
+		}
+		if first {
+			if _, err := fmt.Fprintf(w, "%-60s  %s\n", "Repository Name", "Last Push"); err != nil {
+				return err
+			}
+			first = false
+		}
 		lastPush := ""
 		if repo.LastPush != nil {
 			lastPush = repo.LastPush.AsTime().Format(time.RFC3339)
 		}
-
-		row := tui.Row{
-			"name":      repo.Name,
-			"last_push": lastPush,
+		if _, err := fmt.Fprintf(w, "%-60.60s  %s\n", repo.Name, lastPush); err != nil {
+			return err
 		}
-		rows = append(rows, row)
 	}
-
-	return tui.StaticTable(ctx, cols, rows)
+	if output == "json" {
+		ending := "]\n"
+		if first {
+			ending = "[]\n"
+		}
+		_, err := io.WriteString(w, ending)
+		return err
+	}
+	if first {
+		_, err := fmt.Fprintln(w, "No repositories found.")
+		return err
+	}
+	return nil
 }
 
-func printImagesTable(ctx context.Context, nscrBase string, images []*registryv1beta.Image) error {
-	if len(images) == 0 {
-		fmt.Fprintf(console.Stdout(ctx), "No images found.\n")
-		return nil
-	}
-
-	cols := []tui.Column{
-		{Key: "reference", Title: "Image Reference", MinWidth: 30, MaxWidth: 80},
-		{Key: "size", Title: "Size", MinWidth: 10, MaxWidth: 15},
-		{Key: "created", Title: "Created", MinWidth: 20, MaxWidth: 30},
-	}
-
-	rows := []tui.Row{}
-	for _, img := range images {
+func printRegistryImages(w io.Writer, nscrBase string, images iter.Seq2[*registryv1beta.Image, error], output string) error {
+	first := true
+	for img, err := range images {
+		if err != nil {
+			return fnerrors.InvocationError("registry", "failed to list images: %w", err)
+		}
+		if output == "json" {
+			bb, err := protojson.Marshal(img)
+			if err != nil {
+				return err
+			}
+			var imgMap map[string]json.RawMessage
+			if err := json.Unmarshal(bb, &imgMap); err != nil {
+				return err
+			}
+			imgMap["image_ref"], err = json.Marshal(formatImageReference(nscrBase, img.Repository, img.Digest))
+			if err != nil {
+				return err
+			}
+			bb, err = json.MarshalIndent(imgMap, "  ", "  ")
+			if err != nil {
+				return err
+			}
+			separator := ","
+			if first {
+				separator = "["
+			}
+			if _, err := fmt.Fprintf(w, "%s\n  %s\n", separator, bb); err != nil {
+				return err
+			}
+			first = false
+			continue
+		}
+		if first {
+			if _, err := fmt.Fprintf(w, "%-80s  %10s  %s\n", "Image Reference", "Size", "Created"); err != nil {
+				return err
+			}
+			first = false
+		}
 		created := ""
 		if img.CreatedAt != nil {
 			created = img.CreatedAt.AsTime().Format(time.RFC3339)
@@ -575,18 +597,23 @@ func printImagesTable(ctx context.Context, nscrBase string, images []*registryv1
 		if img.Sizes != nil && img.Sizes.Total > 0 {
 			size = humanize.IBytes(uint64(img.Sizes.Total))
 		}
-		// Right-align size within 10 characters
-		size = fmt.Sprintf("%10s", size)
-
-		row := tui.Row{
-			"reference": imageRef,
-			"size":      size,
-			"created":   created,
+		if _, err := fmt.Fprintf(w, "%s  %10s  %s\n", lipgloss.NewStyle().Width(80).Render(imageRef), size, created); err != nil {
+			return err
 		}
-		rows = append(rows, row)
 	}
-
-	return tui.StaticTable(ctx, cols, rows)
+	if output == "json" {
+		ending := "]\n"
+		if first {
+			ending = "[]\n"
+		}
+		_, err := io.WriteString(w, ending)
+		return err
+	}
+	if first {
+		_, err := fmt.Fprintln(w, "No images found.")
+		return err
+	}
+	return nil
 }
 
 func printImageDetails(ctx context.Context, nscrBase string, resp *registryv1beta.GetImageResponse) error {

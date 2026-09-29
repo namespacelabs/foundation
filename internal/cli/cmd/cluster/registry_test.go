@@ -5,10 +5,13 @@
 package cluster
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"iter"
 	"reflect"
 	"strings"
 	"testing"
@@ -35,6 +38,17 @@ func (c registryListClient) ListRepositories(_ context.Context, req *registryv1b
 	return c.repositories(req)
 }
 
+func collectRegistryResults[T any](entries iter.Seq2[T, error]) ([]T, error) {
+	var results []T
+	for entry, err := range entries {
+		if err != nil {
+			return results, err
+		}
+		results = append(results, entry)
+	}
+	return results, nil
+}
+
 func TestListRegistryRepositories(t *testing.T) {
 	wantErr := errors.New("page failed")
 	for _, tt := range []struct {
@@ -50,7 +64,7 @@ func TestListRegistryRepositories(t *testing.T) {
 		{name: "limit on first page", limit: 1, max: []int64{1}, want: []string{"first"}},
 		{name: "limit across pages", limit: 2, max: []int64{2, 1, 1}, want: []string{"first", "last"}},
 		{name: "fewer than limit", limit: 5, max: []int64{5, 4, 4}, want: []string{"first", "last"}},
-		{name: "later page error", max: []int64{1000, 1000}, failAt: 2},
+		{name: "later page error", max: []int64{1000, 1000}, failAt: 2, want: []string{"first"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			pages := []*registryv1beta.ListRepositoriesResponse{
@@ -74,10 +88,10 @@ func TestListRegistryRepositories(t *testing.T) {
 				}
 				return pages[i], nil
 			}}
-			got, err := listRegistryRepositories(context.Background(), client, tt.limit)
+			got, err := collectRegistryResults(listRegistryRepositories(context.Background(), client, tt.limit))
 			if tt.failAt > 0 {
-				if !errors.Is(err, wantErr) || got != nil {
-					t.Fatalf("got %v, %v; want no results and page error", got, err)
+				if !errors.Is(err, wantErr) {
+					t.Fatalf("got %v; want page error", err)
 				}
 			} else if err != nil {
 				t.Fatal(err)
@@ -110,7 +124,7 @@ func TestListRegistryImages(t *testing.T) {
 		{name: "filtered pages and repository", repository: "app", limit: 2, max: []int64{2, 2, 2}, want: []string{"live1", "live2"}},
 		{name: "include deleted", includeDeleted: true, limit: 3, max: []int64{3, 2}, want: []string{"deleted1", "live1", "deleted2"}},
 		{name: "fewer than limit", limit: 9, max: []int64{9, 9, 9, 9}, want: []string{"live1", "live2", "live3"}},
-		{name: "later page error", max: []int64{10000, 10000, 10000}, failAt: 3},
+		{name: "later page error", max: []int64{10000, 10000, 10000}, failAt: 3, want: []string{"live1"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			pages := []*registryv1beta.ListImagesResponse{
@@ -149,10 +163,10 @@ func TestListRegistryImages(t *testing.T) {
 			if tt.repository != "" {
 				req.MatchRepository = &stdlib.StringMatcher{Values: []string{tt.repository}, Op: stdlib.StringMatcher_IS_ANY_OF}
 			}
-			got, err := listRegistryImages(context.Background(), client, req, tt.includeDeleted, tt.limit)
+			got, err := collectRegistryResults(listRegistryImages(context.Background(), client, req, tt.includeDeleted, tt.limit))
 			if tt.failAt > 0 {
-				if !errors.Is(err, wantErr) || got != nil {
-					t.Fatalf("got %v, %v; want no results and page error", got, err)
+				if !errors.Is(err, wantErr) {
+					t.Fatalf("got %v; want page error", err)
 				}
 			} else if err != nil {
 				t.Fatal(err)
@@ -233,7 +247,7 @@ func TestRegistryFullPageBoundaries(t *testing.T) {
 				var got []string
 				if kind.name == "images" {
 					req := &registryv1beta.ListImagesRequest{MatchRepository: &stdlib.StringMatcher{Values: []string{"app"}, Op: stdlib.StringMatcher_IS_ANY_OF}}
-					images, err := listRegistryImages(context.Background(), client, req, true, tt.limit)
+					images, err := collectRegistryResults(listRegistryImages(context.Background(), client, req, true, tt.limit))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -241,7 +255,7 @@ func TestRegistryFullPageBoundaries(t *testing.T) {
 						got = append(got, img.Digest)
 					}
 				} else {
-					repos, err := listRegistryRepositories(context.Background(), client, tt.limit)
+					repos, err := collectRegistryResults(listRegistryRepositories(context.Background(), client, tt.limit))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -279,7 +293,7 @@ func TestListRegistryImagesDeletedPages(t *testing.T) {
 		}
 		return resp, nil
 	}}
-	images, err := listRegistryImages(context.Background(), client, &registryv1beta.ListImagesRequest{}, false, 5000)
+	images, err := collectRegistryResults(listRegistryImages(context.Background(), client, &registryv1beta.ListImagesRequest{}, false, 5000))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -293,6 +307,35 @@ func TestListRegistryImagesDeletedPages(t *testing.T) {
 		}
 		if img.DeletedAt != nil || img.Digest != want {
 			t.Fatalf("image %d = %v, want live image %s", i, img, want)
+		}
+	}
+}
+
+func TestRegistryListLimitFlags(t *testing.T) {
+	cmd := newRegistryListCmd()
+	if limit, err := cmd.Flags().GetInt("limit"); err != nil || limit != 100 {
+		t.Fatalf("default limit = %d, %v; want 100", limit, err)
+	}
+	if noLimit, err := cmd.Flags().GetBool("no_limit"); err != nil || noLimit {
+		t.Fatalf("default no_limit = %v, %v; want false", noLimit, err)
+	}
+	for _, tt := range []struct {
+		args []string
+		want string
+	}{
+		{args: []string{"--limit", "0"}, want: "--limit must be positive; use --no_limit"},
+		{args: []string{"--limit", "-1"}, want: "--limit must be positive; use --no_limit"},
+		{args: []string{"--limit", "100", "--no_limit"}, want: "none of the others can be"},
+		// Invalid timestamps stop accepted limit options before authentication.
+		{args: []string{"--no_limit", "--created_after", "invalid"}, want: "invalid after timestamp"},
+		{args: []string{"--limit", "1", "--created_after", "invalid"}, want: "invalid after timestamp"},
+	} {
+		cmd := newRegistryListCmd()
+		cmd.SetOut(io.Discard)
+		cmd.SetErr(io.Discard)
+		cmd.SetArgs(tt.args)
+		if err := cmd.ExecuteContext(context.Background()); err == nil || !strings.Contains(err.Error(), tt.want) {
+			t.Fatalf("args %v: got %v, want %q", tt.args, err, tt.want)
 		}
 	}
 }
@@ -347,8 +390,139 @@ func TestListRegistryImagesTimeFilters(t *testing.T) {
 		}
 		return &registryv1beta.ListImagesResponse{Images: []*registryv1beta.Image{{Digest: "match"}}}, nil
 	}}
-	images, err := listRegistryImages(context.Background(), client, req, false, 1)
+	images, err := collectRegistryResults(listRegistryImages(context.Background(), client, req, false, 1))
 	if err != nil || calls != 3 || len(images) != 1 || images[0].Digest != "match" {
 		t.Fatalf("got %v, %v in %d calls", images, err, calls)
+	}
+}
+
+type registryErrorWriter struct{ err error }
+
+func (w registryErrorWriter) Write([]byte) (int, error) { return 0, w.err }
+
+func TestRegistryStreamingOutput(t *testing.T) {
+	wantErr := errors.New("stream failed")
+	for _, kind := range []string{"images", "repositories"} {
+		for _, output := range []string{"json", "table"} {
+			for _, scenario := range []struct {
+				name      string
+				limit     int
+				wantCalls int
+				wantNames []string
+			}{
+				{name: "all pages", wantCalls: 3, wantNames: []string{"first", "longer-last"}},
+				{name: "limit", limit: 1, wantCalls: 1, wantNames: []string{"first"}},
+				{name: "empty", wantCalls: 1},
+				{name: "page error", wantCalls: 2},
+				{name: "write error", wantCalls: 1},
+			} {
+				t.Run(kind+"/"+output+"/"+scenario.name, func(t *testing.T) {
+					var buf bytes.Buffer
+					calls := 0
+					nextPage := func() (string, []byte, error) {
+						t.Helper()
+						calls++
+						if calls > scenario.wantCalls {
+							t.Fatal("unexpected extra request")
+						}
+						if calls > 1 && !strings.Contains(buf.String(), "first") {
+							t.Fatal("first page was not written before the next request")
+						}
+						if calls > 1 && !strings.HasSuffix(buf.String(), "\n") {
+							t.Fatal("page output must be flushed through line-buffered consoles")
+						}
+						if scenario.name == "empty" {
+							return "", nil, nil
+						}
+						if calls == 1 {
+							return "first", []byte("second"), nil
+						}
+						if scenario.name == "page error" {
+							return "", nil, wantErr
+						}
+						if calls == 2 {
+							return "", []byte("third"), nil
+						}
+						return "longer-last", nil, nil
+					}
+					stamp := timestamppb.New(time.Date(2026, 9, 20, 8, 15, 0, 0, time.UTC))
+					client := registryListClient{
+						images: func(*registryv1beta.ListImagesRequest) (*registryv1beta.ListImagesResponse, error) {
+							name, cursor, err := nextPage()
+							resp := &registryv1beta.ListImagesResponse{PaginationCursor: cursor}
+							if name != "" {
+								resp.Images = []*registryv1beta.Image{{Repository: name, Digest: "sha256:abc", CreatedAt: stamp}}
+							}
+							return resp, err
+						},
+						repositories: func(*registryv1beta.ListRepositoriesRequest) (*registryv1beta.ListRepositoriesResponse, error) {
+							name, cursor, err := nextPage()
+							resp := &registryv1beta.ListRepositoriesResponse{PaginationCursor: cursor}
+							if name != "" {
+								resp.Repositories = []*registryv1beta.Repository{{Name: name, LastPush: stamp}}
+							}
+							return resp, err
+						},
+					}
+					var w io.Writer = &buf
+					if scenario.name == "write error" {
+						w = registryErrorWriter{wantErr}
+					}
+					var err error
+					if kind == "images" {
+						err = printRegistryImages(w, "registry.example", listRegistryImages(context.Background(), client, &registryv1beta.ListImagesRequest{}, false, scenario.limit), output)
+					} else {
+						err = printRegistryRepositories(w, listRegistryRepositories(context.Background(), client, scenario.limit), output)
+					}
+					if calls != scenario.wantCalls {
+						t.Fatalf("got %d requests, want %d", calls, scenario.wantCalls)
+					}
+					if strings.HasSuffix(scenario.name, "error") {
+						if !errors.Is(err, wantErr) {
+							t.Fatalf("got %v, want stream error", err)
+						}
+						if output == "json" && json.Valid(buf.Bytes()) {
+							t.Fatal("failed listing must not look like a complete JSON result")
+						}
+						return
+					}
+					if err != nil {
+						t.Fatal(err)
+					}
+					if output == "json" {
+						var rows []map[string]any
+						if err := json.Unmarshal(buf.Bytes(), &rows); err != nil || len(rows) != len(scenario.wantNames) {
+							t.Fatalf("invalid JSON results: %s, %v", buf.String(), err)
+						}
+						for i, name := range scenario.wantNames {
+							want := map[string]any{"name": name, "last_push": "2026-09-20T08:15:00Z"}
+							if kind == "images" {
+								want = map[string]any{"repository": name, "digest": "sha256:abc", "createdAt": "2026-09-20T08:15:00Z", "image_ref": "registry.example/" + name + "@sha256:abc"}
+							}
+							if !reflect.DeepEqual(rows[i], want) {
+								t.Fatalf("row %d = %v, want %v", i, rows[i], want)
+							}
+						}
+						if len(rows) == 0 && strings.TrimSpace(buf.String()) != "[]" {
+							t.Fatalf("empty output = %q, want []", buf.String())
+						}
+					} else if len(scenario.wantNames) == 0 {
+						if buf.String() != "No "+kind+" found.\n" {
+							t.Fatalf("unexpected empty output: %q", buf.String())
+						}
+					} else {
+						lines := strings.Split(strings.TrimSuffix(buf.String(), "\n"), "\n")
+						if len(lines) != len(scenario.wantNames)+1 {
+							t.Fatalf("expected one header and %d rows: %q", len(scenario.wantNames), buf.String())
+						}
+						for i, name := range scenario.wantNames {
+							if !strings.Contains(lines[i+1], name) || !strings.Contains(lines[i+1], "2026-09-20T08:15:00Z") {
+								t.Fatalf("unexpected row: %q", lines[i+1])
+							}
+						}
+					}
+				})
+			}
+		}
 	}
 }
