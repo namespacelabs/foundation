@@ -293,7 +293,7 @@ func TestWriteArtifactDescribeNotFoundJSON(t *testing.T) {
 		t.Fatalf("writeArtifactDescribeNotFound returned error: %v", err)
 	}
 
-	if msg != "foo/bar doesn't exist" {
+	if msg != "foo/bar doesn't exist in namespace main" {
 		t.Fatalf("unexpected message: %q", msg)
 	}
 
@@ -321,11 +321,11 @@ func TestWriteArtifactDescribeNotFoundPlain(t *testing.T) {
 		t.Fatalf("writeArtifactDescribeNotFound returned error: %v", err)
 	}
 
-	if msg != "foo/bar doesn't exist" {
+	if msg != "foo/bar doesn't exist in namespace main" {
 		t.Fatalf("unexpected message: %q", msg)
 	}
 
-	if got, want := buf.String(), "foo/bar doesn't exist\n"; got != want {
+	if got, want := buf.String(), "foo/bar doesn't exist in namespace main\n"; got != want {
 		t.Fatalf("unexpected plain output: got %q, want %q", got, want)
 	}
 }
