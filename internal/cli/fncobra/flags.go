@@ -10,9 +10,12 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	dur "namespacelabs.dev/foundation/internal/duration"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/module"
+	"namespacelabs.dev/integrations/proto/namespace/stdlib"
 )
 
 func EnvFromValue(cmd *cobra.Command, env *string) *cfg.Context {
@@ -117,4 +120,37 @@ func Duration(flags *pflag.FlagSet, name string, value time.Duration, usage stri
 	DurationVar(flags, &res, name, value, usage)
 
 	return &res
+}
+
+// ParseTimestampRange parses exclusive RFC3339 bounds. Nil or empty inputs are unbounded.
+func ParseTimestampRange(before, after *string) (*stdlib.TimestampRange, error) {
+	parse := func(bound string, value *string) (*timestamppb.Timestamp, error) {
+		if value == nil || *value == "" {
+			return nil, nil
+		}
+		t, err := time.Parse(time.RFC3339, *value)
+		if err != nil {
+			return nil, fnerrors.BadInputError("invalid %s timestamp: %w", bound, err)
+		}
+		ts := timestamppb.New(t.UTC())
+		if err := ts.CheckValid(); err != nil {
+			return nil, fnerrors.BadInputError("invalid %s timestamp: %w", bound, err)
+		}
+		return ts, nil
+	}
+	a, err := parse("after", after)
+	if err != nil {
+		return nil, err
+	}
+	b, err := parse("before", before)
+	if err != nil {
+		return nil, err
+	}
+	if a == nil && b == nil {
+		return nil, nil
+	}
+	if a != nil && b != nil && !a.AsTime().Before(b.AsTime()) {
+		return nil, fnerrors.BadInputError("after must be earlier than before")
+	}
+	return &stdlib.TimestampRange{After: a, Before: b}, nil
 }

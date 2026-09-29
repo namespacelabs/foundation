@@ -180,11 +180,11 @@ func newRegistryListCmd() *cobra.Command {
 		if len(args) > 0 && repository == "" {
 			repository = args[0]
 		}
-		createdAt, err := parseRegistryTimeRange("created", *createdAfter, *createdBefore)
+		createdAt, err := fncobra.ParseTimestampRange(createdBefore, createdAfter)
 		if err != nil {
 			return err
 		}
-		expiresAt, err := parseRegistryTimeRange("expires", *expiresAfter, *expiresBefore)
+		expiresAt, err := fncobra.ParseTimestampRange(expiresBefore, expiresAfter)
 		if err != nil {
 			return err
 		}
@@ -289,38 +289,6 @@ func newRegistryListCmd() *cobra.Command {
 	})
 
 	return cmd
-}
-
-func parseRegistryTimeRange(prefix, after, before string) (*stdlib.TimestampRange, error) {
-	if after == "" && before == "" {
-		return nil, nil
-	}
-	parse := func(bound, value string) (*timestamppb.Timestamp, error) {
-		if value == "" {
-			return nil, nil
-		}
-		t, err := time.Parse(time.RFC3339, value)
-		if err != nil {
-			return nil, fnerrors.BadInputError("invalid --%s_%s timestamp: %w", prefix, bound, err)
-		}
-		ts := timestamppb.New(t.UTC())
-		if err := ts.CheckValid(); err != nil {
-			return nil, fnerrors.BadInputError("invalid --%s_%s timestamp: %w", prefix, bound, err)
-		}
-		return ts, nil
-	}
-	a, err := parse("after", after)
-	if err != nil {
-		return nil, err
-	}
-	b, err := parse("before", before)
-	if err != nil {
-		return nil, err
-	}
-	if a != nil && b != nil && !a.AsTime().Before(b.AsTime()) {
-		return nil, fnerrors.BadInputError("--%s_after must be earlier than --%s_before", prefix, prefix)
-	}
-	return &stdlib.TimestampRange{After: a, Before: b}, nil
 }
 
 func listRegistryRepositories(ctx context.Context, client registryv1beta.ContainerRegistryServiceClient, limit int) ([]*registryv1beta.Repository, error) {

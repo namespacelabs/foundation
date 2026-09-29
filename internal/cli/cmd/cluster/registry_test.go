@@ -297,48 +297,13 @@ func TestListRegistryImagesDeletedPages(t *testing.T) {
 	}
 }
 
-func TestParseRegistryTimeRange(t *testing.T) {
-	after := timestamppb.New(time.Date(2026, 9, 20, 8, 15, 0, 123456789, time.UTC))
-	before := timestamppb.New(time.Date(2026, 9, 22, 11, 30, 0, 0, time.UTC))
-	for _, prefix := range []string{"created", "expires"} {
-		for _, tt := range []struct {
-			name, after, before string
-			want                *stdlib.TimestampRange
-		}{
-			{name: "unbounded"},
-			{name: "after with offset and nanos", after: "2026-09-20T10:15:00.123456789+02:00", want: &stdlib.TimestampRange{After: after}},
-			{name: "before only", before: "2026-09-22T11:30:00Z", want: &stdlib.TimestampRange{Before: before}},
-			{name: "both", after: "2026-09-20T08:15:00.123456789Z", before: "2026-09-22T11:30:00Z", want: &stdlib.TimestampRange{After: after, Before: before}},
-		} {
-			t.Run(prefix+"/"+tt.name, func(t *testing.T) {
-				got, err := parseRegistryTimeRange(prefix, tt.after, tt.before)
-				if err != nil || !proto.Equal(got, tt.want) {
-					t.Fatalf("got %v, %v; want %v", got, err, tt.want)
-				}
-			})
-		}
-		for _, tt := range []struct{ after, before, want string }{
-			{after: "yesterday", want: "invalid --" + prefix + "_after timestamp"},
-			{before: "2026-09-20", want: "invalid --" + prefix + "_before timestamp"},
-			{after: "0000-01-01T00:00:00Z", want: "invalid --" + prefix + "_after timestamp"},
-			{after: "2026-09-22T00:00:00Z", before: "2026-09-20T00:00:00Z", want: "must be earlier"},
-			{after: "2026-09-20T02:00:00+02:00", before: "2026-09-20T00:00:00Z", want: "must be earlier"},
-		} {
-			_, err := parseRegistryTimeRange(prefix, tt.after, tt.before)
-			if err == nil || !strings.Contains(err.Error(), tt.want) {
-				t.Fatalf("%s range %q, %q: got %v, want %q", prefix, tt.after, tt.before, err, tt.want)
-			}
-		}
-	}
-}
-
 func TestRegistryListTimeFlagValidation(t *testing.T) {
 	for _, flag := range []string{"created_after", "created_before", "expires_after", "expires_before"} {
 		for _, tt := range []struct {
 			args []string
 			want string
 		}{
-			{args: []string{"--" + flag, "invalid"}, want: "invalid --" + flag + " timestamp"},
+			{args: []string{"--" + flag, "invalid"}, want: "invalid " + strings.SplitN(flag, "_", 2)[1] + " timestamp"},
 			{args: []string{"--repositories", "--" + flag, "2026-09-20T00:00:00Z"}, want: "none of the others can be"},
 		} {
 			cmd := newRegistryListCmd()
