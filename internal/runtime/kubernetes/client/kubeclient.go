@@ -166,6 +166,11 @@ func NewClientFromResult(ctx context.Context, hostEnv *HostEnv, computed *config
 		return nil, err
 	}
 
+	// Deployment plans issue bursts of readiness, provider-log, and cleanup requests.
+	// client-go's 5 QPS default serializes these even against an idle API server.
+	restcfg.QPS = 50
+	restcfg.Burst = 100
+
 	clientset, err := k8s.NewForConfig(restcfg)
 	if err != nil {
 		return nil, err
