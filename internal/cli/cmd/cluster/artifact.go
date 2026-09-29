@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/aws/smithy-go/ptr"
@@ -25,6 +26,7 @@ import (
 	"github.com/mattn/go-zglob"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"golang.org/x/term"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -471,6 +473,9 @@ func newArtifactDownloadCmd() *cobra.Command {
 
 		start := time.Now()
 		if err := downloader.DownloadArtifact(ctx, cli, namespace, src, downloadTo, downloader.Options{Resume: resume}); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return fnerrors.Newf("%s not found in namespace %q", src, namespace)
+			}
 			return err
 		}
 
@@ -693,7 +698,7 @@ type artifactDescribeErrorJSONOutput struct {
 }
 
 func writeArtifactDescribeNotFound(w io.Writer, output, path, namespace string) (string, error) {
-	msg := fmt.Sprintf("%s doesn't exist", path)
+	msg := fmt.Sprintf("%s doesn't exist in namespace %s", path, namespace)
 
 	switch output {
 	case "json":
@@ -943,8 +948,12 @@ nsc artifact list --output json`,
 				return nil
 			}
 
+			showTimestamps := true
+			if width, _, err := term.GetSize(int(syscall.Stdout)); err == nil {
+				showTimestamps = width >= 140
+			}
+
 			cols := []tui.Column{
-				{Key: "id", Title: "ID", MinWidth: 20, MaxWidth: math.MaxInt},
 				{Key: "path", Title: "Path", MinWidth: 20, MaxWidth: math.MaxInt},
 				{Key: "namespace", Title: "Namespace", MinWidth: 10, MaxWidth: math.MaxInt},
 				{Key: "size", Title: "Size", MinWidth: 8, MaxWidth: math.MaxInt},
@@ -952,32 +961,32 @@ nsc artifact list --output json`,
 			if *includeExpired {
 				cols = append(cols, tui.Column{Key: "status", Title: "Status", MinWidth: 10, MaxWidth: math.MaxInt})
 			}
-			cols = append(cols,
-				tui.Column{Key: "created", Title: "Created At", MinWidth: 20, MaxWidth: math.MaxInt},
-				tui.Column{Key: "expires", Title: "Expires", MinWidth: 20, MaxWidth: math.MaxInt},
-			)
+			if showTimestamps {
+				cols = append(cols,
+					tui.Column{Key: "created", Title: "Created At", MinWidth: 20, MaxWidth: math.MaxInt},
+					tui.Column{Key: "expires", Title: "Expires", MinWidth: 20, MaxWidth: math.MaxInt},
+				)
+			}
 
 			rows := make([]tui.Row, 0, len(artifacts))
 			for _, artifact := range artifacts {
-				created := "-"
-				if artifact.GetCreatedAt() != nil {
-					created = artifact.GetCreatedAt().AsTime().Format(time.RFC3339)
-				}
-				expires := "-"
-				if artifact.GetExpiresAt() != nil {
-					expires = artifact.GetExpiresAt().AsTime().Format(time.RFC3339)
-				}
-
 				row := tui.Row{
-					"id":        artifact.GetId(),
 					"path":      artifact.GetPath(),
 					"namespace": artifact.GetNamespace(),
 					"size":      humanize.Bytes(uint64(artifact.GetSize())),
-					"created":   created,
-					"expires":   expires,
 				}
 				if *includeExpired {
 					row["status"] = artifact.GetStatus().String()
+				}
+				if showTimestamps {
+					row["created"] = "-"
+					if artifact.GetCreatedAt() != nil {
+						row["created"] = artifact.GetCreatedAt().AsTime().Format(time.RFC3339)
+					}
+					row["expires"] = "-"
+					if artifact.GetExpiresAt() != nil {
+						row["expires"] = artifact.GetExpiresAt().AsTime().Format(time.RFC3339)
+					}
 				}
 				rows = append(rows, row)
 			}
