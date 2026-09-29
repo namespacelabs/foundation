@@ -166,12 +166,34 @@ func newRegistryListCmd() *cobra.Command {
 	matchRepo := cmd.Flags().String("repository", "", "Filter images by repository name")
 	includeDeleted := cmd.Flags().Bool("include_deleted", false, "Include deleted images in results")
 	limit := cmd.Flags().Int("limit", 0, "The maximum number of images/repositories to list. Fewer entries might be returned")
+	createdAfter := cmd.Flags().String("created_after", "", "Only list images created strictly after this RFC3339 timestamp")
+	createdBefore := cmd.Flags().String("created_before", "", "Only list images created strictly before this RFC3339 timestamp")
+	expiresAfter := cmd.Flags().String("expires_after", "", "Only list images expiring strictly after this RFC3339 timestamp; excludes non-expiring images")
+	expiresBefore := cmd.Flags().String("expires_before", "", "Only list images expiring strictly before this RFC3339 timestamp; excludes non-expiring images")
+	for _, flag := range []string{"created_after", "created_before", "expires_after", "expires_before"} {
+		cmd.MarkFlagsMutuallyExclusive("repositories", flag)
+	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		// Use positional argument if provided, unless --repository flag is explicitly set
 		repository := *matchRepo
 		if len(args) > 0 && repository == "" {
 			repository = args[0]
+		}
+		createdAt, err := fncobra.ParseTimestampRange(createdBefore, createdAfter)
+		if err != nil {
+			return err
+		}
+		expiresAt, err := fncobra.ParseTimestampRange(expiresBefore, expiresAfter)
+		if err != nil {
+			return err
+		}
+		req := &registryv1beta.ListImagesRequest{CreatedAt: createdAt, ExpiresAt: expiresAt}
+		if repository != "" {
+			req.MatchRepository = &stdlib.StringMatcher{
+				Values: []string{repository},
+				Op:     stdlib.StringMatcher_IS_ANY_OF,
+			}
 		}
 		tokenSource, err := fnapi.FetchToken(ctx)
 		if err != nil {
@@ -190,12 +212,7 @@ func newRegistryListCmd() *cobra.Command {
 		defer client.Close()
 
 		if *repositories {
-			req := &registryv1beta.ListRepositoriesRequest{}
-			if *limit > 0 {
-				req.MaxEntries = int64(*limit)
-			}
-
-			resp, err := client.ContainerRegistry.ListRepositories(ctx, req)
+			repos, err := listRegistryRepositories(ctx, client.ContainerRegistry, *limit)
 			if err != nil {
 				return fnerrors.InvocationError("registry", "failed to list repositories: %w", err)
 			}
@@ -204,7 +221,7 @@ func newRegistryListCmd() *cobra.Command {
 			case "json":
 				var b bytes.Buffer
 				fmt.Fprint(&b, "[")
-				for k, repo := range resp.Repositories {
+				for k, repo := range repos {
 					if k > 0 {
 						fmt.Fprint(&b, ",")
 					}
@@ -222,38 +239,14 @@ func newRegistryListCmd() *cobra.Command {
 
 				return nil
 			case "table":
-				return printRepositoriesTable(ctx, resp.Repositories)
+				return printRepositoriesTable(ctx, repos)
 			default:
 				return fnerrors.BadInputError("invalid output format: %s", *output)
 			}
 		} else {
-			req := &registryv1beta.ListImagesRequest{}
-			if repository != "" {
-				req.MatchRepository = &stdlib.StringMatcher{
-					Values: []string{repository},
-					Op:     stdlib.StringMatcher_IS_ANY_OF,
-				}
-			}
-
-			if *limit > 0 {
-				req.MaxEntries = int64(*limit)
-			}
-
-			resp, err := client.ContainerRegistry.ListImages(ctx, req)
+			images, err := listRegistryImages(ctx, client.ContainerRegistry, req, *includeDeleted, *limit)
 			if err != nil {
 				return fnerrors.InvocationError("registry", "failed to list images: %w", err)
-			}
-
-			// Filter out deleted images unless include_deleted is set
-			images := resp.Images
-			if !*includeDeleted {
-				var filtered []*registryv1beta.Image
-				for _, img := range resp.Images {
-					if img.DeletedAt == nil {
-						filtered = append(filtered, img)
-					}
-				}
-				images = filtered
 			}
 
 			switch *output {
@@ -296,6 +289,60 @@ func newRegistryListCmd() *cobra.Command {
 	})
 
 	return cmd
+}
+
+func listRegistryRepositories(ctx context.Context, client registryv1beta.ContainerRegistryServiceClient, limit int) ([]*registryv1beta.Repository, error) {
+	var repositories []*registryv1beta.Repository
+	req := &registryv1beta.ListRepositoriesRequest{}
+	for {
+		req.MaxEntries = 1000
+		if limit > 0 {
+			req.MaxEntries = min(req.MaxEntries, int64(limit-len(repositories)))
+		}
+		resp, err := client.ListRepositories(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+		repositories = append(repositories, resp.Repositories...)
+		if limit > 0 && len(repositories) >= limit {
+			return repositories[:limit], nil
+		}
+		if len(resp.PaginationCursor) == 0 {
+			return repositories, nil
+		}
+		req.PaginationCursor = resp.PaginationCursor
+	}
+}
+
+func listRegistryImages(ctx context.Context, client registryv1beta.ContainerRegistryServiceClient, req *registryv1beta.ListImagesRequest, includeDeleted bool, limit int) ([]*registryv1beta.Image, error) {
+	var images []*registryv1beta.Image
+	for {
+		req.MaxEntries = 10000
+		if limit > 0 {
+			maxEntries := limit
+			// Keep pages full when filtering, to avoid tiny requests through deleted images.
+			if includeDeleted {
+				maxEntries -= len(images)
+			}
+			req.MaxEntries = min(req.MaxEntries, int64(maxEntries))
+		}
+		resp, err := client.ListImages(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+		for _, img := range resp.Images {
+			if includeDeleted || img.DeletedAt == nil {
+				images = append(images, img)
+			}
+		}
+		if limit > 0 && len(images) >= limit {
+			return images[:limit], nil
+		}
+		if len(resp.PaginationCursor) == 0 {
+			return images, nil
+		}
+		req.PaginationCursor = resp.PaginationCursor
+	}
 }
 
 func newRegistryDescribeCmd() *cobra.Command {

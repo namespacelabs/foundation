@@ -13,14 +13,12 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/integrations/api/compute"
 	computev1beta "namespacelabs.dev/integrations/proto/namespace/cloud/compute/v1beta"
-	"namespacelabs.dev/integrations/proto/namespace/stdlib"
 )
 
 var (
@@ -385,23 +383,9 @@ func newEgressLogsCmd() *cobra.Command {
 			return fnerrors.Newf("Connection error %w", err)
 		}
 
-		var timestampRange *stdlib.TimestampRange
-		if *after != "" || *before != "" {
-			timestampRange = &stdlib.TimestampRange{}
-			if *after != "" {
-				t, err := time.Parse(time.RFC3339, *after)
-				if err != nil {
-					return fnerrors.Newf("invalid --after timestamp: %w", err)
-				}
-				timestampRange.After = timestamppb.New(t.UTC())
-			}
-			if *before != "" {
-				t, err := time.Parse(time.RFC3339, *before)
-				if err != nil {
-					return fnerrors.Newf("invalid --before timestamp: %w", err)
-				}
-				timestampRange.Before = timestamppb.New(t.UTC())
-			}
+		timestampRange, err := fncobra.ParseTimestampRange(before, after)
+		if err != nil {
+			return err
 		}
 
 		var records []*computev1beta.EgressRecord
