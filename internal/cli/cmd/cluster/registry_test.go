@@ -120,10 +120,11 @@ func TestListRegistryImages(t *testing.T) {
 	}{
 		{name: "all pages", max: []int64{10000, 10000, 10000, 10000}, want: []string{"live1", "live2", "live3"}},
 		{name: "limit above page size", limit: 20000, max: []int64{10000, 10000, 10000, 10000}, want: []string{"live1", "live2", "live3"}},
-		{name: "limit at page size", limit: 10000, max: []int64{10000, 10000, 10000, 10000}, want: []string{"live1", "live2", "live3"}},
-		{name: "filtered pages and repository", repository: "app", limit: 2, max: []int64{2, 2, 2}, want: []string{"live1", "live2"}},
+		{name: "limit at page size", limit: 10000, max: []int64{10000, 10000, 9999, 9998}, want: []string{"live1", "live2", "live3"}},
+		{name: "filtered pages and repository", repository: "app", limit: 2, max: []int64{2, 2, 1}, want: []string{"live1", "live2"}},
 		{name: "include deleted", includeDeleted: true, limit: 3, max: []int64{3, 2}, want: []string{"deleted1", "live1", "deleted2"}},
-		{name: "fewer than limit", limit: 9, max: []int64{9, 9, 9, 9}, want: []string{"live1", "live2", "live3"}},
+		{name: "include deleted unlimited", includeDeleted: true, max: []int64{10000, 10000, 10000, 10000}, want: []string{"deleted1", "live1", "deleted2", "live2", "live3"}},
+		{name: "fewer than limit", limit: 9, max: []int64{9, 9, 8, 7}, want: []string{"live1", "live2", "live3"}},
 		{name: "later page error", max: []int64{10000, 10000, 10000}, failAt: 3, want: []string{"live1"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -144,6 +145,13 @@ func TestListRegistryImages(t *testing.T) {
 				if string(req.PaginationCursor) != cursors[i] || req.MaxEntries != tt.max[i] {
 					t.Fatalf("request %d: got %v, want cursor %q, max %d", i, req, cursors[i], tt.max[i])
 				}
+				wantMode := registryv1beta.ListImagesRequest_EXCLUDE_DELETED
+				if tt.includeDeleted {
+					wantMode = registryv1beta.ListImagesRequest_INCLUDE_DELETED
+				}
+				if req.DeletionFilter != wantMode {
+					t.Fatalf("request %d: deletion mode = %v, want %v", i, req.DeletionFilter, wantMode)
+				}
 				if tt.repository == "" {
 					if req.MatchRepository != nil {
 						t.Fatalf("unexpected repository filter: %v", req.MatchRepository)
@@ -153,6 +161,15 @@ func TestListRegistryImages(t *testing.T) {
 				}
 				if calls == tt.failAt {
 					return nil, wantErr
+				}
+				if !tt.includeDeleted {
+					var live []*registryv1beta.Image
+					for _, img := range pages[i].Images {
+						if img.DeletedAt == nil {
+							live = append(live, img)
+						}
+					}
+					pages[i].Images = live
 				}
 				if int64(len(pages[i].Images)) > req.MaxEntries {
 					t.Fatal("fixture exceeds requested page size")
@@ -184,10 +201,12 @@ func TestListRegistryImages(t *testing.T) {
 
 func TestRegistryFullPageBoundaries(t *testing.T) {
 	for _, kind := range []struct {
-		name string
-		cap  int
+		name           string
+		cap            int
+		includeDeleted bool
 	}{
 		{name: "images", cap: 10000},
+		{name: "images including deleted", cap: 10000, includeDeleted: true},
 		{name: "repositories", cap: 1000},
 	} {
 		for _, tt := range []struct {
@@ -231,7 +250,11 @@ func TestRegistryFullPageBoundaries(t *testing.T) {
 						start, end, cursor := nextPage(req.PaginationCursor, req.MaxEntries)
 						resp := &registryv1beta.ListImagesResponse{PaginationCursor: cursor}
 						for i := start; i < end; i++ {
-							resp.Images = append(resp.Images, &registryv1beta.Image{Repository: "app", Digest: fmt.Sprint(i)})
+							img := &registryv1beta.Image{Repository: "app", Digest: fmt.Sprint(i)}
+							if kind.includeDeleted && i%2 == 0 {
+								img.DeletedAt = timestamppb.New(time.Unix(1, 0))
+							}
+							resp.Images = append(resp.Images, img)
 						}
 						return resp, nil
 					},
@@ -245,9 +268,9 @@ func TestRegistryFullPageBoundaries(t *testing.T) {
 					},
 				}
 				var got []string
-				if kind.name == "images" {
+				if kind.name != "repositories" {
 					req := &registryv1beta.ListImagesRequest{MatchRepository: &stdlib.StringMatcher{Values: []string{"app"}, Op: stdlib.StringMatcher_IS_ANY_OF}}
-					images, err := collectRegistryResults(listRegistryImages(context.Background(), client, req, true, tt.limit))
+					images, err := collectRegistryResults(listRegistryImages(context.Background(), client, req, kind.includeDeleted, tt.limit))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -276,20 +299,24 @@ func TestRegistryFullPageBoundaries(t *testing.T) {
 	}
 }
 
-func TestListRegistryImagesDeletedPages(t *testing.T) {
+func TestListRegistryImagesRemainingLimit(t *testing.T) {
 	calls := 0
 	client := registryListClient{images: func(req *registryv1beta.ListImagesRequest) (*registryv1beta.ListImagesResponse, error) {
 		calls++
-		if calls > 2 || req.MaxEntries != 5000 {
-			t.Fatalf("request %d: max = %d, want full 5000-entry pages", calls, req.MaxEntries)
+		wantMax := int64(5000)
+		if calls == 2 {
+			wantMax = 1
+		}
+		if calls > 2 || req.MaxEntries != wantMax || req.DeletionFilter != registryv1beta.ListImagesRequest_EXCLUDE_DELETED {
+			t.Fatalf("request %d: got %v, want max %d and EXCLUDE_DELETED", calls, req, wantMax)
 		}
 		resp := &registryv1beta.ListImagesResponse{PaginationCursor: []byte("more")}
-		for i := 0; i < 5000; i++ {
-			img := &registryv1beta.Image{Digest: fmt.Sprint((calls-1)*5000 + i)}
-			if (calls == 1 && i == 4999) || (calls == 2 && i < 4998) {
-				img.DeletedAt = timestamppb.Now()
+		if calls == 1 {
+			for i := 0; i < 4999; i++ {
+				resp.Images = append(resp.Images, &registryv1beta.Image{Digest: fmt.Sprint(i)})
 			}
-			resp.Images = append(resp.Images, img)
+		} else {
+			resp.Images = []*registryv1beta.Image{{Digest: "4999"}}
 		}
 		return resp, nil
 	}}
@@ -302,9 +329,6 @@ func TestListRegistryImagesDeletedPages(t *testing.T) {
 	}
 	for i, img := range images {
 		want := fmt.Sprint(i)
-		if i == 4999 {
-			want = "9998"
-		}
 		if img.DeletedAt != nil || img.Digest != want {
 			t.Fatalf("image %d = %v, want live image %s", i, img, want)
 		}
@@ -361,38 +385,44 @@ func TestRegistryListTimeFlagValidation(t *testing.T) {
 }
 
 func TestListRegistryImagesTimeFilters(t *testing.T) {
-	created := &stdlib.TimestampRange{After: timestamppb.New(time.Unix(100, 123)), Before: timestamppb.New(time.Unix(200, 456))}
-	expires := &stdlib.TimestampRange{After: timestamppb.New(time.Unix(300, 789)), Before: timestamppb.New(time.Unix(500, 987))}
-	req := &registryv1beta.ListImagesRequest{
-		CreatedAt: proto.Clone(created).(*stdlib.TimestampRange),
-		ExpiresAt: proto.Clone(expires).(*stdlib.TimestampRange),
-	}
-	calls := 0
-	client := registryListClient{images: func(req *registryv1beta.ListImagesRequest) (*registryv1beta.ListImagesResponse, error) {
-		calls++
-		if calls > 3 {
-			t.Fatal("unexpected extra request")
-		}
-		// Check the actual protobuf wire representation, including the new field.
-		wire, err := proto.Marshal(req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		decoded := &registryv1beta.ListImagesRequest{}
-		if err := proto.Unmarshal(wire, decoded); err != nil {
-			t.Fatal(err)
-		}
-		if !proto.Equal(decoded.CreatedAt, created) || !proto.Equal(decoded.ExpiresAt, expires) {
-			t.Fatalf("request %d changed timestamp filters: %v", calls, decoded)
-		}
-		if calls < 3 {
-			return &registryv1beta.ListImagesResponse{PaginationCursor: []byte(fmt.Sprint(calls))}, nil
-		}
-		return &registryv1beta.ListImagesResponse{Images: []*registryv1beta.Image{{Digest: "match"}}}, nil
-	}}
-	images, err := collectRegistryResults(listRegistryImages(context.Background(), client, req, false, 1))
-	if err != nil || calls != 3 || len(images) != 1 || images[0].Digest != "match" {
-		t.Fatalf("got %v, %v in %d calls", images, err, calls)
+	for _, mode := range []registryv1beta.ListImagesRequest_DeletionFilter{registryv1beta.ListImagesRequest_EXCLUDE_DELETED, registryv1beta.ListImagesRequest_INCLUDE_DELETED} {
+		t.Run(mode.String(), func(t *testing.T) {
+			created := &stdlib.TimestampRange{After: timestamppb.New(time.Unix(100, 123)), Before: timestamppb.New(time.Unix(200, 456))}
+			expires := &stdlib.TimestampRange{After: timestamppb.New(time.Unix(300, 789)), Before: timestamppb.New(time.Unix(500, 987))}
+			repository := &stdlib.StringMatcher{Op: stdlib.StringMatcher_IS_ANY_OF, Values: []string{"app"}}
+			req := &registryv1beta.ListImagesRequest{
+				CreatedAt:       proto.Clone(created).(*stdlib.TimestampRange),
+				ExpiresAt:       proto.Clone(expires).(*stdlib.TimestampRange),
+				MatchRepository: proto.Clone(repository).(*stdlib.StringMatcher),
+			}
+			calls := 0
+			client := registryListClient{images: func(req *registryv1beta.ListImagesRequest) (*registryv1beta.ListImagesResponse, error) {
+				calls++
+				if calls > 3 {
+					t.Fatal("unexpected extra request")
+				}
+				// Check the actual protobuf wire representation, including the new field.
+				wire, err := proto.Marshal(req)
+				if err != nil {
+					t.Fatal(err)
+				}
+				decoded := &registryv1beta.ListImagesRequest{}
+				if err := proto.Unmarshal(wire, decoded); err != nil {
+					t.Fatal(err)
+				}
+				if !proto.Equal(decoded.CreatedAt, created) || !proto.Equal(decoded.ExpiresAt, expires) || !proto.Equal(decoded.MatchRepository, repository) || decoded.DeletionFilter != mode {
+					t.Fatalf("request %d changed filters: %v", calls, decoded)
+				}
+				if calls < 3 {
+					return &registryv1beta.ListImagesResponse{PaginationCursor: []byte(fmt.Sprint(calls))}, nil
+				}
+				return &registryv1beta.ListImagesResponse{Images: []*registryv1beta.Image{{Digest: "match"}}}, nil
+			}}
+			images, err := collectRegistryResults(listRegistryImages(context.Background(), client, req, mode == registryv1beta.ListImagesRequest_INCLUDE_DELETED, 1))
+			if err != nil || calls != 3 || len(images) != 1 || images[0].Digest != "match" {
+				t.Fatalf("got %v, %v in %d calls", images, err, calls)
+			}
+		})
 	}
 }
 

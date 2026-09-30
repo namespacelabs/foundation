@@ -285,16 +285,15 @@ func listRegistryRepositories(ctx context.Context, client registryv1beta.Contain
 
 func listRegistryImages(ctx context.Context, client registryv1beta.ContainerRegistryServiceClient, req *registryv1beta.ListImagesRequest, includeDeleted bool, limit int) iter.Seq2[*registryv1beta.Image, error] {
 	return func(yield func(*registryv1beta.Image, error) bool) {
+		req.DeletionFilter = registryv1beta.ListImagesRequest_EXCLUDE_DELETED
+		if includeDeleted {
+			req.DeletionFilter = registryv1beta.ListImagesRequest_INCLUDE_DELETED
+		}
 		count := 0
 		for {
 			req.MaxEntries = 10000
 			if limit > 0 {
-				maxEntries := limit
-				// Keep pages full when filtering, to avoid tiny requests through deleted images.
-				if includeDeleted {
-					maxEntries -= count
-				}
-				req.MaxEntries = min(req.MaxEntries, int64(maxEntries))
+				req.MaxEntries = min(req.MaxEntries, int64(limit-count))
 			}
 			resp, err := client.ListImages(ctx, req)
 			if err != nil {
