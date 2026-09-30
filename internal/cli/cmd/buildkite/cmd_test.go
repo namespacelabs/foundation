@@ -16,9 +16,11 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/encoding/protowire"
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/std/tasks"
 	buildkitepb "namespacelabs.dev/integrations/proto/namespace/cloud/buildkite"
 	"namespacelabs.dev/integrations/proto/namespace/cloud/buildkite/buildkiteconnect"
+	iamv1beta "namespacelabs.dev/integrations/proto/namespace/cloud/iam/v1beta"
 )
 
 type fakeQueueServiceClient struct {
@@ -59,7 +61,7 @@ func TestQueuesList(t *testing.T) {
 	for _, name := range []string{"queue", "queues"} {
 		t.Run(name, func(t *testing.T) {
 			fake := installFakeClient(t)
-			stdout, err := runBuildkiteCommand(t, name, "list")
+			stdout, err := runBuildkiteCommand(t, name, "list", "-o", "json")
 			if err != nil {
 				t.Fatalf("command failed: %v", err)
 			}
@@ -98,19 +100,137 @@ func TestQueuesAliasHidden(t *testing.T) {
 	}
 }
 
-func TestQueuesGet(t *testing.T) {
+func TestQueuesGetAliasHidden(t *testing.T) {
+	cmd := NewBuildkiteCmd()
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
+	cmd.SetArgs([]string{"queue", "--help"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("command failed: %v", err)
+	}
+	if !strings.Contains(output.String(), "describe") {
+		t.Fatalf("output missing describe command: %s", &output)
+	}
+	for _, line := range strings.Split(output.String(), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) > 0 && fields[0] == "get" {
+			t.Fatalf("output advertises hidden get alias: %s", &output)
+		}
+	}
+}
+
+func TestQueuesDescribeJSON(t *testing.T) {
+	for _, name := range []string{"describe", "get"} {
+		t.Run(name, func(t *testing.T) {
+			fake := installFakeClient(t)
+			fake.currentSettings.EgressPolicyTag = "restricted"
+			stdout, err := runBuildkiteCommand(t, "queue", name, "queue-1", "--output", "json")
+			if err != nil {
+				t.Fatalf("command failed: %v", err)
+			}
+			output := &buildkitepb.QueueResponse{}
+			if err := protojson.Unmarshal(stdout, output); err != nil {
+				t.Fatalf("decode output: %v", err)
+			}
+			if fake.getQueueID != "queue-1" || output.GetQueue().GetId() != "queue-1" || output.GetQueue().GetSettings().GetEgressPolicyTag() != "restricted" {
+				t.Fatalf("queue ID = %q, output = %#v", fake.getQueueID, output)
+			}
+		})
+	}
+}
+
+func TestQueuesDescribePlain(t *testing.T) {
 	fake := installFakeClient(t)
 	fake.currentSettings.EgressPolicyTag = "restricted"
-	stdout, err := runBuildkiteCommand(t, "queue", "get", "queue-1")
+	fake.currentSettings.Permissions = &buildkitepb.Permissions{
+		PermissionsType: buildkitepb.PermissionsType_CUSTOM,
+		WorkloadPermissions: []*iamv1beta.Permission{
+			{ResourceType: "vault/object", ResourceId: "secret-1", Actions: []string{"read", "list"}},
+		},
+	}
+	stdout, err := runBuildkiteCommand(t, "queue", "describe", "queue-1")
 	if err != nil {
 		t.Fatalf("command failed: %v", err)
 	}
-	output := &buildkitepb.QueueResponse{}
-	if err := protojson.Unmarshal(stdout, output); err != nil {
-		t.Fatalf("decode output: %v", err)
+	for _, want := range []string{
+		"Queue ID:      queue-1",
+		"Name:          default",
+		"Permissions:   CUSTOM",
+		"Egress Policy: restricted",
+		"Resource: vault/object secret-1",
+		"Actions:  read, list",
+	} {
+		if !strings.Contains(string(stdout), want) {
+			t.Errorf("output missing %q:\n%s", want, stdout)
+		}
 	}
-	if fake.getQueueID != "queue-1" || output.GetQueue().GetId() != "queue-1" || output.GetQueue().GetSettings().GetEgressPolicyTag() != "restricted" {
-		t.Fatalf("queue ID = %q, output = %#v", fake.getQueueID, output)
+}
+
+func TestQueuesDescribePlainOmitsUnsetSettings(t *testing.T) {
+	fake := installFakeClient(t)
+	fake.currentSettings = nil
+	stdout, err := runBuildkiteCommand(t, "queue", "describe", "queue-1")
+	if err != nil {
+		t.Fatalf("command failed: %v", err)
+	}
+	for _, unwanted := range []string{"Settings:", "Permissions:", "Egress Policy:"} {
+		if strings.Contains(string(stdout), unwanted) {
+			t.Errorf("output contains %q:\n%s", unwanted, stdout)
+		}
+	}
+}
+
+func TestQueuesDescribeSpecRoundTripsThroughUpdate(t *testing.T) {
+	fake := installFakeClient(t)
+	fake.currentSettings.EgressPolicyTag = "restricted"
+	fake.currentSettings.Permissions = &buildkitepb.Permissions{
+		PermissionsType: buildkitepb.PermissionsType_CUSTOM,
+		WorkloadPermissions: []*iamv1beta.Permission{
+			{ResourceType: "vault/object", ResourceId: "secret-1", Actions: []string{"read"}},
+		},
+	}
+	stdout, err := runBuildkiteCommand(t, "queue", "describe", "queue-1", "-o", "spec")
+	if err != nil {
+		t.Fatalf("command failed: %v", err)
+	}
+	if strings.Contains(string(stdout), "queue-1") || !strings.Contains(string(stdout), "egress_policy_tag") {
+		t.Fatalf("spec output = %s, want only settings with proto field names", stdout)
+	}
+
+	specPath := filepath.Join(t.TempDir(), "spec.json")
+	if err := os.WriteFile(specPath, stdout, 0o600); err != nil {
+		t.Fatalf("write spec file: %v", err)
+	}
+	if _, err := runBuildkiteCommand(t, "queue", "update", "queue-1", "--spec_file", specPath); err != nil {
+		t.Fatalf("update failed: %v", err)
+	}
+	if !proto.Equal(fake.updateRequest.GetSettings(), fake.currentSettings) {
+		t.Fatalf("updated settings = %v, want %v", fake.updateRequest.GetSettings(), fake.currentSettings)
+	}
+}
+
+func TestQueuesDescribeSpecEmptySettings(t *testing.T) {
+	fake := installFakeClient(t)
+	fake.currentSettings = nil
+	stdout, err := runBuildkiteCommand(t, "queue", "describe", "queue-1", "-o", "spec")
+	if err != nil {
+		t.Fatalf("command failed: %v", err)
+	}
+	if got := strings.TrimSpace(string(stdout)); got != "{}" {
+		t.Fatalf("spec output = %q, want {}", got)
+	}
+}
+
+func TestQueuesInvalidOutput(t *testing.T) {
+	installFakeClient(t)
+	for _, args := range [][]string{{"list", "-o", "spec"}, {"describe", "queue-1", "-o", "yaml"}, {"update", "queue-1", "--reset", "-o", "spec"}} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			_, err := runBuildkiteCommand(t, append([]string{"queue"}, args...)...)
+			if err == nil || !strings.Contains(err.Error(), "invalid --output") {
+				t.Fatalf("error = %v, want invalid output error", err)
+			}
+		})
 	}
 }
 
@@ -124,6 +244,7 @@ func TestQueuesUpdateCustomPermissions(t *testing.T) {
 	stdout, err := runBuildkiteCommand(t,
 		"queue", "update", "queue-1",
 		"--workload_permissions", `{"resource_type":"vault/object","resource_id":"secret-1","actions":["read"]}`,
+		"-o", "json",
 	)
 	if err != nil {
 		t.Fatalf("command failed: %v", err)
@@ -156,6 +277,19 @@ func TestQueuesUpdateCustomPermissions(t *testing.T) {
 	}
 	if output.GetQueue().GetSettings().GetPermissions().GetPermissionsType() != buildkitepb.PermissionsType_CUSTOM {
 		t.Fatalf("output = %#v, want updated settings", output)
+	}
+}
+
+func TestQueuesUpdatePlainOutput(t *testing.T) {
+	installFakeClient(t)
+	stdout, err := runBuildkiteCommand(t, "queue", "update", "queue-1", "--egress_policy", "restricted")
+	if err != nil {
+		t.Fatalf("command failed: %v", err)
+	}
+	for _, want := range []string{"Queue updated successfully:", "Queue ID:      queue-1", "Permissions:   CUSTOM"} {
+		if !strings.Contains(string(stdout), want) {
+			t.Errorf("output missing %q:\n%s", want, stdout)
+		}
 	}
 }
 

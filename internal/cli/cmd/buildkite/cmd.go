@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
@@ -15,6 +16,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	buildkitepb "namespacelabs.dev/integrations/proto/namespace/cloud/buildkite"
@@ -43,7 +45,11 @@ func newQueuesCmd() *cobra.Command {
 		Use:   "queue",
 		Short: "Manage Namespace-managed Buildkite queues.",
 	}
-	cmd.AddCommand(newQueuesListCmd(), newQueuesGetCmd(), newQueuesUpdateCmd())
+	cmd.AddCommand(newQueuesListCmd(), newQueuesDescribeCmd(), newQueuesUpdateCmd())
+	get := newQueuesDescribeCmd()
+	get.Use = "get <queue-id>"
+	get.Hidden = true
+	cmd.AddCommand(get)
 	return cmd
 }
 
@@ -51,9 +57,16 @@ func newQueuesListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List Buildkite queues registered for the current workspace.",
-		Args:  cobra.NoArgs,
+		Example: `  nsc buildkite queue list
+  nsc buildkite queue list -o json`,
+		Args: cobra.NoArgs,
 	}
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
+		if *output != "plain" && *output != "json" {
+			return fnerrors.BadInputError("invalid --output %q: must be one of plain or json", *output)
+		}
 		client, err := newQueueServiceClient(ctx)
 		if err != nil {
 			return err
@@ -62,26 +75,45 @@ func newQueuesListCmd() *cobra.Command {
 		if err != nil {
 			return fnerrors.InvocationError("buildkite queue list", "failed to list queues: %w", err)
 		}
-		return printJSON(ctx, resp.Msg)
+		if *output == "json" {
+			return printJSON(ctx, resp.Msg)
+		}
+		return printQueueTable(ctx, resp.Msg.GetQueues())
 	})
 }
 
-func newQueuesGetCmd() *cobra.Command {
+func newQueuesDescribeCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <queue-id>",
-		Short: "Get a Namespace-managed Buildkite queue.",
-		Args:  cobra.ExactArgs(1),
+		Use:   "describe <queue-id>",
+		Short: "Describe a Namespace-managed Buildkite queue.",
+		Example: `  nsc buildkite queue describe <queue-id>
+  nsc buildkite queue describe <queue-id> -o json
+  nsc buildkite queue describe <queue-id> -o spec > spec.json
+  nsc buildkite queue update <queue-id> --spec_file spec.json`,
+		Args: cobra.ExactArgs(1),
 	}
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain, json, or spec. spec prints the queue settings in the format accepted by 'update --spec_file'.")
+
 	return fncobra.Cmd(cmd).DoWithArgs(func(ctx context.Context, args []string) error {
+		if *output != "plain" && *output != "json" && *output != "spec" {
+			return fnerrors.BadInputError("invalid --output %q: must be one of plain, json, or spec", *output)
+		}
 		client, err := newQueueServiceClient(ctx)
 		if err != nil {
 			return err
 		}
 		resp, err := client.GetQueue(ctx, connect.NewRequest(&buildkitepb.GetQueueRequest{QueueId: args[0]}))
 		if err != nil {
-			return fnerrors.InvocationError("buildkite queue get", "failed to get queue: %w", err)
+			return fnerrors.InvocationError("buildkite queue describe", "failed to get queue: %w", err)
 		}
-		return printJSON(ctx, resp.Msg)
+		switch *output {
+		case "json":
+			return printJSON(ctx, resp.Msg)
+		case "spec":
+			return printQueueSpec(ctx, resp.Msg.GetQueue().GetSettings())
+		default:
+			return printQueueDetails(ctx, "Queue Details", resp.Msg.GetQueue())
+		}
 	})
 }
 
@@ -89,7 +121,9 @@ func newQueuesUpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <queue-id>",
 		Short: "Update settings for a Namespace-managed Buildkite queue.",
-		Args:  cobra.ExactArgs(1),
+		Example: `  nsc buildkite queue update <queue-id> --egress_policy restricted
+  nsc buildkite queue update <queue-id> --spec_file spec.json -o json`,
+		Args: cobra.ExactArgs(1),
 	}
 
 	specFile := cmd.Flags().String("spec_file", "", "Path to JSON file containing the queue settings. When provided, individual flags are ignored.")
@@ -104,8 +138,19 @@ func newQueuesUpdateCmd() *cobra.Command {
 	cmd.MarkFlagsMutuallyExclusive("reset", "remove_egress_policy")
 	cmd.MarkFlagsMutuallyExclusive("workload_permissions", "reset_permissions")
 	cmd.MarkFlagsMutuallyExclusive("egress_policy", "remove_egress_policy")
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
 	return fncobra.Cmd(cmd).DoWithArgs(func(ctx context.Context, args []string) error {
+		if *output != "plain" && *output != "json" {
+			return fnerrors.BadInputError("invalid --output %q: must be one of plain or json", *output)
+		}
+		printResult := func(resp *buildkitepb.QueueResponse) error {
+			if *output == "json" {
+				return printJSON(ctx, resp)
+			}
+			return printQueueDetails(ctx, "Queue updated successfully", resp.GetQueue())
+		}
+
 		if *specFile != "" {
 			settings, err := readQueueSettingsSpecFile(*specFile)
 			if err != nil {
@@ -119,7 +164,7 @@ func newQueuesUpdateCmd() *cobra.Command {
 			if err != nil {
 				return fnerrors.InvocationError("buildkite queue update", "failed to update queue: %w", err)
 			}
-			return printJSON(ctx, resp.Msg)
+			return printResult(resp.Msg)
 		}
 
 		permissions, err := makeQueuePermissions(*workloadPermissions, *resetPermissions)
@@ -162,7 +207,7 @@ func newQueuesUpdateCmd() *cobra.Command {
 		if err != nil {
 			return fnerrors.InvocationError("buildkite queue update", "failed to update queue: %w", err)
 		}
-		return printJSON(ctx, resp.Msg)
+		return printResult(resp.Msg)
 	})
 }
 
@@ -203,6 +248,97 @@ func makeQueuePermissions(workloadPermissions []string, reset bool) (*buildkitep
 		permissions.WorkloadPermissions = append(permissions.WorkloadPermissions, permission)
 	}
 	return permissions, nil
+}
+
+func printQueueTable(ctx context.Context, queues []*buildkitepb.BuildkiteQueue) error {
+	if len(queues) == 0 {
+		_, err := fmt.Fprintln(console.Stdout(ctx), "No queues found.")
+		return err
+	}
+
+	cols := []tui.Column{
+		{Key: "id", Title: "ID", MinWidth: 10, MaxWidth: 40},
+		{Key: "name", Title: "Name", MinWidth: 10, MaxWidth: 30},
+		{Key: "cluster", Title: "Cluster", MinWidth: 10, MaxWidth: 40},
+		{Key: "organization", Title: "Organization", MinWidth: 12, MaxWidth: 30},
+	}
+
+	rows := []tui.Row{}
+	for _, queue := range queues {
+		rows = append(rows, tui.Row{
+			"id":           queue.GetId(),
+			"name":         orDash(queue.GetQueueName()),
+			"cluster":      orDash(queue.GetCluster()),
+			"organization": orDash(queue.GetOrganization().GetOrgSlug()),
+		})
+	}
+
+	return tui.StaticTable(ctx, cols, rows)
+}
+
+func printQueueDetails(ctx context.Context, header string, queue *buildkitepb.BuildkiteQueue) error {
+	stdout := console.Stdout(ctx)
+
+	fmt.Fprintf(stdout, "\n%s:\n\n", header)
+	fmt.Fprintf(stdout, "Queue ID:      %s\n", queue.GetId())
+	fmt.Fprintf(stdout, "Name:          %s\n", orDash(queue.GetQueueName()))
+	fmt.Fprintf(stdout, "Cluster:       %s\n", orDash(queue.GetCluster()))
+	if org := queue.GetOrganization(); org != nil {
+		fmt.Fprintf(stdout, "\nOrganization:\n")
+		fmt.Fprintf(stdout, "  Slug:        %s\n", orDash(org.GetOrgSlug()))
+		fmt.Fprintf(stdout, "  UUID:        %s\n", orDash(org.GetOrgUuid()))
+	}
+
+	settings := queue.GetSettings()
+	permissions := settings.GetPermissions()
+	hasPermissions := permissions.GetPermissionsType() != buildkitepb.PermissionsType_PERMISSIONS_TYPE_UNKNOWN
+	if hasPermissions || settings.GetEgressPolicyTag() != "" {
+		fmt.Fprintf(stdout, "\nSettings:\n")
+		if hasPermissions {
+			fmt.Fprintf(stdout, "  Permissions:   %s\n", permissions.GetPermissionsType())
+		}
+		if settings.GetEgressPolicyTag() != "" {
+			fmt.Fprintf(stdout, "  Egress Policy: %s\n", settings.GetEgressPolicyTag())
+		}
+	}
+
+	if permissions.GetPermissionsType() == buildkitepb.PermissionsType_CUSTOM {
+		fmt.Fprintf(stdout, "\nWorkload Permissions:\n")
+		if len(permissions.GetWorkloadPermissions()) == 0 {
+			fmt.Fprintf(stdout, "  (none)\n")
+		}
+		for _, permission := range permissions.GetWorkloadPermissions() {
+			resourceID := permission.GetResourceId()
+			if resourceID == "" {
+				resourceID = "*"
+			}
+			fmt.Fprintf(stdout, "  - Resource: %s %s\n", permission.GetResourceType(), resourceID)
+			fmt.Fprintf(stdout, "    Actions:  %s\n", strings.Join(permission.GetActions(), ", "))
+		}
+	}
+
+	fmt.Fprintf(stdout, "\n")
+	return nil
+}
+
+// printQueueSpec prints the queue settings in the format accepted by `update --spec_file`.
+func printQueueSpec(ctx context.Context, settings *buildkitepb.QueueSettings) error {
+	if settings == nil {
+		settings = &buildkitepb.QueueSettings{}
+	}
+	formatted, err := protojson.MarshalOptions{Indent: "  ", UseProtoNames: true}.Marshal(settings)
+	if err != nil {
+		return fnerrors.InternalError("failed to format queue spec: %w", err)
+	}
+	_, err = fmt.Fprintln(console.Stdout(ctx), string(formatted))
+	return err
+}
+
+func orDash(value string) string {
+	if value == "" {
+		return "-"
+	}
+	return value
 }
 
 func printJSON(ctx context.Context, message proto.Message) error {
