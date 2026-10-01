@@ -21,6 +21,7 @@ import (
 	buildkitepb "namespacelabs.dev/integrations/proto/namespace/cloud/buildkite"
 	"namespacelabs.dev/integrations/proto/namespace/cloud/buildkite/buildkiteconnect"
 	iamv1beta "namespacelabs.dev/integrations/proto/namespace/cloud/iam/v1beta"
+	"namespacelabs.dev/integrations/proto/namespace/stdlib"
 )
 
 type fakeQueueServiceClient struct {
@@ -149,6 +150,7 @@ func TestQueuesDescribePlain(t *testing.T) {
 			{ResourceType: "vault/object", ResourceId: "secret-1", Actions: []string{"read", "list"}},
 		},
 	}
+	fake.currentSettings.OpenTelemetrySettings = testOpenTelemetrySettings()
 	stdout, err := runBuildkiteCommand(t, "queue", "describe", "queue-1")
 	if err != nil {
 		t.Fatalf("command failed: %v", err)
@@ -160,10 +162,19 @@ func TestQueuesDescribePlain(t *testing.T) {
 		"Egress Policy: restricted",
 		"Resource: vault/object secret-1",
 		"Actions:  read, list",
+		"OpenTelemetry:",
+		"Endpoint:    https://otel.example.com:4318",
+		"Protocol:    HTTP_PROTOBUF",
+		"- Authorization: from secret sec_abcdefg",
+		"- X-Tenant: (static value)",
+		"Resource Attributes:\n    - deployment.environment=prod\n    - service.name=ci",
 	} {
 		if !strings.Contains(string(stdout), want) {
 			t.Errorf("output missing %q:\n%s", want, stdout)
 		}
+	}
+	if strings.Contains(string(stdout), "static-token") {
+		t.Errorf("output contains static header value:\n%s", stdout)
 	}
 }
 
@@ -174,7 +185,7 @@ func TestQueuesDescribePlainOmitsUnsetSettings(t *testing.T) {
 	if err != nil {
 		t.Fatalf("command failed: %v", err)
 	}
-	for _, unwanted := range []string{"Settings:", "Permissions:", "Egress Policy:"} {
+	for _, unwanted := range []string{"Settings:", "Permissions:", "Egress Policy:", "OpenTelemetry:"} {
 		if strings.Contains(string(stdout), unwanted) {
 			t.Errorf("output contains %q:\n%s", unwanted, stdout)
 		}
@@ -190,11 +201,12 @@ func TestQueuesDescribeSpecRoundTripsThroughUpdate(t *testing.T) {
 			{ResourceType: "vault/object", ResourceId: "secret-1", Actions: []string{"read"}},
 		},
 	}
+	fake.currentSettings.OpenTelemetrySettings = testOpenTelemetrySettings()
 	stdout, err := runBuildkiteCommand(t, "queue", "describe", "queue-1", "-o", "spec")
 	if err != nil {
 		t.Fatalf("command failed: %v", err)
 	}
-	if strings.Contains(string(stdout), "queue-1") || !strings.Contains(string(stdout), "egress_policy_tag") {
+	if strings.Contains(string(stdout), "queue-1") || !strings.Contains(string(stdout), "egress_policy_tag") || !strings.Contains(string(stdout), "open_telemetry_settings") {
 		t.Fatalf("spec output = %s, want only settings with proto field names", stdout)
 	}
 
@@ -319,7 +331,16 @@ func TestQueuesUpdateSpecFileReplacesSettingsWithoutFetch(t *testing.T) {
     "permissions_type": "CUSTOM",
     "workload_permissions": [{"resource_type":"vault/object","resource_id":"secret-1","actions":["read"]}]
   },
-  "egress_policy_tag": "restricted"
+  "egress_policy_tag": "restricted",
+  "open_telemetry_settings": {
+    "otlp_endpoint": "https://otel.example.com:4318",
+    "otlp_protocol": "OTLP_PROTOCOL_HTTP_PROTOBUF",
+    "headers": [
+      {"name": "Authorization", "value_from": {"from_secret_id": "sec_abcdefg"}},
+      {"name": "X-Tenant", "value": "static-token"}
+    ],
+    "resource_attributes": {"service.name": "ci", "deployment.environment": "prod"}
+  }
 }`
 	if err := os.WriteFile(specPath, []byte(spec), 0o600); err != nil {
 		t.Fatalf("write spec file: %v", err)
@@ -337,6 +358,9 @@ func TestQueuesUpdateSpecFileReplacesSettingsWithoutFetch(t *testing.T) {
 	}
 	if got := settings.GetEgressPolicyTag(); got != "restricted" {
 		t.Fatalf("egress policy = %q, want restricted", got)
+	}
+	if got := settings.GetOpenTelemetrySettings(); !proto.Equal(got, testOpenTelemetrySettings()) {
+		t.Fatalf("open telemetry settings = %v, want %v", got, testOpenTelemetrySettings())
 	}
 	unknown := settings.ProtoReflect().GetUnknown()
 	if strings.Contains(string(unknown), "future-setting") {
@@ -401,6 +425,18 @@ func TestQueuesUpdateRequiresMode(t *testing.T) {
 	_, err := runBuildkiteCommand(t, "queues", "update", "queue-1")
 	if err == nil || !strings.Contains(err.Error(), "--workload_permissions, --reset_permissions, --egress_policy, --remove_egress_policy, or --reset is required") {
 		t.Fatalf("error = %v, want required mode error", err)
+	}
+}
+
+func testOpenTelemetrySettings() *buildkitepb.OpenTelemetrySettings {
+	return &buildkitepb.OpenTelemetrySettings{
+		OtlpEndpoint: "https://otel.example.com:4318",
+		OtlpProtocol: buildkitepb.OpenTelemetrySettings_OTLP_PROTOCOL_HTTP_PROTOBUF,
+		Headers: []*stdlib.HttpHeader{
+			{Name: "Authorization", ValueFrom: &stdlib.ResolvableValue{FromSecretId: "sec_abcdefg"}},
+			{Name: "X-Tenant", Value: "static-token"},
+		},
+		ResourceAttributes: map[string]string{"service.name": "ci", "deployment.environment": "prod"},
 	}
 }
 

@@ -7,7 +7,9 @@ package buildkite
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
+	"slices"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -22,6 +24,7 @@ import (
 	buildkitepb "namespacelabs.dev/integrations/proto/namespace/cloud/buildkite"
 	"namespacelabs.dev/integrations/proto/namespace/cloud/buildkite/buildkiteconnect"
 	iamv1beta "namespacelabs.dev/integrations/proto/namespace/cloud/iam/v1beta"
+	"namespacelabs.dev/integrations/proto/namespace/stdlib"
 )
 
 var newQueueServiceClient func(context.Context) (buildkiteconnect.QueueServiceClient, error) = fnapi.NewBuildkiteQueueServiceClient
@@ -317,8 +320,51 @@ func printQueueDetails(ctx context.Context, header string, queue *buildkitepb.Bu
 		}
 	}
 
+	if otel := settings.GetOpenTelemetrySettings(); otel != nil && proto.Size(otel) > 0 {
+		fmt.Fprintf(stdout, "\nOpenTelemetry:\n")
+		fmt.Fprintf(stdout, "  Endpoint:    %s\n", orDash(otel.GetOtlpEndpoint()))
+		fmt.Fprintf(stdout, "  Protocol:    %s\n", formatOTLPProtocol(otel.GetOtlpProtocol()))
+		if len(otel.GetHeaders()) > 0 {
+			fmt.Fprintf(stdout, "  Headers:\n")
+			for _, header := range otel.GetHeaders() {
+				fmt.Fprintf(stdout, "    - %s: %s\n", header.GetName(), formatHeaderValue(header))
+			}
+		}
+		if attrs := otel.GetResourceAttributes(); len(attrs) > 0 {
+			fmt.Fprintf(stdout, "  Resource Attributes:\n")
+			for _, key := range slices.Sorted(maps.Keys(attrs)) {
+				fmt.Fprintf(stdout, "    - %s=%s\n", key, attrs[key])
+			}
+		}
+	}
+
 	fmt.Fprintf(stdout, "\n")
 	return nil
+}
+
+func formatOTLPProtocol(protocol buildkitepb.OpenTelemetrySettings_OTLPProtocol) string {
+	switch protocol {
+	case buildkitepb.OpenTelemetrySettings_OTLP_PROTOCOL_UNSPECIFIED:
+		return "GRPC (default)"
+	case buildkitepb.OpenTelemetrySettings_OTLP_PROTOCOL_GRPC:
+		return "GRPC"
+	case buildkitepb.OpenTelemetrySettings_OTLP_PROTOCOL_HTTP_PROTOBUF:
+		return "HTTP_PROTOBUF"
+	default:
+		return protocol.String()
+	}
+}
+
+// formatHeaderValue describes where a header value comes from without printing
+// static values, which frequently contain credentials. Use -o json to see them.
+func formatHeaderValue(header *stdlib.HttpHeader) string {
+	if secretID := header.GetValueFrom().GetFromSecretId(); secretID != "" {
+		return "from secret " + secretID
+	}
+	if header.GetValue() != "" || header.GetValueFrom().GetStatic() != "" {
+		return "(static value)"
+	}
+	return "-"
 }
 
 // printQueueSpec prints the queue settings in the format accepted by `update --spec_file`.
