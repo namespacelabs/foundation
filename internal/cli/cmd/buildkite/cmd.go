@@ -371,6 +371,9 @@ func formatHeaderValue(header *stdlib.HttpHeader) string {
 func printQueueSpec(ctx context.Context, settings *buildkitepb.QueueSettings) error {
 	if settings == nil {
 		settings = &buildkitepb.QueueSettings{}
+	} else if permissions := settings.GetPermissions(); permissions != nil && proto.Size(permissions) == 0 {
+		settings = proto.Clone(settings).(*buildkitepb.QueueSettings)
+		settings.Permissions = nil
 	}
 	formatted, err := protojson.MarshalOptions{Indent: "  ", UseProtoNames: true}.Marshal(settings)
 	if err != nil {

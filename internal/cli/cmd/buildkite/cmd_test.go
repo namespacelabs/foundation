@@ -224,13 +224,18 @@ func TestQueuesDescribeSpecRoundTripsThroughUpdate(t *testing.T) {
 
 func TestQueuesDescribeSpecEmptySettings(t *testing.T) {
 	fake := installFakeClient(t)
-	fake.currentSettings = nil
-	stdout, err := runBuildkiteCommand(t, "queue", "describe", "queue-1", "-o", "spec")
-	if err != nil {
-		t.Fatalf("command failed: %v", err)
-	}
-	if got := strings.TrimSpace(string(stdout)); got != "{}" {
-		t.Fatalf("spec output = %q, want {}", got)
+	for _, settings := range []*buildkitepb.QueueSettings{
+		nil,
+		{Permissions: &buildkitepb.Permissions{}},
+	} {
+		fake.currentSettings = settings
+		stdout, err := runBuildkiteCommand(t, "queue", "describe", "queue-1", "-o", "spec")
+		if err != nil {
+			t.Fatalf("command failed: %v", err)
+		}
+		if got := strings.TrimSpace(string(stdout)); got != "{}" {
+			t.Fatalf("spec output = %q, want {}", got)
+		}
 	}
 }
 
