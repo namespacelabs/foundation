@@ -553,29 +553,6 @@ func EventDataFromProto(cat string, in *protocol.Task) EventData {
 	return data
 }
 
-func ActionFromProto(ctx context.Context, cat string, in *protocol.Task) *RunningAction {
-	sink := SinkFrom(ctx)
-	if sink == nil {
-		panic("compute: action sink required in the context")
-	}
-
-	data := EventDataFromProto(cat, in)
-
-	parentId := parentID(ctx)
-	if parentId != nil {
-		data.ParentID = *parentId
-	}
-
-	return &RunningAction{
-		sink: sink,
-		Data: data,
-		attachments: &EventAttachments{
-			actionID: data.ActionID,
-			sink:     sink,
-		},
-	}
-}
-
 func startSpan(ctx context.Context, tracer trace.Tracer, data EventData) (context.Context, trace.Span) {
 	if tracer == nil {
 		return ctx, nil
