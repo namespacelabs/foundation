@@ -6,7 +6,6 @@ package fnapi
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -293,16 +292,6 @@ type UpdateTenantIntegrationsRequest struct {
 
 const UpdateTenantIntegrationsFieldTailscale = "UPDATE_TAILSCALE"
 
-type ListEgressPoliciesResponse struct {
-	MetadataVersion int64             `json:"metadata_version,omitempty,string"`
-	Policies        []json.RawMessage `json:"policies,omitempty"`
-}
-
-type UpdateEgressPolicyRequest struct {
-	MatchMetadataVersion int64           `json:"match_metadata_version,omitempty,string"`
-	Policy               json.RawMessage `json:"policy,omitempty"`
-}
-
 type StoredTrustRelationship struct {
 	Id           string     `json:"id,omitempty"`
 	CreatorJson  string     `json:"creator_json,omitempty"`
@@ -385,37 +374,6 @@ func UpdateTenantIntegrations(ctx context.Context, metadataVersion int64, tailsc
 		Retryable:        true,
 	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
 		return GetTenantIntegrationsResponse{}, err
-	}
-
-	return res, nil
-}
-
-func ListEgressPolicies(ctx context.Context) (ListEgressPoliciesResponse, error) {
-	var res ListEgressPoliciesResponse
-	if err := (Call[any]{
-		Method:           "nsl.tenants.TenantsService/ListEgressPolicies",
-		IssueBearerToken: IssueBearerToken,
-		Retryable:        true,
-	}).Do(ctx, struct{}{}, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
-		return ListEgressPoliciesResponse{}, err
-	}
-
-	return res, nil
-}
-
-func UpdateEgressPolicy(ctx context.Context, metadataVersion int64, policy json.RawMessage) (ListEgressPoliciesResponse, error) {
-	req := UpdateEgressPolicyRequest{
-		MatchMetadataVersion: metadataVersion,
-		Policy:               policy,
-	}
-
-	var res ListEgressPoliciesResponse
-	if err := (Call[UpdateEgressPolicyRequest]{
-		Method:           "nsl.tenants.TenantsService/UpdateEgressPolicy",
-		IssueBearerToken: IssueBearerToken,
-		Retryable:        true,
-	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
-		return ListEgressPoliciesResponse{}, err
 	}
 
 	return res, nil

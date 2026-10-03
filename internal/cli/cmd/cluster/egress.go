@@ -5,26 +5,30 @@
 package cluster
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
+	"text/tabwriter"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/integrations/api/compute"
 	computev1beta "namespacelabs.dev/integrations/proto/namespace/cloud/compute/v1beta"
+	networkv1beta "namespacelabs.dev/integrations/proto/namespace/cloud/network/v1beta"
 )
 
-var (
-	listEgressPolicies = fnapi.ListEgressPolicies
-	updateEgressPolicy = fnapi.UpdateEgressPolicy
-)
+var newEgressPolicyClient = fnapi.NewEgressPolicyServiceClient
 
 const exampleEgressPolicyJSON = `{
   "tag": "example-policy",
@@ -79,12 +83,17 @@ func newEgressPolicyListCmd() *cobra.Command {
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
-		res, err := listEgressPolicies(ctx)
+		client, err := newEgressPolicyClient(ctx)
+		if err != nil {
+			return fnerrors.Newf("failed to create egress policy client: %w", err)
+		}
+
+		res, err := client.ListEgressPolicies(ctx, connect.NewRequest(&networkv1beta.ListEgressPoliciesRequest{}))
 		if err != nil {
 			return fnerrors.Newf("failed to list egress policies: %w", err)
 		}
 
-		return printEgressPolicies(ctx, *output, res.Policies)
+		return printEgressPolicies(ctx, *output, res.Msg.Policies)
 	})
 }
 
@@ -98,34 +107,26 @@ func newEgressPolicyDescribeCmd() *cobra.Command {
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
 	return fncobra.Cmd(cmd).DoWithArgs(func(ctx context.Context, args []string) error {
-		res, err := listEgressPolicies(ctx)
+		client, err := newEgressPolicyClient(ctx)
 		if err != nil {
-			return fnerrors.Newf("failed to list egress policies: %w", err)
+			return fnerrors.Newf("failed to create egress policy client: %w", err)
 		}
 
-		index, err := findEgressPolicy(res.Policies, args[0])
+		res, err := client.GetEgressPolicy(ctx, connect.NewRequest(&networkv1beta.GetEgressPolicyRequest{Tag: args[0]}))
 		if err != nil {
-			return err
-		}
-		if index < 0 {
-			return fnerrors.Newf("egress policy %q not found", args[0])
-		}
-
-		policy := res.Policies[index]
-
-		var view egressPolicyView
-		if err := json.Unmarshal(policy, &view); err != nil {
-			return fnerrors.InternalError("failed to decode egress policy: %w", err)
-		}
-
-		pretty, err := json.MarshalIndent(policy, "", "  ")
-		if err != nil {
-			return fnerrors.InternalError("failed to encode egress policy: %w", err)
+			return fnerrors.Newf("failed to get egress policy %q: %w", args[0], err)
 		}
 
 		stdout := console.Stdout(ctx)
 
 		if *output == "json" {
+			if err := rejectUnknownEgressPolicyFields(res.Msg.Policy); err != nil {
+				return err
+			}
+			pretty, err := marshalEgressPolicy(res.Msg.Policy)
+			if err != nil {
+				return fnerrors.InternalError("failed to encode egress policy: %w", err)
+			}
 			fmt.Fprintln(stdout, string(pretty))
 			return nil
 		}
@@ -133,15 +134,19 @@ func newEgressPolicyDescribeCmd() *cobra.Command {
 			return fnerrors.Newf("invalid output format: %s", *output)
 		}
 
-		fmt.Fprintf(stdout, "Tag:\t%s\n", view.Tag)
-		if view.Description != "" {
-			fmt.Fprintf(stdout, "Description:\t%s\n", view.Description)
-		}
-		fmt.Fprintln(stdout)
-		fmt.Fprintln(stdout, string(pretty))
-
-		return nil
+		return printEgressPolicyDescription(stdout, res.Msg.Policy, res.Msg.Revision)
 	})
+}
+
+func printEgressPolicyDescription(output io.Writer, policy *networkv1beta.EgressPolicy, revision int64) error {
+	w := tabwriter.NewWriter(output, 0, 0, 3, ' ', 0)
+	fmt.Fprintf(w, "Tag:\t%s\n", policy.GetTag())
+	fmt.Fprintf(w, "Description:\t%s\n", policy.GetDescription())
+	fmt.Fprintf(w, "Mode:\t%s\n", policy.GetSpec().GetMode())
+	fmt.Fprintf(w, "Deep packet inspection:\t%t\n", policy.GetSpec().GetDeepPacketInspection())
+	fmt.Fprintf(w, "Rules:\t%d\n", len(policy.GetSpec().GetRules()))
+	fmt.Fprintf(w, "Revision:\t%d\n", revision)
+	return w.Flush()
 }
 
 func newEgressPolicyCreateCmd() *cobra.Command {
@@ -165,29 +170,21 @@ func newEgressPolicyCreateCmd() *cobra.Command {
 			return fnerrors.Newf("failed to read egress policy configuration: %w", err)
 		}
 
-		policy, view, err := parseEgressPolicy(contents)
+		policy, err := parseEgressPolicy(contents)
 		if err != nil {
 			return err
 		}
 
-		current, err := listEgressPolicies(ctx)
+		client, err := newEgressPolicyClient(ctx)
 		if err != nil {
-			return fnerrors.Newf("failed to list existing egress policies: %w", err)
+			return fnerrors.Newf("failed to create egress policy client: %w", err)
 		}
 
-		index, err := findEgressPolicy(current.Policies, view.Tag)
-		if err != nil {
-			return err
-		}
-		if index >= 0 {
-			return fnerrors.Newf("egress policy %q already exists", view.Tag)
-		}
-
-		if _, err := updateEgressPolicy(ctx, current.MetadataVersion, policy); err != nil {
+		if _, err := client.CreateEgressPolicy(ctx, connect.NewRequest(&networkv1beta.CreateEgressPolicyRequest{Policy: policy})); err != nil {
 			return fnerrors.Newf("failed to create egress policy: %w", err)
 		}
 
-		fmt.Fprintf(console.Stdout(ctx), "Created egress policy %q.\n", view.Tag)
+		fmt.Fprintf(console.Stdout(ctx), "Created egress policy %q.\n", policy.Tag)
 		return nil
 	})
 }
@@ -218,20 +215,23 @@ func newEgressPolicyUpdateCmd() *cobra.Command {
 			return err
 		}
 
-		current, err := listEgressPolicies(ctx)
+		client, err := newEgressPolicyClient(ctx)
 		if err != nil {
-			return fnerrors.Newf("failed to list existing egress policies: %w", err)
+			return fnerrors.Newf("failed to create egress policy client: %w", err)
 		}
 
-		index, err := findEgressPolicy(current.Policies, args[0])
+		current, err := client.GetEgressPolicy(ctx, connect.NewRequest(&networkv1beta.GetEgressPolicyRequest{Tag: args[0]}))
 		if err != nil {
+			return fnerrors.Newf("failed to get egress policy %q: %w", args[0], err)
+		}
+		if err := rejectUnknownEgressPolicyFields(current.Msg.Policy); err != nil {
 			return err
 		}
-		if index < 0 {
-			return fnerrors.Newf("egress policy %q not found", args[0])
-		}
 
-		if _, err := updateEgressPolicy(ctx, current.MetadataVersion, policy); err != nil {
+		if _, err := client.UpdateEgressPolicy(ctx, connect.NewRequest(&networkv1beta.UpdateEgressPolicyRequest{
+			Policy:        policy,
+			MatchRevision: current.Msg.Revision,
+		})); err != nil {
 			return fnerrors.Newf("failed to update egress policy: %w", err)
 		}
 
@@ -251,76 +251,165 @@ type egressPolicyView struct {
 	Description string `json:"description,omitempty"`
 }
 
-func findEgressPolicy(policies []json.RawMessage, tag string) (int, error) {
-	for index, policy := range policies {
-		var view egressPolicyView
-		if err := json.Unmarshal(policy, &view); err != nil {
-			return -1, fnerrors.InternalError("failed to decode existing egress policy: %w", err)
-		}
-		if view.Tag == tag {
-			return index, nil
-		}
+func parseEgressPolicy(contents []byte) (*networkv1beta.EgressPolicy, error) {
+	contents, err := normalizeEgressPolicyJSON(contents)
+	if err != nil {
+		return nil, err
 	}
 
-	return -1, nil
+	policy := &networkv1beta.EgressPolicy{}
+	if err := protojson.Unmarshal(contents, policy); err != nil {
+		return nil, fnerrors.Newf("invalid egress policy configuration: %w", err)
+	}
+	if strings.TrimSpace(policy.Tag) == "" {
+		return nil, fnerrors.New("invalid egress policy configuration: tag is required")
+	}
+
+	return policy, nil
 }
 
-func parseEgressPolicy(contents []byte) (json.RawMessage, egressPolicyView, error) {
-	var policy json.RawMessage
-	if err := json.Unmarshal(contents, &policy); err != nil {
-		return nil, egressPolicyView{}, fnerrors.Newf("invalid egress policy JSON: %w", err)
+func parseEgressPolicyUpdate(contents []byte, tag string) (*networkv1beta.EgressPolicy, error) {
+	contents, err := normalizeEgressPolicyJSON(contents)
+	if err != nil {
+		return nil, err
 	}
 
-	var view egressPolicyView
-	if err := json.Unmarshal(policy, &view); err != nil {
-		return nil, egressPolicyView{}, fnerrors.Newf("invalid egress policy configuration: %w", err)
+	policy := &networkv1beta.EgressPolicy{}
+	if err := protojson.Unmarshal(contents, policy); err != nil {
+		return nil, fnerrors.Newf("invalid egress policy configuration: %w", err)
 	}
-	if strings.TrimSpace(view.Tag) == "" {
-		return nil, egressPolicyView{}, fnerrors.New("invalid egress policy configuration: tag is required")
+	if policy.Tag != "" && policy.Tag != tag {
+		return nil, fnerrors.Newf("egress policy tag %q in --spec_file does not match requested tag %q", policy.Tag, tag)
 	}
+	policy.Tag = tag
 
-	return policy, view, nil
+	return policy, nil
 }
 
-func parseEgressPolicyUpdate(contents []byte, tag string) (json.RawMessage, error) {
+func normalizeEgressPolicyJSON(contents []byte) ([]byte, error) {
 	var policy map[string]json.RawMessage
 	if err := json.Unmarshal(contents, &policy); err != nil {
-		return nil, fnerrors.Newf("invalid egress policy JSON: %w", err)
+		return nil, fnerrors.Newf("invalid egress policy configuration: %w", err)
 	}
 	if policy == nil {
 		return nil, fnerrors.New("invalid egress policy configuration: expected a JSON object")
 	}
-
-	if rawTag, ok := policy["tag"]; ok {
-		var specTag string
-		if err := json.Unmarshal(rawTag, &specTag); err != nil {
-			return nil, fnerrors.Newf("invalid egress policy configuration: tag must be a string: %w", err)
-		}
-		if specTag != tag {
-			return nil, fnerrors.Newf("egress policy tag %q in --spec_file does not match requested tag %q", specTag, tag)
-		}
-	} else {
-		encodedTag, _ := json.Marshal(tag)
-		policy["tag"] = encodedTag
+	if _, hasSpec := policy["spec"]; hasSpec {
+		return contents, nil
 	}
 
-	encoded, err := json.Marshal(policy)
+	spec := map[string]json.RawMessage{}
+	fields := (&networkv1beta.EgressPolicySpec{}).ProtoReflect().Descriptor().Fields()
+	for i := range fields.Len() {
+		field := fields.Get(i)
+		for _, name := range []string{string(field.Name()), field.JSONName()} {
+			if value, ok := policy[name]; ok {
+				spec[name] = value
+				delete(policy, name)
+			}
+		}
+	}
+	if len(spec) == 0 {
+		return contents, nil
+	}
+
+	encodedSpec, err := json.Marshal(spec)
+	if err != nil {
+		return nil, fnerrors.InternalError("failed to encode egress policy spec: %w", err)
+	}
+	policy["spec"] = encodedSpec
+
+	encodedPolicy, err := json.Marshal(policy)
 	if err != nil {
 		return nil, fnerrors.InternalError("failed to encode egress policy: %w", err)
 	}
-
-	return encoded, nil
+	return encodedPolicy, nil
 }
 
-func printEgressPolicies(ctx context.Context, output string, policies []json.RawMessage) error {
-	if output == "json" {
-		views := make([]egressPolicyView, 0, len(policies))
-		for _, policy := range policies {
-			var view egressPolicyView
-			if err := json.Unmarshal(policy, &view); err != nil {
-				return fnerrors.InternalError("failed to decode egress policy: %w", err)
+func marshalEgressPolicy(policy *networkv1beta.EgressPolicy) ([]byte, error) {
+	if err := rejectUnknownEgressPolicyFields(policy); err != nil {
+		return nil, err
+	}
+
+	metadata, err := json.Marshal(struct {
+		Tag         string `json:"tag"`
+		Description string `json:"description,omitempty"`
+	}{
+		Tag:         policy.Tag,
+		Description: policy.Description,
+	})
+	if err != nil {
+		return nil, fnerrors.InternalError("failed to encode egress policy metadata: %w", err)
+	}
+
+	encodedSpec := []byte("{}")
+	if policy.Spec != nil {
+		encodedSpec, err = (protojson.MarshalOptions{UseProtoNames: true}).Marshal(policy.Spec)
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to encode egress policy spec: %w", err)
+		}
+	}
+
+	flattened := bytes.NewBuffer(make([]byte, 0, len(metadata)+len(encodedSpec)))
+	flattened.Write(metadata[:len(metadata)-1])
+	if len(encodedSpec) > 2 {
+		flattened.WriteByte(',')
+		flattened.Write(encodedSpec[1 : len(encodedSpec)-1])
+	}
+	flattened.WriteByte('}')
+
+	var pretty bytes.Buffer
+	if err := json.Indent(&pretty, flattened.Bytes(), "", "  "); err != nil {
+		return nil, fnerrors.InternalError("failed to format flattened egress policy: %w", err)
+	}
+	return pretty.Bytes(), nil
+}
+
+func rejectUnknownEgressPolicyFields(policy *networkv1beta.EgressPolicy) error {
+	if policy != nil && messageHasUnknownFields(policy.ProtoReflect()) {
+		return fnerrors.New("egress policy contains fields unknown to this nsc version; upgrade nsc before describing or updating it")
+	}
+	return nil
+}
+
+func messageHasUnknownFields(message protoreflect.Message) bool {
+	if len(message.GetUnknown()) != 0 {
+		return true
+	}
+
+	found := false
+	message.Range(func(field protoreflect.FieldDescriptor, value protoreflect.Value) bool {
+		if field.IsMap() {
+			if field.MapValue().Kind() == protoreflect.MessageKind {
+				value.Map().Range(func(_ protoreflect.MapKey, value protoreflect.Value) bool {
+					found = messageHasUnknownFields(value.Message())
+					return !found
+				})
 			}
-			views = append(views, view)
+			return !found
+		}
+		if field.IsList() {
+			if field.Kind() == protoreflect.MessageKind {
+				list := value.List()
+				for i := 0; i < list.Len() && !found; i++ {
+					found = messageHasUnknownFields(list.Get(i).Message())
+				}
+			}
+			return !found
+		}
+		if field.Kind() == protoreflect.MessageKind {
+			found = messageHasUnknownFields(value.Message())
+		}
+		return !found
+	})
+	return found
+}
+
+func printEgressPolicies(ctx context.Context, output string, entries []*networkv1beta.ListEgressPoliciesResponse_EgressPolicyEntry) error {
+	if output == "json" {
+		views := make([]egressPolicyView, 0, len(entries))
+		for _, entry := range entries {
+			views = append(views, egressPolicyView{Tag: entry.Policy.Tag, Description: entry.Policy.Description})
 		}
 
 		enc := json.NewEncoder(console.Stdout(ctx))
@@ -335,20 +424,16 @@ func printEgressPolicies(ctx context.Context, output string, policies []json.Raw
 	}
 
 	stdout := console.Stdout(ctx)
-	if len(policies) == 0 {
+	if len(entries) == 0 {
 		fmt.Fprintln(stdout, "No egress policies configured.")
 		return nil
 	}
 
-	for _, policy := range policies {
-		var view egressPolicyView
-		if err := json.Unmarshal(policy, &view); err != nil {
-			return fnerrors.InternalError("failed to decode egress policy: %w", err)
-		}
-		if view.Description == "" {
-			fmt.Fprintln(stdout, view.Tag)
+	for _, entry := range entries {
+		if entry.Policy.Description == "" {
+			fmt.Fprintln(stdout, entry.Policy.Tag)
 		} else {
-			fmt.Fprintf(stdout, "%s\t%s\n", view.Tag, view.Description)
+			fmt.Fprintf(stdout, "%s\t%s\n", entry.Policy.Tag, entry.Policy.Description)
 		}
 	}
 
