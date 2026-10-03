@@ -50,21 +50,9 @@ func SelectById(srv runtime.Deployable) map[string]string {
 	}
 }
 
-func SelectEphemeral() map[string]string {
-	return map[string]string{
-		K8sEnvEphemeral: "true",
-	}
-}
-
 func SelectNamespaceDriver() map[string]string {
 	return map[string]string{
 		K8sNamespaceDriver: "true",
-	}
-}
-
-func SelectByPurpose(p schema.Environment_Purpose) map[string]string {
-	return map[string]string{
-		K8sEnvPurpose: strings.ToLower(p.String()),
 	}
 }
 
