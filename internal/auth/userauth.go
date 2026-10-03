@@ -5,12 +5,10 @@
 package auth
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
 
-	"namespacelabs.dev/foundation/internal/clerk"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
@@ -18,25 +16,7 @@ import (
 const userAuthJson = "auth.json"
 
 type UserAuth struct {
-	Username       string `json:"username,omitempty"`
-	Org            string `json:"org,omitempty"` // The organization this user is acting as. Only really relevant for robot accounts which authenticate against a repository.
-	InternalOpaque []byte `json:"opaque,omitempty"`
-
-	Clerk          *clerk.State `json:"clerk,omitempty"`
-	IsGithubAction bool         `json:"is_github_action,omitempty"`
-}
-
-func StoreMarshalledUser(ctx context.Context, userAuthData []byte) error {
-	configDir, err := dirs.Ensure(dirs.Config())
-	if err != nil {
-		return err
-	}
-
-	if err := os.WriteFile(filepath.Join(configDir, userAuthJson), userAuthData, 0600); err != nil {
-		return fnerrors.Newf("failed to write user auth data: %w", err)
-	}
-
-	return nil
+	Username string `json:"username,omitempty"`
 }
 
 func LoadUser() (*UserAuth, error) {
