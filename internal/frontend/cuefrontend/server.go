@@ -24,21 +24,23 @@ import (
 )
 
 type cueServer struct {
-	ID          string                              `json:"id"`
-	Name        string                              `json:"name"`
-	Description *schema.Server_Description          `json:"description"`
-	Framework   string                              `json:"framework"`
-	IsStateful  bool                                `json:"isStateful"`
-	PerNode     bool                                `json:"perNode"`
-	TestOnly    bool                                `json:"testonly"`
-	Import      []string                            `json:"import"`
-	Services    map[string]cueServiceSpec           `json:"service"`
-	Ingress     map[string]cueServiceSpec           `json:"ingress"`
-	Env         *args.EnvMap                        `json:"env"`
-	Binary      interface{}                         `json:"binary"` // Polymorphic: either package name, or cueServerBinary.
-	Extensions  []string                            `json:"extensions,omitempty"`
-	Listeners   map[string]CueListenerConfiguration `json:"listeners,omitempty"`
-	Resource    map[string]string                   `json:"resource,omitempty"`
+	ID           string                              `json:"id"`
+	Name         string                              `json:"name"`
+	Description  *schema.Server_Description          `json:"description"`
+	Framework    string                              `json:"framework"`
+	IsStateful   bool                                `json:"isStateful"`
+	PerNode      bool                                `json:"perNode"`
+	TestOnly     bool                                `json:"testonly"`
+	Import       []string                            `json:"import"`
+	Services     map[string]cueServiceSpec           `json:"service"`
+	Ingress      map[string]cueServiceSpec           `json:"ingress"`
+	Env          *args.EnvMap                        `json:"env"`
+	Binary       interface{}                         `json:"binary"` // Polymorphic: either package name, or cueServerBinary.
+	Extensions   []string                            `json:"extensions,omitempty"`
+	Listeners    map[string]CueListenerConfiguration `json:"listeners,omitempty"`
+	Resource     map[string]string                   `json:"resource,omitempty"`
+	Requests     *schema.Container_ResourceLimits    `json:"resourceRequests,omitempty"`
+	NodeSelector map[string]string                   `json:"nodeSelector,omitempty"`
 
 	// XXX this should be somewhere else.
 	URLMap []cueURLMapEntry `json:"urlmap"`
@@ -105,6 +107,20 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 	out.Id = bits.ID
 	out.Name = bits.Name
 	out.Description = bits.Description
+	out.Self.MainContainer.Requests = bits.Requests
+
+	if len(bits.NodeSelector) > 0 {
+		if err := parsing.RequireFeature(loc.Module, "experimental/container/nodeSelector"); err != nil {
+			return nil, nil, fnerrors.AttachLocation(loc, err)
+		}
+
+		for key, value := range bits.NodeSelector {
+			out.Self.NodeSelector = append(out.Self.NodeSelector, &schema.NodeSelectorItem{Key: key, Value: value})
+		}
+		slices.SortFunc(out.Self.NodeSelector, func(a, b *schema.NodeSelectorItem) int {
+			return strings.Compare(a.Key, b.Key)
+		})
+	}
 
 	if fmwk, err := parseFramework(loc, bits.Framework); err == nil {
 		out.Framework = schema.Framework(fmwk)
