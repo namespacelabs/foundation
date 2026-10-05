@@ -238,6 +238,9 @@ _#ConfigureBase: {
 	#Container: {
 		binary: inputs.#Package
 		args:   #Args
+		// Omitted resource blocks inherit the server's Kubernetes resources.
+		resourceRequests?: {cpu?: string, memory?: string}
+		resourceLimits?: {cpu?: string, memory?: string}
 	}
 
 	#Naming: {

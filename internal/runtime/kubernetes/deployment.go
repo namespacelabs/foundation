@@ -806,7 +806,7 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 			return fnerrors.AttachLocation(deployable.ErrorLocation, err)
 		}
 
-		reses, err := containerResources(deployable.MainContainer)
+		reses, err := sidecarResources(sidecar.ContainerRunOpts, deployable.MainContainer)
 		if err != nil {
 			return fnerrors.AttachLocation(deployable.ErrorLocation, err)
 		}
@@ -851,7 +851,7 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 
 		containers = append(containers, name)
 
-		reses, err := containerResources(deployable.MainContainer)
+		reses, err := sidecarResources(init.ContainerRunOpts, deployable.MainContainer)
 		if err != nil {
 			return fnerrors.AttachLocation(deployable.ErrorLocation, err)
 		}
@@ -1077,6 +1077,18 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 
 	s.operations = append(s.operations, ensure)
 	return nil
+}
+
+func sidecarResources(ctr, main runtime.ContainerRunOpts) (*applycorev1.ResourceRequirementsApplyConfiguration, error) {
+	// Preserve inheritance independently for omitted blocks. An explicit block,
+	// including an empty one, replaces the corresponding main-container block.
+	if ctr.ResourceRequests == nil {
+		ctr.ResourceRequests = main.ResourceRequests
+	}
+	if ctr.ResourceLimits == nil {
+		ctr.ResourceLimits = main.ResourceLimits
+	}
+	return containerResources(ctr)
 }
 
 func containerResources(ctr runtime.ContainerRunOpts) (*applycorev1.ResourceRequirementsApplyConfiguration, error) {
