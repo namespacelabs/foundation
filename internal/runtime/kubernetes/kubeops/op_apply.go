@@ -155,6 +155,11 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 			if err != nil {
 				return fnerrors.InternalError("failed to create client: %w", err)
 			}
+			if spec.Deployable != nil {
+				if err := migrateLegacyEnvOwnership(ctx, client, *resource, ns, obj.GetName(), []byte(spec.BodyJson)); err != nil {
+					return fnerrors.InternalError("failed to prepare server-side apply: %w", err)
+				}
+			}
 
 			opts := kubedef.Ego()
 			opts.Force = ForceApply
