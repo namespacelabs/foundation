@@ -36,9 +36,11 @@ type cueStack struct {
 }
 
 type cueContainer struct {
-	Name   string              `json:"name"`
-	Binary string              `json:"binary"`
-	Args   *args.ArgsListOrMap `json:"args"`
+	Name     string                           `json:"name"`
+	Binary   string                           `json:"binary"`
+	Args     *args.ArgsListOrMap              `json:"args"`
+	Requests *schema.Container_ResourceLimits `json:"resourceRequests"`
+	Limits   *schema.Container_ResourceLimits `json:"resourceLimits"`
 }
 
 type evalProvisionResult struct {
@@ -188,6 +190,8 @@ func parseContainers(loc pkggraph.Location, kind string, v cue.Value) ([]*schema
 				Name:      data.Name,
 				BinaryRef: binRef,
 				Args:      data.Args.Parsed(),
+				Requests:  data.Requests,
+				Limits:    data.Limits,
 			})
 		}
 
@@ -215,6 +219,8 @@ func parseContainers(loc pkggraph.Location, kind string, v cue.Value) ([]*schema
 			Name:      name,
 			BinaryRef: binRef,
 			Args:      data.Args.Parsed(),
+			Requests:  data.Requests,
+			Limits:    data.Limits,
 		})
 	}
 

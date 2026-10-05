@@ -27,6 +27,7 @@ var packageFields = []string{
 
 var sidecarFields = []string{
 	"args", "env", "mounts", "image", "imageFrom", "init", "security",
+	"resourceRequests", "resourceLimits",
 }
 
 type Frontend struct {

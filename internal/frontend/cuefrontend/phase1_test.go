@@ -9,9 +9,25 @@ import (
 	"testing"
 
 	"cuelang.org/go/cue/cuecontext"
+	"github.com/stretchr/testify/assert"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
+
+func TestParseContainerResources(t *testing.T) {
+	for _, input := range []string{
+		`{vector: {binary: "example.com/vector", args: {}, resourceRequests: {cpu: "1", memory: "4Gi"}, resourceLimits: {cpu: "2", memory: "6Gi"}}}`,
+		`[{name: "vector", binary: "example.com/vector", args: {}, resourceRequests: {cpu: "1", memory: "4Gi"}, resourceLimits: {cpu: "2", memory: "6Gi"}}]`,
+	} {
+		v := cuecontext.New().CompileString(input)
+		containers, err := parseContainers(pkggraph.Location{PackageName: "example.com/server"}, "sidecar", v)
+		if !assert.NoError(t, err) || !assert.Len(t, containers, 1) {
+			continue
+		}
+		assert.Equal(t, &schema.Container_ResourceLimits{Cpu: "1", Memory: "4Gi"}, containers[0].Requests)
+		assert.Equal(t, &schema.Container_ResourceLimits{Cpu: "2", Memory: "6Gi"}, containers[0].Limits)
+	}
+}
 
 func TestEnsureStartupEnvSecretPackagesLoaded(t *testing.T) {
 	ctx := context.Background()
