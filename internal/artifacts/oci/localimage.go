@@ -183,6 +183,7 @@ func writeImage(ctx context.Context, store contentstore.Store, image Image) erro
 			if err != nil {
 				return err
 			}
+			defer contents.Close()
 			return store.WriteBlob(ctx, schema.Digest(digest), progress.WrapReader(contents))
 		})
 	}
