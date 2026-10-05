@@ -247,6 +247,10 @@ jobs:
       - name: Prepare first environment
         run: /tmp/ns prepare local
 
+      # k3d readiness does not wait for the service-account controller.
+      - name: Wait for first environment service account
+        run: timeout 60s bash -c 'until /tmp/ns kubectl -- get serviceaccount default --namespace=default; do sleep 1; done'
+
       - name: Test first environment
         run: /tmp/ns doctor --tests=workspace,kubernetes-run
 
@@ -255,6 +259,9 @@ jobs:
 
       - name: Prepare second environment
         run: /tmp/ns prepare local
+
+      - name: Wait for second environment service account
+        run: timeout 60s bash -c 'until /tmp/ns kubectl -- get serviceaccount default --namespace=default; do sleep 1; done'
 
       - name: Test second environment
         run: /tmp/ns doctor --tests=workspace,kubernetes-run

@@ -120,6 +120,9 @@ _#Node: {
 	isStateful?: bool
 	testonly?:   bool
 
+	nodeSelector?: [string]: string
+	resourceRequests?: {cpu?: string, memory?: string}
+
 	if framework == "OPAQUE" {
 		service: [string]: #ServiceSpec
 		ingress: [string]: #ServiceSpec
