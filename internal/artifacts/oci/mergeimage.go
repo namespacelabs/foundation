@@ -18,6 +18,18 @@ import (
 var MergeOptimizer func(images []NamedImage) compute.Computable[Image]
 
 func MergeImageLayers(images ...NamedImage) compute.Computable[Image] {
+	return MergeImageLayersOpts(MergeImageLayersOptions{}, images...)
+}
+
+type MergeImageLayersOptions struct {
+	// NoCache, when set, marks the merged image as non-cacheable. Use when
+	// the merged result is destined for a registry and persisting it in the
+	// local content cache would force every constituent layer to be fetched
+	// from the source registry.
+	NoCache bool
+}
+
+func MergeImageLayersOpts(opts MergeImageLayersOptions, images ...NamedImage) compute.Computable[Image] {
 	if MergeOptimizer != nil {
 		optimized := MergeOptimizer(images)
 		if optimized != nil {
@@ -25,12 +37,17 @@ func MergeImageLayers(images ...NamedImage) compute.Computable[Image] {
 		}
 	}
 
-	return &mergeImages{images: images}
+	return &mergeImages{images: images, noCache: opts.NoCache}
 }
 
 type mergeImages struct {
-	images []NamedImage
+	images  []NamedImage
+	noCache bool
 	compute.LocalScoped[Image]
+}
+
+func (al *mergeImages) Output() compute.Output {
+	return compute.Output{NotCacheable: al.noCache}
 }
 
 func (al *mergeImages) Action() *tasks.ActionEvent {

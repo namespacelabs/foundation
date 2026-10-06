@@ -47,6 +47,18 @@ type reqToImage struct {
 	targetName compute.Computable[oci.RepositoryWithParent]
 }
 
+func (l *reqToImage) Output() compute.Output {
+	out := l.baseRequest.Output()
+	if l.targetName != nil {
+		// When BuildKit pushes the image server-side, the returned oci.Image
+		// is a reference into the destination registry. Persisting it in the
+		// local content cache would force us to download all layers, which
+		// defeats the purpose of the direct-push optimization.
+		out.NotCacheable = true
+	}
+	return out
+}
+
 func (l *reqToImage) Action() *tasks.ActionEvent {
 	ev := tasks.Action("buildkit.build-image")
 
