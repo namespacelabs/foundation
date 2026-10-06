@@ -102,6 +102,8 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(windows.NewWindowsCmd()) // nsc windows [hidden]
 
 	root.AddCommand(devbox.NewDevboxCmd()) // nsc devbox [hidden]
+
+	root.AddCommand(NewCompletionCmd()) // nsc completion
 }
 
 func newGithub() *cobra.Command {
