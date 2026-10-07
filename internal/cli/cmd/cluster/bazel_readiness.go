@@ -25,10 +25,11 @@ import (
 )
 
 const (
-	bazelCacheReadinessTimeout        = time.Minute
-	bazelCacheReadinessAttemptTimeout = 2 * time.Second
-	bazelCacheReadinessRetryWait      = 200 * time.Millisecond
-	bazelGetCapabilitiesMethod        = "/build.bazel.remote.execution.v2.Capabilities/GetCapabilities"
+	bazelCacheReadinessTimeout           = time.Minute
+	bazelCacheReadinessAttemptTimeout    = 2 * time.Second
+	bazelCacheReadinessMaxAttemptTimeout = 16 * time.Second
+	bazelCacheReadinessRetryWait         = 200 * time.Millisecond
+	bazelGetCapabilitiesMethod           = "/build.bazel.remote.execution.v2.Capabilities/GetCapabilities"
 )
 
 type bazelCacheReadinessConfig struct {
@@ -52,13 +53,15 @@ func waitForBazelCacheReady(ctx context.Context, cfg bazelCacheReadinessConfig) 
 	defer cancel()
 
 	var lastErr error
+	attemptTimeout := bazelCacheReadinessAttemptTimeout
 	for {
-		attemptCtx, cancel := context.WithTimeout(waitCtx, bazelCacheReadinessAttemptTimeout)
+		attemptCtx, cancel := context.WithTimeout(waitCtx, attemptTimeout)
 		lastErr = checkBazelCacheReady(attemptCtx, cfg)
 		cancel()
 		if lastErr == nil {
 			return nil
 		}
+		attemptTimeout = min(attemptTimeout*2, bazelCacheReadinessMaxAttemptTimeout)
 
 		timer := time.NewTimer(bazelCacheReadinessRetryWait)
 		select {

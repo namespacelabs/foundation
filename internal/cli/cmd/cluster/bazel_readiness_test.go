@@ -15,6 +15,7 @@ import (
 	"time"
 
 	executionv2 "buf.build/gen/go/namespace/bazel/protocolbuffers/go/build/bazel/remote/execution/v2"
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -25,8 +26,16 @@ func TestWaitForBazelCacheReady(t *testing.T) {
 	t.Parallel()
 
 	var attempts atomic.Int32
+	wantTimeouts := []time.Duration{2 * time.Second, 4 * time.Second, 8 * time.Second, 16 * time.Second, 16 * time.Second}
 	endpoint := startBazelCapabilitiesServer(t, func(ctx context.Context) error {
-		if attempts.Add(1) < 3 {
+		attempt := int(attempts.Add(1))
+		if attempt > len(wantTimeouts) {
+			return nil
+		}
+		deadline, ok := ctx.Deadline()
+		assert.True(t, ok)
+		assert.InDelta(t, wantTimeouts[attempt-1].Seconds(), time.Until(deadline).Seconds(), 0.5)
+		if attempt < len(wantTimeouts) {
 			return status.Error(codes.Unavailable, "starting")
 		}
 		incoming, _ := metadata.FromIncomingContext(ctx)
@@ -42,14 +51,12 @@ func TestWaitForBazelCacheReady(t *testing.T) {
 	err := waitForBazelCacheReady(context.Background(), bazelCacheReadinessConfig{
 		endpoint:    endpoint,
 		bearerToken: "readiness-token",
-		waitTimeout: 2 * time.Second,
+		waitTimeout: time.Minute,
 	})
 	if err != nil {
 		t.Fatalf("waitForBazelCacheReady: %v", err)
 	}
-	if attempts.Load() != 3 {
-		t.Fatalf("attempts = %d, want 3", attempts.Load())
-	}
+	assert.Equal(t, int32(len(wantTimeouts)), attempts.Load())
 }
 
 func TestWaitForBazelHTTPCacheReady(t *testing.T) {
