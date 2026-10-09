@@ -126,22 +126,25 @@ func TestToBazelExecutionConfigBuildEventsDisabled(t *testing.T) {
 
 	config, err := toBazelExecutionConfig(context.Background(), bazelRbeSetup{
 		SchedulerEndpoint:       "grpcs://scheduler.example:444",
-		StorageEndpoint:         "grpcs://storage.example:444",
+		StorageEndpoint:         "grpcs://storage.example:443",
 		BuildEventEndpoint:      "grpcs://api.us-east1.namespaceapis.com",
-		CredentialHelperDomains: []string{"api.us-east1.namespaceapis.com"},
+		CredentialHelperDomains: []string{"storage.example", "api.us-east1.namespaceapis.com"},
 	}, "build", true, true)
 	if err != nil {
 		t.Fatalf("toBazelExecutionConfig: %v", err)
 	}
 
 	got := string(config)
-	for _, unwanted := range []string{"--bes_backend", "--bes_results_url", "--bes_header", "credential_helper"} {
+	for _, unwanted := range []string{"--bes_backend", "--bes_results_url", "--bes_header"} {
 		if strings.Contains(got, unwanted) {
 			t.Fatalf("disabled build event config contains %q: %q", unwanted, got)
 		}
 	}
-	if !strings.Contains(got, "build --remote_cache=grpcs://storage.example:444\n") {
+	if !strings.Contains(got, "build --remote_cache=grpcs://storage.example:443\n") {
 		t.Fatalf("disabled build events removed remote cache config: %q", got)
+	}
+	if !strings.Contains(got, "build --credential_helper=*.storage.example="+BazelCredHelperBinary+"\n") {
+		t.Errorf("disabled build events removed storage credentials: %q", got)
 	}
 }
 
