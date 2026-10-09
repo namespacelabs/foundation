@@ -19,9 +19,11 @@ import (
 
 	executionv2 "buf.build/gen/go/namespace/bazel/protocolbuffers/go/build/bazel/remote/execution/v2"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -60,6 +62,10 @@ func waitForBazelCacheReady(ctx context.Context, cfg bazelCacheReadinessConfig) 
 		cancel()
 		if lastErr == nil {
 			return nil
+		}
+		switch status.Code(lastErr) {
+		case codes.Unauthenticated, codes.PermissionDenied:
+			return lastErr
 		}
 		attemptTimeout = min(attemptTimeout*2, bazelCacheReadinessMaxAttemptTimeout)
 

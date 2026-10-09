@@ -196,11 +196,21 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 			out.ClientKey = clientKeyPath
 		}
 
+		// Standalone storage uses bearer authentication even when the scheduler
+		// uses mTLS. The readiness RPC does not invoke Bazel's credential helper.
+		readinessToken := out.IngressAuthToken
+		if readinessToken == "" && len(out.CredentialHelperDomains) > 0 {
+			token, err := tok.IssueToken(ctx, bazelCacheReadinessTimeout, false)
+			if err != nil {
+				return fnerrors.Newf("failed to issue token for bazel cache readiness check: %w", err)
+			}
+			readinessToken = token
+		}
 		if err := waitForBazelCacheReady(ctx, bazelCacheReadinessConfig{
 			endpoint:    out.StorageEndpoint,
 			clientCert:  out.ClientCert,
 			clientKey:   out.ClientKey,
-			bearerToken: out.IngressAuthToken,
+			bearerToken: readinessToken,
 			waitTimeout: bazelCacheReadinessTimeout,
 		}); err != nil {
 			return fnerrors.Newf("failed waiting for bazel storage readiness: %w", err)
@@ -352,8 +362,8 @@ func toBazelExecutionConfig(ctx context.Context, out bazelRbeSetup, command stri
 		}
 	}
 
-	if out.BuildEventEndpoint != "" && !disableBuildEvents && out.IngressAuthToken == "" && len(out.CredentialHelperDomains) > 0 {
-		if err := appendExecutionBuildEventCredentialHelper(ctx, &buf, command, out.CredentialHelperDomains); err != nil {
+	if out.IngressAuthToken == "" && len(out.CredentialHelperDomains) > 0 {
+		if err := appendExecutionCredentialHelper(ctx, &buf, command, out.CredentialHelperDomains); err != nil {
 			return nil, err
 		}
 	}
@@ -361,7 +371,7 @@ func toBazelExecutionConfig(ctx context.Context, out bazelRbeSetup, command stri
 	return buf.Bytes(), nil
 }
 
-func appendExecutionBuildEventCredentialHelper(ctx context.Context, buf *bytes.Buffer, command string, domains []string) error {
+func appendExecutionCredentialHelper(ctx context.Context, buf *bytes.Buffer, command string, domains []string) error {
 	if _, err := exec.LookPath(BazelCredHelperBinary); err != nil {
 		stdout := console.Stdout(ctx)
 		style := colors.Ctx(ctx)
@@ -370,7 +380,7 @@ func appendExecutionBuildEventCredentialHelper(ctx context.Context, buf *bytes.B
 			fmt.Fprintln(stdout)
 			fmt.Fprint(stdout, style.Highlight.Apply(fmt.Sprintf("We didn't find %s in your $PATH.", BazelCredHelperBinary)))
 			fmt.Fprintf(stdout, "\nIt's usually installed along-side nsc; so if you have added nsc to the $PATH, %s will also be available.\n", BazelCredHelperBinary)
-			fmt.Fprintf(stdout, "\nWhile your $PATH is not updated, sending build events won't work.\n")
+			fmt.Fprintf(stdout, "\nWhile your $PATH is not updated, authenticating to the configured Bazel endpoints won't work.\n")
 		}
 		if !errors.Is(err, exec.ErrNotFound) {
 			return fnerrors.Newf("failed to look up %s in $PATH: %w", BazelCredHelperBinary, err)

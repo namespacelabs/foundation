@@ -109,6 +109,32 @@ func TestWaitForBazelCacheReadyTimesOut(t *testing.T) {
 	}
 }
 
+func TestWaitForBazelCacheReadyRejectsCredentials(t *testing.T) {
+	t.Parallel()
+
+	for _, code := range []codes.Code{codes.Unauthenticated, codes.PermissionDenied} {
+		t.Run(code.String(), func(t *testing.T) {
+			t.Parallel()
+
+			var attempts atomic.Int32
+			endpoint := startBazelCapabilitiesServer(t, func(context.Context) error {
+				attempts.Add(1)
+				return status.Error(code, "credentials rejected")
+			})
+			err := waitForBazelCacheReady(context.Background(), bazelCacheReadinessConfig{
+				endpoint:    endpoint,
+				waitTimeout: time.Second,
+			})
+			if status.Code(err) != code {
+				t.Errorf("error = %v, want %v", err, code)
+			}
+			if attempts.Load() != 1 {
+				t.Errorf("authentication attempts = %d, want 1", attempts.Load())
+			}
+		})
+	}
+}
+
 func TestParseBazelCacheEndpoint(t *testing.T) {
 	t.Parallel()
 
