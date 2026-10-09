@@ -56,6 +56,7 @@ func NewTestCmd() *cobra.Command {
 		ephemeral           bool = true
 		explain             bool
 		static              bool
+		bazelClusterName    string
 		concurrentTests     int32 = 1
 	)
 
@@ -67,6 +68,7 @@ func NewTestCmd() *cobra.Command {
 	flags.BoolVar(&parallelWork, "parallel_work", parallelWork, "If true, performs all work in parallel except running the actual test (e.g. builds).")
 	flags.BoolVar(&explain, "explain", explain, "If set to true, rather than applying the graph, output an explanation of what would be done.")
 	flags.BoolVar(&static, "bazel_use_static_credentials", false, "Authenticate Bazel builds with a static bearer token instead of an mTLS client certificate.")
+	flags.StringVar(&bazelClusterName, "bazel_cluster_name", "", "Bazel remote-execution cluster name. Defaults to 'default'.")
 
 	logDir := flags.String("log_dir", "", "If set, write all log files to this directory.")
 
@@ -92,7 +94,7 @@ func NewTestCmd() *cobra.Command {
 	})
 
 	return fncobra.With(cmd, func(originalCtx context.Context) error {
-		if err := buildsetup.ConfigureGoBuilder(originalCtx, *env, static); err != nil {
+		if err := buildsetup.ConfigureGoBuilder(originalCtx, *env, bazelClusterName, static); err != nil {
 			return err
 		}
 
