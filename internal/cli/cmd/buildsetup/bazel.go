@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func ConfigureGoBuilder(ctx context.Context, env cfg.Context, static bool) error {
+func ConfigureGoBuilder(ctx context.Context, env cfg.Context, clusterName string, static bool) error {
 	if golangintegration.GoBuilderKind.Get(env.Configuration()) != golangintegration.GoBuilderMaybeBazel {
 		return nil
 	}
@@ -33,7 +33,7 @@ func ConfigureGoBuilder(ctx context.Context, env cfg.Context, static bool) error
 		return err
 	}
 
-	if err := cluster.SetupBazelRemoteExecution(ctx, bazelrcPath, static); err != nil {
+	if err := cluster.SetupBazelRemoteExecution(ctx, bazelrcPath, clusterName, static); err != nil {
 		return err
 	}
 
