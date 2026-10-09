@@ -50,9 +50,13 @@ func newSetupBazelCmd() *cobra.Command {
 
 // SetupBazelRemoteExecution provisions the default Bazel remote-execution
 // cluster and writes a bazelrc suitable for build commands.
-func SetupBazelRemoteExecution(ctx context.Context, bazelRcPath string) error {
+func SetupBazelRemoteExecution(ctx context.Context, bazelRcPath string, static bool) error {
 	cmd := newSetupBazelCmd()
-	cmd.SetArgs([]string{"--bazelrc", bazelRcPath, "--output", "none"})
+	args := []string{"--bazelrc", bazelRcPath, "--output", "none"}
+	if static {
+		args = append(args, "--static")
+	}
+	cmd.SetArgs(args)
 	return cmd.ExecuteContext(ctx)
 }
 

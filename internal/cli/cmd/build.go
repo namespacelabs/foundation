@@ -95,13 +95,16 @@ func NewBuildCmd() *cobra.Command {
 }
 
 type bazelBuildParser struct {
-	env *cfg.Context
+	env    *cfg.Context
+	static bool
 }
 
-func (p *bazelBuildParser) AddFlags(*cobra.Command) {}
+func (p *bazelBuildParser) AddFlags(cmd *cobra.Command) {
+	cmd.Flags().BoolVar(&p.static, "bazel_use_static_credentials", false, "Authenticate Bazel builds with a static bearer token instead of an mTLS client certificate.")
+}
 
 func (p *bazelBuildParser) Parse(ctx context.Context, _ []string) error {
-	return buildsetup.ConfigureGoBuilder(ctx, *p.env)
+	return buildsetup.ConfigureGoBuilder(ctx, *p.env, p.static)
 }
 
 func outputResults(ctx context.Context, results []compute.ResultWithTimestamp[deploy.ResolvedServerImages]) {
