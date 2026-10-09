@@ -76,7 +76,7 @@ func DoMain(name string, opts MainOpts, registerCommands func(*cobra.Command)) {
 			registerCommands(rootCmd)
 
 			fncobra.PushPreParse(rootCmd, func(ctx context.Context, args []string) error {
-				module.WireModuleLoader()
+				wireModuleLoader()
 
 				binary.BuildGo = (golang.Builder{}).GoBuilder
 				binary.BuildLLBGen = genbinary.LLBBinary

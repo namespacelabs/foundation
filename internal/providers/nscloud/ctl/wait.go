@@ -11,13 +11,12 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/clientcmd"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeclient"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -41,29 +40,60 @@ func WaitKubeSystem(ctx context.Context, cluster *api.KubernetesCluster) error {
 			return fnerrors.Newf("failed to load kubernetes configuration: %w", err)
 		}
 
+		cli, err := kubeclient.NewREST(restcfg)
+		if err != nil {
+			return fnerrors.Newf("failed to create kubernetes client: %w", err)
+		}
+
 		eg := executor.New(ctx, "wait")
 
 		for _, d := range deployments {
-			d := d
-
 			eg.Go(func(ctx context.Context) error {
 				fmt.Fprintf(console.Debug(ctx), "will wait for deployment %s\n", d)
 
-				obs := kubeobserver.WaitOnResource{
-					RestConfig:       restcfg,
-					Name:             d,
-					Namespace:        kubeSystem,
-					Description:      fmt.Sprintf("kube-system deployment %s", d),
-					GroupVersionKind: schema.FromAPIVersionAndKind("apps/v1", "Deployment"),
-				}
-
-				return obs.WaitUntilReady(ctx, nil)
+				return waitForDeployment(ctx, cli, kubeSystem, d)
 			})
 		}
 
 		return eg.Wait()
 	})
+}
 
+// deploymentStatus is the subset of apps/v1 Deployment that readiness depends on.
+type deploymentStatus struct {
+	Status struct {
+		Replicas        int32 `json:"replicas"`
+		ReadyReplicas   int32 `json:"readyReplicas"`
+		UpdatedReplicas int32 `json:"updatedReplicas"`
+	} `json:"status"`
+}
+
+func waitForDeployment(ctx context.Context, cli *kubeclient.REST, namespace, name string) error {
+	ctx, cancel := context.WithTimeout(ctx, waitTimeout)
+	defer cancel()
+
+	path := fmt.Sprintf("/apis/apps/v1/namespaces/%s/deployments/%s", namespace, name)
+
+	return backoff.Retry(func() error {
+		var dep deploymentStatus
+		if err := cli.Get(ctx, path, &dep); err != nil {
+			var status *kubeclient.StatusError
+			if errors.As(err, &status) && status.IsNotFound() {
+				// The deployment may not be visible yet; keep waiting.
+				return fnerrors.Newf("deployment %s/%s not found yet", namespace, name)
+			}
+
+			return backoff.Permanent(err)
+		}
+
+		st := dep.Status
+		if st.Replicas > 0 && st.ReadyReplicas == st.Replicas && st.UpdatedReplicas == st.Replicas {
+			return nil
+		}
+
+		return fnerrors.Newf("deployment %s/%s not ready yet (ready=%d/%d, updated=%d)",
+			namespace, name, st.ReadyReplicas, st.Replicas, st.UpdatedReplicas)
+	}, backoff.WithContext(backoff.NewConstantBackOff(waitBackoff), ctx))
 }
 
 func WaitContainers(ctx context.Context, clusterId string, ctrs []*api.Container) error {

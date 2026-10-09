@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/pflag"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/credhelper"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -689,24 +690,24 @@ func toBazelConfig(ctx context.Context, out bazelSetup, useAbsoluteCredHelperPat
 			}
 		}
 	} else if len(out.CredentialHelperDomains) > 0 {
-		path, err := exec.LookPath(BazelCredHelperBinary)
+		path, err := exec.LookPath(credhelper.BazelCredHelperBinary)
 		if err != nil {
 			stdout := console.Stdout(ctx)
 			style := colors.Ctx(ctx)
 
 			if errors.Is(err, exec.ErrNotFound) {
 				fmt.Fprintln(stdout)
-				fmt.Fprint(stdout, style.Highlight.Apply(fmt.Sprintf("We didn't find %s in your $PATH.", BazelCredHelperBinary)))
-				fmt.Fprintf(stdout, "\nIt's usually installed along-side nsc; so if you have added nsc to the $PATH, %s will also be available.\n", BazelCredHelperBinary)
+				fmt.Fprint(stdout, style.Highlight.Apply(fmt.Sprintf("We didn't find %s in your $PATH.", credhelper.BazelCredHelperBinary)))
+				fmt.Fprintf(stdout, "\nIt's usually installed along-side nsc; so if you have added nsc to the $PATH, %s will also be available.\n", credhelper.BazelCredHelperBinary)
 				fmt.Fprintf(stdout, "\nWhile your $PATH is not updated, accessing the remote bazel cache won't work.\n")
 			}
 			if !errors.Is(err, exec.ErrNotFound) || useAbsoluteCredHelperPath {
-				return nil, fnerrors.Newf("failed to look up %s in $PATH: %w", BazelCredHelperBinary, err)
+				return nil, fnerrors.Newf("failed to look up %s in $PATH: %w", credhelper.BazelCredHelperBinary, err)
 			}
 		}
 
 		for _, domain := range out.CredentialHelperDomains {
-			credHelper := BazelCredHelperBinary
+			credHelper := credhelper.BazelCredHelperBinary
 			if useAbsoluteCredHelperPath {
 				credHelper = path
 			}
