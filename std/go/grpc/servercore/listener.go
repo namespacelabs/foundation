@@ -129,10 +129,12 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 		PermitWithoutStream: true,
 	})}
 	plaintextServerOpts := append(OrderedServerInterceptors(), keepaliveOpts...)
+	plaintextServerOpts = append(plaintextServerOpts, grpc.WaitForHandlers(true))
 	grpcopts := slices.Clone(plaintextServerOpts)
 	defaultServerOpts := slices.Clone(plaintextServerOpts)
 	if !tlsOnly && tlsConfig != nil {
 		defaultServerOpts = append(orderedServerInterceptors(true), keepaliveOpts...)
+		defaultServerOpts = append(defaultServerOpts, grpc.WaitForHandlers(true))
 	}
 
 	if gogrpc.ServerCreds != nil {
