@@ -9,7 +9,3 @@ import "errors"
 func SetFileLimit(n uint64) error {
 	return errors.ErrUnsupported
 }
-
-func SetCoreFileLimit(maxCoreFileSize uint64) error {
-	return errors.ErrUnsupported
-}
