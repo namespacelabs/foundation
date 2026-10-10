@@ -17,7 +17,7 @@ import (
 func TestGraphCollapsesCompatibleTargets(t *testing.T) {
 	graph := build.NewGraph()
 	ctx := build.WithGraph(context.Background(), graph)
-	builder := NewBuilder("/tmp/namespace.bazelrc")
+	builder := NewBuilder()
 
 	first, err := builder.AddTarget(ctx, Target{WorkspaceAbs: "/workspace", Label: "//global/server/iam:iam", Platform: "linux_amd64"})
 	if err != nil {
@@ -63,7 +63,7 @@ func TestGraphCollapsesCompatibleTargets(t *testing.T) {
 }
 
 func TestTargetWithoutBuildGraphUsesStandaloneInvocation(t *testing.T) {
-	got, err := NewBuilder("/tmp/namespace.bazelrc").AddTarget(context.Background(), Target{WorkspaceAbs: "/workspace", Label: "//target"})
+	got, err := NewBuilder().AddTarget(context.Background(), Target{WorkspaceAbs: "/workspace", Label: "//target"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestTargetWithoutBuildGraphUsesStandaloneInvocation(t *testing.T) {
 }
 
 func TestStandaloneTargetsDeduplicateByWorkspaceLabelAndPlatform(t *testing.T) {
-	builder := NewBuilder("/tmp/namespace.bazelrc")
+	builder := NewBuilder()
 	ctx := context.Background()
 	target := Target{WorkspaceAbs: "/workspace", Label: "@@foundation//prepare:prepare", Platform: "linux_amd64"}
 	first, err := builder.AddTarget(ctx, target)

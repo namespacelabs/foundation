@@ -16,6 +16,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"gotest.tools/assert"
 )
 
 func TestToBazelExecutionConfigBuildEventsStatic(t *testing.T) {
@@ -228,6 +229,12 @@ func TestNewBazelCmdSetupAlias(t *testing.T) {
 	if setup.Flags().Lookup("disable_build_events") == nil {
 		t.Fatal("bazel setup is missing --disable_build_events")
 	}
+
+	assert.NilError(t, setup.ParseFlags([]string{"--cluster_name=ci-builds"}))
+	clusterName, err := setup.Flags().GetString("cluster_name")
+	assert.NilError(t, err)
+	assert.Equal(t, clusterName, "ci-builds")
+	assert.Assert(t, setup.Flags().Lookup("key") == nil)
 
 	executionSetup, _, err := cmd.Find([]string{"execution", "setup"})
 	if err != nil {

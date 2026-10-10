@@ -55,11 +55,8 @@ type Builder struct {
 	bazelWorkspace string
 }
 
-func MaybeBazelBuilder(bazelRC, workspaceAbs string) Builder {
-	if bazelRC == "" {
-		return Builder{}
-	}
-	return Builder{bazel: buildbazel.NewBuilder(bazelRC), bazelWorkspace: workspaceAbs}
+func MaybeBazelBuilder(workspaceAbs string) Builder {
+	return Builder{bazel: buildbazel.NewBuilder(), bazelWorkspace: workspaceAbs}
 }
 
 func (gb GoBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {

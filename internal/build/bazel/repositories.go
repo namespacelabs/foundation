@@ -42,7 +42,7 @@ func (b *Builder) ExternalGoTarget(ctx context.Context, workspaceAbs, modulePath
 	if !ok {
 		var stdout bytes.Buffer
 		if err := runBazelWithOutput(ctx, installation, workspaceAbs, &stdout,
-			"--bazelrc="+b.bazelRC, "mod", "show_repo", "--all_visible_repos", "--output=streamed_jsonproto"); err != nil {
+			"mod", "show_repo", "--all_visible_repos", "--output=streamed_jsonproto"); err != nil {
 			return "", err
 		}
 		repos, err = parseGoRepositories(&stdout)
@@ -65,7 +65,7 @@ func (b *Builder) ExternalGoTarget(ctx context.Context, workspaceAbs, modulePath
 	pkg, _, _ := strings.Cut(label, ":")
 	var stdout bytes.Buffer
 	if err := runBazelWithOutput(ctx, installation, workspaceAbs, &stdout,
-		"--bazelrc="+b.bazelRC, "query", "--consistent_labels", "--output=label", "kind('go_binary rule', "+pkg+":*)"); err != nil {
+		"query", "--consistent_labels", "--output=label", "kind('go_binary rule', "+pkg+":*)"); err != nil {
 		return "", err
 	}
 	for _, found := range strings.Fields(stdout.String()) {

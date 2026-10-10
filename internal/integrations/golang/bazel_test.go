@@ -45,12 +45,6 @@ func TestRulesGoPlatform(t *testing.T) {
 	}
 }
 
-func TestMaybeBazelBuilderWithoutBazelRC(t *testing.T) {
-	if builder := MaybeBazelBuilder("", "/workspace"); builder.bazel != nil {
-		t.Fatal("empty Bazel configuration unexpectedly enabled the Bazel builder")
-	}
-}
-
 func TestGoModuleVersion(t *testing.T) {
 	mod := pkggraph.NewModule(&schema.Workspace{ModuleName: "example.com/acme"}, nil, "0123456789ab")
 	assert.Equal(t, "0123456789ab", goModuleVersion(mod, "example.com/acme"))
