@@ -25,17 +25,14 @@ import (
 )
 
 type Builder struct {
-	bazelRC string
-
 	mu              sync.Mutex
 	repositories    map[string][]goRepository
 	externalTargets map[string]string
 	standalone      map[Target]*targetNode
 }
 
-func NewBuilder(bazelRC string) *Builder {
+func NewBuilder() *Builder {
 	return &Builder{
-		bazelRC:         bazelRC,
 		repositories:    map[string][]goRepository{},
 		externalTargets: map[string]string{},
 		standalone:      map[Target]*targetNode{},
@@ -61,7 +58,7 @@ func (b *Builder) AddTarget(ctx context.Context, target Target) (compute.Computa
 		if node := b.standalone[target]; node != nil {
 			return node, nil
 		}
-		pass := &bazelGraph{bazelRC: b.bazelRC}
+		pass := &bazelGraph{}
 		node, err := pass.add(target)
 		if err != nil {
 			return nil, err
@@ -72,8 +69,8 @@ func (b *Builder) AddTarget(ctx context.Context, target Target) (compute.Computa
 		b.standalone[target] = node
 		return node, nil
 	}
-	pass, err := graph.Pass("bazel:"+b.bazelRC, func() build.GraphPass {
-		return &bazelGraph{bazelRC: b.bazelRC}
+	pass, err := graph.Pass("bazel", func() build.GraphPass {
+		return &bazelGraph{}
 	})
 	if err != nil {
 		return nil, err
@@ -84,7 +81,6 @@ func (b *Builder) AddTarget(ctx context.Context, target Target) (compute.Computa
 type bazelGraph struct {
 	mu sync.Mutex
 
-	bazelRC   string
 	nodes     []*targetNode
 	finalized bool
 }
@@ -129,7 +125,6 @@ func (g *bazelGraph) Finalize() error {
 		if inv == nil {
 			inv = &invocation{
 				workspaceAbs: node.target.WorkspaceAbs,
-				bazelRC:      g.bazelRC,
 				platform:     node.target.Platform,
 				targets:      map[string]struct{}{},
 			}
@@ -176,7 +171,6 @@ type outputs map[string]string
 
 type invocation struct {
 	workspaceAbs string
-	bazelRC      string
 	platform     string
 	targets      map[string]struct{}
 
@@ -199,7 +193,6 @@ func (inv *invocation) Action() *tasks.ActionEvent {
 func (inv *invocation) Inputs() *compute.In {
 	return compute.Inputs().
 		Indigestible("workspace", inv.workspaceAbs).
-		Str("bazelrc", inv.bazelRC).
 		Str("platform", inv.platform).
 		JSON("targets", inv.targetList())
 }
@@ -221,9 +214,7 @@ func (inv *invocation) Compute(ctx context.Context, _ compute.Resolved) (outputs
 		return nil, err
 	}
 	targets := inv.targetList()
-	startup := []string{"--bazelrc=" + inv.bazelRC}
-	buildArgs := append([]string{}, startup...)
-	buildArgs = append(buildArgs, "build", "--remote_download_outputs=toplevel")
+	buildArgs := []string{"build", "--remote_download_outputs=toplevel"}
 	buildArgs = append(buildArgs, inv.buildArgs()...)
 	buildArgs = append(buildArgs, targets...)
 	if err := runBazel(ctx, installation, inv.workspaceAbs, buildArgs...); err != nil {
@@ -233,8 +224,7 @@ func (inv *invocation) Compute(ctx context.Context, _ compute.Resolved) (outputs
 	result := outputs{}
 	for _, target := range targets {
 		var stdout bytes.Buffer
-		cqueryArgs := append([]string{}, startup...)
-		cqueryArgs = append(cqueryArgs, "cquery", "--output=files")
+		cqueryArgs := []string{"cquery", "--output=files"}
 		cqueryArgs = append(cqueryArgs, inv.buildArgs()...)
 		cqueryArgs = append(cqueryArgs, target)
 		if err := runBazelWithOutput(ctx, installation, inv.workspaceAbs, &stdout, cqueryArgs...); err != nil {

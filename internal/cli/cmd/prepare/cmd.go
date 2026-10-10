@@ -39,8 +39,6 @@ var (
 	envRef           string
 	isCreateEnv      bool   = false
 	createEnvPurpose string = "DEVELOPMENT"
-	static           bool
-	bazelClusterName string
 )
 
 func NewPrepareCmd() *cobra.Command {
@@ -68,8 +66,6 @@ func NewPrepareCmd() *cobra.Command {
 	rootCmd.PersistentFlags().StringVar(&envRef, "env", "dev", "The environment to access.")
 	rootCmd.PersistentFlags().BoolVar(&isCreateEnv, "create_env", isCreateEnv, "Create the environment with the specified parameters and write it into the workspace file if it does not already exist.")
 	rootCmd.PersistentFlags().StringVar(&createEnvPurpose, "env_purpose", createEnvPurpose, "The purpose of the newly created environment.")
-	rootCmd.PersistentFlags().BoolVar(&static, "bazel_use_static_credentials", false, "Authenticate Bazel builds with a static bearer token instead of an mTLS client certificate.")
-	rootCmd.PersistentFlags().StringVar(&bazelClusterName, "bazel_cluster_name", "", "Bazel remote-execution cluster name. Defaults to 'default'.")
 
 	return rootCmd
 }
@@ -205,9 +201,7 @@ func runPrepare(callback func(context.Context, cfg.Context) ([]prepare.Stage, er
 				return err
 			}
 
-			if err := buildsetup.ConfigureGoBuilder(ctx, env, bazelClusterName, static); err != nil {
-				return err
-			}
+			buildsetup.ConfigureGoBuilder(env)
 
 			prepared, err := callback(ctx, env)
 			if err != nil {

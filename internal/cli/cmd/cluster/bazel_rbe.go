@@ -48,20 +48,8 @@ func newSetupBazelCmd() *cobra.Command {
 	return newSetupExecutionCmdWithRemoteFlag(true)
 }
 
-// SetupBazelRemoteExecution provisions the selected Bazel remote-execution
-// cluster and writes a bazelrc suitable for build commands.
-func SetupBazelRemoteExecution(ctx context.Context, bazelRcPath, clusterName string, static bool) error {
-	cmd := newSetupBazelCmd()
-	args := []string{"--bazelrc", bazelRcPath, "--key", clusterName, "--output", "none"}
-	if static {
-		args = append(args, "--static")
-	}
-	cmd.SetArgs(args)
-	return cmd.ExecuteContext(ctx)
-}
-
 func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
-	var bazelRcPath, output, bazelCommand, key, tokenFile, storageMode string
+	var bazelRcPath, output, bazelCommand, clusterName, tokenFile, storageMode string
 	var staticDur time.Duration
 	var static, enableRemoteAssetAPI, disableBuildEvents bool
 	remote := true
@@ -74,7 +62,7 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 		flags.StringVar(&bazelRcPath, "bazelrc", "", "If specified, write the bazelrc to this path.")
 		flags.StringVarP(&output, "output", "o", "plain", "One of plain or json.")
 		flags.StringVar(&bazelCommand, "command", defaultBazelRbeCommand, "The bazel command to use in the generated bazelrc (e.g., 'build' or 'common').")
-		flags.StringVar(&key, "key", "", "Stable identifier that disambiguates multiple parallel execution clusters for the same workspace. Defaults to 'default'.")
+		flags.StringVar(&clusterName, "cluster_name", "", "Bazel execution or storage cluster name. Defaults to 'default'.")
 		flags.StringVar(&tokenFile, "token", "", "Use the bearer token stored at this location for authentication instead of the default. Implies --static.")
 		flags.BoolVar(&static, "static", false, "If specified, authenticate using a static bearer token in --remote_header against the public endpoints instead of issuing an mTLS client certificate.")
 		flags.BoolVar(&enableRemoteAssetAPI, "enable_remote_asset_api", false, "If specified, opt-in to the remote asset API and configure bazel's --experimental_remote_downloader.")
@@ -118,7 +106,7 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 
 		var out bazelRbeSetup
 		if remote {
-			res, err := ensureBazelExecutionCluster(ctx, tok, key, authMode, enableRemoteAssetAPI)
+			res, err := ensureBazelExecutionCluster(ctx, tok, clusterName, authMode, enableRemoteAssetAPI)
 			if err != nil {
 				return fnerrors.Newf("failed to provision bazel execution cluster: %w", err)
 			}
@@ -146,7 +134,7 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 			out.BuildEventResultsURL = res.GetBuildEventResultsUrl()
 			out.CredentialHelperDomains = res.GetCredentialHelperDomains()
 		} else {
-			res, err := ensureBazelStorageCluster(ctx, tok, key, authMode, enableRemoteAssetAPI, bazelStorageAccessMode(storageMode))
+			res, err := ensureBazelStorageCluster(ctx, tok, clusterName, authMode, enableRemoteAssetAPI, bazelStorageAccessMode(storageMode))
 			if err != nil {
 				return fnerrors.Newf("failed to provision bazel storage cluster: %w", err)
 			}
