@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"strconv"
 	"syscall"
@@ -356,11 +355,9 @@ func callSideEffectFree(ctx context.Context, retryable bool, method func(context
 				return methodErr
 			}
 
-			var netErr *net.OpError
-			if errors.As(methodErr, &netErr) {
-				if errno, ok := netErr.Err.(syscall.Errno); ok && errno == syscall.ECONNRESET {
-					return methodErr // Retry
-				}
+			// The errno arrives wrapped (*net.OpError -> *os.SyscallError -> syscall.Errno).
+			if errors.Is(methodErr, syscall.ECONNRESET) {
+				return methodErr // Retry
 			}
 
 			return backoff.Permanent(methodErr)
