@@ -201,7 +201,8 @@ func loadSUT(ctx context.Context, env cfg.Context, planner runtime.Planner, pl *
 		suts = append(suts, sut)
 	}
 
-	stack, err := planning.ComputeStack(ctx, suts, planning.ProvisionOpts{Planner: planner, PortRange: eval.DefaultPortRange()})
+	// Keep test listeners outside Linux's default ephemeral source-port range.
+	stack, err := planning.ComputeStack(ctx, suts, planning.ProvisionOpts{Planner: planner, PortRange: eval.PortRange{Base: 20000, Max: 21000}})
 	if err != nil {
 		return nil, err
 	}
