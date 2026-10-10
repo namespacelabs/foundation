@@ -6,9 +6,7 @@ package rpcerrors
 
 import (
 	"fmt"
-	"runtime"
 
-	"github.com/go-errors/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -17,12 +15,10 @@ import (
 )
 
 type Error struct {
-	SafeMsg       string
-	Err           error
-	Code          codes.Code
-	stack         []uintptr
-	stkframecache []errors.StackFrame
-	Details       []proto.Message
+	SafeMsg string
+	Err     error
+	Code    codes.Code
+	Details []proto.Message
 }
 
 func Wrap(code codes.Code, err error) *Error {
@@ -30,36 +26,26 @@ func Wrap(code codes.Code, err error) *Error {
 }
 
 func WrapWithSkip(code codes.Code, err error, skip int) *Error {
-	stack := make([]uintptr, errors.MaxStackDepth)
-	length := runtime.Callers(1+skip, stack[:])
-
 	return &Error{
-		Err:   err,
-		Code:  code,
-		stack: stack[:length],
+		Err:  err,
+		Code: code,
 	}
 }
 
 func Errorf(code codes.Code, format string, args ...any) *Error {
-	stack := make([]uintptr, errors.MaxStackDepth)
-	length := runtime.Callers(2, stack[:])
 	err := fmt.Errorf(format, args...)
 	return &Error{
-		Err:   err,
-		Code:  code,
-		stack: stack[:length],
+		Err:  err,
+		Code: code,
 	}
 }
 
 func Safef(code codes.Code, original error, format string, args ...any) *Error {
-	stack := make([]uintptr, errors.MaxStackDepth)
-	length := runtime.Callers(2, stack[:])
 	safeMsg := fmt.Sprintf(format, args...)
 	return &Error{
 		SafeMsg: safeMsg,
 		Err:     original,
 		Code:    code,
-		stack:   stack[:length],
 	}
 }
 
@@ -114,18 +100,5 @@ func (e *Error) WithDetails(details ...proto.Message) *Error {
 		Err:     e.Err,
 		Code:    e.Code,
 		Details: append(e.Details, details...),
-		stack:   e.stack,
 	}
-}
-
-func (err *Error) StackFrames() []errors.StackFrame {
-	if err.stkframecache == nil {
-		err.stkframecache = make([]errors.StackFrame, len(err.stack))
-
-		for i, pc := range err.stack {
-			err.stkframecache[i] = errors.NewStackFrame(pc)
-		}
-	}
-
-	return err.stkframecache
 }
