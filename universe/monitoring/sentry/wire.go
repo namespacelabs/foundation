@@ -141,43 +141,6 @@ func errorStatus(err error) codes.Code {
 	return codes.Unknown
 }
 
-func statusFromGrpc(code codes.Code) sentry.SpanStatus {
-	switch code {
-	case codes.OK:
-		return sentry.SpanStatusOK
-	case codes.InvalidArgument:
-		return sentry.SpanStatusInvalidArgument
-	case codes.DeadlineExceeded:
-		return sentry.SpanStatusDeadlineExceeded
-	case codes.NotFound:
-		return sentry.SpanStatusNotFound
-	case codes.AlreadyExists:
-		return sentry.SpanStatusAlreadyExists
-	case codes.PermissionDenied:
-		return sentry.SpanStatusPermissionDenied
-	case codes.ResourceExhausted:
-		return sentry.SpanStatusResourceExhausted
-	case codes.FailedPrecondition:
-		return sentry.SpanStatusFailedPrecondition
-	case codes.Aborted:
-		return sentry.SpanStatusAborted
-	case codes.OutOfRange:
-		return sentry.SpanStatusOutOfRange
-	case codes.Unimplemented:
-		return sentry.SpanStatusUnimplemented
-	case codes.Internal:
-		return sentry.SpanStatusInternalError
-	case codes.Unavailable:
-		return sentry.SpanStatusUnavailable
-	case codes.DataLoss:
-		return sentry.SpanStatusDataLoss
-	case codes.Unauthenticated:
-		return sentry.SpanStatusUnauthenticated
-	}
-
-	return sentry.SpanStatusUnknown
-}
-
 func recoverAndReport(hub *sentry.Hub) {
 	if err := recover(); err != nil {
 		eventID := hub.Recover(err)
