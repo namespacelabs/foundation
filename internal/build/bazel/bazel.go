@@ -5,10 +5,12 @@
 package bazel
 
 import (
-	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
+	"net/url"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
@@ -226,29 +228,212 @@ func (inv *invocation) Compute(ctx context.Context, _ compute.Resolved) (outputs
 		return nil, err
 	}
 	targets := inv.targetList()
-	buildArgs := []string{"build", "--remote_download_outputs=toplevel"}
+	canonical := make(map[string]string, len(targets))
+	var repositoryMapping map[string]string
+	for _, target := range targets {
+		label := target
+		if strings.HasPrefix(label, "@") && !strings.HasPrefix(label, "@@") {
+			// Apparent names can be arbitrary aliases; use Bazel's repository
+			// mapping rather than guessing the canonical name from a prefix.
+			if repositoryMapping == nil {
+				var stdout bytes.Buffer
+				if err := runBazelWithOutput(ctx, installation, inv.workspaceAbs, &stdout, "mod", "dump_repo_mapping", ""); err != nil {
+					return nil, err
+				}
+				if err := json.Unmarshal(stdout.Bytes(), &repositoryMapping); err != nil {
+					return nil, fnerrors.Newf("bazel: failed to read repository mapping: %w", err)
+				}
+			}
+			repo, suffix, ok := strings.Cut(label[1:], "//")
+			mapped, found := repositoryMapping[repo]
+			if !ok || !found {
+				return nil, fnerrors.Newf("bazel: cannot resolve repository for %s", target)
+			}
+			label = "@@" + mapped + "//" + suffix
+		}
+		label = strings.TrimPrefix(label, "@@//")
+		if !strings.Contains(label, "//") {
+			label = "//" + label
+		}
+		if !strings.Contains(label, ":") {
+			label += ":" + filepath.Base(label)
+		}
+		canonical[target] = label
+	}
+	events, err := os.CreateTemp("", "ns-bazel-build-events-*.json")
+	if err != nil {
+		return nil, fnerrors.Newf("bazel: failed to create build event file: %w", err)
+	}
+	eventsPath := events.Name()
+	if err := events.Close(); err != nil {
+		os.Remove(eventsPath)
+		return nil, fnerrors.Newf("bazel: failed to close build event file: %w", err)
+	}
+	defer os.Remove(eventsPath)
+
+	buildArgs := []string{"build", "--remote_download_outputs=toplevel", "--build_event_json_file=" + eventsPath, "--nobuild_event_json_file_path_conversion"}
 	buildArgs = append(buildArgs, inv.buildArgs()...)
 	buildArgs = append(buildArgs, targets...)
 	if err := runBazel(ctx, installation, inv.workspaceAbs, buildArgs...); err != nil {
 		return nil, err
 	}
+	f, err := os.Open(eventsPath)
+	if err != nil {
+		return nil, fnerrors.Newf("bazel: failed to open build event file: %w", err)
+	}
+	defer f.Close()
+	return parseBuildEvents(inv.workspaceAbs, inv.outputGroup, canonical, f)
+}
+
+type buildEvent struct {
+	ID struct {
+		NamedSet struct {
+			ID string `json:"id"`
+		} `json:"namedSet"`
+		TargetCompleted struct {
+			Label string `json:"label"`
+		} `json:"targetCompleted"`
+	} `json:"id"`
+	NamedSetOfFiles struct {
+		Files    []buildEventFile `json:"files"`
+		FileSets []struct {
+			ID string `json:"id"`
+		} `json:"fileSets"`
+	} `json:"namedSetOfFiles"`
+	Completed struct {
+		DirectoryOutput []buildEventFile `json:"directoryOutput"`
+		OutputGroup     []struct {
+			Name     string `json:"name"`
+			FileSets []struct {
+				ID string `json:"id"`
+			} `json:"fileSets"`
+		} `json:"outputGroup"`
+	} `json:"completed"`
+}
+
+type buildEventFile struct {
+	Name       string   `json:"name"`
+	URI        string   `json:"uri"`
+	PathPrefix []string `json:"pathPrefix"`
+}
+
+type buildEventNamedSet struct {
+	files    []buildEventFile
+	children []string
+}
+
+func parseBuildEvents(workspaceAbs, outputGroup string, targets map[string]string, r io.Reader) (outputs, error) {
+	if outputGroup == "" {
+		outputGroup = "default"
+	}
+	namedSets := map[string]buildEventNamedSet{}
+	targetSets := map[string][]string{}
+	directories := map[string][]buildEventFile{}
+	decoder := json.NewDecoder(r)
+	for {
+		var event buildEvent
+		err := decoder.Decode(&event)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fnerrors.Newf("bazel: failed to read build events: %w", err)
+		}
+		if event.ID.NamedSet.ID != "" {
+			set := buildEventNamedSet{files: event.NamedSetOfFiles.Files}
+			for _, child := range event.NamedSetOfFiles.FileSets {
+				set.children = append(set.children, child.ID)
+			}
+			namedSets[event.ID.NamedSet.ID] = set
+		}
+		if event.ID.TargetCompleted.Label != "" {
+			directories[event.ID.TargetCompleted.Label] = event.Completed.DirectoryOutput
+			for _, group := range event.Completed.OutputGroup {
+				if group.Name == outputGroup {
+					targetSets[event.ID.TargetCompleted.Label] = nil
+					for _, set := range group.FileSets {
+						targetSets[event.ID.TargetCompleted.Label] = append(targetSets[event.ID.TargetCompleted.Label], set.ID)
+					}
+				}
+			}
+		}
+	}
 
 	result := outputs{}
-	for _, target := range targets {
-		var stdout bytes.Buffer
-		cqueryArgs := []string{"cquery", "--output=files"}
-		cqueryArgs = append(cqueryArgs, inv.buildArgs()...)
-		cqueryArgs = append(cqueryArgs, target)
-		if err := runBazelWithOutput(ctx, installation, inv.workspaceAbs, &stdout, cqueryArgs...); err != nil {
-			return nil, err
+	for target, label := range targets {
+		setIDs, ok := targetSets[label]
+		if !ok {
+			return nil, fnerrors.Newf("bazel: output for target %s is missing", target)
 		}
-		output, err := parseOutput(inv.workspaceAbs, target, stdout.String())
-		if err != nil {
-			return nil, err
+		var files []buildEventFile
+		seen := map[string]bool{}
+		var collect func(string)
+		collect = func(id string) {
+			if seen[id] {
+				return
+			}
+			seen[id] = true
+			set := namedSets[id]
+			files = append(files, set.files...)
+			for _, child := range set.children {
+				collect(child)
+			}
 		}
-		result[target] = output
+		for _, id := range setIDs {
+			collect(id)
+		}
+		artifacts := map[string]struct{}{}
+		// Output groups expand trees into children. directoryOutput retains
+		// their declared roots, including empty trees and cross-package aliases.
+		for _, directory := range directories[label] {
+			path, err := buildEventFilePath(workspaceAbs, directory)
+			if err != nil {
+				return nil, err
+			}
+			// Directory entries are exec-root-relative, whereas their children
+			// have absolute file URIs. Resolve the workspace's bazel-out link.
+			path, err = filepath.EvalSymlinks(path)
+			if err != nil {
+				return nil, fnerrors.Newf("bazel: failed to resolve output directory: %w", err)
+			}
+			artifacts[path] = struct{}{}
+		}
+		for _, file := range files {
+			path, err := buildEventFilePath(workspaceAbs, file)
+			if err != nil {
+				return nil, err
+			}
+			for root := range artifacts {
+				if strings.HasPrefix(path, root+string(filepath.Separator)) {
+					path = root
+					break
+				}
+			}
+			artifacts[path] = struct{}{}
+		}
+		if len(artifacts) != 1 {
+			return nil, fnerrors.Newf("bazel: target %s produced %d files, expected one", target, len(artifacts))
+		}
+		for path := range artifacts {
+			result[target] = path
+		}
 	}
 	return result, nil
+}
+
+func buildEventFilePath(workspaceAbs string, file buildEventFile) (string, error) {
+	if file.URI != "" {
+		u, err := url.Parse(file.URI)
+		if err != nil || u.Scheme != "file" {
+			return "", fnerrors.Newf("bazel: unsupported output URI %q", file.URI)
+		}
+		return filepath.FromSlash(u.Path), nil
+	}
+	path := filepath.Join(append(file.PathPrefix, file.Name)...)
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(workspaceAbs, path)
+	}
+	return path, nil
 }
 
 func bazelInstallation() (string, error) {
@@ -261,29 +446,6 @@ func bazelInstallation() (string, error) {
 		return "", fnerrors.Newf("bazel: failed to install Bazel: %w", err)
 	}
 	return installation.Path, nil
-}
-
-func parseOutput(workspaceAbs, target, output string) (string, error) {
-	var files []string
-	scanner := bufio.NewScanner(strings.NewReader(output))
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		files = append(files, line)
-	}
-	if err := scanner.Err(); err != nil {
-		return "", fnerrors.Newf("bazel: failed to read cquery output: %w", err)
-	}
-	if len(files) != 1 {
-		return "", fnerrors.Newf("bazel: target %s produced %d files, expected one", target, len(files))
-	}
-	source := files[0]
-	if !filepath.IsAbs(source) {
-		source = filepath.Join(workspaceAbs, source)
-	}
-	return source, nil
 }
 
 func runBazel(ctx context.Context, binary, dir string, args ...string) error {

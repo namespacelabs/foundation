@@ -6,12 +6,14 @@ package bazel
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 
 	"gotest.tools/assert"
 	"namespacelabs.dev/foundation/internal/build"
+	"namespacelabs.dev/foundation/internal/compute"
 )
 
 func TestGraphCollapsesCompatibleTargets(t *testing.T) {
@@ -111,19 +113,85 @@ func TestGraphRejectsTargetAfterFinalize(t *testing.T) {
 	}
 }
 
-func TestParseOutputPreservesRequestedTargetIdentity(t *testing.T) {
-	got, err := parseOutput("/workspace", "//global/server/iam:alias", "bazel-bin/global/server/iam/iam\n")
-	if err != nil {
-		t.Fatal(err)
+func TestInvocationDiscoversBuildOutputs(t *testing.T) {
+	workspace := t.TempDir()
+	installation, err := bazelInstallation()
+	assert.NilError(t, err)
+	t.Cleanup(func() { assert.NilError(t, runBazel(context.Background(), installation, workspace, "shutdown")) })
+	writeFixture := func(path, contents string) {
+		t.Helper()
+		path = filepath.Join(workspace, path)
+		assert.NilError(t, os.MkdirAll(filepath.Dir(path), 0755))
+		assert.NilError(t, os.WriteFile(path, []byte(contents), 0644))
 	}
-	want := filepath.Join("/workspace", "bazel-bin/global/server/iam/iam")
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("outputs = %q, want %q", got, want)
+	writeFixture("MODULE.bazel", `module(name = "fixture")
+bazel_dep(name = "output_fixture", version = "1.0", repo_name = "renamed")
+local_path_override(module_name = "output_fixture", path = "external")
+`)
+	writeFixture("BUILD.bazel", `genrule(name = "main", outs = ["nested/main.txt"], cmd = "echo main > $@")
+alias(name = "main_alias", actual = ":main")
+genrule(name = "multiple", outs = ["one.txt", "two.txt"], cmd = "touch $(OUTS)")
+`)
+	writeFixture("external/MODULE.bazel", `module(name = "output_fixture", version = "1.0")
+`)
+	writeFixture("external/BUILD.bazel", `genrule(name = "external", outs = ["external.txt"], cmd = "echo external > $@")
+alias(name = "external_alias", actual = ":external")
+`)
+
+	targets := []string{"//:main_alias", "@renamed//:external_alias", "@@output_fixture+//:external_alias"}
+	got, err := (&invocation{workspaceAbs: workspace, targets: map[string]struct{}{
+		targets[0]: {}, targets[1]: {}, targets[2]: {},
+	}}).Compute(context.Background(), compute.Resolved{})
+	assert.NilError(t, err)
+	for _, target := range targets {
+		assert.Assert(t, filepath.IsAbs(got[target]), target)
+		contents, err := os.ReadFile(got[target])
+		assert.NilError(t, err)
+		if target == targets[0] {
+			assert.Equal(t, string(contents), "main\n")
+		} else {
+			assert.Equal(t, string(contents), "external\n")
+		}
 	}
+	_, err = (&invocation{workspaceAbs: workspace, targets: map[string]struct{}{"//:multiple": {}}}).Compute(context.Background(), compute.Resolved{})
+	assert.ErrorContains(t, err, "produced 2 files, expected one")
 }
 
-func TestParseOutputRejectsMultipleFiles(t *testing.T) {
-	if _, err := parseOutput("/workspace", "//target", "bazel-bin/first\nbazel-bin/second\n"); err == nil {
-		t.Fatal("expected multiple outputs to fail")
-	}
+func TestInvocationDiscoversExplicitOutputGroupDirectory(t *testing.T) {
+	workspace := t.TempDir()
+	installation, err := bazelInstallation()
+	assert.NilError(t, err)
+	t.Cleanup(func() { assert.NilError(t, runBazel(context.Background(), installation, workspace, "shutdown")) })
+	assert.NilError(t, os.WriteFile(filepath.Join(workspace, "MODULE.bazel"), []byte(`module(name = "fixture")
+`), 0644))
+	assert.NilError(t, os.WriteFile(filepath.Join(workspace, "rule.bzl"), []byte(`def _directory(ctx):
+    out = ctx.actions.declare_directory("nested/" + ctx.label.name + ".dir")
+    command = "mkdir -p %s" % out.path
+    if ctx.label.name != "empty":
+        command += " && echo nested > %s/file && echo other > %s/other" % (out.path, out.path)
+    ctx.actions.run_shell(outputs = [out], command = command)
+    return [DefaultInfo(), OutputGroupInfo(oci_tarball = depset(transitive = [depset([out])]))]
+
+directory = rule(implementation = _directory)
+`), 0644))
+	assert.NilError(t, os.WriteFile(filepath.Join(workspace, "BUILD.bazel"), []byte(`load(":rule.bzl", "directory")
+directory(name = "image", visibility = ["//visibility:public"])
+directory(name = "empty")
+`), 0644))
+	assert.NilError(t, os.MkdirAll(filepath.Join(workspace, "alias"), 0755))
+	assert.NilError(t, os.WriteFile(filepath.Join(workspace, "alias/BUILD.bazel"), []byte(`alias(name = "image", actual = "//:image")
+`), 0644))
+
+	const target = "//alias:image"
+	got, err := (&invocation{workspaceAbs: workspace, outputGroup: "oci_tarball", targets: map[string]struct{}{target: {}, "//:empty": {}}}).Compute(context.Background(), compute.Resolved{})
+	assert.NilError(t, err)
+	info, err := os.Stat(got[target])
+	assert.NilError(t, err)
+	assert.Assert(t, info.IsDir(), "output %q has mode %v", got[target], info.Mode())
+	contents, err := os.ReadFile(filepath.Join(got[target], "file"))
+	assert.NilError(t, err)
+	assert.Equal(t, string(contents), "nested\n")
+	entries, err := os.ReadDir(got["//:empty"])
+	assert.NilError(t, err)
+	assert.Equal(t, len(entries), 0)
 }

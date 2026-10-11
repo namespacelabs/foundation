@@ -115,9 +115,20 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 		return nil, err
 	}
 
+	// Plan the driver in the same graph as the servers so compatible Bazel
+	// targets are built together, before any image is evaluated.
+	buildGraph := build.NewGraph()
+	ctx = build.WithGraph(ctx, buildGraph)
+	if err := driver.prepareImage(ctx); err != nil {
+		return nil, err
+	}
+
 	deployPlan, err := deploy.PrepareDeployStack(ctx, p, stack, driver)
 	if err != nil {
 		return nil, fnerrors.NewWithLocation(testPkg.Location, "failed to load stack: %w", err)
+	}
+	if err := buildGraph.Finalize(); err != nil {
+		return nil, err
 	}
 
 	sutServers := stack.Focus
