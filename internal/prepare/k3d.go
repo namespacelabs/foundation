@@ -30,7 +30,7 @@ import (
 
 const registryName = "k3d-ns-registry.nslocal.host"
 
-func K3D(clusterName, ingressClass string) Stage {
+func K3D(clusterName, ingressClass string, loadBalancer k3d.LoadBalancerMode) Stage {
 	return Stage{
 		Pre: func(ch chan *orchestration.Event) {
 			ch <- &orchestration.Event{
@@ -47,12 +47,12 @@ func K3D(clusterName, ingressClass string) Stage {
 		},
 
 		Run: func(ctx context.Context, env cfg.Context, ch chan *orchestration.Event) (*schema.DevHost_ConfigureEnvironment, error) {
-			return PrepareK3d(ctx, clusterName, ingressClass, env, ch)
+			return PrepareK3d(ctx, clusterName, ingressClass, loadBalancer, env, ch)
 		},
 	}
 }
 
-func PrepareK3d(ctx context.Context, clusterName, ingressClass string, env cfg.Context, ch chan *orchestration.Event) (*schema.DevHost_ConfigureEnvironment, error) {
+func PrepareK3d(ctx context.Context, clusterName, ingressClass string, loadBalancer k3d.LoadBalancerMode, env cfg.Context, ch chan *orchestration.Event) (*schema.DevHost_ConfigureEnvironment, error) {
 	return tasks.Return(ctx, tasks.Action("prepare.k3s").HumanReadable("Preparing a local Kubernetes cluster (k3s running in Docker)"),
 		func(ctx context.Context) (*schema.DevHost_ConfigureEnvironment, error) {
 			dockerclient, err := docker.NewClient()
@@ -103,7 +103,7 @@ func PrepareK3d(ctx context.Context, clusterName, ingressClass string, env cfg.C
 				return nil, err
 			}
 
-			if err := k3dPrepare.createOrRestartCluster(ctx, clusterName, registryAddr); err != nil {
+			if err := k3dPrepare.createOrRestartCluster(ctx, clusterName, registryAddr, loadBalancer); err != nil {
 				return nil, err
 			}
 
@@ -163,7 +163,7 @@ func (p *k3dPrepare) createOrRestartRegistry(ctx context.Context, registryName s
 	return registryAddr, nil
 }
 
-func (p *k3dPrepare) createOrRestartCluster(ctx context.Context, clusterName string, registryAddr string) error {
+func (p *k3dPrepare) createOrRestartCluster(ctx context.Context, clusterName string, registryAddr string, loadBalancer k3d.LoadBalancerMode) error {
 	clusters, err := p.k3dbin.ListClusters(ctx)
 	if err != nil {
 		return err
@@ -177,7 +177,7 @@ func (p *k3dPrepare) createOrRestartCluster(ctx context.Context, clusterName str
 	}
 	if ours == nil {
 		// Create cluster.
-		if err := p.k3dbin.CreateCluster(ctx, clusterName, registryAddr, "rancher/k3s:v1.26.2-k3s1", true); err != nil {
+		if err := p.k3dbin.CreateCluster(ctx, clusterName, registryAddr, "rancher/k3s:v1.26.2-k3s1", true, loadBalancer); err != nil {
 			return err
 		}
 	} else {
