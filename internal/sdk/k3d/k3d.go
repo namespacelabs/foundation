@@ -91,6 +91,13 @@ type Registry = Node
 
 type K3D string
 
+type LoadBalancerMode int
+
+const (
+	WithLoadBalancer LoadBalancerMode = iota
+	WithoutLoadBalancer
+)
+
 func EnsureSDK(ctx context.Context, p specs.Platform) (K3D, error) {
 	sdk, err := SDK(ctx, p)
 	if err != nil {
@@ -195,7 +202,7 @@ func (k3d K3D) ListClusters(ctx context.Context) ([]Cluster, error) {
 	return clusters, nil
 }
 
-func (k3d K3D) CreateCluster(ctx context.Context, name, registry, image string, updateDefault bool) error {
+func (k3d K3D) CreateCluster(ctx context.Context, name, registry, image string, updateDefault bool, loadBalancer LoadBalancerMode) error {
 	fmt.Fprintf(console.Stdout(ctx), "Creating a Kubernetes cluster, this may take up to a minute (image=%s).\n", image)
 
 	// Local deployments start many short-lived provisioner pods in parallel.
@@ -221,6 +228,11 @@ func (k3d K3D) CreateCluster(ctx context.Context, name, registry, image string, 
 		"--k3s-arg", "--kubelet-arg=kube-api-qps=50@server:0",
 		"--k3s-arg", "--kubelet-arg=kube-api-burst=100@server:0",
 		"--wait", name,
+	}
+
+	if loadBalancer == WithoutLoadBalancer {
+		// Expose the API directly from the single server to avoid the proxy's six-second startup delay.
+		args = append(args, "--no-lb")
 	}
 
 	if mirror := oci.DockerHubMirror(); mirror != "" {

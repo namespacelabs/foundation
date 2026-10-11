@@ -112,7 +112,7 @@ jobs:
         run: chmod +x ns && mv ns /tmp/ns
 
       - name: Prepare development environment
-        run: /tmp/ns prepare local
+        run: /tmp/ns prepare local --no_lb
 
       - name: Print kubectl cluster-info
         run: /tmp/ns kubectl cluster-info
@@ -247,6 +247,9 @@ jobs:
       - name: Prepare first environment
         run: /tmp/ns prepare local
 
+      - name: Verify default load balancer
+        run: docker container inspect k3d-ns-serverlb > /dev/null
+
       # k3d readiness does not wait for the service-account controller.
       - name: Wait for first environment service account
         run: timeout 60s bash -c 'until /tmp/ns kubectl -- get serviceaccount default --namespace=default; do sleep 1; done'
@@ -255,10 +258,40 @@ jobs:
         run: /tmp/ns doctor --tests=workspace,kubernetes-run
 
       - name: Unprepare
-        run: /tmp/ns unprepare
+        run: |
+          timeout 60s python3 - <<'PY'
+          import os
+          import pty
+          import sys
 
-      - name: Prepare second environment
-        run: /tmp/ns prepare local
+          pending = b""
+
+          def confirm(fd):
+              global pending
+              output = os.read(fd, 4096)
+              if pending is not None:
+                  pending += output
+                  # Wait until the interactive prompt has put the terminal into raw mode.
+                  if b'Type "unprepare"' in pending:
+                      os.write(fd, b"unprepare\r")
+                      pending = None
+              return output
+
+          sys.exit(os.waitstatus_to_exitcode(pty.spawn(["/tmp/ns", "unprepare"], master_read=confirm)))
+          PY
+
+      - name: Verify first environment removed
+        run: |
+          containers=$(docker ps -aq --filter 'name=^/k3d-ns-')
+          test -z "$containers"
+
+      - name: Prepare second environment without a load balancer
+        run: /tmp/ns prepare local --no_lb
+
+      - name: Verify no load balancer
+        run: |
+          load_balancers=$(docker ps -aq --filter 'name=^/k3d-ns-serverlb$')
+          test -z "$load_balancers"
 
       - name: Wait for second environment service account
         run: timeout 60s bash -c 'until /tmp/ns kubectl -- get serviceaccount default --namespace=default; do sleep 1; done'

@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/prepare"
+	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 )
@@ -17,6 +18,7 @@ import (
 func newLocalCmd() *cobra.Command {
 	var contextName string
 	var ingressClass string
+	var noLoadBalancer bool
 
 	localCmd := &cobra.Command{
 		Use:   "local",
@@ -31,12 +33,18 @@ func newLocalCmd() *cobra.Command {
 				return nil, fnerrors.BadInputError("only development environments are supported locally")
 			}
 
-			return []prepare.Stage{prepare.K3D("ns", ingressClass)}, nil
+			loadBalancer := k3d.WithLoadBalancer
+			if noLoadBalancer {
+				loadBalancer = k3d.WithoutLoadBalancer
+			}
+
+			return []prepare.Stage{prepare.K3D("ns", ingressClass, loadBalancer)}, nil
 		}),
 	}
 
 	localCmd.Flags().StringVar(&contextName, "context", "", "If set, configures Namespace to use the specific context.")
 	localCmd.Flags().StringVar(&ingressClass, "ingress_class", "", "Specify the ingress class.")
+	localCmd.Flags().BoolVar(&noLoadBalancer, "no_lb", false, "Create the local cluster without a load balancer, exposing the API directly from its single server. Existing clusters are unchanged.")
 
 	return localCmd
 }
