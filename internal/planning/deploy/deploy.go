@@ -798,8 +798,11 @@ func ComputeStackAndImages(ctx context.Context, planner planning.Planner, server
 }
 
 func computeStackAndImages(ctx context.Context, planner planning.Planner, stack *planning.Stack, opts serverImagesOpts) ([]schema.PackageName, []compute.Computable[ResolvedServerImages], error) {
-	buildGraph := build.NewGraph()
-	ctx = build.WithGraph(ctx, buildGraph)
+	buildGraph, shared := build.GraphFromContext(ctx)
+	if !shared {
+		buildGraph = build.NewGraph()
+		ctx = build.WithGraph(ctx, buildGraph)
+	}
 
 	imageMap, err := prepareServerImages(ctx, planner, stack, opts)
 	if err != nil {
@@ -810,8 +813,11 @@ func computeStackAndImages(ctx context.Context, planner planning.Planner, stack 
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := buildGraph.Finalize(); err != nil {
-		return nil, nil, err
+	// A caller-owned graph may also contain binaries outside the server stack.
+	if !shared {
+		if err := buildGraph.Finalize(); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	var pkgs []schema.PackageName

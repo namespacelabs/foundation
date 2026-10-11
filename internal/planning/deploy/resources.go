@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	is "namespacelabs.dev/foundation/framework/secrets"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	protos2 "namespacelabs.dev/foundation/internal/codegen/protos"
@@ -68,6 +69,11 @@ type resourcePlanInvocation struct {
 }
 
 func planResources(ctx context.Context, planner planning.Planner, stack *planning.StackWithIngress, rp resourceList) (*resourcePlan, error) {
+	// Resource providers are discovered after deployment inputs resolve. Batch
+	// their binaries separately from the already-finalized server graph.
+	buildGraph := build.NewGraph()
+	ctx = build.WithGraph(ctx, buildGraph)
+
 	platforms, err := planner.Runtime.TargetPlatforms(ctx)
 	if err != nil {
 		return nil, err
@@ -223,6 +229,10 @@ func planResources(ctx context.Context, planner planning.Planner, stack *plannin
 		default:
 			return nil, fnerrors.InternalError("%s: an initializer is missing", resource.ID)
 		}
+	}
+
+	if err := buildGraph.Finalize(); err != nil {
+		return nil, err
 	}
 
 	builtExecutionImages, err := compute.GetValue(ctx, compute.Collect(tasks.Action("resources.build-execution-images"), imageIDs...))

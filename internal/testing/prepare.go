@@ -39,6 +39,9 @@ type testDriver struct {
 	Resources []pkggraph.ResourceInstance
 	Debug     bool
 
+	binary *binary.Prepared
+	image  compute.Computable[oci.ImageID]
+
 	compute.LocalScoped[deploy.PreparedDeployable]
 }
 
@@ -53,6 +56,7 @@ func (driver *testDriver) Inputs() *compute.In {
 		Proto("env", driver.SealedContext.Environment()).
 		Indigestible("planner", driver.Planner).
 		Indigestible("resources", driver.Resources).
+		Computable("image", driver.image).
 		Bool("debug", driver.Debug)
 }
 
@@ -60,10 +64,10 @@ func (driver *testDriver) Action() *tasks.ActionEvent {
 	return tasks.Action("test.prepare-driver").Arg("name", driver.TestRef.Name).Arg("package_name", driver.TestRef.AsPackageName())
 }
 
-func (driver *testDriver) Compute(ctx context.Context, r compute.Resolved) (deploy.PreparedDeployable, error) {
+func (driver *testDriver) prepareImage(ctx context.Context) error {
 	platforms, err := driver.Planner.TargetPlatforms(ctx)
 	if err != nil {
-		return deploy.PreparedDeployable{}, err
+		return err
 	}
 
 	tasks.Attachments(ctx).AddResult("platforms", platform.FormatPlatforms(platforms))
@@ -72,16 +76,10 @@ func (driver *testDriver) Compute(ctx context.Context, r compute.Resolved) (depl
 		Platforms: platforms,
 	})
 	if err != nil {
-		return deploy.PreparedDeployable{}, err
+		return err
 	}
 
 	registry := driver.Planner.Registry()
-
-	sutServers := driver.Stack.Focus.PackageNamesAsString()
-	runtimeConfig, err := deploy.TestStackToRuntimeConfig(&planning.StackWithIngress{Stack: *driver.Stack}, sutServers)
-	if err != nil {
-		return deploy.PreparedDeployable{}, err
-	}
 
 	testReq := &testboot.TestRequest{
 		Endpoint:         driver.Stack.Endpoints,
@@ -95,18 +93,25 @@ func (driver *testDriver) Compute(ctx context.Context, r compute.Resolved) (depl
 	// test setup time, i.e. now).
 	bin, err := multiplatform.PrepareMultiPlatformImage(ctx, driver.SealedContext, testBin.Plan)
 	if err != nil {
-		return deploy.PreparedDeployable{}, err
+		return err
 	}
 
 	testBinTag := registry.AllocateName(driver.Location.String(), "")
+	driver.binary = testBin
+	driver.image = oci.PublishResolvable(testBinTag, bin, testBin.Plan)
+	return nil
+}
 
-	driverImage, err := compute.GetValue(ctx, oci.PublishResolvable(testBinTag, bin, testBin.Plan))
+func (driver *testDriver) Compute(ctx context.Context, r compute.Resolved) (deploy.PreparedDeployable, error) {
+	sutServers := driver.Stack.Focus.PackageNamesAsString()
+	runtimeConfig, err := deploy.TestStackToRuntimeConfig(&planning.StackWithIngress{Stack: *driver.Stack}, sutServers)
 	if err != nil {
 		return deploy.PreparedDeployable{}, err
 	}
 
+	testBin := driver.binary
 	container := runtime.ContainerRunOpts{
-		Image:              driverImage,
+		Image:              compute.MustGetDepValue(r, driver.image, "image"),
 		Command:            testBin.Command,
 		Args:               testBin.Args,
 		Env:                testBin.Env,
