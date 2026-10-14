@@ -906,6 +906,7 @@ func PrepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Pla
 	out.Tolerations = frag.Toleration
 	out.Annotations = frag.Annotation
 	out.NodeSelector = frag.NodeSelector
+	out.PreferredNodeAffinity = frag.PreferredNodeAffinity
 
 	if err := integrations.IntegrationFor(srv.Framework()).PrepareRun(ctx, srv, &out.MainContainer); err != nil {
 		return err

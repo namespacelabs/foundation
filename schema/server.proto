@@ -160,6 +160,8 @@ message ServerFragment {
     SpreadConstraints          spread_constraints = 18;
     string                     priority_class     = 19;
     TelemetryResource          telemetry_resource = 20;
+    // All labels form one soft preference, rendered with weight 100.
+    map<string, string> preferred_node_affinity = 21;
 }
 
 message TelemetryResource {

@@ -14,6 +14,7 @@ import (
 	"io"
 	"io/fs"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -218,6 +219,23 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 						WithKey(kubedef.KubernetesIoArch).
 						WithOperator("In").
 						WithValues(archs...)))))
+
+	if len(deployable.PreferredNodeAffinity) > 0 {
+		term := applycorev1.NodeSelectorTerm()
+		var keys []string
+		for key := range deployable.PreferredNodeAffinity {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			term.WithMatchExpressions(applycorev1.NodeSelectorRequirement().
+				WithKey(key).
+				WithOperator(corev1.NodeSelectorOpIn).
+				WithValues(deployable.PreferredNodeAffinity[key]))
+		}
+		aff.NodeAffinity.WithPreferredDuringSchedulingIgnoredDuringExecution(
+			applycorev1.PreferredSchedulingTerm().WithWeight(100).WithPreference(term))
+	}
 
 	if deployable.PodAntiAffinity.GetTopologyKey() != "" {
 		aff = aff.WithPodAntiAffinity(applycorev1.PodAntiAffinity().WithRequiredDuringSchedulingIgnoredDuringExecution(

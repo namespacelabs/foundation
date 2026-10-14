@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
@@ -120,5 +121,59 @@ func TestDeployEndpointAppliesLoadBalancerClass(t *testing.T) {
 
 	if got := *svc.Spec.LoadBalancerClass; got != "tailscale" {
 		t.Fatalf("expected loadBalancerClass %q, got %q", "tailscale", got)
+	}
+}
+
+func TestDeploymentPreferredNodeAffinity(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		selector map[string]string
+		want     string
+	}{
+		{"default", nil, `[]`},
+		{"empty", map[string]string{}, `[]`},
+		{"preferred labels", map[string]string{"example.com/bandwidth": "200", "example.com/rack": "a"}, `[
+			{"weight":100,"preference":{"matchExpressions":[
+				{"key":"example.com/bandwidth","operator":"In","values":["200"]},
+				{"key":"example.com/rack","operator":"In","values":["a"]}
+			]}}
+		]`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			state := &serverRunState{}
+			err := prepareDeployment(context.Background(), BoundNamespace{namespace: "test-ns"}, runtime.DeployableSpec{
+				Id: "serverid", Name: "server", Class: schema.DeployableClass_STATELESS,
+				PackageRef:            schema.MakePackageSingleRef("example.com/server"),
+				MainContainer:         runtime.ContainerRunOpts{Image: oci.ImageID{Repository: "example.com/server"}},
+				NodeSelector:          []*schema.NodeSelectorItem{{Key: "example.com/pool", Value: "services"}},
+				PodAntiAffinity:       &schema.PodAntiAffinity{TopologyKey: "kubernetes.io/hostname"},
+				PreferredNodeAffinity: tt.selector,
+			}, deployOpts{platforms: []specs.Platform{{Architecture: "arm64"}}}, state)
+			if !assert.NoError(t, err) {
+				return
+			}
+			op, ok := state.operations[len(state.operations)-1].(kubedef.EnsureDeployment)
+			if !assert.True(t, ok) {
+				return
+			}
+			deployment, ok := op.Resource.(*appsv1.DeploymentApplyConfiguration)
+			if !assert.True(t, ok) {
+				return
+			}
+			pod := deployment.Spec.Template.Spec
+			assert.Equal(t, map[string]string{"example.com/pool": "services"}, pod.NodeSelector)
+			encoded, err := json.Marshal(pod.Affinity)
+			assert.NoError(t, err)
+			var affinity map[string]json.RawMessage
+			if !assert.NoError(t, json.Unmarshal(encoded, &affinity)) {
+				return
+			}
+			want := `{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/arch","operator":"In","values":["arm64"]}]}]}}`
+			if len(tt.selector) > 0 {
+				want = want[:len(want)-1] + `,"preferredDuringSchedulingIgnoredDuringExecution":` + tt.want + `}`
+			}
+			assert.JSONEq(t, want, string(affinity["nodeAffinity"]))
+			assert.JSONEq(t, `{"requiredDuringSchedulingIgnoredDuringExecution":[{"labelSelector":{"matchLabels":{"k8s.namespacelabs.dev/server-package-name":"example-com-server"}},"topologyKey":"kubernetes.io/hostname"}]}`, string(affinity["podAntiAffinity"]))
+		})
 	}
 }

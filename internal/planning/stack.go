@@ -362,6 +362,15 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 			ps.MergedFragment.Toleration = append(ps.MergedFragment.Toleration, frag.Toleration...)
 			ps.MergedFragment.Annotation = append(ps.MergedFragment.Annotation, frag.Annotation...)
 			ps.MergedFragment.NodeSelector = append(ps.MergedFragment.NodeSelector, frag.NodeSelector...)
+			if len(frag.PreferredNodeAffinity) > 0 && ps.MergedFragment.PreferredNodeAffinity == nil {
+				ps.MergedFragment.PreferredNodeAffinity = map[string]string{}
+			}
+			for key, value := range frag.PreferredNodeAffinity {
+				if existing, ok := ps.MergedFragment.PreferredNodeAffinity[key]; ok && existing != value {
+					return fnerrors.Newf("incompatible preferredNodeAffinity values for %q", key)
+				}
+				ps.MergedFragment.PreferredNodeAffinity[key] = value
+			}
 			ps.MergedFragment.Listener = append(ps.MergedFragment.Listener, frag.Listener...)
 
 			if frag.Replicas != 0 {

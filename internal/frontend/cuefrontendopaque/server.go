@@ -27,7 +27,7 @@ var (
 		"sidecars", "mounts", "resources", "requires", "tolerations", "annotations",
 		"resourceLimits", "resourceRequests", "terminationGracePeriodSeconds",
 		"extensions", "nodeSelector", "replicas", "priorityClass", "pod_anti_affinity", "update_strategy",
-		"spread_constraints", "listeners",
+		"spread_constraints", "listeners", "preferredNodeAffinity",
 		// This is needed for the "spec" in server templates. This can't be a private field, otherwise it can't be overridden.
 		"spec",
 	}
@@ -58,12 +58,13 @@ type cueServerExtension struct {
 	UnstablePermissions *cuePermissions `json:"unstable_permissions,omitempty"`
 	Permissions         *cuePermissions `json:"permissions,omitempty"`
 
-	ReadinessProbe *cueProbe                       `json:"probe"`  // `probe: exec: "foo-cmd"`
-	Probes         map[string]cueProbe             `json:"probes"` // `probes: readiness: exec: "foo-cmd"`
-	Security       *cueServerSecurity              `json:"security,omitempty"`
-	Tolerations    []*schema.Server_Toleration     `json:"tolerations,omitempty"`
-	Annotations    map[string]args.ResolvableValue `json:"annotations,omitempty"`
-	NodeSelector   map[string]string               `json:"nodeSelector,omitempty"`
+	ReadinessProbe        *cueProbe                       `json:"probe"`  // `probe: exec: "foo-cmd"`
+	Probes                map[string]cueProbe             `json:"probes"` // `probes: readiness: exec: "foo-cmd"`
+	Security              *cueServerSecurity              `json:"security,omitempty"`
+	Tolerations           []*schema.Server_Toleration     `json:"tolerations,omitempty"`
+	Annotations           map[string]args.ResolvableValue `json:"annotations,omitempty"`
+	NodeSelector          map[string]string               `json:"nodeSelector,omitempty"`
+	PreferredNodeAffinity map[string]string               `json:"preferredNodeAffinity,omitempty"`
 
 	TerminationGracePeriodSeconds int64 `json:"terminationGracePeriodSeconds,omitempty"`
 
@@ -403,6 +404,8 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 			return nil, fnerrors.NewWithLocation(loc, "max_skew, topology_key and label_selector are required in spread_constraints")
 		}
 	}
+
+	out.PreferredNodeAffinity = bits.PreferredNodeAffinity
 
 	out.Replicas = bits.Replicas
 	out.PriorityClass = bits.PriorityClass
