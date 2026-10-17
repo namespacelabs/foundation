@@ -254,6 +254,13 @@ jobs:
       - name: Wait for first environment service account
         run: timeout 60s bash -c 'until /tmp/ns kubectl -- get serviceaccount default --namespace=default; do sleep 1; done'
 
+      - name: Test pod readiness and diagnostics
+        run: |
+          FOUNDATION_KUBERNETES_TEST_CONFIG=$(/tmp/ns write-kubeconfig --env=dev)
+          test -s "$FOUNDATION_KUBERNETES_TEST_CONFIG"
+          export FOUNDATION_KUBERNETES_TEST_CONFIG
+          go test -v -count=1 -timeout=6m ./internal/runtime/kubernetes -run '^TestClusterNamespaceLifecycle$'
+
       - name: Test first environment
         run: /tmp/ns doctor --tests=workspace,kubernetes-run
 

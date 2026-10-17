@@ -14,4 +14,7 @@ message KubernetesEnvDiagnostics {
     SystemInfo system_info = 1;
 
     string serialized_event_list = 2;
+
+    // Pod identities and status only; specs and annotations may contain credentials.
+    string serialized_pod_list = 3;
 }

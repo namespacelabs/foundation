@@ -19,6 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
+	"google.golang.org/protobuf/encoding/protojson"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/cli/cmd/buildsetup"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -270,7 +271,7 @@ func NewTestCmd() *cobra.Command {
 					return err
 				}
 
-				dumpfile := func(name string, s *storage.TestResultBundle_InlineLog) error {
+				dumpfile := func(name string, output []byte) error {
 					fpath := filepath.Join(ld, name)
 					f, err := os.Create(fpath)
 					if err != nil {
@@ -279,7 +280,7 @@ func NewTestCmd() *cobra.Command {
 
 					defer f.Close()
 
-					if _, err := f.Write(s.Output); err != nil {
+					if _, err := f.Write(output); err != nil {
 						return err
 					}
 
@@ -289,11 +290,20 @@ func NewTestCmd() *cobra.Command {
 				}
 
 				if log := run.TestResults.GetTestLog(); log != nil {
-					errs = append(errs, dumpfile("test.log", log))
+					errs = append(errs, dumpfile("test.log", log.Output))
 				}
 
 				for _, log := range run.TestResults.GetServerLog() {
-					errs = append(errs, dumpfile(fmt.Sprintf("%s.%s.log", strings.ReplaceAll(log.PackageName, "/", "--"), log.ContainerName), log))
+					errs = append(errs, dumpfile(fmt.Sprintf("%s.%s.log", strings.ReplaceAll(log.PackageName, "/", "--"), log.ContainerName), log.Output))
+				}
+
+				if diagnostics := run.TestResults.GetEnvDiagnostics(); diagnostics != nil {
+					output, err := (protojson.MarshalOptions{UseProtoNames: true, Indent: "  "}).Marshal(diagnostics)
+					if err != nil {
+						errs = append(errs, err)
+					} else {
+						errs = append(errs, dumpfile("environment-diagnostics.log", output))
+					}
 				}
 			}
 
