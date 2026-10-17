@@ -97,6 +97,30 @@ func (r *ClusterNamespace) FetchEnvironmentDiagnostics(ctx context.Context) (*st
 		SerializedEventList: string(eventsBytes),
 	}
 
+	pods, err := r.underlying.cli.CoreV1().Pods(r.target.namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		// Keep the events even when the status snapshot is unavailable.
+		fmt.Fprintf(console.Warnings(ctx), "Failed to retrieve pod diagnostics: %v\n", err)
+	} else {
+		for i, pod := range pods.Items {
+			// Allowlist metadata: specs and annotations can contain credentials.
+			pods.Items[i] = corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: pod.Name, Namespace: pod.Namespace, UID: pod.UID,
+					CreationTimestamp: pod.CreationTimestamp,
+					DeletionTimestamp: pod.DeletionTimestamp,
+				},
+				Status: pod.Status,
+			}
+		}
+		podBytes, err := json.Marshal(pods)
+		if err != nil {
+			fmt.Fprintf(console.Warnings(ctx), "Failed to serialize pod diagnostics: %v\n", err)
+		} else {
+			kube.SerializedPodList = string(podBytes)
+		}
+	}
+
 	diag := &storage.EnvironmentDiagnostics{Runtime: "kubernetes"}
 
 	serializedKube, err := anypb.New(kube)
@@ -231,6 +255,27 @@ func (r *ClusterNamespace) isPodReady(ctx context.Context, srv runtime.Deployabl
 	pod, err := r.underlying.cli.CoreV1().Pods(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(srv), metav1.GetOptions{})
 	if err != nil {
 		return false, err
+	}
+
+	// A completed provider is successful, but a non-restarting server cannot
+	// become ready after any of its regular containers has exited, even with 0.
+	if srv.GetDeployableClass() != string(schema.DeployableClass_ONESHOT) &&
+		srv.GetDeployableClass() != string(schema.DeployableClass_MANUAL) &&
+		pod.Spec.RestartPolicy == corev1.RestartPolicyNever {
+		for _, container := range pod.Status.ContainerStatuses {
+			if terminated := container.State.Terminated; terminated != nil {
+				return false, runtime.ErrContainerFailed{
+					Name: fmt.Sprintf("%s/%s", pod.Namespace, pod.Name),
+					Failures: []runtime.ErrContainerFailed_Failure{{
+						Reference: kubeobj.MakePodRef(pod.Namespace, pod.Name, container.Name, nil),
+						Reason:    terminated.Reason,
+						ExitCode:  terminated.ExitCode,
+						Message: fmt.Sprintf("terminated before readiness (started %s, finished %s): %s",
+							terminated.StartedAt.UTC().Format(time.RFC3339), terminated.FinishedAt.UTC().Format(time.RFC3339), terminated.Message),
+					}},
+				}
+			}
+		}
 	}
 
 	switch pod.Status.Phase {
