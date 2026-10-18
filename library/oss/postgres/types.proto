@@ -27,4 +27,9 @@ message DatabaseIntent {
     // Remove the helper functions after provisioning - no matter if the deployment was successful or not.
     bool                                    auto_remove_helper_functions         = 5;
     bool enable_tracing = 6;
+    // When set, each schema file's checksum is recorded in a bookkeeping table and the file is only
+    // re-applied when its contents change. This disables the default behaviour of re-applying every
+    // schema file on each deploy, so schema files must remain idempotent. Enabling this creates a
+    // checksum table in the database.
+    bool track_schema_checksums = 7;
 }
