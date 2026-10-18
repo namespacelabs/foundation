@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "keys",
+    srcs = [
+        "decrypt.go",
+        "dir.go",
+        "identities.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/keys",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/bytestream",
+        "//internal/cli/fncobra/name",
+        "//internal/console",
+        "//internal/fnerrors",
+        "//internal/fnfs",
+        "//internal/fnfs/memfs",
+        "//internal/workspace/dirs",
+        "@io_filippo_age//:age",
+    ],
+)

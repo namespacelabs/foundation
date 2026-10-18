@@ -1,0 +1,8 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "fnnet",
+    srcs = ["listener.go"],
+    importpath = "namespacelabs.dev/foundation/internal/fnnet",
+    visibility = ["//:__subpackages__"],
+)

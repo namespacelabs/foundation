@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "jaeger",
+    srcs = [
+        "deps.fn.go",
+        "wire.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/std/monitoring/tracing/jaeger",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//std/go/core",
+        "//std/monitoring/tracing",
+        "@io_opentelemetry_go_otel_exporters_jaeger//:jaeger",
+    ],
+)

@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "private",
+    srcs = [
+        "root.go",
+        "terminalattach.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/cli/cmd/cluster/private",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cli/fncobra",
+        "//internal/console",
+        "//internal/fnerrors",
+        "@com_github_containerd_console//:console",
+        "@com_github_containerd_containerd_v2//client",
+        "@com_github_containerd_containerd_v2//pkg/namespaces",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)

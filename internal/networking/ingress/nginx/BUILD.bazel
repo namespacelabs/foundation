@@ -1,0 +1,36 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "nginx",
+    srcs = [
+        "nginx_ingress.go",
+        "op.pb.go",
+        "types.pb.go",
+    ],
+    embedsrcs = [
+        "ingress.yaml",
+        "ingress_webhook.yaml",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/networking/ingress/nginx",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//framework/kubernetes/kubedef",
+        "//framework/kubernetes/kubeparser",
+        "//internal/fnerrors",
+        "//internal/protos",
+        "//schema",
+        "//std/execution",
+        "//std/execution/defs",
+        "//std/tasks",
+        "@com_github_jet_kube_webhook_certgen//pkg/certs",
+        "@io_k8s_api//core/v1:core",
+        "@io_k8s_apimachinery//pkg/api/errors",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:meta",
+        "@io_k8s_apimachinery//pkg/runtime/schema",
+        "@io_k8s_client_go//applyconfigurations/admissionregistration/v1:admissionregistration",
+        "@io_k8s_client_go//applyconfigurations/core/v1:core",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+        "@org_golang_google_protobuf//types/known/anypb",
+    ],
+)

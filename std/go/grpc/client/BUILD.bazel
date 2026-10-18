@@ -1,0 +1,13 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "client",
+    srcs = ["grpcclient.go"],
+    importpath = "namespacelabs.dev/foundation/std/go/grpc/client",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//std/go/grpc/interceptors",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//backoff",
+    ],
+)

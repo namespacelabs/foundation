@@ -1,0 +1,13 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "golang",
+    srcs = ["golang.go"],
+    importpath = "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/golang",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/frontend/cuefrontend/entity",
+        "//internal/frontend/cuefrontend/integration/helpers",
+        "//schema",
+    ],
+)

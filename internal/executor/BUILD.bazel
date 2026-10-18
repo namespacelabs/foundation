@@ -1,0 +1,9 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "executor",
+    srcs = ["errgroup.go"],
+    importpath = "namespacelabs.dev/foundation/internal/executor",
+    visibility = ["//:__subpackages__"],
+    deps = ["@dev_namespacelabs_go_ids//:go-ids"],
+)

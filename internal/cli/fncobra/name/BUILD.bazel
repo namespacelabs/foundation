@@ -1,0 +1,8 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "name",
+    srcs = ["name.go"],
+    importpath = "namespacelabs.dev/foundation/internal/cli/fncobra/name",
+    visibility = ["//:__subpackages__"],
+)

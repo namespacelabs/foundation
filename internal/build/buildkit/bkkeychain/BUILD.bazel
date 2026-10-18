@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "bkkeychain",
+    srcs = ["keychain.go"],
+    importpath = "namespacelabs.dev/foundation/internal/build/buildkit/bkkeychain",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//framework/rpcerrors",
+        "//internal/artifacts/oci",
+        "//internal/console",
+        "@com_github_moby_buildkit//session/auth",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//codes",
+    ],
+)

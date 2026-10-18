@@ -1,0 +1,23 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "metadata",
+    srcs = [
+        "instancemd.go",
+        "metadata.go",
+        "paths.go",
+        "paths_other.go",
+        "paths_windows.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/providers/nscloud/metadata",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/console",
+        "//internal/fnerrors",
+    ] + select({
+        "@rules_go//go/platform:windows": [
+            "@org_golang_x_sys//windows",
+        ],
+        "//conditions:default": [],
+    }),
+)

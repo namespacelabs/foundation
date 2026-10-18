@@ -1,0 +1,31 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "filewatcher",
+    srcs = [
+        "filewatcher.go",
+        "filewatcher_darwin.go",
+        "poller.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/filewatcher",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/console",
+        "@com_github_fsnotify_fsnotify//:fsnotify",
+        "@dev_namespacelabs_go_filenotify//:go-filenotify",
+    ] + select({
+        "@rules_go//go/platform:darwin": [
+            "//internal/fnerrors",
+            "//internal/uniquestrings",
+            "@com_github_fsnotify_fsevents//:fsevents",
+            "@org_uber_go_atomic//:atomic",
+        ],
+        "@rules_go//go/platform:ios": [
+            "//internal/fnerrors",
+            "//internal/uniquestrings",
+            "@com_github_fsnotify_fsevents//:fsevents",
+            "@org_uber_go_atomic//:atomic",
+        ],
+        "//conditions:default": [],
+    }),
+)

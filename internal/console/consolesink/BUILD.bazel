@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "consolesink",
+    srcs = [
+        "console.go",
+        "prefixes.go",
+        "renderline.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/console/consolesink",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//framework/console/termios",
+        "//internal/console/colors",
+        "//internal/text/timefmt",
+        "//std/tasks",
+        "//std/tasks/idtypes",
+        "@com_github_morikuni_aec//:aec",
+        "@com_github_muesli_reflow//truncate",
+        "@com_github_spf13_pflag//:pflag",
+        "@com_github_spf13_viper//:viper",
+        "@org_golang_x_exp//slices",
+    ],
+)

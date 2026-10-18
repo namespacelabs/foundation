@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "planningargs",
+    srcs = ["serverbound.go"],
+    importpath = "namespacelabs.dev/foundation/internal/cli/fncobra/planningargs",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cli/fncobra",
+        "//internal/fnerrors",
+        "//internal/parsing",
+        "//internal/planning",
+        "//std/cfg",
+        "//std/pkggraph",
+        "//std/tasks",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)

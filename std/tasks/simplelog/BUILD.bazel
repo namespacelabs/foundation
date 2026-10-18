@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "simplelog",
+    srcs = ["logger.go"],
+    importpath = "namespacelabs.dev/foundation/std/tasks/simplelog",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/console/colors",
+        "//internal/console/consolesink",
+        "//std/tasks",
+        "//std/tasks/idtypes",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

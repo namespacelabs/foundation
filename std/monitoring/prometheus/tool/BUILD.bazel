@@ -1,0 +1,30 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "tool_lib",
+    srcs = [
+        "embed.go",
+        "main.go",
+        "server.go",
+        "targets.go",
+    ],
+    embedsrcs = ["prometheus.yml"],
+    importpath = "namespacelabs.dev/foundation/std/monitoring/prometheus/tool",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//framework/kubernetes/kubeblueprint",
+        "//framework/kubernetes/kubedef",
+        "//framework/kubernetes/kubetool",
+        "//framework/provisioning",
+        "//internal/runtime",
+        "//schema",
+        "@io_k8s_client_go//applyconfigurations/core/v1:core",
+        "@io_k8s_client_go//applyconfigurations/rbac/v1:rbac",
+    ],
+)
+
+go_binary(
+    name = "tool",
+    embed = [":tool_lib"],
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,9 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "colors",
+    srcs = ["colors.go"],
+    importpath = "namespacelabs.dev/foundation/internal/console/colors",
+    visibility = ["//:__subpackages__"],
+    deps = ["@com_github_morikuni_aec//:aec"],
+)

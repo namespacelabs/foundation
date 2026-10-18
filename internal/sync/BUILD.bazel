@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "sync",
+    srcs = [
+        "buffer.go",
+        "writer.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/sync",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/fnerrors",
+        "@org_golang_x_exp//slices",
+    ],
+)

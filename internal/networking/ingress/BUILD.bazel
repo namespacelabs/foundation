@@ -1,0 +1,38 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "ingress",
+    srcs = [
+        "define_ingress.go",
+        "from_config.go",
+        "op.go",
+        "state.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/networking/ingress",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//framework/kubernetes/kubedef",
+        "//framework/kubernetes/kubeobj",
+        "//framework/networking/dns",
+        "//internal/fnapi",
+        "//internal/fnerrors",
+        "//internal/networking/ingress/nginx",
+        "//internal/runtime",
+        "//internal/runtime/kubernetes/client",
+        "//internal/runtime/kubernetes/kubeobserver",
+        "//schema",
+        "//std/cfg",
+        "//std/execution",
+        "//std/execution/defs",
+        "//std/tasks",
+        "@io_k8s_api//core/v1:core",
+        "@io_k8s_api//networking/v1:networking",
+        "@io_k8s_apimachinery//pkg/api/errors",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:meta",
+        "@io_k8s_apimachinery//pkg/runtime/schema",
+        "@io_k8s_client_go//applyconfigurations/networking/v1:networking",
+        "@io_k8s_client_go//kubernetes",
+        "@org_golang_google_protobuf//types/known/anypb",
+        "@org_golang_x_exp//slices",
+    ],
+)

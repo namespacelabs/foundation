@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "postgres",
+    srcs = [
+        "helper.go",
+        "types.pb.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/library/oss/postgres",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//schema",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

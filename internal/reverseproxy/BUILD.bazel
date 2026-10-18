@@ -1,0 +1,8 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "reverseproxy",
+    srcs = ["revproxy.go"],
+    importpath = "namespacelabs.dev/foundation/internal/reverseproxy",
+    visibility = ["//:__subpackages__"],
+)

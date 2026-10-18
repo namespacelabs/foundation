@@ -1,0 +1,29 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "vault",
+    srcs = [
+        "approle.go",
+        "ca.go",
+        "certificate.go",
+        "issue_257.go",
+        "provider.go",
+        "secret.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/providers/vault",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//framework/secrets",
+        "//framework/secrets/combined",
+        "//framework/security/tlsbundle",
+        "//internal/console",
+        "//internal/executor",
+        "//internal/fnerrors",
+        "//internal/tcache",
+        "//std/cfg",
+        "//std/tasks",
+        "//universe/vault",
+        "@com_github_hashicorp_vault_client_go//:vault-client-go",
+        "@com_github_hashicorp_vault_client_go//schema",
+    ],
+)

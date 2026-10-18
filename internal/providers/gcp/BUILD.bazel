@@ -1,0 +1,12 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "gcp",
+    srcs = ["project.go"],
+    importpath = "namespacelabs.dev/foundation/internal/providers/gcp",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//std/cfg",
+        "//universe/gcp",
+    ],
+)

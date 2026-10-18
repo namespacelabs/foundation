@@ -1,0 +1,19 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "testboot",
+    srcs = [
+        "constants.go",
+        "entrypoint.go",
+        "testprotocol.pb.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/testing/testboot",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//schema",
+        "@org_golang_google_protobuf//encoding/prototext",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

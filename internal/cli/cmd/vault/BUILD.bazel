@@ -1,0 +1,23 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "vault",
+    srcs = ["vault.go"],
+    importpath = "namespacelabs.dev/foundation/internal/cli/cmd/vault",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cli/fncobra",
+        "//internal/console",
+        "//internal/console/tui",
+        "//internal/fnapi",
+        "//internal/fnerrors",
+        "@com_github_cenkalti_backoff_v4//:backoff",
+        "@com_github_spf13_cobra//:cobra",
+        "@dev_namespacelabs_integrations//api/vault",
+        "@dev_namespacelabs_integrations//proto/namespace/cloud/vault/v1beta",
+        "@dev_namespacelabs_integrations//proto/namespace/stdlib",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//encoding/protojson",
+    ],
+)

@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "module",
+    srcs = [
+        "canonical.go",
+        "defaults.go",
+        "packageloader.go",
+        "root.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/std/module",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/fnerrors",
+        "//internal/fnfs",
+        "//internal/frontend/cuefrontend",
+        "//internal/frontend/cuefrontendopaque",
+        "//internal/parsing",
+        "//internal/parsing/devhost",
+        "//schema",
+        "//std/cfg",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

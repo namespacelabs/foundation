@@ -1,0 +1,35 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "client",
+    srcs = [
+        "clientconfig.pb.go",
+        "discovery.go",
+        "hostconfig.go",
+        "kubeclient.go",
+        "wait.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/runtime/kubernetes/client",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//framework/kubernetes/kubeclient",
+        "//framework/kubernetes/kubenaming",
+        "//internal/console",
+        "//internal/fnerrors",
+        "//internal/workspace/dirs",
+        "//schema",
+        "//std/cfg",
+        "//std/tasks",
+        "@io_k8s_apimachinery//pkg/runtime/schema",
+        "@io_k8s_apimachinery//pkg/util/wait",
+        "@io_k8s_client_go//discovery",
+        "@io_k8s_client_go//discovery/cached/disk",
+        "@io_k8s_client_go//kubernetes",
+        "@io_k8s_client_go//kubernetes/scheme",
+        "@io_k8s_client_go//rest",
+        "@io_k8s_client_go//tools/clientcmd",
+        "@io_k8s_client_go//tools/clientcmd/api",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

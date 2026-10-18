@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "shellscript",
+    srcs = ["shellscript.go"],
+    importpath = "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/shellscript",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/frontend/cuefrontend/entity",
+        "//internal/frontend/fncue",
+        "//internal/parsing",
+        "//schema",
+        "//std/pkggraph",
+        "@org_golang_google_protobuf//proto",
+    ],
+)

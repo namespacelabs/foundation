@@ -1,0 +1,29 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "prepare_lib",
+    srcs = ["prepares3.go"],
+    importpath = "namespacelabs.dev/foundation/universe/storage/s3/internal/prepare",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//framework/kubernetes/kubedef",
+        "//framework/provisioning",
+        "//internal/fnerrors",
+        "//internal/planning/tool/protocol",
+        "//schema",
+        "//schema/allocations",
+        "//std/execution/defs",
+        "//universe/aws/eks",
+        "//universe/aws/iam",
+        "//universe/storage/s3",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_protobuf//encoding/protojson",
+        "@org_golang_google_protobuf//proto",
+    ],
+)
+
+go_binary(
+    name = "prepare",
+    embed = [":prepare_lib"],
+    visibility = ["//universe/storage/s3:__subpackages__"],
+)

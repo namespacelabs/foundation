@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "render",
+    srcs = [
+        "networkplanutils.go",
+        "ui.pb.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/framework/planning/render",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/planning/constants",
+        "//schema",
+        "//schema/storage",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

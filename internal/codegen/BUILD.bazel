@@ -1,0 +1,30 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "codegen",
+    srcs = [
+        "op.pb.go",
+        "protogen.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/codegen",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//framework/rpcerrors/multierr",
+        "//internal/bytestream",
+        "//internal/codegen/protos",
+        "//internal/compute",
+        "//internal/console",
+        "//internal/fnerrors",
+        "//internal/fnfs",
+        "//internal/parsing",
+        "//internal/protos",
+        "//internal/sdk/buf",
+        "//schema",
+        "//std/cfg",
+        "//std/execution",
+        "//std/pkggraph",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+        "@org_golang_x_exp//slices",
+    ],
+)

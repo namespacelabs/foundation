@@ -1,0 +1,19 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "entity",
+    srcs = [
+        "parser.go",
+        "types.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/frontend/cuefrontend/entity",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/fnerrors",
+        "//internal/frontend/fncue",
+        "//internal/parsing",
+        "//schema",
+        "//std/pkggraph",
+        "@org_golang_google_protobuf//proto",
+    ],
+)

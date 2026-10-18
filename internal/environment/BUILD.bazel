@@ -1,0 +1,8 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "environment",
+    srcs = ["ci.go"],
+    importpath = "namespacelabs.dev/foundation/internal/environment",
+    visibility = ["//:__subpackages__"],
+)

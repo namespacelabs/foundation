@@ -1,0 +1,14 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "golang",
+    srcs = ["golang.go"],
+    importpath = "namespacelabs.dev/foundation/internal/parsing/integration/golang",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/fnerrors",
+        "//internal/parsing/integration/api",
+        "//schema",
+        "//std/pkggraph",
+    ],
+)

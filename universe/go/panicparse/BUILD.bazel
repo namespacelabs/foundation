@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "panicparse",
+    srcs = [
+        "deps.fn.go",
+        "prepare.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/universe/go/panicparse",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//std/core",
+        "//std/go/core",
+        "@com_github_maruel_panicparse_v2//stack/webstack",
+    ],
+)

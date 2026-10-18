@@ -1,0 +1,35 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "cuefrontendopaque",
+    srcs = [
+        "container.go",
+        "phase0.go",
+        "probe.go",
+        "requires.go",
+        "server.go",
+        "service.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/frontend/cuefrontendopaque",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/fnerrors",
+        "//internal/frontend/cuefrontend",
+        "//internal/frontend/cuefrontend/args",
+        "//internal/frontend/cuefrontend/binary",
+        "//internal/frontend/cuefrontend/integration/api",
+        "//internal/frontend/fncue",
+        "//internal/parsing",
+        "//internal/parsing/integration/api",
+        "//internal/parsing/invariants",
+        "//internal/protos",
+        "//internal/runtime",
+        "//schema",
+        "//std/pkggraph",
+        "//std/resources",
+        "@org_cuelang_go//cue",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//types/known/anypb",
+        "@org_golang_x_exp//slices",
+    ],
+)

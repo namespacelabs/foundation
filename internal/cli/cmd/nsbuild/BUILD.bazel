@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "nsbuild",
+    srcs = ["nsbuild.go"],
+    importpath = "namespacelabs.dev/foundation/internal/cli/cmd/nsbuild",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cli/fncobra",
+        "//internal/compute",
+        "//internal/integrations/golang",
+        "//internal/integrations/golang/rungo",
+        "//internal/parsing",
+        "//internal/sdk/golang",
+        "//internal/sdk/host",
+        "//std/cfg",
+        "@com_github_spf13_cobra//:cobra",
+        "@io_k8s_utils//ptr",
+    ],
+)

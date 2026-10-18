@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "deadlines",
+    srcs = [
+        "deadlines.go",
+        "deps.fn.go",
+        "provider.pb.go",
+        "wire.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/std/grpc/deadlines",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//std/go/core",
+        "//std/go/grpc/interceptors",
+        "//std/grpc",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

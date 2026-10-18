@@ -1,0 +1,25 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "plugandplay",
+    srcs = ["registry.go"],
+    importpath = "namespacelabs.dev/foundation/std/plugandplay",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/artifacts/registry",
+        "//internal/parsing/devhost",
+        "//internal/planning/deploy",
+        "//internal/providers/aws/ecr",
+        "//internal/providers/aws/eks",
+        "//internal/providers/gcp/gke",
+        "//internal/providers/gcp/registry",
+        "//internal/providers/k3d",
+        "//internal/providers/k3s",
+        "//internal/providers/nscloud",
+        "//internal/providers/onepassword",
+        "//internal/providers/vault",
+        "//internal/runtime",
+        "//internal/runtime/kubernetes",
+        "//internal/runtime/kubernetes/client",
+    ],
+)

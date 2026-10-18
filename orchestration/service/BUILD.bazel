@@ -1,0 +1,19 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "service",
+    srcs = [
+        "deps.fn.go",
+        "wire.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/orchestration/service",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/runtime/kubernetes/readiness",
+        "//orchestration/proto",
+        "//std/go/core",
+        "//std/go/server",
+        "@io_k8s_client_go//kubernetes",
+        "@io_k8s_client_go//rest",
+    ],
+)

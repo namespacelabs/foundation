@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "private",
+    srcs = ["instance.go"],
+    importpath = "namespacelabs.dev/foundation/internal/providers/nscloud/api/private",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/fnerrors",
+        "//internal/providers/nscloud/metadata",
+        "@dev_namespacelabs_integrations//proto/namespace/private/instance",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//credentials",
+    ],
+)

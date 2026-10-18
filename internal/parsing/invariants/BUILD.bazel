@@ -1,0 +1,12 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "invariants",
+    srcs = ["packages.go"],
+    importpath = "namespacelabs.dev/foundation/internal/parsing/invariants",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//schema",
+        "//std/pkggraph",
+    ],
+)

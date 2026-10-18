@@ -1,0 +1,28 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "buf",
+    srcs = [
+        "buf.go",
+        "image.go",
+        "protogen.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/sdk/buf",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/build",
+        "//internal/build/binary",
+        "//internal/build/buildkit",
+        "//internal/codegen/protos",
+        "//internal/compute",
+        "//internal/fnerrors",
+        "//internal/sdk/buf/image",
+        "//schema",
+        "//std/cfg",
+        "@com_github_moby_buildkit//client/llb",
+        "@com_github_opencontainers_image_spec//specs-go/v1:specs-go",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_x_exp//maps",
+        "@org_golang_x_exp//slices",
+    ],
+)

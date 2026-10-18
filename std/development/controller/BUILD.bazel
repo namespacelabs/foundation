@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "controller_lib",
+    srcs = ["main.go"],
+    importpath = "namespacelabs.dev/foundation/std/development/controller",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//internal/reverseproxy",
+        "//std/development/controller/admin",
+        "//std/development/filesync",
+        "@com_github_gorilla_mux//:mux",
+        "@org_golang_google_protobuf//encoding/protojson",
+    ],
+)
+
+go_binary(
+    name = "controller",
+    embed = [":controller_lib"],
+    visibility = ["//visibility:public"],
+)

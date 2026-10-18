@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "auth",
+    srcs = ["resolveaccount.go"],
+    importpath = "namespacelabs.dev/foundation/internal/providers/aws/auth",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/compute",
+        "//internal/fnerrors",
+        "//internal/providers/aws",
+        "//std/tasks",
+        "@com_github_aws_aws_sdk_go_v2_credentials//ssocreds",
+        "@com_github_aws_aws_sdk_go_v2_service_sts//:sts",
+    ],
+)

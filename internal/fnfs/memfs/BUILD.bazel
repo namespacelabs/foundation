@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "memfs",
+    srcs = [
+        "dirent.go",
+        "memfs.go",
+        "snapshot.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/fnfs/memfs",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/bytestream",
+        "//internal/compute",
+        "//internal/fnerrors",
+        "//internal/fnfs",
+        "//internal/fnfs/digestfs",
+        "//schema",
+        "//std/tasks",
+        "@com_github_moby_patternmatcher//:patternmatcher",
+    ],
+)

@@ -1,0 +1,23 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "prepare_lib",
+    srcs = ["prepareeks.go"],
+    importpath = "namespacelabs.dev/foundation/universe/aws/irsa/prepare",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//framework/kubernetes/kubedef",
+        "//framework/kubernetes/kubetool",
+        "//framework/provisioning",
+        "//internal/fnerrors",
+        "//internal/planning/tool/protocol",
+        "//universe/aws/eks",
+        "@org_golang_google_grpc//:grpc",
+    ],
+)
+
+go_binary(
+    name = "prepare",
+    embed = [":prepare_lib"],
+    visibility = ["//visibility:public"],
+)

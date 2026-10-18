@@ -1,0 +1,27 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "scaffold",
+    srcs = [
+        "genext.go",
+        "gengoservice.go",
+        "gengotest.go",
+        "genprotoservice.go",
+        "genserver.go",
+        "genservice.go",
+        "gentest.go",
+        "genwebservice.go",
+        "src.go",
+        "webtemplates.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/frontend/scaffold",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/console",
+        "//internal/fnerrors",
+        "//internal/fnfs",
+        "//schema",
+        "@dev_namespacelabs_go_ids//:go-ids",
+        "@org_cuelang_go//cue/format",
+    ],
+)

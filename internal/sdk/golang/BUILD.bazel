@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "golang",
+    srcs = ["gosdk.go"],
+    embedsrcs = ["gosdk.json"],
+    importpath = "namespacelabs.dev/foundation/internal/sdk/golang",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/compute",
+        "//internal/sdk/host",
+        "@com_github_opencontainers_image_spec//specs-go/v1:specs-go",
+        "@org_golang_x_mod//semver",
+    ],
+)

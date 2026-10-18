@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "minio",
+    srcs = [
+        "prepare.go",
+        "types.pb.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/library/oss/minio",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//framework/resources",
+        "//framework/rpcerrors",
+        "//internal/fnerrors",
+        "@com_github_minio_minio_go_v7//:minio-go",
+        "@com_github_minio_minio_go_v7//pkg/credentials",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)
