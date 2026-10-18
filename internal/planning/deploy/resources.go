@@ -46,6 +46,14 @@ type resourcePlan struct {
 	PlannedResources     []plannedResource
 	ExecutionInvocations []*schema.SerializedInvocation
 	Secrets              []runtime.SecretResourceDependency
+
+	// ProducedInstanceIDs are the resource instance ids that produce an execution
+	// output (resource providers and server-resource captures). Used to wire up the
+	// provision-only output sink.
+	ProducedInstanceIDs []string
+	// RequiredServers are servers referenced as resources (e.g. a colocated
+	// database) that must be deployed even in provision-only mode.
+	RequiredServers []schema.PackageName
 }
 
 type plannedResource struct {
@@ -120,6 +128,9 @@ func planResources(ctx context.Context, planner planning.Planner, stack *plannin
 			if !has {
 				return nil, fnerrors.InternalError("%s: target server is not in the stack", serverIntent.PackageName)
 			}
+
+			plan.ProducedInstanceIDs = append(plan.ProducedInstanceIDs, resource.ID)
+			plan.RequiredServers = append(plan.RequiredServers, target.PackageName())
 
 			si := &schema.SerializedInvocation{
 				Description: "Capture Runtime Config",
@@ -217,6 +228,8 @@ func planResources(ctx context.Context, planner planning.Planner, stack *plannin
 			p.SealedContext = sealedCtx
 			p.BinaryConfig = config
 			p.SerializedIntentJson = resource.JSONSerializedIntent
+
+			plan.ProducedInstanceIDs = append(plan.ProducedInstanceIDs, resource.ID)
 
 			executionInvocations = append(executionInvocations, p)
 
