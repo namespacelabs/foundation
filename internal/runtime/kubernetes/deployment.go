@@ -482,6 +482,16 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 			return err
 		}
 		mainContainer = mainContainer.WithLivenessProbe(probe)
+
+		if target.env.GetPurpose() == schema.Environment_TESTING {
+			// Health listeners may start only after initialization. Protect test
+			// startup without changing development or production probe behavior.
+			startup, err := toK8sProbe(applycorev1.Probe(), probevalues, livenessProbe)
+			if err != nil {
+				return err
+			}
+			mainContainer = mainContainer.WithStartupProbe(startup.WithPeriodSeconds(1).WithFailureThreshold(30))
+		}
 	}
 
 	// XXX Think through this, should it also be hashed + immutable?

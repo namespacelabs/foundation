@@ -7,8 +7,10 @@ package kubernetes
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
@@ -73,6 +75,81 @@ func TestDeploymentSidecarResources(t *testing.T) {
 				assert.JSONEq(t, want, string(encoded), *ctr.Name)
 			}
 		})
+	}
+}
+
+func TestDeploymentStartupProbe(t *testing.T) {
+	for _, env := range []struct {
+		purpose                                 schema.Environment_Purpose
+		period, failures, readinessInitialDelay int
+	}{
+		{schema.Environment_DEVELOPMENT, 1, 3, 1},
+		{schema.Environment_TESTING, 1, 3, 1},
+		{schema.Environment_PRODUCTION, 3, 5, 3},
+	} {
+		for _, tt := range []struct {
+			name    string
+			live    *schema.Probe
+			handler string
+		}{
+			{"http", &schema.Probe{Kind: runtime.FnServiceLivez, Http: &schema.Probe_Http{Path: "/livez", ContainerPort: 8080}}, `"httpGet":{"path":"/livez","port":8080}`},
+			{"exec", &schema.Probe{Kind: runtime.FnServiceLivez, Exec: &schema.Probe_Exec{Command: []string{"/bin/check", "live"}}}, `"exec":{"command":["/bin/check","live"]}`},
+			{"readiness only", nil, ""},
+		} {
+			t.Run(env.purpose.String()+"/"+tt.name, func(t *testing.T) {
+				probes := []*schema.Probe{{Kind: runtime.FnServiceReadyz, Http: &schema.Probe_Http{Path: "/readyz", ContainerPort: 9090}}}
+				if tt.live != nil {
+					probes = append(probes, tt.live)
+				}
+				state := &serverRunState{}
+				err := prepareDeployment(context.Background(), BoundNamespace{
+					namespace: "test-ns", env: &schema.Environment{Purpose: env.purpose},
+				}, runtime.DeployableSpec{
+					Id: "serverid", Name: "server", Class: schema.DeployableClass_STATELESS,
+					PackageRef:    schema.MakePackageSingleRef("example.com/server"),
+					MainContainer: runtime.ContainerRunOpts{Image: oci.ImageID{Repository: "example.com/server"}},
+					Probes:        probes,
+				}, deployOpts{platforms: []specs.Platform{{OS: "linux", Architecture: "amd64"}}}, state)
+				if !assert.NoError(t, err) {
+					return
+				}
+				op, ok := state.operations[len(state.operations)-1].(kubedef.EnsureDeployment)
+				if !assert.True(t, ok) {
+					return
+				}
+				var pod *applycorev1.PodSpecApplyConfiguration
+				switch resource := op.Resource.(type) {
+				case *applycorev1.PodApplyConfiguration:
+					pod = resource.Spec
+				case *appsv1.DeploymentApplyConfiguration:
+					pod = resource.Spec.Template.Spec
+				default:
+					t.Fatalf("unexpected resource %T", resource)
+				}
+				if !assert.Len(t, pod.Containers, 1) {
+					return
+				}
+				ctr := pod.Containers[0]
+				readiness, err := json.Marshal(ctr.ReadinessProbe)
+				assert.NoError(t, err)
+				assert.JSONEq(t, fmt.Sprintf(`{"httpGet":{"path":"/readyz","port":9090},"initialDelaySeconds":%d,"periodSeconds":%d,"timeoutSeconds":1,"failureThreshold":%d}`, env.readinessInitialDelay, env.period, env.failures), string(readiness))
+				if tt.live == nil {
+					assert.Nil(t, ctr.StartupProbe)
+					assert.Nil(t, ctr.LivenessProbe)
+					return
+				}
+				startup, err := json.Marshal(ctr.StartupProbe)
+				assert.NoError(t, err)
+				if env.purpose == schema.Environment_TESTING {
+					assert.JSONEq(t, `{`+tt.handler+`,"periodSeconds":1,"timeoutSeconds":1,"failureThreshold":30}`, string(startup))
+				} else {
+					assert.Nil(t, ctr.StartupProbe)
+				}
+				liveness, err := json.Marshal(ctr.LivenessProbe)
+				assert.NoError(t, err)
+				assert.JSONEq(t, fmt.Sprintf(`{%s,"initialDelaySeconds":1,"periodSeconds":%d,"timeoutSeconds":1,"failureThreshold":%d}`, tt.handler, env.period, env.failures), string(liveness))
+			})
+		}
 	}
 }
 
