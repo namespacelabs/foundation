@@ -18,8 +18,10 @@ import (
 )
 
 var (
+	K3sVersion = "1.32"
+
 	K3sCfg = map[string]any{
-		"kubernetes_version": "1.32",
+		"kubernetes_version": K3sVersion,
 	}
 )
 

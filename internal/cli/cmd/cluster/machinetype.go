@@ -32,3 +32,32 @@ func ParseMachineType(machineType string) (vcpu int32, memoryMB int32, err error
 
 	return int32(cpu), int32(memoryGB * 1024), nil
 }
+
+// ParseMachineTypeShape parses a machine type string in the format
+// "[os/arch:]<cpu>x<memoryGB>" (e.g. "4x8" or "linux/arm64:2x8") and returns the
+// operating system, architecture, vCPU count, and memory in megabytes. The
+// "os/arch:" prefix is optional; when omitted, os and arch are returned empty
+// and the server picks defaults.
+func ParseMachineTypeShape(machineType string) (os, arch string, vcpu, memoryMB int32, err error) {
+	shape := machineType
+	if prefix, rest, ok := strings.Cut(machineType, ":"); ok {
+		o, a, ok := strings.Cut(prefix, "/")
+		if !ok || o == "" || a == "" {
+			return "", "", 0, 0, fnerrors.Newf("invalid machine_type format: expected '[os/arch:]<cpu>x<memGB>' (e.g. 'linux/arm64:2x8'), got %q", machineType)
+		}
+
+		// Legacy alias: "mac/silicon" is an alias for "macos/arm64".
+		if o == "mac" && a == "silicon" {
+			o, a = "macos", "arm64"
+		}
+
+		os, arch, shape = o, a, rest
+	}
+
+	vcpu, memoryMB, err = ParseMachineType(shape)
+	if err != nil {
+		return "", "", 0, 0, err
+	}
+
+	return os, arch, vcpu, memoryMB, nil
+}
