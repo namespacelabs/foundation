@@ -27,4 +27,7 @@ message DatabaseIntent {
     // Remove the helper functions after provisioning - no matter if the deployment was successful or not.
     bool                                    auto_remove_helper_functions         = 5;
     bool enable_tracing = 6;
+    // Allow fn_ensure_index and fn_ensure_unique_index to create missing indexes.
+    // By default, missing indexes fail schema preparation.
+    bool create_missing_indexes = 7;
 }
