@@ -32,7 +32,7 @@ type helperFunction struct {
 //   provision_helper_functions: true
 // to the database intent.
 
-func allHelperFunctions() []helperFunction {
+func allHelperFunctions(createMissingIndexes bool) []helperFunction {
 	// If removing a helper function, keep the cleanupSql.
 	return []helperFunction{
 		// fn_ensure_table is a lock-friendly replacement for 'CREATE TABLE IF NOT EXISTS'.
@@ -175,7 +175,7 @@ $func$;
 		// SELECT fn_ensure_index('volumes_attachedtovm', 'volumes', '(ID, AttachedToVM, IsClone)');
 		// SELECT fn_ensure_index('volumes_active', 'volumes', '(TenantID) WHERE DestroyedAt IS NULL');
 		{
-			provisionSql: `
+			provisionSql: fmt.Sprintf(`
 CREATE OR REPLACE FUNCTION fn_ensure_index(iname TEXT, tname TEXT, def TEXT)
   RETURNS void
   LANGUAGE plpgsql AS
@@ -185,11 +185,14 @@ BEGIN
     SELECT 1 FROM pg_indexes
     WHERE schemaname = 'public' AND indexname = LOWER(iname)
   ) THEN
+    IF NOT %t THEN
+      RAISE EXCEPTION 'Missing index %% on table %%; create it out of band before rollout', iname, tname;
+    END IF;
     EXECUTE 'CREATE INDEX IF NOT EXISTS ' || iname || ' ON ' || tname || ' ' || def || ';';
   END IF;
 END
 $func$;
-`},
+`, createMissingIndexes)},
 
 		// fn_ensure_unique_index is a lock-friendly replacement for 'CREATE UNIQUE INDEX IF NOT EXISTS'.
 		// It behaves exactly like fn_ensure_index but creates a UNIQUE index: it checks the catalog
@@ -209,7 +212,7 @@ $func$;
 		// SELECT fn_ensure_unique_index('reservations_idx_tenant_uniqueness', 'reservations', '(TenantID, UniquenessKey)');
 		// SELECT fn_ensure_unique_index('integrations_tenant_type_active_idx', 'integrations', '(TenantId, Type) WHERE DeletedAt IS NULL');
 		{
-			provisionSql: `
+			provisionSql: fmt.Sprintf(`
 CREATE OR REPLACE FUNCTION fn_ensure_unique_index(iname TEXT, tname TEXT, def TEXT)
   RETURNS void
   LANGUAGE plpgsql AS
@@ -219,11 +222,14 @@ BEGIN
     SELECT 1 FROM pg_indexes
     WHERE schemaname = 'public' AND indexname = LOWER(iname)
   ) THEN
+    IF NOT %t THEN
+      RAISE EXCEPTION 'Missing index %% on table %%; create it out of band before rollout', iname, tname;
+    END IF;
     EXECUTE 'CREATE UNIQUE INDEX IF NOT EXISTS ' || iname || ' ON ' || tname || ' ' || def || ';';
   END IF;
 END
 $func$;
-`},
+`, createMissingIndexes)},
 
 		// fn_drop_index is a lock-friendly replacement for 'DROP INDEX IF EXISTS'.
 		// A plain 'DROP INDEX' takes an ACCESS EXCLUSIVE lock on the underlying table. On a hot
@@ -414,7 +420,7 @@ func ApplyWithHelpers(ctx context.Context, intent *postgres.DatabaseIntent, db *
 	}
 
 	if intent.GetProvisionHelperFunctions() {
-		for _, helper := range allHelperFunctions() {
+		for _, helper := range allHelperFunctions(intent.GetCreateMissingIndexes()) {
 			if err := applyWithRetry(ctx, db, helper.provisionSql); err != nil {
 				return fmt.Errorf("unable to apply helper functions: %w", err)
 			}
