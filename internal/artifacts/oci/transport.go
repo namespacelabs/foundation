@@ -44,16 +44,9 @@ func parseTransport(ctx context.Context, t *registry.RegistryTransport) ([]remot
 		}
 
 		transport, err := sshHttpTransports.Compute(deferred.CacheKey, func() (*http.Transport, error) {
-			conn, err := deferred.Dial(ctx)
-			if err != nil {
-				return nil, err
-			}
-
-			// XXX conn.Close
-
 			return &http.Transport{
 				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-					return conn.Dial("tcp", remoteAddr)
+					return deferred.DialTCP(ctx, remoteAddr)
 				},
 			}, nil
 		})

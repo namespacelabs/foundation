@@ -106,6 +106,7 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 
 				c, chans, reqs, err := ssh.NewClientConn(conn, addrport, config)
 				if err != nil {
+					conn.Close()
 					return nil, err
 				}
 
@@ -113,6 +114,27 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 			})
 		},
 	}, nil
+}
+
+func (d *Deferred) DialTCP(ctx context.Context, addr string) (net.Conn, error) {
+	client, err := d.Dial(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := client.DialContext(ctx, "tcp", addr)
+	if err == nil {
+		return conn, nil
+	}
+
+	client.Close()
+	// A late failure must not discard another caller's replacement.
+	sshTransports.DropIf(d.CacheKey, func(cached *ssh.Client) bool { return cached == client })
+
+	client, err = d.Dial(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return client.DialContext(ctx, "tcp", addr)
 }
 
 func parseAuth(privateKeyPath string) (ssh.AuthMethod, string, error) {

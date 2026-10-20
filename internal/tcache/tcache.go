@@ -17,9 +17,10 @@ type Cache[V any] struct {
 }
 
 type result[V any] struct {
-	once  sync.Once
-	value V
-	err   error
+	once   sync.Once
+	value  V
+	err    error
+	viable bool // Protected by Cache.mu, together with value when used by DropIf.
 }
 
 type Deferred[V any] struct {
@@ -34,6 +35,15 @@ func NewCache[V any]() *Cache[V] {
 	}
 }
 
+// DropIf tests completed entries under the cache lock; matches must not reenter the cache.
+func (c *Cache[V]) DropIf(key string, matches func(V) bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if v := c.entries[key]; v != nil && v.viable && matches(v.value) {
+		delete(c.entries, key)
+	}
+}
+
 func (c *Cache[V]) Compute(key string, produce func() (V, error)) (V, error) {
 	c.mu.Lock()
 	v, ok := c.entries[key]
@@ -44,7 +54,13 @@ func (c *Cache[V]) Compute(key string, produce func() (V, error)) (V, error) {
 	c.mu.Unlock()
 
 	v.once.Do(func() {
-		v.value, v.err = produce()
+		value, err := produce()
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		v.value, v.err, v.viable = value, err, true
+		if err != nil && c.entries[key] == v {
+			delete(c.entries, key)
+		}
 	})
 
 	return v.value, v.err
