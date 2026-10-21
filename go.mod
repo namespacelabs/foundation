@@ -70,7 +70,7 @@ require (
 	github.com/jhump/protoreflect v1.17.0
 	github.com/jpillora/chisel v1.11.5
 	github.com/keikoproj/aws-auth v0.4.0
-	github.com/klauspost/compress v1.18.6
+	github.com/klauspost/compress v1.18.7
 	github.com/kr/text v0.2.0
 	github.com/maruel/panicparse/v2 v2.3.0
 	github.com/mattn/go-isatty v0.0.20
