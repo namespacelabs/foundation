@@ -351,7 +351,8 @@ func callSideEffectFree(ctx context.Context, retryable bool, method func(context
 			// a channel and that channel is gone, then grpc observes a ECONNRESET. And propagates
 			// it as a temporary error. It doesn't know though whether it's safe to retry, so it
 			// doesn't.
-			if temp, ok := methodErr.(interface{ Temporary() bool }); ok && temp.Temporary() {
+			var temp interface{ Temporary() bool }
+			if errors.As(methodErr, &temp) && temp.Temporary() {
 				span.RecordError(methodErr, trace.WithAttributes(attribute.Bool("grpc.temporary_error", true)))
 				return methodErr
 			}
