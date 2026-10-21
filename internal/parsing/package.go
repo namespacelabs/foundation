@@ -49,14 +49,6 @@ func FinalizePackage(ctx context.Context, env *schema.Environment, pl EarlyPacka
 		}
 	}
 
-	if pp.Server != nil && shouldCreateStartupTest(pp.Server) {
-		test, err := createServerStartupTest(ctx, pl, pp.PackageName())
-		if err != nil {
-			return nil, fnerrors.NewWithLocation(pp.Location, "creating server startup test: %w", err)
-		}
-		pp.Tests = append(pp.Tests, test)
-	}
-
 	for _, binary := range pp.Binaries {
 		if err := transformBinary(ctx, pl, pp.Location, binary); err != nil {
 			return nil, err
@@ -94,10 +86,6 @@ func FinalizePackage(ctx context.Context, env *schema.Environment, pl EarlyPacka
 	}
 
 	return pp, nil
-}
-
-func shouldCreateStartupTest(server *schema.Server) bool {
-	return false
 }
 
 func fixFragment(ctx context.Context, pl EarlyPackageLoader, pp *pkggraph.Package, frag *schema.ServerFragment) error {
