@@ -299,6 +299,8 @@ type ServerFragment struct {
 	SpreadConstraints *SpreadConstraints    `protobuf:"bytes,18,opt,name=spread_constraints,json=spreadConstraints,proto3" json:"spread_constraints,omitempty"`
 	PriorityClass     string                `protobuf:"bytes,19,opt,name=priority_class,json=priorityClass,proto3" json:"priority_class,omitempty"`
 	TelemetryResource *TelemetryResource    `protobuf:"bytes,20,opt,name=telemetry_resource,json=telemetryResource,proto3" json:"telemetry_resource,omitempty"`
+	// All labels form one soft preference, rendered with weight 100.
+	PreferredNodeAffinity map[string]string `protobuf:"bytes,21,rep,name=preferred_node_affinity,json=preferredNodeAffinity,proto3" json:"preferred_node_affinity,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (x *ServerFragment) Reset() {
@@ -469,6 +471,13 @@ func (x *ServerFragment) GetPriorityClass() string {
 func (x *ServerFragment) GetTelemetryResource() *TelemetryResource {
 	if x != nil {
 		return x.TelemetryResource
+	}
+	return nil
+}
+
+func (x *ServerFragment) GetPreferredNodeAffinity() map[string]string {
+	if x != nil {
+		return x.PreferredNodeAffinity
 	}
 	return nil
 }
@@ -1607,7 +1616,7 @@ type Allocation_Instance struct {
 func (x *Allocation_Instance) Reset() {
 	*x = Allocation_Instance{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[20]
+		mi := &file_schema_server_proto_msgTypes[21]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1620,7 +1629,7 @@ func (x *Allocation_Instance) String() string {
 func (*Allocation_Instance) ProtoMessage() {}
 
 func (x *Allocation_Instance) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[20]
+	mi := &file_schema_server_proto_msgTypes[21]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1683,7 +1692,7 @@ type ServerPermissions_ClusterRole struct {
 func (x *ServerPermissions_ClusterRole) Reset() {
 	*x = ServerPermissions_ClusterRole{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[21]
+		mi := &file_schema_server_proto_msgTypes[22]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1696,7 +1705,7 @@ func (x *ServerPermissions_ClusterRole) String() string {
 func (*ServerPermissions_ClusterRole) ProtoMessage() {}
 
 func (x *ServerPermissions_ClusterRole) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[21]
+	mi := &file_schema_server_proto_msgTypes[22]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1901,7 +1910,7 @@ var file_schema_server_proto_rawDesc = []byte{
 	0x4a, 0x04, 0x08, 0x16, 0x10, 0x17, 0x4a, 0x04, 0x08, 0x24, 0x10, 0x25, 0x4a, 0x04, 0x08, 0x1a,
 	0x10, 0x1b, 0x4a, 0x04, 0x08, 0x21, 0x10, 0x22, 0x4a, 0x04, 0x08, 0x23, 0x10, 0x24, 0x4a, 0x04,
 	0x08, 0x25, 0x10, 0x26, 0x4a, 0x04, 0x08, 0x26, 0x10, 0x27, 0x4a, 0x04, 0x08, 0x28, 0x10, 0x29,
-	0x22, 0xf9, 0x09, 0x0a, 0x0e, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x46, 0x72, 0x61, 0x67, 0x6d,
+	0x22, 0xb9, 0x0b, 0x0a, 0x0e, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x46, 0x72, 0x61, 0x67, 0x6d,
 	0x65, 0x6e, 0x74, 0x12, 0x43, 0x0a, 0x0e, 0x6d, 0x61, 0x69, 0x6e, 0x5f, 0x63, 0x6f, 0x6e, 0x74,
 	0x61, 0x69, 0x6e, 0x65, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x66, 0x6f,
 	0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e,
@@ -1980,7 +1989,19 @@ var file_schema_server_proto_rawDesc = []byte{
 	0x01, 0x28, 0x0b, 0x32, 0x24, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e,
 	0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x54, 0x65, 0x6c, 0x65, 0x6d, 0x65, 0x74, 0x72,
 	0x79, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x52, 0x11, 0x74, 0x65, 0x6c, 0x65, 0x6d,
-	0x65, 0x74, 0x72, 0x79, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x22, 0x36, 0x0a, 0x11,
+	0x65, 0x74, 0x72, 0x79, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x12, 0x74, 0x0a, 0x17,
+	0x70, 0x72, 0x65, 0x66, 0x65, 0x72, 0x72, 0x65, 0x64, 0x5f, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x61,
+	0x66, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x79, 0x18, 0x15, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x3c, 0x2e,
+	0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d,
+	0x61, 0x2e, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74,
+	0x2e, 0x50, 0x72, 0x65, 0x66, 0x65, 0x72, 0x72, 0x65, 0x64, 0x4e, 0x6f, 0x64, 0x65, 0x41, 0x66,
+	0x66, 0x69, 0x6e, 0x69, 0x74, 0x79, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x15, 0x70, 0x72, 0x65,
+	0x66, 0x65, 0x72, 0x72, 0x65, 0x64, 0x4e, 0x6f, 0x64, 0x65, 0x41, 0x66, 0x66, 0x69, 0x6e, 0x69,
+	0x74, 0x79, 0x1a, 0x48, 0x0a, 0x1a, 0x50, 0x72, 0x65, 0x66, 0x65, 0x72, 0x72, 0x65, 0x64, 0x4e,
+	0x6f, 0x64, 0x65, 0x41, 0x66, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x79, 0x45, 0x6e, 0x74, 0x72, 0x79,
+	0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b,
+	0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x22, 0x36, 0x0a, 0x11,
 	0x54, 0x65, 0x6c, 0x65, 0x6d, 0x65, 0x74, 0x72, 0x79, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63,
 	0x65, 0x12, 0x21, 0x0a, 0x0c, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x5f, 0x6e, 0x61, 0x6d,
 	0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65,
@@ -2112,7 +2133,7 @@ func file_schema_server_proto_rawDescGZIP() []byte {
 }
 
 var file_schema_server_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_schema_server_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_schema_server_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_schema_server_proto_goTypes = []interface{}{
 	(Framework)(0),                        // 0: foundation.schema.Framework
 	(*Server)(nil),                        // 1: foundation.schema.Server
@@ -2134,80 +2155,82 @@ var file_schema_server_proto_goTypes = []interface{}{
 	(*Server_EnvironmentRequirement)(nil), // 17: foundation.schema.Server.EnvironmentRequirement
 	(*Server_Toleration)(nil),             // 18: foundation.schema.Server.Toleration
 	(*Server_Configuration)(nil),          // 19: foundation.schema.Server.Configuration
-	nil,                                   // 20: foundation.schema.SpreadConstraints.LabelSelectorEntry
-	(*Allocation_Instance)(nil),           // 21: foundation.schema.Allocation.Instance
-	(*ServerPermissions_ClusterRole)(nil), // 22: foundation.schema.ServerPermissions.ClusterRole
-	(*anypb.Any)(nil),                     // 23: google.protobuf.Any
-	(*Reference)(nil),                     // 24: foundation.schema.Reference
-	(*Naming)(nil),                        // 25: foundation.schema.Naming
-	(*Container)(nil),                     // 26: foundation.schema.Container
-	(*Probe)(nil),                         // 27: foundation.schema.Probe
-	(*Volume)(nil),                        // 28: foundation.schema.Volume
-	(*ResourcePack)(nil),                  // 29: foundation.schema.ResourcePack
-	(*NamedResolvable)(nil),               // 30: foundation.schema.NamedResolvable
-	(*Endpoint_Port)(nil),                 // 31: foundation.schema.Endpoint.Port
-	(*ContainerExtension)(nil),            // 32: foundation.schema.ContainerExtension
-	(*ServiceMetadata)(nil),               // 33: foundation.schema.ServiceMetadata
-	(*Endpoint_PortMap)(nil),              // 34: foundation.schema.Endpoint.PortMap
-	(Endpoint_Type)(0),                    // 35: foundation.schema.Endpoint.Type
-	(*PackageRef)(nil),                    // 36: foundation.schema.PackageRef
-	(*DomainSpec)(nil),                    // 37: foundation.schema.DomainSpec
-	(*ServiceAnnotations)(nil),            // 38: foundation.schema.ServiceAnnotations
-	(Endpoint_ServiceTrafficPolicy)(0),    // 39: foundation.schema.Endpoint.ServiceTrafficPolicy
-	(IngressFragment_IngressHttpPath_BackendProtocol)(0), // 40: foundation.schema.IngressFragment.IngressHttpPath.BackendProtocol
-	(*Label)(nil), // 41: foundation.schema.Label
+	nil,                                   // 20: foundation.schema.ServerFragment.PreferredNodeAffinityEntry
+	nil,                                   // 21: foundation.schema.SpreadConstraints.LabelSelectorEntry
+	(*Allocation_Instance)(nil),           // 22: foundation.schema.Allocation.Instance
+	(*ServerPermissions_ClusterRole)(nil), // 23: foundation.schema.ServerPermissions.ClusterRole
+	(*anypb.Any)(nil),                     // 24: google.protobuf.Any
+	(*Reference)(nil),                     // 25: foundation.schema.Reference
+	(*Naming)(nil),                        // 26: foundation.schema.Naming
+	(*Container)(nil),                     // 27: foundation.schema.Container
+	(*Probe)(nil),                         // 28: foundation.schema.Probe
+	(*Volume)(nil),                        // 29: foundation.schema.Volume
+	(*ResourcePack)(nil),                  // 30: foundation.schema.ResourcePack
+	(*NamedResolvable)(nil),               // 31: foundation.schema.NamedResolvable
+	(*Endpoint_Port)(nil),                 // 32: foundation.schema.Endpoint.Port
+	(*ContainerExtension)(nil),            // 33: foundation.schema.ContainerExtension
+	(*ServiceMetadata)(nil),               // 34: foundation.schema.ServiceMetadata
+	(*Endpoint_PortMap)(nil),              // 35: foundation.schema.Endpoint.PortMap
+	(Endpoint_Type)(0),                    // 36: foundation.schema.Endpoint.Type
+	(*PackageRef)(nil),                    // 37: foundation.schema.PackageRef
+	(*DomainSpec)(nil),                    // 38: foundation.schema.DomainSpec
+	(*ServiceAnnotations)(nil),            // 39: foundation.schema.ServiceAnnotations
+	(Endpoint_ServiceTrafficPolicy)(0),    // 40: foundation.schema.Endpoint.ServiceTrafficPolicy
+	(IngressFragment_IngressHttpPath_BackendProtocol)(0), // 41: foundation.schema.IngressFragment.IngressHttpPath.BackendProtocol
+	(*Label)(nil), // 42: foundation.schema.Label
 }
 var file_schema_server_proto_depIdxs = []int32{
 	16, // 0: foundation.schema.Server.description:type_name -> foundation.schema.Server.Description
-	23, // 1: foundation.schema.Server.ext:type_name -> google.protobuf.Any
+	24, // 1: foundation.schema.Server.ext:type_name -> google.protobuf.Any
 	9,  // 2: foundation.schema.Server.allocation:type_name -> foundation.schema.Allocation
 	0,  // 3: foundation.schema.Server.framework:type_name -> foundation.schema.Framework
-	24, // 4: foundation.schema.Server.reference:type_name -> foundation.schema.Reference
+	25, // 4: foundation.schema.Server.reference:type_name -> foundation.schema.Reference
 	15, // 5: foundation.schema.Server.url_map:type_name -> foundation.schema.Server.URLMapEntry
 	17, // 6: foundation.schema.Server.environment_requirement:type_name -> foundation.schema.Server.EnvironmentRequirement
 	2,  // 7: foundation.schema.Server.self:type_name -> foundation.schema.ServerFragment
-	25, // 8: foundation.schema.Server.server_naming:type_name -> foundation.schema.Naming
-	26, // 9: foundation.schema.ServerFragment.main_container:type_name -> foundation.schema.Container
+	26, // 8: foundation.schema.Server.server_naming:type_name -> foundation.schema.Naming
+	27, // 9: foundation.schema.ServerFragment.main_container:type_name -> foundation.schema.Container
 	14, // 10: foundation.schema.ServerFragment.service:type_name -> foundation.schema.Server.ServiceSpec
 	14, // 11: foundation.schema.ServerFragment.ingress:type_name -> foundation.schema.Server.ServiceSpec
-	27, // 12: foundation.schema.ServerFragment.probe:type_name -> foundation.schema.Probe
-	28, // 13: foundation.schema.ServerFragment.volume:type_name -> foundation.schema.Volume
-	29, // 14: foundation.schema.ServerFragment.resource_pack:type_name -> foundation.schema.ResourcePack
+	28, // 12: foundation.schema.ServerFragment.probe:type_name -> foundation.schema.Probe
+	29, // 13: foundation.schema.ServerFragment.volume:type_name -> foundation.schema.Volume
+	30, // 14: foundation.schema.ServerFragment.resource_pack:type_name -> foundation.schema.ResourcePack
 	12, // 15: foundation.schema.ServerFragment.permissions:type_name -> foundation.schema.ServerPermissions
 	18, // 16: foundation.schema.ServerFragment.toleration:type_name -> foundation.schema.Server.Toleration
-	26, // 17: foundation.schema.ServerFragment.sidecar:type_name -> foundation.schema.Container
-	26, // 18: foundation.schema.ServerFragment.init_container:type_name -> foundation.schema.Container
-	30, // 19: foundation.schema.ServerFragment.annotation:type_name -> foundation.schema.NamedResolvable
+	27, // 17: foundation.schema.ServerFragment.sidecar:type_name -> foundation.schema.Container
+	27, // 18: foundation.schema.ServerFragment.init_container:type_name -> foundation.schema.Container
+	31, // 19: foundation.schema.ServerFragment.annotation:type_name -> foundation.schema.NamedResolvable
 	5,  // 20: foundation.schema.ServerFragment.node_selector:type_name -> foundation.schema.NodeSelectorItem
 	4,  // 21: foundation.schema.ServerFragment.listener:type_name -> foundation.schema.Listener
 	7,  // 22: foundation.schema.ServerFragment.pod_anti_affinity:type_name -> foundation.schema.PodAntiAffinity
 	6,  // 23: foundation.schema.ServerFragment.update_strategy:type_name -> foundation.schema.UpdateStrategy
 	8,  // 24: foundation.schema.ServerFragment.spread_constraints:type_name -> foundation.schema.SpreadConstraints
 	3,  // 25: foundation.schema.ServerFragment.telemetry_resource:type_name -> foundation.schema.TelemetryResource
-	31, // 26: foundation.schema.Listener.port:type_name -> foundation.schema.Endpoint.Port
-	20, // 27: foundation.schema.SpreadConstraints.label_selector:type_name -> foundation.schema.SpreadConstraints.LabelSelectorEntry
-	21, // 28: foundation.schema.Allocation.instance:type_name -> foundation.schema.Allocation.Instance
-	23, // 29: foundation.schema.Instantiate.constructor:type_name -> google.protobuf.Any
-	22, // 30: foundation.schema.ServerPermissions.cluster_role:type_name -> foundation.schema.ServerPermissions.ClusterRole
-	28, // 31: foundation.schema.ServerExtension.volume:type_name -> foundation.schema.Volume
-	32, // 32: foundation.schema.ServerExtension.extend_container:type_name -> foundation.schema.ContainerExtension
-	33, // 33: foundation.schema.Server.ServiceSpec.metadata:type_name -> foundation.schema.ServiceMetadata
-	34, // 34: foundation.schema.Server.ServiceSpec.ports:type_name -> foundation.schema.Endpoint.PortMap
-	35, // 35: foundation.schema.Server.ServiceSpec.endpoint_type:type_name -> foundation.schema.Endpoint.Type
-	36, // 36: foundation.schema.Server.ServiceSpec.ingress_provider:type_name -> foundation.schema.PackageRef
-	37, // 37: foundation.schema.Server.ServiceSpec.ingress_domain:type_name -> foundation.schema.DomainSpec
-	38, // 38: foundation.schema.Server.ServiceSpec.ingress_annotations:type_name -> foundation.schema.ServiceAnnotations
-	39, // 39: foundation.schema.Server.ServiceSpec.external_traffic_policy:type_name -> foundation.schema.Endpoint.ServiceTrafficPolicy
-	40, // 40: foundation.schema.Server.URLMapEntry.backend_protocol:type_name -> foundation.schema.IngressFragment.IngressHttpPath.BackendProtocol
-	41, // 41: foundation.schema.Server.EnvironmentRequirement.environment_has_label:type_name -> foundation.schema.Label
-	41, // 42: foundation.schema.Server.EnvironmentRequirement.environment_does_not_have_label:type_name -> foundation.schema.Label
-	10, // 43: foundation.schema.Allocation.Instance.instantiated:type_name -> foundation.schema.Instantiate
-	9,  // 44: foundation.schema.Allocation.Instance.downstream_allocation:type_name -> foundation.schema.Allocation
-	45, // [45:45] is the sub-list for method output_type
-	45, // [45:45] is the sub-list for method input_type
-	45, // [45:45] is the sub-list for extension type_name
-	45, // [45:45] is the sub-list for extension extendee
-	0,  // [0:45] is the sub-list for field type_name
+	20, // 26: foundation.schema.ServerFragment.preferred_node_affinity:type_name -> foundation.schema.ServerFragment.PreferredNodeAffinityEntry
+	32, // 27: foundation.schema.Listener.port:type_name -> foundation.schema.Endpoint.Port
+	21, // 28: foundation.schema.SpreadConstraints.label_selector:type_name -> foundation.schema.SpreadConstraints.LabelSelectorEntry
+	22, // 29: foundation.schema.Allocation.instance:type_name -> foundation.schema.Allocation.Instance
+	24, // 30: foundation.schema.Instantiate.constructor:type_name -> google.protobuf.Any
+	23, // 31: foundation.schema.ServerPermissions.cluster_role:type_name -> foundation.schema.ServerPermissions.ClusterRole
+	29, // 32: foundation.schema.ServerExtension.volume:type_name -> foundation.schema.Volume
+	33, // 33: foundation.schema.ServerExtension.extend_container:type_name -> foundation.schema.ContainerExtension
+	34, // 34: foundation.schema.Server.ServiceSpec.metadata:type_name -> foundation.schema.ServiceMetadata
+	35, // 35: foundation.schema.Server.ServiceSpec.ports:type_name -> foundation.schema.Endpoint.PortMap
+	36, // 36: foundation.schema.Server.ServiceSpec.endpoint_type:type_name -> foundation.schema.Endpoint.Type
+	37, // 37: foundation.schema.Server.ServiceSpec.ingress_provider:type_name -> foundation.schema.PackageRef
+	38, // 38: foundation.schema.Server.ServiceSpec.ingress_domain:type_name -> foundation.schema.DomainSpec
+	39, // 39: foundation.schema.Server.ServiceSpec.ingress_annotations:type_name -> foundation.schema.ServiceAnnotations
+	40, // 40: foundation.schema.Server.ServiceSpec.external_traffic_policy:type_name -> foundation.schema.Endpoint.ServiceTrafficPolicy
+	41, // 41: foundation.schema.Server.URLMapEntry.backend_protocol:type_name -> foundation.schema.IngressFragment.IngressHttpPath.BackendProtocol
+	42, // 42: foundation.schema.Server.EnvironmentRequirement.environment_has_label:type_name -> foundation.schema.Label
+	42, // 43: foundation.schema.Server.EnvironmentRequirement.environment_does_not_have_label:type_name -> foundation.schema.Label
+	10, // 44: foundation.schema.Allocation.Instance.instantiated:type_name -> foundation.schema.Instantiate
+	9,  // 45: foundation.schema.Allocation.Instance.downstream_allocation:type_name -> foundation.schema.Allocation
+	46, // [46:46] is the sub-list for method output_type
+	46, // [46:46] is the sub-list for method input_type
+	46, // [46:46] is the sub-list for extension type_name
+	46, // [46:46] is the sub-list for extension extendee
+	0,  // [0:46] is the sub-list for field type_name
 }
 
 func init() { file_schema_server_proto_init() }
@@ -2455,7 +2478,7 @@ func file_schema_server_proto_init() {
 				return nil
 			}
 		}
-		file_schema_server_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
+		file_schema_server_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Allocation_Instance); i {
 			case 0:
 				return &v.state
@@ -2467,7 +2490,7 @@ func file_schema_server_proto_init() {
 				return nil
 			}
 		}
-		file_schema_server_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
+		file_schema_server_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ServerPermissions_ClusterRole); i {
 			case 0:
 				return &v.state
@@ -2486,7 +2509,7 @@ func file_schema_server_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_schema_server_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   22,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
