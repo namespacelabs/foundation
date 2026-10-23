@@ -8,11 +8,13 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/exp/slices"
@@ -64,10 +66,26 @@ func doTxFunc[T any](ctx context.Context, db *DB, txoptions TxOptions, attempt i
 			return empty, TransactionError{err}
 		}
 
-		defer func() { _ = tx.Rollback(ctx) }()
+		defer func() {
+			// A canceled request must still roll back before its connection can be reused.
+			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			defer cancel()
+			if err := tx.Rollback(cleanupCtx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+				zerolog.Ctx(ctx).Warn().Err(err).Msg("failed to roll back PostgreSQL transaction")
+			}
+		}()
+
+		if err := ctx.Err(); err != nil {
+			return empty, err
+		}
 
 		value, err := f(ctx, tx)
 		if err != nil {
+			return empty, err
+		}
+
+		// An in-flight statement may succeed during cancellation grace; do not commit it.
+		if err := ctx.Err(); err != nil {
 			return empty, err
 		}
 

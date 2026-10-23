@@ -23,6 +23,7 @@ message DatabaseArgs {
     int32                    max_conns_idle_time_ms                 = 11;  // Set if > 0.
     int32                    max_conn_lifetime_jitter_ms            = 12;  // Set if > 0.
     optional bool            verify_server_certificate             = 13;  // Opt in to database certificate and hostname verification.
+    int32                    cancellation_grace_ms                  = 14;  // Set if > 0. In-flight operations may finish after cancellation.
 }
 
 message DatabaseReferenceArgs {
