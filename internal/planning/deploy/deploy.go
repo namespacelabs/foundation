@@ -904,6 +904,7 @@ func PrepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Pla
 
 	out.Probes = frag.Probe
 	out.Tolerations = frag.Toleration
+	out.FSGroupChangePolicy = frag.FsGroupChangePolicy
 	out.Annotations = frag.Annotation
 	out.NodeSelector = frag.NodeSelector
 

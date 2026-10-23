@@ -160,6 +160,13 @@ message ServerFragment {
     SpreadConstraints          spread_constraints = 18;
     string                     priority_class     = 19;
     TelemetryResource          telemetry_resource = 20;
+    FSGroupChangePolicy        fs_group_change_policy = 21;
+
+    enum FSGroupChangePolicy {
+        FS_GROUP_CHANGE_POLICY_UNSPECIFIED = 0;
+        ALWAYS = 1;
+        ON_ROOT_MISMATCH = 2;
+    }
 }
 
 message TelemetryResource {

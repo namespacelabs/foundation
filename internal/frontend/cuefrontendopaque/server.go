@@ -25,7 +25,7 @@ var (
 	extensionFields = []string{
 		"args", "env", "services", "ports", "unstable_permissions", "permissions", "probe", "probes", "security",
 		"sidecars", "mounts", "resources", "requires", "tolerations", "annotations",
-		"resourceLimits", "resourceRequests", "terminationGracePeriodSeconds",
+		"resourceLimits", "resourceRequests", "terminationGracePeriodSeconds", "fsGroupChangePolicy",
 		"extensions", "nodeSelector", "replicas", "priorityClass", "pod_anti_affinity", "update_strategy",
 		"spread_constraints", "listeners",
 		// This is needed for the "spec" in server templates. This can't be a private field, otherwise it can't be overridden.
@@ -58,12 +58,13 @@ type cueServerExtension struct {
 	UnstablePermissions *cuePermissions `json:"unstable_permissions,omitempty"`
 	Permissions         *cuePermissions `json:"permissions,omitempty"`
 
-	ReadinessProbe *cueProbe                       `json:"probe"`  // `probe: exec: "foo-cmd"`
-	Probes         map[string]cueProbe             `json:"probes"` // `probes: readiness: exec: "foo-cmd"`
-	Security       *cueServerSecurity              `json:"security,omitempty"`
-	Tolerations    []*schema.Server_Toleration     `json:"tolerations,omitempty"`
-	Annotations    map[string]args.ResolvableValue `json:"annotations,omitempty"`
-	NodeSelector   map[string]string               `json:"nodeSelector,omitempty"`
+	ReadinessProbe      *cueProbe                       `json:"probe"`  // `probe: exec: "foo-cmd"`
+	Probes              map[string]cueProbe             `json:"probes"` // `probes: readiness: exec: "foo-cmd"`
+	Security            *cueServerSecurity              `json:"security,omitempty"`
+	Tolerations         []*schema.Server_Toleration     `json:"tolerations,omitempty"`
+	FSGroupChangePolicy string                          `json:"fsGroupChangePolicy,omitempty"`
+	Annotations         map[string]args.ResolvableValue `json:"annotations,omitempty"`
+	NodeSelector        map[string]string               `json:"nodeSelector,omitempty"`
 
 	TerminationGracePeriodSeconds int64 `json:"terminationGracePeriodSeconds,omitempty"`
 
@@ -377,6 +378,20 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 		}
 
 		out.Toleration = bits.Tolerations
+	}
+
+	if bits.FSGroupChangePolicy != "" {
+		if err := parsing.RequireFeature(loc.Module, "experimental/container/fsGroupChangePolicy"); err != nil {
+			return nil, fnerrors.AttachLocation(loc, err)
+		}
+		switch bits.FSGroupChangePolicy {
+		case "Always":
+			out.FsGroupChangePolicy = schema.ServerFragment_ALWAYS
+		case "OnRootMismatch":
+			out.FsGroupChangePolicy = schema.ServerFragment_ON_ROOT_MISMATCH
+		default:
+			return nil, fnerrors.NewWithLocation(loc, "unsupported fsGroupChangePolicy %q: expected Always or OnRootMismatch", bits.FSGroupChangePolicy)
+		}
 	}
 
 	if len(bits.Annotations) > 0 {

@@ -360,6 +360,12 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 			// XXX dedup
 			ps.MergedFragment.Volume = append(ps.MergedFragment.Volume, frag.Volume...)
 			ps.MergedFragment.Toleration = append(ps.MergedFragment.Toleration, frag.Toleration...)
+			if frag.FsGroupChangePolicy != schema.ServerFragment_FS_GROUP_CHANGE_POLICY_UNSPECIFIED {
+				if ps.MergedFragment.FsGroupChangePolicy != schema.ServerFragment_FS_GROUP_CHANGE_POLICY_UNSPECIFIED && frag.FsGroupChangePolicy != ps.MergedFragment.FsGroupChangePolicy {
+					return fnerrors.Newf("incompatible fsGroupChangePolicy definition")
+				}
+				ps.MergedFragment.FsGroupChangePolicy = frag.FsGroupChangePolicy
+			}
 			ps.MergedFragment.Annotation = append(ps.MergedFragment.Annotation, frag.Annotation...)
 			ps.MergedFragment.NodeSelector = append(ps.MergedFragment.NodeSelector, frag.NodeSelector...)
 			ps.MergedFragment.Listener = append(ps.MergedFragment.Listener, frag.Listener...)

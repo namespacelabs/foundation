@@ -916,6 +916,16 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 		return fnerrors.AttachLocation(deployable.ErrorLocation, err)
 	}
 
+	switch deployable.FSGroupChangePolicy {
+	case schema.ServerFragment_FS_GROUP_CHANGE_POLICY_UNSPECIFIED:
+	case schema.ServerFragment_ALWAYS:
+		podSecCtx.WithFSGroupChangePolicy(corev1.FSGroupChangeAlways)
+	case schema.ServerFragment_ON_ROOT_MISMATCH:
+		podSecCtx.WithFSGroupChangePolicy(corev1.FSGroupChangeOnRootMismatch)
+	default:
+		return fnerrors.NewWithLocation(deployable.ErrorLocation, "invalid fsGroupChangePolicy: %v", deployable.FSGroupChangePolicy)
+	}
+
 	if deployable.MainContainer.HostNetwork {
 		spec = spec.WithHostNetwork(true).WithDNSPolicy(corev1.DNSClusterFirstWithHostNet)
 	}
