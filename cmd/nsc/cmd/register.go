@@ -106,9 +106,9 @@ func RegisterCommands(root *cobra.Command) {
 
 func newGithub() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "github",
-		Args:   cobra.NoArgs,
-		Hidden: true,
+		Use:   "github",
+		Short: "Manage GitHub Actions runners, profiles, and jobs.",
+		Args:  cobra.NoArgs,
 	}
 
 	cmd.AddCommand(github.NewBaseImageBuildCmd("build-base-image"))
