@@ -20,6 +20,51 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
+func TestStatefulSetFSGroupChangePolicy(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		setting schema.ServerFragment_FSGroupChangePolicy
+		policy  string
+	}{
+		{"default", schema.ServerFragment_FS_GROUP_CHANGE_POLICY_UNSPECIFIED, ""},
+		{"always", schema.ServerFragment_ALWAYS, "Always"},
+		{"root mismatch", schema.ServerFragment_ON_ROOT_MISMATCH, "OnRootMismatch"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			group := "65532"
+			deployable := runtime.DeployableSpec{
+				Id: "serverid", Name: "storage", Class: schema.DeployableClass_STATEFUL,
+				PackageRef:          schema.MakePackageSingleRef("example.com/storage"),
+				FSGroupChangePolicy: tt.setting,
+				MainContainer: runtime.ContainerRunOpts{
+					Image: oci.ImageID{Repository: "example.com/storage"},
+					RunAs: &runtime.RunAs{UserID: "65532", FSGroup: &group},
+				},
+			}
+			state := &serverRunState{}
+			if !assert.NoError(t, prepareDeployment(context.Background(), BoundNamespace{namespace: "test-ns"}, deployable, deployOpts{}, state)) {
+				return
+			}
+			op, ok := state.operations[len(state.operations)-1].(kubedef.EnsureDeployment)
+			if !assert.True(t, ok) {
+				return
+			}
+			ss, ok := op.Resource.(*appsv1.StatefulSetApplyConfiguration)
+			if !assert.True(t, ok) {
+				return
+			}
+			pod := ss.Spec.Template.Spec
+			encoded, err := json.Marshal(pod.SecurityContext)
+			assert.NoError(t, err)
+			want := `{"runAsNonRoot":true,"runAsUser":65532,"fsGroup":65532`
+			if tt.policy != "" {
+				want += fmt.Sprintf(`,"fsGroupChangePolicy":%q`, tt.policy)
+			}
+			assert.JSONEq(t, want+`}`, string(encoded))
+		})
+	}
+}
+
 func TestDeploymentSidecarResources(t *testing.T) {
 	for _, tt := range []struct {
 		name             string
