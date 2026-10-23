@@ -26,14 +26,16 @@ func NewIngressCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newListIngressesCmd())
+	cmd.AddCommand(newDeleteIngressCmd())
 	cmd.AddCommand(newGenerateAccessTokenCmd())
 
 	return cmd
 }
 
 type ingressOut struct {
-	Port int32  `json:"port,omitempty"`
-	Fqdn string `json:"fqdn,omitempty"`
+	Port      int32  `json:"port,omitempty"`
+	Fqdn      string `json:"fqdn,omitempty"`
+	IngressId string `json:"ingress_id,omitempty"`
 }
 
 func newListIngressesCmd() *cobra.Command {
@@ -64,6 +66,9 @@ func newListIngressesCmd() *cobra.Command {
 		case "plain":
 			for _, ingress := range lst.ExportedInstancePort {
 				parts := []string{fmt.Sprintf("port: %d", ingress.Port)}
+				if ingress.IngressId != "" {
+					parts = append(parts, "id: "+ingress.IngressId)
+				}
 				if ingress.Description != "" {
 					parts = append(parts, ingress.Description)
 				}
@@ -75,8 +80,9 @@ func newListIngressesCmd() *cobra.Command {
 			var res []ingressOut
 			for _, ingress := range lst.ExportedInstancePort {
 				res = append(res, ingressOut{
-					Port: ingress.Port,
-					Fqdn: ingress.IngressFqdn,
+					Port:      ingress.Port,
+					Fqdn:      ingress.IngressFqdn,
+					IngressId: ingress.IngressId,
 				})
 			}
 
@@ -88,6 +94,31 @@ func newListIngressesCmd() *cobra.Command {
 		}
 
 		return nil
+	})
+
+	return cmd
+}
+
+func newDeleteIngressCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "delete",
+		Short:   "Delete a registered ingress from an instance.",
+		Example: "  nsc ingress list <instance-id>\n  nsc ingress delete --instance <instance-id> --ingress_id <ingress-id>",
+		Args:    cobra.NoArgs,
+	}
+
+	instance := cmd.Flags().String("instance", "", "Instance containing the ingress.")
+	ingressID := cmd.Flags().String("ingress_id", "", "ID of the ingress to delete, as returned by ingress list.")
+	cmd.MarkFlagRequired("instance")
+	cmd.MarkFlagRequired("ingress_id")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		cluster, _, err := SelectRunningCluster(ctx, []string{*instance})
+		if err != nil {
+			return err
+		}
+
+		return api.DeleteIngress(ctx, api.Methods, cluster, *ingressID)
 	})
 
 	return cmd

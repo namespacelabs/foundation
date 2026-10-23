@@ -553,11 +553,17 @@ type ListIngressesRequest struct {
 	ClusterId string `json:"cluster_id,omitempty"`
 }
 
+type DeleteIngressRequest struct {
+	ClusterId string `json:"cluster_id,omitempty"`
+	IngressId string `json:"ingress_id,omitempty"`
+}
+
 type ListIngressesResponse struct {
 	ExportedInstancePort []*ExportedInstancePort `json:"exported_instance_port,omitempty"`
 }
 
 type ExportedInstancePort struct {
+	IngressId     string                         `json:"ingress_id,omitempty"`
 	Proto         string                         `json:"proto,omitempty"`
 	Port          int32                          `json:"port,omitempty"`
 	IngressFqdn   string                         `json:"ingress_fqdn,omitempty"`
