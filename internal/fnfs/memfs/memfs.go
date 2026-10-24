@@ -36,7 +36,6 @@ type FSStats struct {
 
 var _ fs.ReadDirFS = &FS{}
 var _ fnfs.VisitFS = &FS{}
-var _ fnfs.TotalSizeFS = &FS{}
 
 func (m *FS) Open(name string) (fs.File, error) {
 	if !fs.ValidPath(name) {
@@ -157,14 +156,6 @@ func (m *FS) Clone() fnfs.ReadWriteFS {
 
 func (m *FS) ComputeDigest(ctx context.Context) (schema.Digest, error) {
 	return digestfs.Digest(ctx, m)
-}
-
-func (m *FS) TotalSize(ctx context.Context) (uint64, error) {
-	var count uint64
-	for _, f := range m.files {
-		count += uint64(len(f.Contents))
-	}
-	return count, nil
 }
 
 func (n *fsNode) clone() *fsNode {
