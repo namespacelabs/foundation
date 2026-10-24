@@ -6,6 +6,7 @@ package compute
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 	"testing"
@@ -36,5 +37,38 @@ func TestDoRemovesTemporaryArtifactStore(t *testing.T) {
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("temporary artifact remained: %v", err)
+	}
+}
+
+func TestDoRunsCleanupsAfterParentIsCancelled(t *testing.T) {
+	// Mirror the CLI: a throttler in the context, and Ctrl-C cancelling the parent.
+	ctx := tasks.ContextWithThrottler(tasks.WithSink(context.Background(), simplelog.NewSink(io.Discard, 0)), io.Discard, &tasks.ThrottleConfigurations{})
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	var ran, bounded bool
+	var cleanupCtxErr error
+	err := Do(ctx, func(ctx context.Context) error {
+		On(ctx).Cleanup(tasks.Action("test.cleanup"), func(ctx context.Context) error {
+			ran = true
+			cleanupCtxErr = ctx.Err()
+			_, bounded = ctx.Deadline()
+			return nil
+		})
+
+		cancel()
+		return ctx.Err()
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Do() error = %v, want context.Canceled", err)
+	}
+	if !ran {
+		t.Fatal("cleanup did not run")
+	}
+	if cleanupCtxErr != nil {
+		t.Fatalf("cleanup ran with a done context: %v", cleanupCtxErr)
+	}
+	if !bounded {
+		t.Fatal("cleanup context has no deadline")
 	}
 }
