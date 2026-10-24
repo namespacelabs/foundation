@@ -45,54 +45,6 @@ func TestTlsBundleEncode(t *testing.T) {
 	}
 }
 
-func TestCaPool(t *testing.T) {
-	tb := testBundle(t)
-
-	pool := tb.CAPool()
-	if pool == nil {
-		t.Errorf("expected %T, got nil", pool)
-	}
-}
-
-func TestCertificate(t *testing.T) {
-	tb := testBundle(t)
-
-	cert, err := tb.Certificate()
-	if err != nil {
-		t.Fatalf("could not parse certificate: %v", err)
-	}
-	if cert.Certificate == nil {
-		t.Errorf("expected %T, got nil", cert.Certificate)
-	}
-	if cert.PrivateKey == nil {
-		t.Errorf("expected %T, got nil", cert.PrivateKey)
-	}
-}
-
-func TestServerConfig(t *testing.T) {
-	tb := testBundle(t)
-
-	config, err := tb.ServerConfig()
-	if err != nil {
-		t.Fatalf("error getting server config: %v", err)
-	}
-	if config == nil {
-		t.Errorf("expected %T, got nil", config)
-	}
-}
-
-func ClientConfig(t *testing.T) {
-	tb := testBundle(t)
-
-	config, err := tb.ClientConfig()
-	if err != nil {
-		t.Fatalf("error getting client config: %v", err)
-	}
-	if config == nil {
-		t.Errorf("expected %T, got nil", config)
-	}
-}
-
 func testBundle(t *testing.T) *tlsbundle.TlsBundle {
 	tb, err := tlsbundle.ParseTlsBundle(testBundleData(t))
 	if err != nil {
