@@ -84,6 +84,10 @@ func provideDatabase(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps, 
 		overrides.ConnectTimeout = time.Millisecond * time.Duration(db.GetConnectTimeoutMs())
 	}
 
+	if db.GetCancellationGraceMs() > 0 {
+		overrides.CancellationGrace = time.Millisecond * time.Duration(db.GetCancellationGraceMs())
+	}
+
 	return connect(ctx, res, db.ResourceRef, tp, db.GetClient(), overrides)
 }
 

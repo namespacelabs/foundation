@@ -14,6 +14,7 @@ import (
 
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgconn/ctxwatch"
 	"github.com/jackc/pgx/v5/pgxpool"
 	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
 	"go.opentelemetry.io/otel/trace"
@@ -56,6 +57,10 @@ type ConfigOverrides struct {
 	LockTimeout                     time.Duration
 	ConnectTimeout                  time.Duration
 	VerifyServerCertificate         bool
+
+	// CancellationGrace lets in-flight operations finish before closing their socket.
+	// Operations may exceed their context deadline and return success during this grace.
+	CancellationGrace time.Duration
 }
 
 func NewDatabaseFromConnectionUri(ctx context.Context, db DBInstance, connuri string, tp trace.TracerProvider, client string) (*DB, error) {
@@ -117,6 +122,13 @@ func newDatabaseFromConnectionURI(ctx context.Context, db DBInstance, connuri, c
 
 		if overrides.ConnectTimeout > 0 {
 			config.ConnConfig.ConnectTimeout = overrides.ConnectTimeout
+		}
+
+		if overrides.CancellationGrace > 0 {
+			grace := overrides.CancellationGrace
+			config.ConnConfig.BuildContextWatcherHandler = func(conn *pgconn.PgConn) ctxwatch.Handler {
+				return &pgconn.DeadlineContextWatcherHandler{Conn: conn.Conn(), DeadlineDelay: grace}
+			}
 		}
 	}
 
