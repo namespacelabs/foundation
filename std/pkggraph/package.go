@@ -65,9 +65,6 @@ type Package struct {
 	ResourceClassSpecs     []*schema.ResourceClass
 	ResourceProvidersSpecs []*schema.ResourceProvider
 	ResourceInstanceSpecs  []*schema.ResourceInstance
-
-	// Top-level re-usable definitions.
-	Vars map[string]string
 }
 
 type ResourceSpec struct {
