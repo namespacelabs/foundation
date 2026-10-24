@@ -17,6 +17,7 @@ package postgres
 		maxConnsIdleTimeMs?:                int
 		maxConnLifetimeJitterMs?:           int
 		verifyServerCertificate?:           bool
+		cancellationGraceMs?:               int
 
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/universe/db/postgres"
@@ -59,6 +60,7 @@ package postgres
 		maxConnsIdleTimeMs?:                int
 		maxConnLifetimeJitterMs?:           int
 		verifyServerCertificate?:           bool
+		cancellationGraceMs?:               int
 
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/universe/db/postgres"
