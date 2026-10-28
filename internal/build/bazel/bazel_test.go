@@ -31,6 +31,8 @@ func TestGraphCollapsesCompatibleTargets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	image, err := builder.AddTarget(ctx, Target{WorkspaceAbs: "/workspace", Label: "//global/server/iam:iam", Platform: "linux_amd64", OutputGroup: "oci_tarball"})
+	assert.NilError(t, err)
 	const externalLabel = "@@gazelle++go_deps+foundation//library/oss/postgres/prepare/clusterinstance:clusterinstance"
 	var externalNodes []*targetNode
 	for range 2 {
@@ -45,6 +47,7 @@ func TestGraphCollapsesCompatibleTargets(t *testing.T) {
 	firstNode := first.(*targetNode)
 	secondNode := second.(*targetNode)
 	differentPlatformNode := differentPlatform.(*targetNode)
+	assert.Assert(t, image.(*targetNode).invocation != firstNode.invocation)
 	assert.Equal(t, firstNode.invocation.platform, "linux_amd64")
 	assert.Equal(t, differentPlatformNode.invocation.platform, "linux_arm64")
 	for _, node := range externalNodes {
@@ -93,7 +96,8 @@ func TestStandaloneTargetsDeduplicateByWorkspaceLabelAndPlatform(t *testing.T) {
 }
 
 func TestInvocationBuildArgs(t *testing.T) {
-	assert.DeepEqual(t, (&invocation{platform: "@rules_go//go/toolchain:linux_arm64"}).buildArgs(), []string{"--platforms=@rules_go//go/toolchain:linux_arm64"})
+	assert.DeepEqual(t, (&invocation{platform: "@rules_go//go/toolchain:linux_arm64"}).buildArgs(), []string{"--platforms=@rules_go//go/toolchain:linux_arm64", "--experimental_platform_in_output_dir"})
+	assert.DeepEqual(t, (&invocation{platform: "//platforms:arm64", outputGroup: "oci_tarball"}).buildArgs(), []string{"--platforms=//platforms:arm64", "--experimental_platform_in_output_dir", "--output_groups=oci_tarball"})
 	assert.DeepEqual(t, (&invocation{}).buildArgs(), []string(nil))
 }
 

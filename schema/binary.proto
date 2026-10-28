@@ -29,7 +29,7 @@ message Binary {
     repeated Label        labels     = 9;
 }
 
-// Next ID: 19
+// Next ID: 21
 message ImageBuildPlan {
     reserved 3, 9, 14, 16;
 
@@ -49,6 +49,7 @@ message ImageBuildPlan {
     FilesFrom           files_from          = 15;
     MakeFilesystemImage make_fs_image       = 17;
     MelangeBuild melange_build = 19;
+    BazelBuild bazel_build = 20;
 
     message LLBPlan {
         Binary output_of = 1;
@@ -109,6 +110,14 @@ message ImageBuildPlan {
     message MelangeBuild {
         repeated string files = 1;
         repeated string platforms = 2;
+    }
+
+    message BazelBuild {
+        // Absolute Bazel label exposing the rules_img oci_tarball output group.
+        string target = 1;
+        // Optional mapping from OCI platforms (linux/amd64) to Bazel platform labels.
+        // When omitted, the target must select its own platforms.
+        map<string, string> platforms = 2;
     }
 }
 
