@@ -9,7 +9,6 @@ import (
 	"io"
 	"sync"
 
-	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	deploystorage "namespacelabs.dev/foundation/internal/planning/deploy/storage"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -258,28 +257,4 @@ func (pi *PortForward) portFwd(serverOwner string, containerPort int32, revision
 	return pi.ForwardPort(server.Server, containerPort, []string{pi.LocalAddr}, func(fp runtime.ForwardedPort) {
 		callback(revision, fp.LocalPort)
 	})
-}
-
-func (pi *PortForward) Cleanup() error {
-	pi.mu.Lock()
-	defer pi.mu.Unlock()
-
-	pi.done = true
-
-	var errs []error
-	for _, fwd := range pi.localPorts {
-		if fwd.closer != nil {
-			if err := fwd.closer.Close(); err != nil {
-				errs = append(errs, err)
-			}
-		}
-	}
-
-	if pi.ingressState.closer != nil {
-		if err := pi.ingressState.closer.Close(); err != nil {
-			errs = append(errs, err)
-		}
-	}
-
-	return multierr.New(errs...)
 }
