@@ -1,56 +1,8 @@
 {
-  "endpoint": [
-    {
-      "label": {
-        "service_proto": "kind12"
-      },
-      "focus": true,
-      "local_port": 123,
-      "endpoint_owner": "my/service1",
-      "access_cmd": [
-        {
-          "cmd": "http://localhost:123",
-          "is_managed": true
-        },
-        {
-          "cmd": "ns tools grpcurl -plaintext -d '{}' localhost:123 kind12/<METHOD>",
-          "is_managed": true
-        }
-      ]
-    },
-    {
-      "label": {
-        "label": "label2"
-      },
-      "local_port": 234,
-      "endpoint_owner": "my/service2",
-      "access_cmd": [
-        {
-          "cmd": "localhost:234 --> 2340",
-          "is_managed": true
-        }
-      ]
-    }
-  ],
-  "non_local_managed": [
-    {
-      "fqdn": "domain1.example.com",
-      "schema": "(multiple: http, grpc) ",
-      "package_owner": [
-        "server1"
-      ]
-    }
-  ],
   "local_hostname": "localhost",
   "ingress_fragments": [
     {
-      "name": "fragment2",
-      "owner": "owner2",
-      "domain": {
-        "fqdn": "domain2.example.com",
-        "managed": "LOCAL_MANAGED"
-      },
-      "manager": "manager2"
+      "domain": {}
     },
     {
       "name": "fragment1",
@@ -125,28 +77,17 @@
       "manager": "manager1"
     },
     {
-      "domain": {}
+      "name": "fragment2",
+      "owner": "owner2",
+      "domain": {
+        "fqdn": "domain2.example.com",
+        "managed": "LOCAL_MANAGED"
+      },
+      "manager": "manager2"
     }
   ],
   "endpoints": [
     {},
-    {
-      "type": "PRIVATE",
-      "service_name": "service2",
-      "endpoint_owner": "my/service2",
-      "ports": [
-        {
-          "port": {
-            "name": "port2",
-            "container_port": 2340
-          }
-        }
-      ],
-      "allocated_name": "allocated2",
-      "server_owner": "server3",
-      "service_label": "label2",
-      "local_port": 234
-    },
     {
       "type": "INTERNET_FACING",
       "service_name": "service1",
@@ -174,6 +115,23 @@
       ],
       "service_label": "label1",
       "local_port": 123
+    },
+    {
+      "type": "PRIVATE",
+      "service_name": "service2",
+      "endpoint_owner": "my/service2",
+      "ports": [
+        {
+          "port": {
+            "name": "port2",
+            "container_port": 2340
+          }
+        }
+      ],
+      "allocated_name": "allocated2",
+      "server_owner": "server3",
+      "service_label": "label2",
+      "local_port": 234
     }
   ],
   "focused_server_packages": [
