@@ -18,43 +18,22 @@ type Permission struct {
 }
 
 type CreateInstanceRequest struct {
-	RegionSelection               *CreateInstanceRequest_RegionSelection `json:"region_selection,omitempty"`
-	UniqueTag                     string                                 `json:"unique_tag,omitempty"`
-	MachineType                   string                                 `json:"machine_type,omitempty"`
-	DocumentedPurpose             string                                 `json:"documented_purpose,omitempty"`
-	Label                         []*LabelEntry                          `json:"label,omitempty"`
-	Feature                       []string                               `json:"feature,omitempty"`
-	AvailableSecrets              []*SecretRef                           `json:"available_secrets,omitempty"`
-	Experimental                  map[string]any                         `json:"experimental,omitempty"`
-	Features                      any                                    `json:"features,omitempty"` // Internal API extension.
-	AdditionalWorkloadPermissions []*Permission                          `json:"additional_workload_permissions,omitempty"`
-	AppDomainOverride             string                                 `json:"app_domain_override,omitempty"`
+	UniqueTag                     string         `json:"unique_tag,omitempty"`
+	MachineType                   string         `json:"machine_type,omitempty"`
+	DocumentedPurpose             string         `json:"documented_purpose,omitempty"`
+	Label                         []*LabelEntry  `json:"label,omitempty"`
+	Feature                       []string       `json:"feature,omitempty"`
+	AvailableSecrets              []*SecretRef   `json:"available_secrets,omitempty"`
+	Experimental                  map[string]any `json:"experimental,omitempty"`
+	Features                      any            `json:"features,omitempty"` // Internal API extension.
+	AdditionalWorkloadPermissions []*Permission  `json:"additional_workload_permissions,omitempty"`
+	AppDomainOverride             string         `json:"app_domain_override,omitempty"`
 
 	Container []*ContainerRequest `json:"container,omitempty"`
 
 	// XXX We're using *time.Time instead of *timestamppb.Timestamp to force string serialization (e.g. mimic what protojson.Marshal would do).
 	Deadline *time.Time `json:"deadline,omitempty"`
 }
-
-type CreateInstanceRequest_RegionSelection struct {
-	Preference CreateInstanceRequest_RegionSelection_Preference `json:"preference,omitempty"`
-	Continent  string                                           `json:"continent,omitempty"`
-	Site       string                                           `json:"site,omitempty"`
-}
-
-type CreateInstanceRequest_RegionSelection_Preference int32
-
-const (
-	CreateInstanceRequest_RegionSelection_PREFERENCE_UNKNOWN  CreateInstanceRequest_RegionSelection_Preference = 0
-	CreateInstanceRequest_RegionSelection_PREFER_LOCAL        CreateInstanceRequest_RegionSelection_Preference = 1
-	CreateInstanceRequest_RegionSelection_PREFER_CONTINENT    CreateInstanceRequest_RegionSelection_Preference = 2 // Uses `continent`
-	CreateInstanceRequest_RegionSelection_EXCLUSIVE_LOCAL     CreateInstanceRequest_RegionSelection_Preference = 3
-	CreateInstanceRequest_RegionSelection_EXCLUSIVE_CONTINENT CreateInstanceRequest_RegionSelection_Preference = 4 // Use `continent`
-	CreateInstanceRequest_RegionSelection_PREFER_SITE         CreateInstanceRequest_RegionSelection_Preference = 5
-	CreateInstanceRequest_RegionSelection_EXCLUSIVE_SITE      CreateInstanceRequest_RegionSelection_Preference = 6 // Use `site.`
-	CreateInstanceRequest_RegionSelection_PREFER_SAME_SITE    CreateInstanceRequest_RegionSelection_Preference = 7
-	CreateInstanceRequest_RegionSelection_EXCLUSIVE_SAME_SITE CreateInstanceRequest_RegionSelection_Preference = 8
-)
 
 type VolumeSpec struct {
 	MountPoint      string                     `json:"mount_point,omitempty"`
@@ -504,28 +483,6 @@ type GetKubernetesConfigRequest struct {
 
 type GetKubernetesConfigResponse struct {
 	Kubeconfig string `json:"kubeconfig,omitempty"`
-}
-
-type MakeImagePublicRequest struct {
-	Repository string     `json:"repository,omitempty"`
-	Digest     string     `json:"digest,omitempty"`
-	ExpiresAt  *time.Time `json:"expires_at,omitempty"`
-}
-
-type DeletePublicImageRequest struct {
-	Id string `json:"id,omitempty"`
-}
-
-type PublicImage struct {
-	Id         string     `json:"id,omitempty"`
-	Repository string     `json:"repository,omitempty"`
-	Digest     string     `json:"digest,omitempty"`
-	ExpiresAt  *time.Time `json:"expiresAt,omitempty"`
-	PublicUrl  string     `json:"publicUrl,omitempty"`
-}
-
-type MakeImagePublicResponse struct {
-	PublicImage *PublicImage `json:"publicImage,omitempty"`
 }
 
 type GetProfileResponse struct {
