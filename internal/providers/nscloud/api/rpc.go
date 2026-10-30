@@ -55,6 +55,7 @@ type API struct {
 	GetProfile                  fnapi.Call[emptypb.Empty]
 	RegisterIngress             fnapi.Call[RegisterIngressRequest]
 	ListIngresses               fnapi.Call[ListIngressesRequest]
+	DeleteIngress               fnapi.Call[DeleteIngressRequest]
 	ListVolumes                 fnapi.Call[emptypb.Empty]
 	DestroyVolume               fnapi.Call[DestroyVolumeRequest]
 	DestroyVolumeByTag          fnapi.Call[DestroyVolumeByTagRequest]
@@ -133,6 +134,11 @@ func MakeAPI() API {
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "nsl.vm.api.VMService/ListIngresses",
 			Retryable:        true,
+		},
+
+		DeleteIngress: fnapi.Call[DeleteIngressRequest]{
+			IssueBearerToken: fnapi.IssueBearerToken,
+			Method:           "nsl.vm.api.VMService/DeleteIngress",
 		},
 
 		// Global APIs.
@@ -787,6 +793,12 @@ func ListIngresses(ctx context.Context, api API, cluster *KubernetesCluster) (*L
 		}
 
 		return &response, nil
+	})
+}
+
+func DeleteIngress(ctx context.Context, api API, cluster *KubernetesCluster, ingressID string) error {
+	return tasks.Return0(ctx, tasks.Action("nscloud.delete-ingress"), func(ctx context.Context) error {
+		return api.DeleteIngress.Do(ctx, DeleteIngressRequest{ClusterId: cluster.ClusterId, IngressId: ingressID}, MaybeEndpoint(cluster.ApiEndpoint), nil)
 	})
 }
 
