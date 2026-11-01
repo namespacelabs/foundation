@@ -12,12 +12,16 @@ import (
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/anypb"
+	corev1 "k8s.io/api/core/v1"
 	appsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/runtime/constants"
 )
 
 func TestStatefulSetFSGroupChangePolicy(t *testing.T) {
@@ -242,5 +246,144 @@ func TestDeployEndpointAppliesLoadBalancerClass(t *testing.T) {
 
 	if got := *svc.Spec.LoadBalancerClass; got != "tailscale" {
 		t.Fatalf("expected loadBalancerClass %q, got %q", "tailscale", got)
+	}
+}
+
+func TestDeploymentPersistentVolumes(t *testing.T) {
+	for _, path := range []struct {
+		name     string
+		class    schema.DeployableClass
+		template bool
+	}{
+		{"shared deployment", schema.DeployableClass_STATELESS, false},
+		{"shared statefulset", schema.DeployableClass_STATEFUL, false},
+		{"claim template", schema.DeployableClass_STATEFUL, true},
+	} {
+		for _, tt := range []struct {
+			name       string
+			accessMode string
+			wantMode   corev1.PersistentVolumeAccessMode
+			wantErr    bool
+			ephemeral  bool
+		}{
+			{name: "default", wantMode: corev1.ReadWriteOnce},
+			{name: "ReadWriteOnce", accessMode: "ReadWriteOnce", wantMode: corev1.ReadWriteOnce},
+			{name: "ReadWriteMany", accessMode: "ReadWriteMany", wantMode: corev1.ReadWriteMany},
+			{name: "ReadOnlyMany", accessMode: "ReadOnlyMany", wantMode: corev1.ReadOnlyMany},
+			{name: "ReadWriteOncePod", accessMode: "ReadWriteOncePod", wantMode: corev1.ReadWriteOncePod},
+			{name: "typo", accessMode: "ReadWriteManny", wantErr: true},
+			{name: "typo in ephemeral environment", accessMode: "ReadWriteManny", wantErr: true, ephemeral: true},
+		} {
+			t.Run(path.name+"/"+tt.name, func(t *testing.T) {
+				definition, err := anypb.New(&schema.PersistentVolume{
+					Id: "shared", SizeBytes: 1 << 40, StorageClass: "truenas-ssd-nfs",
+					Template: path.template, AccessMode: tt.accessMode,
+				})
+				if !assert.NoError(t, err) {
+					return
+				}
+				state := &serverRunState{}
+				err = prepareDeployment(context.Background(), BoundNamespace{
+					namespace: "test-ns", env: &schema.Environment{Ephemeral: tt.ephemeral},
+				}, runtime.DeployableSpec{
+					Id: "serverid", Name: "storage", Class: path.class, Replicas: 3,
+					PackageRef:    schema.MakePackageSingleRef("example.com/storage"),
+					ErrorLocation: pkggraph.NewLocationForTesting(nil, "example.com/storage", "storage"),
+					Volumes: []*schema.Volume{{
+						Owner: "example.com/storage", Name: "data", Kind: constants.VolumeKindPersistent, Definition: definition,
+					}},
+					MainContainer: runtime.ContainerRunOpts{
+						Image: oci.ImageID{Repository: "example.com/storage"},
+						Mounts: []*schema.Mount{{
+							Path: "/data", VolumeRef: schema.MakePackageRef("example.com/storage", "data"),
+						}},
+					},
+				}, deployOpts{}, state)
+				if tt.wantErr {
+					assert.ErrorContains(t, err, "ReadWriteManny")
+					assert.ErrorContains(t, err, "access_mode")
+					assert.ErrorContains(t, err, "storage:")
+					return
+				}
+				if !assert.NoError(t, err) {
+					return
+				}
+
+				var claims []*applycorev1.PersistentVolumeClaimApplyConfiguration
+				var workloads []kubedef.EnsureDeployment
+				for _, op := range state.operations {
+					switch op := op.(type) {
+					case kubedef.Apply:
+						if claim, ok := op.Resource.(*applycorev1.PersistentVolumeClaimApplyConfiguration); ok {
+							claims = append(claims, claim)
+						}
+					case kubedef.EnsureDeployment:
+						workloads = append(workloads, op)
+					}
+				}
+				if !assert.Len(t, workloads, 1) {
+					return
+				}
+				var pod *applycorev1.PodSpecApplyConfiguration
+				var templates []applycorev1.PersistentVolumeClaimApplyConfiguration
+				if path.class == schema.DeployableClass_STATEFUL {
+					ss, ok := workloads[0].Resource.(*appsv1.StatefulSetApplyConfiguration)
+					if !assert.True(t, ok) {
+						return
+					}
+					assert.EqualValues(t, 3, *ss.Spec.Replicas)
+					pod, templates = ss.Spec.Template.Spec, ss.Spec.VolumeClaimTemplates
+				} else {
+					deployment, ok := workloads[0].Resource.(*appsv1.DeploymentApplyConfiguration)
+					if !assert.True(t, ok) {
+						return
+					}
+					assert.EqualValues(t, 3, *deployment.Spec.Replicas)
+					pod = deployment.Spec.Template.Spec
+				}
+				if !assert.Len(t, pod.Containers, 1) || !assert.Len(t, pod.Containers[0].VolumeMounts, 1) {
+					return
+				}
+				mount := pod.Containers[0].VolumeMounts[0]
+				if !assert.NotNil(t, mount.Name) {
+					return
+				}
+				assert.NotEmpty(t, *mount.Name)
+				mountPath := "/data"
+				assert.Equal(t, &mountPath, mount.MountPath)
+				var claim *applycorev1.PersistentVolumeClaimApplyConfiguration
+				if path.template {
+					assert.Empty(t, claims)
+					assert.Empty(t, pod.Volumes)
+					if !assert.Len(t, templates, 1) {
+						return
+					}
+					claim = &templates[0]
+					assert.Equal(t, mount.Name, claim.Name)
+				} else {
+					assert.Empty(t, templates)
+					if !assert.Len(t, claims, 1) || !assert.Len(t, pod.Volumes, 1) {
+						return
+					}
+					claim = claims[0]
+					assert.Equal(t, applycorev1.Volume().WithName(*mount.Name).WithPersistentVolumeClaim(
+						applycorev1.PersistentVolumeClaimVolumeSource().WithClaimName("shared")), &pod.Volumes[0])
+					claimName := "shared"
+					assert.Equal(t, &claimName, claim.Name)
+				}
+				encoded, err := json.Marshal(claim.Spec)
+				if !assert.NoError(t, err) {
+					return
+				}
+				var spec corev1.PersistentVolumeClaimSpec
+				if !assert.NoError(t, json.Unmarshal(encoded, &spec)) {
+					return
+				}
+				assert.Equal(t, []corev1.PersistentVolumeAccessMode{tt.wantMode}, spec.AccessModes)
+				storageClass := "truenas-ssd-nfs"
+				assert.Equal(t, &storageClass, spec.StorageClassName)
+				assert.Equal(t, int64(1<<40), spec.Resources.Requests.Storage().Value())
+			})
+		}
 	}
 }

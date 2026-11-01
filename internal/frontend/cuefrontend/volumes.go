@@ -75,6 +75,7 @@ type cuePersistentVolume struct {
 	Size         string `json:"size"`
 	Template     bool   `json:"template"`
 	StorageClass string `json:"storage_class"`
+	AccessMode   string `json:"access_mode"`
 }
 
 type cueWorkspaceSyncVolume struct {
@@ -145,6 +146,11 @@ func parseVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggrap
 		}
 
 	case constants.VolumeKindPersistent:
+		switch bits.AccessMode {
+		case "", "ReadWriteOnce", "ReadWriteMany", "ReadOnlyMany", "ReadWriteOncePod":
+		default:
+			return nil, fnerrors.NewWithLocation(loc, "invalid persistent volume access_mode %q", bits.AccessMode)
+		}
 		sizeBytes, err := units.FromHumanSize(bits.Size)
 		if err != nil {
 			return nil, fnerrors.NewWithLocation(loc, "failed to parse value: %w", err)
@@ -154,6 +160,7 @@ func parseVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggrap
 			SizeBytes:    uint64(sizeBytes),
 			Template:     bits.Template,
 			StorageClass: bits.StorageClass,
+			AccessMode:   bits.AccessMode,
 		}
 
 	case constants.VolumeKindHostPath:

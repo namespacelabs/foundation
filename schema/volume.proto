@@ -45,6 +45,8 @@ message PersistentVolume {
     uint64 size_bytes    = 2;
     bool template        = 3;
     string storage_class = 4;
+    // Kubernetes access mode; empty preserves the ReadWriteOnce default.
+    string access_mode   = 5;
 }
 
 message HostPathVolume {
