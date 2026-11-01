@@ -569,7 +569,7 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 				return fnerrors.BadInputError("%s: persistent ID is missing", volume.Name)
 			}
 
-			v, pvc, err := makePersistentVolume(target.namespace, target.env, deployable.ErrorLocation, volume.Owner, name, pv.Id, pv.SizeBytes, pv.Template, pv.StorageClass, annotations)
+			v, pvc, err := makePersistentVolume(target.namespace, target.env, deployable.ErrorLocation, volume.Owner, name, pv.Id, pv.SizeBytes, pv.Template, pv.StorageClass, pv.AccessMode, annotations)
 			if err != nil {
 				return err
 			}

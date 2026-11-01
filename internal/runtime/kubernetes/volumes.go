@@ -22,9 +22,19 @@ type volumeDef struct {
 	isWorkspaceSync bool
 }
 
-func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Location, owner, name, persistentId string, sizeBytes uint64, template bool, storageClass string, annotations map[string]string) (*applycorev1.VolumeApplyConfiguration, *applycorev1.PersistentVolumeClaimApplyConfiguration, error) {
+func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Location, owner, name, persistentId string, sizeBytes uint64, template bool, storageClass, accessMode string, annotations map[string]string) (*applycorev1.VolumeApplyConfiguration, *applycorev1.PersistentVolumeClaimApplyConfiguration, error) {
 	if sizeBytes >= math.MaxInt64 {
 		return nil, nil, fnerrors.NewWithLocation(loc, "requiredstorage value too high (maximum is %d)", math.MaxInt64)
+	}
+
+	mode := corev1.PersistentVolumeAccessMode(accessMode)
+	if mode == "" {
+		mode = corev1.ReadWriteOnce
+	}
+	switch mode {
+	case corev1.ReadWriteOnce, corev1.ReadWriteMany, corev1.ReadOnlyMany, corev1.ReadWriteOncePod:
+	default:
+		return nil, nil, fnerrors.NewWithLocation(loc, "invalid persistent volume access_mode %q", accessMode)
 	}
 
 	quantity := resource.NewScaledQuantity(int64(sizeBytes), 0)
@@ -41,7 +51,7 @@ func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Locat
 			WithLabels(kubedef.ManagedByUs()).
 			WithAnnotations(annotations).
 			WithSpec(applycorev1.PersistentVolumeClaimSpec().
-				WithAccessModes(corev1.ReadWriteOnce).
+				WithAccessModes(mode).
 				WithResources(applycorev1.VolumeResourceRequirements().WithRequests(corev1.ResourceList{
 					corev1.ResourceStorage: *quantity,
 				})))
@@ -62,7 +72,7 @@ func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Locat
 			WithLabels(kubedef.ManagedByUs()).
 			WithAnnotations(annotations).
 			WithSpec(applycorev1.PersistentVolumeClaimSpec().
-				WithAccessModes(corev1.ReadWriteOnce).
+				WithAccessModes(mode).
 				WithResources(applycorev1.VolumeResourceRequirements().WithRequests(corev1.ResourceList{
 					corev1.ResourceStorage: *quantity,
 				})),
