@@ -43,9 +43,7 @@ type API struct {
 	WaitKubernetesCluster       fnapi.Call[WaitKubernetesClusterRequest]
 	ListKubernetesClusters      fnapi.Call[ListKubernetesClustersRequest]
 	DestroyKubernetesCluster    fnapi.Call[DestroyKubernetesClusterRequest]
-	SuspendKubernetesCluster    fnapi.Call[SuspendKubernetesClusterRequest]
 	ReleaseKubernetesCluster    fnapi.Call[ReleaseKubernetesClusterRequest]
-	WakeKubernetesCluster       fnapi.Call[WakeKubernetesClusterRequest]
 	RefreshKubernetesCluster    fnapi.Call[RefreshKubernetesClusterRequest]
 	GetKubernetesClusterSummary fnapi.Call[GetKubernetesClusterSummaryRequest]
 	GetKubernetesConfig         fnapi.Call[GetKubernetesConfigRequest]
@@ -86,16 +84,6 @@ func MakeAPI() API {
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "nsl.vm.api.VMService/WaitKubernetesCluster",
 			Retryable:        true,
-		},
-
-		SuspendKubernetesCluster: fnapi.Call[SuspendKubernetesClusterRequest]{
-			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "nsl.vm.api.VMService/SuspendKubernetesCluster",
-		},
-
-		WakeKubernetesCluster: fnapi.Call[WakeKubernetesClusterRequest]{
-			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "nsl.vm.api.VMService/WakeKubernetesCluster",
 		},
 
 		RefreshKubernetesCluster: fnapi.Call[RefreshKubernetesClusterRequest]{

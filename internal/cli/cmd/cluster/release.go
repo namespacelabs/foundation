@@ -13,23 +13,6 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/endpoint"
 )
 
-func newSuspendCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:    "suspend [instance-id]",
-		Short:  "Suspends an existing instance.",
-		Args:   cobra.ExactArgs(1),
-		Hidden: true,
-	}
-
-	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		return api.Methods.SuspendKubernetesCluster.Do(ctx, api.SuspendKubernetesClusterRequest{
-			ClusterId: args[0],
-		}, endpoint.ResolveRegionalEndpoint, nil)
-	})
-
-	return cmd
-}
-
 func newReleaseCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "release [instance-id]",
@@ -40,23 +23,6 @@ func newReleaseCmd() *cobra.Command {
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		return api.Methods.ReleaseKubernetesCluster.Do(ctx, api.ReleaseKubernetesClusterRequest{
-			ClusterId: args[0],
-		}, endpoint.ResolveRegionalEndpoint, nil)
-	})
-
-	return cmd
-}
-
-func newWakeCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:    "wake [instance-id]",
-		Short:  "Wakes up an existing instance.",
-		Args:   cobra.ExactArgs(1),
-		Hidden: true,
-	}
-
-	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		return api.Methods.WakeKubernetesCluster.Do(ctx, api.WakeKubernetesClusterRequest{
 			ClusterId: args[0],
 		}, endpoint.ResolveRegionalEndpoint, nil)
 	})
