@@ -400,15 +400,7 @@ type DestroyKubernetesClusterRequest struct {
 	ClusterId string `json:"cluster_id,omitempty"`
 }
 
-type SuspendKubernetesClusterRequest struct {
-	ClusterId string `json:"cluster_id,omitempty"`
-}
-
 type ReleaseKubernetesClusterRequest struct {
-	ClusterId string `json:"cluster_id,omitempty"`
-}
-
-type WakeKubernetesClusterRequest struct {
 	ClusterId string `json:"cluster_id,omitempty"`
 }
 

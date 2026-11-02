@@ -52,9 +52,7 @@ func NewBareClusterCmd(use string, hidden bool) *cobra.Command {
 
 	cmd.AddCommand(h)
 
-	h.AddCommand(newSuspendCmd())
 	h.AddCommand(newReleaseCmd())
-	h.AddCommand(newWakeCmd())
 
 	return cmd
 }
