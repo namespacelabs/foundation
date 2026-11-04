@@ -60,7 +60,7 @@ Install it with `go install ./cmd/nsdev` to unlock all debug workflows below.
 
 ### Debugging via VS Code
 
-The debugging configuration is not in the repository because different people may want to used
+The debugging configuration is not in the repository because different people may want to use
 different arguments. To bootstrap, create `.vscode/launch.json` and add the following content:
 
 ```bash
