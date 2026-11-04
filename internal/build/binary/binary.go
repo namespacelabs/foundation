@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/assets"
+	"namespacelabs.dev/foundation/internal/build/bazel"
 	"namespacelabs.dev/foundation/internal/build/multiplatform"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
@@ -241,6 +242,10 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 
 	if src.GoBuild != nil {
 		return BuildGo(ctx, pl, loc, src.GoBuild, false)
+	}
+
+	if src.BazelBuild != nil {
+		return bazel.Image{Workspace: loc.Module, Target: src.BazelBuild.Target, Platforms: src.BazelBuild.Platforms}, nil
 	}
 
 	if llb := src.LlbPlan; llb != nil {

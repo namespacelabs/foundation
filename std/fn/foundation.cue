@@ -310,6 +310,10 @@ _#ConfigureBase: {
 			strip_symbols?: bool
 			strip_dwarf?:   bool
 		}
+		bazel_build?: {
+			target: string
+			platforms?: [string]: string
+		}
 		dockerfile?: string
 		nix_flake?:  string
 		llb_plan?: {output_of: #Binary}
