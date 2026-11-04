@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "onepassword",
+    srcs = ["secrets.go"],
+    importpath = "namespacelabs.dev/foundation/internal/providers/onepassword",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//framework/secrets",
+        "//framework/secrets/combined",
+        "//internal/console",
+        "//internal/fnerrors",
+        "//std/cfg",
+        "//std/tasks",
+        "//universe/onepassword",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)

@@ -1,0 +1,10 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "versions",
+    srcs = ["versions.go"],
+    embedsrcs = ["versions.json"],
+    importpath = "namespacelabs.dev/foundation/internal/versions",
+    visibility = ["//:__subpackages__"],
+    deps = ["//internal/fnerrors"],
+)

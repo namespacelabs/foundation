@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "version",
+    srcs = ["version.go"],
+    importpath = "namespacelabs.dev/foundation/internal/cli/cmd/version",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cli/fncobra",
+        "//internal/cli/nsboot",
+        "//internal/cli/version",
+        "//internal/cli/versioncheck",
+        "//internal/console",
+        "//internal/fnerrors",
+        "//internal/versions",
+        "//schema/storage",
+        "@com_github_kr_text//:text",
+        "@com_github_spf13_cobra//:cobra",
+        "@org_golang_x_mod//semver",
+    ],
+)

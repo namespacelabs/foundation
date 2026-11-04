@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "kubeobj",
+    srcs = [
+        "objects.go",
+        "podreference.go",
+        "podreference.pb.go",
+        "selector.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/framework/kubernetes/kubeobj",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/protos",
+        "//schema/runtime",
+        "@io_k8s_apimachinery//pkg/runtime/schema",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

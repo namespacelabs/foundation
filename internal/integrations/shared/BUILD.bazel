@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "shared",
+    srcs = [
+        "api.go",
+        "prepare.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/integrations/shared",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/codegen/protos",
+        "//internal/fnerrors",
+        "//internal/parsing",
+        "//schema",
+        "//std/grpc/protos",
+        "//std/pkggraph",
+        "@com_github_protocolbuffers_txtpbfmt//parser",
+        "@org_golang_google_protobuf//encoding/prototext",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//types/dynamicpb",
+        "@org_golang_x_exp//slices",
+    ],
+)

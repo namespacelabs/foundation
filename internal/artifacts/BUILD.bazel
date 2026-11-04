@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "artifacts",
+    srcs = [
+        "progress.go",
+        "reference.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/artifacts",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//schema",
+        "//std/tasks",
+        "@com_github_dustin_go_humanize//:go-humanize",
+    ],
+)

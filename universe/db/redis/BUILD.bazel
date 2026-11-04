@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "redis",
+    srcs = [
+        "deps.fn.go",
+        "provider.pb.go",
+        "wire.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/universe/db/redis",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//std/core",
+        "//std/go/core",
+        "//std/monitoring/tracing",
+        "@com_github_go_redis_redis_extra_redisotel_v8//:redisotel",
+        "@com_github_go_redis_redis_v8//:redis",
+        "@io_opentelemetry_go_otel//attribute",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

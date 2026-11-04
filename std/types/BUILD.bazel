@@ -1,0 +1,19 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "types",
+    srcs = [
+        "certificates.pb.go",
+        "invocation.pb.go",
+        "resource.pb.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/std/types",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//schema",
+        "//std/proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+        "@org_golang_google_protobuf//types/known/anypb",
+    ],
+)

@@ -1,0 +1,27 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "console",
+    srcs = [
+        "buffer.go",
+        "console.go",
+        "err_context.go",
+        "sticky.go",
+        "unwrap.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/console",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/console/consolesink",
+        "//internal/fnerrors",
+        "//internal/sync",
+        "//schema/storage",
+        "//std/tasks",
+        "//std/tasks/idtypes",
+        "@com_github_kr_text//:text",
+        "@dev_namespacelabs_go_ids//:go-ids",
+        "@in_gopkg_natefinch_lumberjack_v2//:lumberjack_v2",
+        "@org_golang_google_protobuf//encoding/protojson",
+        "@org_golang_google_protobuf//types/known/timestamppb",
+    ],
+)

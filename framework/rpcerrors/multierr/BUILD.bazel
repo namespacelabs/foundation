@@ -1,0 +1,14 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "multierr",
+    srcs = ["multierr.go"],
+    importpath = "namespacelabs.dev/foundation/framework/rpcerrors/multierr",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//schema/tasks",
+        "@org_golang_google_genproto_googleapis_rpc//status",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+    ],
+)

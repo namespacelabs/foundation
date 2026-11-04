@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "ctl",
+    srcs = [
+        "config.go",
+        "wait.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/providers/nscloud/ctl",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//framework/kubernetes/kubeclient",
+        "//internal/console",
+        "//internal/executor",
+        "//internal/fnerrors",
+        "//internal/providers/nscloud/api",
+        "//internal/runtime/kubernetes/kubeobserver",
+        "//std/tasks",
+        "@com_github_cenkalti_backoff_v4//:backoff",
+        "@io_k8s_apimachinery//pkg/runtime/schema",
+        "@io_k8s_client_go//tools/clientcmd",
+        "@io_k8s_client_go//tools/clientcmd/api",
+    ],
+)

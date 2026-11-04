@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "middleware",
+    srcs = [
+        "deps.fn.go",
+        "middleware.go",
+        "provider.pb.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/std/go/http/middleware",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//std/go/core",
+        "@com_github_gorilla_mux//:mux",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

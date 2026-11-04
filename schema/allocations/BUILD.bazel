@@ -1,0 +1,13 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "allocations",
+    srcs = ["visitor.go"],
+    importpath = "namespacelabs.dev/foundation/schema/allocations",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/codegen/protos/fnany",
+        "//schema",
+        "@org_golang_google_protobuf//proto",
+    ],
+)
