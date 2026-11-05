@@ -818,7 +818,6 @@ func transformProfileForOutput(profile *v1beta.RunnerProfileWithStatus) map[stri
 		var volumes []map[string]any
 		for _, v := range profile.Spec.CacheVolumeSettings {
 			vol := map[string]any{
-				"volume_tag":     v.VolumeTag,
 				"volume_size_gb": v.VolumeSizeGb,
 			}
 			if v.VolumeReservedSizeGb != 0 {
