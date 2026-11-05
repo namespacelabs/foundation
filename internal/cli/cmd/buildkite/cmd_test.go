@@ -185,10 +185,39 @@ func TestQueuesDescribePlainOmitsUnsetSettings(t *testing.T) {
 	if err != nil {
 		t.Fatalf("command failed: %v", err)
 	}
-	for _, unwanted := range []string{"Settings:", "Permissions:", "Egress Policy:", "OpenTelemetry:"} {
+	for _, unwanted := range []string{"Settings:", "Permissions:", "Egress Policy:", "Cache Volume Commit:", "OpenTelemetry:"} {
 		if strings.Contains(string(stdout), unwanted) {
 			t.Errorf("output contains %q:\n%s", unwanted, stdout)
 		}
+	}
+}
+
+func TestQueuesDescribePlainCacheVolumeCommit(t *testing.T) {
+	for _, tc := range []struct {
+		commit buildkitepb.CacheVolumeSettings_CacheVolumeCommit
+		want   string
+	}{
+		{buildkitepb.CacheVolumeSettings_CACHE_VOLUME_COMMIT_NEVER, "NEVER"},
+		{buildkitepb.CacheVolumeSettings_CACHE_VOLUME_COMMIT_DEFAULT, "DEFAULT"},
+		{buildkitepb.CacheVolumeSettings_CACHE_VOLUME_COMMIT_UNSPECIFIED, ""},
+	} {
+		t.Run(tc.commit.String(), func(t *testing.T) {
+			fake := installFakeClient(t)
+			fake.currentSettings = &buildkitepb.QueueSettings{
+				CacheVolumeSettings: &buildkitepb.CacheVolumeSettings{Commit: tc.commit},
+			}
+			stdout, err := runBuildkiteCommand(t, "queue", "describe", "queue-1")
+			if err != nil {
+				t.Fatalf("command failed: %v", err)
+			}
+			if tc.want == "" {
+				if strings.Contains(string(stdout), "Cache Volume Commit:") {
+					t.Errorf("output contains unset cache volume commit setting:\n%s", stdout)
+				}
+			} else if !strings.Contains(string(stdout), "Cache Volume Commit: "+tc.want+"\n") {
+				t.Errorf("output missing cache volume commit setting %s:\n%s", tc.want, stdout)
+			}
+		})
 	}
 }
 
@@ -201,6 +230,7 @@ func TestQueuesDescribeSpecRoundTripsThroughUpdate(t *testing.T) {
 			{ResourceType: "vault/object", ResourceId: "secret-1", Actions: []string{"read"}},
 		},
 	}
+	fake.currentSettings.CacheVolumeSettings = &buildkitepb.CacheVolumeSettings{Commit: buildkitepb.CacheVolumeSettings_CACHE_VOLUME_COMMIT_NEVER}
 	fake.currentSettings.OpenTelemetrySettings = testOpenTelemetrySettings()
 	stdout, err := runBuildkiteCommand(t, "queue", "describe", "queue-1", "-o", "spec")
 	if err != nil {
@@ -312,13 +342,14 @@ func TestQueuesUpdatePlainOutput(t *testing.T) {
 
 func TestQueuesUpdateReset(t *testing.T) {
 	fake := installFakeClient(t)
+	fake.currentSettings.CacheVolumeSettings = &buildkitepb.CacheVolumeSettings{Commit: buildkitepb.CacheVolumeSettings_CACHE_VOLUME_COMMIT_NEVER}
 	if _, err := runBuildkiteCommand(t, "queues", "update", "queue-1", "--reset"); err != nil {
 		t.Fatalf("command failed: %v", err)
 	}
 	if got := strings.Join(fake.calls, ","); got != "get,update" {
 		t.Fatalf("calls = %q, want get before update", got)
 	}
-	if fake.updateRequest == nil || fake.updateRequest.GetSettings() == nil || fake.updateRequest.GetSettings().GetPermissions() != nil {
+	if fake.updateRequest == nil || !proto.Equal(fake.updateRequest.GetSettings(), &buildkitepb.QueueSettings{}) {
 		t.Fatalf("request = %#v, want explicit empty settings", fake.updateRequest)
 	}
 }
@@ -337,6 +368,7 @@ func TestQueuesUpdateSpecFileReplacesSettingsWithoutFetch(t *testing.T) {
     "workload_permissions": [{"resource_type":"vault/object","resource_id":"secret-1","actions":["read"]}]
   },
   "egress_policy_tag": "restricted",
+  "cache_volume_settings": {"commit": "CACHE_VOLUME_COMMIT_NEVER"},
   "open_telemetry_settings": {
     "otlp_endpoint": "https://otel.example.com:4318",
     "otlp_protocol": "OTLP_PROTOCOL_HTTP_PROTOBUF",
@@ -367,6 +399,9 @@ func TestQueuesUpdateSpecFileReplacesSettingsWithoutFetch(t *testing.T) {
 	if got := settings.GetOpenTelemetrySettings(); !proto.Equal(got, testOpenTelemetrySettings()) {
 		t.Fatalf("open telemetry settings = %v, want %v", got, testOpenTelemetrySettings())
 	}
+	if got := settings.GetCacheVolumeSettings().GetCommit(); got != buildkitepb.CacheVolumeSettings_CACHE_VOLUME_COMMIT_NEVER {
+		t.Fatalf("cache volume commit = %v, want NEVER", got)
+	}
 	unknown := settings.ProtoReflect().GetUnknown()
 	if strings.Contains(string(unknown), "future-setting") {
 		t.Fatalf("settings preserved fetched field during complete replacement: %q", unknown)
@@ -376,6 +411,7 @@ func TestQueuesUpdateSpecFileReplacesSettingsWithoutFetch(t *testing.T) {
 func TestQueuesUpdateEgressPolicyPreservesPermissions(t *testing.T) {
 	fake := installFakeClient(t)
 	fake.currentSettings.EgressPolicyTag = "old-policy"
+	fake.currentSettings.CacheVolumeSettings = &buildkitepb.CacheVolumeSettings{Commit: buildkitepb.CacheVolumeSettings_CACHE_VOLUME_COMMIT_NEVER}
 
 	if _, err := runBuildkiteCommand(t, "queues", "update", "queue-1", "--egress_policy", "restricted"); err != nil {
 		t.Fatalf("command failed: %v", err)
@@ -389,6 +425,9 @@ func TestQueuesUpdateEgressPolicyPreservesPermissions(t *testing.T) {
 	}
 	if got := settings.GetEgressPolicyTag(); got != "restricted" {
 		t.Fatalf("egress policy = %q, want restricted", got)
+	}
+	if !proto.Equal(settings.GetCacheVolumeSettings(), fake.currentSettings.GetCacheVolumeSettings()) {
+		t.Fatalf("cache volume settings = %v, want fetched settings preserved", settings.GetCacheVolumeSettings())
 	}
 }
 
@@ -428,8 +467,76 @@ func TestQueuesResetPermissionsPreservesEgressPolicy(t *testing.T) {
 func TestQueuesUpdateRequiresMode(t *testing.T) {
 	installFakeClient(t)
 	_, err := runBuildkiteCommand(t, "queues", "update", "queue-1")
-	if err == nil || !strings.Contains(err.Error(), "--workload_permissions, --reset_permissions, --egress_policy, --remove_egress_policy, or --reset is required") {
+	if err == nil || !strings.Contains(err.Error(), "--workload_permissions, --reset_permissions, --cache_volume_commit, --reset_cache_volume_commit, --egress_policy, --remove_egress_policy, or --reset is required") {
 		t.Fatalf("error = %v, want required mode error", err)
+	}
+}
+
+func TestQueuesUpdateCacheVolumeCommit(t *testing.T) {
+	never := &buildkitepb.CacheVolumeSettings{Commit: buildkitepb.CacheVolumeSettings_CACHE_VOLUME_COMMIT_NEVER}
+	defaultCommit := &buildkitepb.CacheVolumeSettings{Commit: buildkitepb.CacheVolumeSettings_CACHE_VOLUME_COMMIT_DEFAULT}
+	for _, tc := range []struct {
+		name    string
+		args    []string
+		current *buildkitepb.CacheVolumeSettings
+		want    *buildkitepb.CacheVolumeSettings
+	}{
+		{name: "never", args: []string{"--cache_volume_commit", "NEVER"}, current: defaultCommit, want: never},
+		{name: "default", args: []string{"--cache_volume_commit", "DEFAULT"}, current: never, want: defaultCommit},
+		{name: "set from unspecified", args: []string{"--cache_volume_commit", "NEVER"}, want: never},
+		{name: "reset", args: []string{"--reset_cache_volume_commit"}, current: never},
+		{name: "reset unspecified", args: []string{"--reset_cache_volume_commit"}},
+		{name: "reset false", args: []string{"--reset_cache_volume_commit=false", "--egress_policy", "restricted"}, current: never, want: never},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fake := installFakeClient(t)
+			fake.currentSettings.CacheVolumeSettings = tc.current
+			fake.currentSettings.EgressPolicyTag = "restricted"
+			fake.currentSettings.OpenTelemetrySettings = testOpenTelemetrySettings()
+			fake.currentSettings.ProtoReflect().SetUnknown(protowire.AppendString(protowire.AppendTag(nil, 100, protowire.BytesType), "future-setting"))
+			want := proto.Clone(fake.currentSettings).(*buildkitepb.QueueSettings)
+			want.CacheVolumeSettings = tc.want
+			if _, err := runBuildkiteCommand(t, append([]string{"queue", "update", "queue-1"}, tc.args...)...); err != nil {
+				t.Fatalf("command failed: %v", err)
+			}
+			if fake.updateRequest.GetQueueId() != "queue-1" || !proto.Equal(fake.updateRequest.GetSettings(), want) {
+				t.Fatalf("request = %v, want queue-1 with settings %v", fake.updateRequest, want)
+			}
+		})
+	}
+}
+
+func TestQueuesUpdateRejectsInvalidCacheVolumeCommit(t *testing.T) {
+	for _, value := range []string{"", "READ_ONLY", "READ_WRITE", "never", "UNSPECIFIED", "1"} {
+		t.Run(value, func(t *testing.T) {
+			fake := installFakeClient(t)
+			_, err := runBuildkiteCommand(t, "queue", "update", "queue-1", "--cache_volume_commit", value)
+			if err == nil || !strings.Contains(err.Error(), "must be DEFAULT or NEVER") {
+				t.Fatalf("error = %v, want invalid cache volume commit setting error", err)
+			}
+			if fake.updateRequest != nil {
+				t.Fatal("invalid commit setting updated the queue")
+			}
+		})
+	}
+}
+
+func TestQueuesUpdateRejectsConflictingCacheVolumeFlags(t *testing.T) {
+	for _, flags := range [][]string{
+		{"--cache_volume_commit", "NEVER", "--reset_cache_volume_commit"},
+		{"--cache_volume_commit", "DEFAULT", "--reset"},
+		{"--reset_cache_volume_commit", "--reset"},
+	} {
+		t.Run(strings.Join(flags, " "), func(t *testing.T) {
+			fake := installFakeClient(t)
+			_, err := runBuildkiteCommand(t, append([]string{"queue", "update", "queue-1"}, flags...)...)
+			if err == nil || !strings.Contains(err.Error(), "none of the others can be") {
+				t.Fatalf("error = %v, want mutually exclusive flags error", err)
+			}
+			if fake.updateRequest != nil {
+				t.Fatal("conflicting flags updated the queue")
+			}
+		})
 	}
 }
 
