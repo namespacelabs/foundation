@@ -125,6 +125,8 @@ func newQueuesUpdateCmd() *cobra.Command {
 		Use:   "update <queue-id>",
 		Short: "Update settings for a Namespace-managed Buildkite queue.",
 		Example: `  nsc buildkite queue update <queue-id> --egress_policy restricted
+  nsc buildkite queue update <queue-id> --cache_volume_commit NEVER
+  nsc buildkite queue update <queue-id> --reset_cache_volume_commit
   nsc buildkite queue update <queue-id> --spec_file spec.json -o json`,
 		Args: cobra.ExactArgs(1),
 	}
@@ -132,14 +134,19 @@ func newQueuesUpdateCmd() *cobra.Command {
 	specFile := cmd.Flags().String("spec_file", "", "Path to JSON file containing the queue settings. When provided, individual flags are ignored.")
 	workloadPermissions := cmd.Flags().StringArray("workload_permissions", nil, `Custom workload permission as JSON (repeatable): {"resource_type":"...","resource_id":"...","actions":["..."]}`)
 	resetPermissions := cmd.Flags().Bool("reset_permissions", false, "Remove custom workload permissions from this queue.")
+	cacheVolumeCommit := cmd.Flags().String("cache_volume_commit", "", "User cache volume commit behavior: DEFAULT respects existing commit rules; NEVER disables commits.")
+	resetCacheVolumeCommit := cmd.Flags().Bool("reset_cache_volume_commit", false, "Remove the cache volume commit override from this queue.")
 	egressPolicy := cmd.Flags().String("egress_policy", "", "Workspace egress policy tag to apply to jobs running for this queue.")
 	removeEgressPolicy := cmd.Flags().Bool("remove_egress_policy", false, "Remove the workspace egress policy tag from this queue.")
 	reset := cmd.Flags().Bool("reset", false, "Reset all queue settings.")
 	cmd.MarkFlagsMutuallyExclusive("reset", "workload_permissions")
 	cmd.MarkFlagsMutuallyExclusive("reset", "reset_permissions")
+	cmd.MarkFlagsMutuallyExclusive("reset", "cache_volume_commit")
+	cmd.MarkFlagsMutuallyExclusive("reset", "reset_cache_volume_commit")
 	cmd.MarkFlagsMutuallyExclusive("reset", "egress_policy")
 	cmd.MarkFlagsMutuallyExclusive("reset", "remove_egress_policy")
 	cmd.MarkFlagsMutuallyExclusive("workload_permissions", "reset_permissions")
+	cmd.MarkFlagsMutuallyExclusive("cache_volume_commit", "reset_cache_volume_commit")
 	cmd.MarkFlagsMutuallyExclusive("egress_policy", "remove_egress_policy")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
@@ -174,12 +181,24 @@ func newQueuesUpdateCmd() *cobra.Command {
 		if err != nil {
 			return err
 		}
+		var cacheVolumeSettings *buildkitepb.CacheVolumeSettings
+		if cmd.Flags().Changed("cache_volume_commit") {
+			cacheVolumeSettings = &buildkitepb.CacheVolumeSettings{}
+			switch *cacheVolumeCommit {
+			case "DEFAULT":
+				cacheVolumeSettings.Commit = buildkitepb.CacheVolumeSettings_CACHE_VOLUME_COMMIT_DEFAULT
+			case "NEVER":
+				cacheVolumeSettings.Commit = buildkitepb.CacheVolumeSettings_CACHE_VOLUME_COMMIT_NEVER
+			default:
+				return fnerrors.BadInputError("invalid --cache_volume_commit %q: must be DEFAULT or NEVER", *cacheVolumeCommit)
+			}
+		}
 		egressPolicyChanged := cmd.Flags().Changed("egress_policy")
 		if egressPolicyChanged && *egressPolicy == "" {
 			return fnerrors.BadInputError("--egress_policy must not be empty; use --remove_egress_policy to remove it")
 		}
-		if !*reset && permissions == nil && !egressPolicyChanged && !*removeEgressPolicy {
-			return fnerrors.BadInputError("--workload_permissions, --reset_permissions, --egress_policy, --remove_egress_policy, or --reset is required")
+		if !*reset && permissions == nil && cacheVolumeSettings == nil && !*resetCacheVolumeCommit && !egressPolicyChanged && !*removeEgressPolicy {
+			return fnerrors.BadInputError("--workload_permissions, --reset_permissions, --cache_volume_commit, --reset_cache_volume_commit, --egress_policy, --remove_egress_policy, or --reset is required")
 		}
 		client, err := newQueueServiceClient(ctx)
 		if err != nil {
@@ -199,6 +218,11 @@ func newQueuesUpdateCmd() *cobra.Command {
 		} else {
 			if permissions != nil {
 				settings.Permissions = permissions
+			}
+			if cacheVolumeSettings != nil {
+				settings.CacheVolumeSettings = cacheVolumeSettings
+			} else if *resetCacheVolumeCommit {
+				settings.CacheVolumeSettings = nil
 			}
 			if egressPolicyChanged {
 				settings.EgressPolicyTag = *egressPolicy
@@ -318,6 +342,10 @@ func printQueueDetails(ctx context.Context, header string, queue *buildkitepb.Bu
 			fmt.Fprintf(stdout, "  - Resource: %s %s\n", permission.GetResourceType(), resourceID)
 			fmt.Fprintf(stdout, "    Actions:  %s\n", strings.Join(permission.GetActions(), ", "))
 		}
+	}
+
+	if cacheCommit := settings.GetCacheVolumeSettings().GetCommit(); cacheCommit != buildkitepb.CacheVolumeSettings_CACHE_VOLUME_COMMIT_UNSPECIFIED {
+		fmt.Fprintf(stdout, "\nCache Volume Commit: %s\n", strings.TrimPrefix(cacheCommit.String(), "CACHE_VOLUME_COMMIT_"))
 	}
 
 	if otel := settings.GetOpenTelemetrySettings(); otel != nil && proto.Size(otel) > 0 {
