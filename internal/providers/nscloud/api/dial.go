@@ -61,6 +61,7 @@ func DialEndpointWithToken(ctx context.Context, token fnapi.Token, endpoint stri
 	fmt.Fprintf(console.Debug(ctx), "[%s] Gateway: dialing %v...\n", tid, endpoint)
 
 	d := websocket.Dialer{
+		Proxy:            http.ProxyFromEnvironment,
 		HandshakeTimeout: 15 * time.Second,
 	}
 
