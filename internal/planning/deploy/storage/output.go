@@ -2,16 +2,10 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-// nolint directives: stylecheck:sa1019
 package storage
 
 import (
-	"fmt"
-	"strings"
-
-	"namespacelabs.dev/foundation/framework/planning/render"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/uniquestrings"
 	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 )
@@ -51,9 +45,6 @@ func ToStorageNetworkPlan(localHostname string, stack *fnschema.Stack, focus []f
 		endpoint := convertEndpoint(pfwd.Endpoint, pfwd.LocalPort, stack)
 		r.Endpoints = append(r.Endpoints, endpoint)
 	}
-
-	// TODO: remove once "internal" is migrated to "networkplanutils"
-	addDeprecatedFields(r)
 
 	return r
 }
@@ -158,153 +149,4 @@ func convertManagedType(managed fnschema.Domain_ManagedType) (storage.Domain_Man
 	default:
 		return storage.Domain_MANAGED_UNKNOWN, fnerrors.InternalError("unknown domain managed type: %s", managed)
 	}
-}
-
-// Deprecated
-func addDeprecatedFields(r *storage.NetworkPlan) {
-	var nonLocalManaged, nonLocalNonManaged []*filteredDomain
-
-	domains := filterAndDedupDomains(r.IngressFragments, nil)
-	for _, n := range domains {
-		// Local domains need `ns attach` for port forwarding.
-		if n.Domain.GetManaged() == storage.Domain_USER_SPECIFIED {
-			nonLocalNonManaged = append(nonLocalNonManaged, n)
-		} else if n.Domain.GetManaged() == storage.Domain_CLOUD_MANAGED || n.Domain.GetManaged() == storage.Domain_USER_SPECIFIED_TLS_MANAGED {
-			nonLocalManaged = append(nonLocalManaged, n)
-		}
-	}
-
-	r.NonLocalManaged = renderIngressBlock(nonLocalManaged)
-	r.NonLocalNonManaged = renderIngressBlock(nonLocalNonManaged)
-
-	summary := render.NetworkPlanToSummary(r)
-	services := append(summary.FocusedServices, summary.SupportServices...)
-	for _, s := range services {
-		endpoint := &storage.NetworkPlan_Endpoint{
-			Label:         &storage.NetworkPlan_Label{Label: s.Label.Label, ServiceProto: s.Label.ServiceProto},
-			Focus:         s.Focus,
-			LocalPort:     s.LocalPort,
-			EndpointOwner: s.PackageName,
-		}
-		for _, cmd := range s.AccessCmd {
-			endpoint.AccessCmd = append(endpoint.AccessCmd, &storage.NetworkPlan_AccessCmd{
-				Cmd: cmd.Cmd, IsManaged: cmd.IsManaged})
-		}
-		r.Endpoint = append(r.Endpoint, endpoint)
-	}
-}
-
-// Deprecated
-type filteredDomain struct {
-	Domain    *storage.Domain
-	Endpoints []*storage.Endpoint
-}
-
-// Deprecated
-func filterAndDedupDomains(fragments []*storage.IngressFragment, filter func(*storage.Domain) bool) []*filteredDomain {
-	seen := map[string]*filteredDomain{} // Map fqdn:type to schema.
-	domains := []*filteredDomain{}
-	for _, frag := range fragments {
-		d := frag.Domain
-
-		if d.GetFqdn() == "" {
-			continue
-		}
-
-		if filter != nil && !filter(d) {
-			continue
-		}
-
-		key := fmt.Sprintf("%s:%s", d.GetFqdn(), d.GetManaged())
-
-		if _, ok := seen[key]; !ok {
-			fd := &filteredDomain{Domain: d}
-			domains = append(domains, fd)
-			seen[key] = fd
-		}
-
-		if frag.Endpoint != nil {
-			seen[key].Endpoints = append(seen[key].Endpoints, frag.Endpoint)
-		}
-	}
-
-	return domains
-}
-
-// Deprecated
-func renderIngressBlock(fragments []*filteredDomain) []*storage.NetworkPlan_Ingress {
-	var ingresses []*storage.NetworkPlan_Ingress
-	for _, n := range fragments {
-		schema, portLabel, cmd, suffix := domainSchema(n.Domain, 443, n.Endpoints...)
-
-		var owners uniquestrings.List
-		for _, endpoint := range n.Endpoints {
-			owners.Add(endpoint.ServerOwner)
-		}
-
-		ingresses = append(ingresses, &storage.NetworkPlan_Ingress{
-			Fqdn:         n.Domain.Fqdn,
-			Schema:       schema,
-			PortLabel:    portLabel,
-			Command:      cmd,
-			Comment:      suffix,
-			PackageOwner: owners.Strings(),
-		})
-	}
-	return ingresses
-}
-
-// Deprecated
-func domainSchema(domain *storage.Domain, localPort uint, endpoints ...*storage.Endpoint) (string, string, string, string) {
-	var protocols uniquestrings.List
-	for _, endpoint := range endpoints {
-		for _, md := range endpoint.GetServiceMetadata() {
-			if md.Protocol != "" {
-				protocols.Add(md.Protocol)
-			}
-		}
-	}
-
-	var schema, portLabel, cmd, suffix string
-	switch len(protocols.Strings()) {
-	case 0:
-		schema, portLabel = httpSchema(domain, localPort)
-	case 1:
-		if protocols.Strings()[0] == fnschema.ClearTextGrpcProtocol {
-			schema, portLabel, cmd = grpcSchema(domain.TlsFrontend, localPort)
-			if !domain.TlsFrontend {
-				suffix = "not currently working, see #26"
-			}
-		} else {
-			schema, portLabel = httpSchema(domain, localPort)
-		}
-	default:
-		schema = "(multiple: " + strings.Join(protocols.Strings(), ", ") + ") "
-	}
-
-	return schema, portLabel, cmd, suffix
-}
-
-// Deprecated
-func grpcSchema(tls bool, port uint) (string, string, string) {
-	if tls {
-		return "ns tools grpcurl", fmt.Sprintf(":%d", port), " list"
-	}
-	return "ns tools grpcurl -plaintext", fmt.Sprintf(":%d", port), " list"
-}
-
-// Deprecated
-func httpSchema(d *storage.Domain, port uint) (string, string) {
-	if d.TlsFrontend || port == 443 {
-		return "https://", checkPort(port, 443)
-	}
-	return "http://", checkPort(port, 80)
-}
-
-// Deprecated
-func checkPort(port, expected uint) string {
-	if port == expected {
-		return ""
-	}
-	return fmt.Sprintf(":%d", port)
 }
