@@ -29,10 +29,6 @@ func Newf(ctx context.Context, format string, args ...interface{}) *Executor {
 	return New(ctx, fmt.Sprintf(format, args...))
 }
 
-func NewSerial(ctx context.Context) *Serial {
-	return &Serial{ctx: ctx}
-}
-
 type Executor struct {
 	ctx    context.Context
 	cancel func()
@@ -95,23 +91,3 @@ func (exec *Executor) GoCancelable(f func(context.Context) error) func() {
 	})
 	return cancel
 }
-
-type Serial struct {
-	ctx context.Context
-	err error
-}
-
-func (s *Serial) Go(f func(context.Context) error) {
-	if s.err == nil {
-		s.err = f(s.ctx)
-	}
-}
-
-func (s *Serial) GoCancelable(f func(context.Context) error) func() {
-	if s.err == nil {
-		s.err = f(s.ctx)
-	}
-	return func() {}
-}
-
-func (s *Serial) Wait() error { return s.err }
