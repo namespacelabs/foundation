@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 )
 
-const defaultRegion = "eu"
+const defaultRegion = "us"
 
 var (
 	rpcEndpointOverride string
