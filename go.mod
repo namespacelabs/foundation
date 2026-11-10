@@ -1,6 +1,6 @@
 module namespacelabs.dev/foundation
 
-go 1.26.0
+go 1.27.4
 
 require (
 	buf.build/gen/go/namespace/bazel/protocolbuffers/go v1.36.12-20260717182923-633d56cd145e.2

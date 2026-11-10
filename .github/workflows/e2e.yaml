@@ -35,7 +35,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: 1.26.x
+          go-version: 1.27.x
           cache: false
       - name: Setup cross-invocation caching (Go)
         uses: namespacelabs/nscloud-cache-action@v1
@@ -95,7 +95,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: 1.26.x
+          go-version: 1.27.x
           cache: false
       - name: Setup cross-invocation caching (Go)
         uses: namespacelabs/nscloud-cache-action@v1
@@ -227,7 +227,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: 1.26.x
+          go-version: 1.27.x
           cache: false
 
       - name: Setup cross-invocation caching (Go)
