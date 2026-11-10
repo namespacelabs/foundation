@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 )
 
-const defaultRegion = "us"
+const geoDNSEndpoint = "https://compute.namespaceapi.com"
 
 var (
 	rpcEndpointOverride string
@@ -50,7 +50,7 @@ func ResolveRegionalEndpoint(ctx context.Context, tok fnapi.ResolvedToken) (stri
 		return "https://api." + tok.PreferredRegion, nil
 	}
 
-	return rpcEndpoint(defaultRegion), nil
+	return geoDNSEndpoint, nil
 }
 
 func rpcEndpoint(regionName string) string {
