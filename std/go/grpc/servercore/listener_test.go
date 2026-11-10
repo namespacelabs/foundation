@@ -5,6 +5,8 @@
 package servercore
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -20,6 +22,7 @@ import (
 
 	"github.com/soheilhy/cmux"
 	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/hpack"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -266,6 +269,249 @@ func TestNewHttp2CapableServer_GoawayOnShutdown(t *testing.T) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("Serve did not return")
+	}
+}
+
+func TestNewHttp2CapableServer_H2CUpgrade(t *testing.T) {
+	finish := make(chan struct{})
+	defer func() {
+		select {
+		case <-finish:
+		default:
+			close(finish)
+		}
+	}()
+	requestServer := make(chan *http.Server, 1)
+	srv := NewHttp2CapableServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.ProtoMajor != 2 {
+			http.Error(w, "HTTP/2 required", http.StatusHTTPVersionNotSupported)
+			return
+		}
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		requestServer <- r.Context().Value(http.ServerContextKey).(*http.Server)
+		if r.URL.Path == "/quick" {
+			_, _ = io.WriteString(w, "quick")
+			return
+		}
+		<-finish
+		_, _ = w.Write(append([]byte("received: "), body...))
+	}), HTTPOptions{HTTP2MaxConcurrentStreams: 7})
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lis.Close()
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- srv.Serve(lis) }()
+
+	conn, err := net.DialTimeout("tcp", lis.Addr().String(), time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	if err := conn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+
+	// Pipeline the body and HTTP/2 preface so the upgrade must preserve
+	// bytes already buffered by the HTTP/1 reader.
+	var handshake bytes.Buffer
+	handshake.WriteString("POST /slow HTTP/1.1\r\nHost: localhost\r\nConnection: Upgrade, HTTP2-Settings\r\nUpgrade: h2c\r\nHTTP2-Settings: AAQAAAAB\r\nContent-Length: 12\r\n\r\nupgrade body")
+	handshake.WriteString(http2.ClientPreface)
+	// Only the Upgrade header sets INITIAL_WINDOW_SIZE=1; the subsequent
+	// SETTINGS frame must not mask a failure to apply that header.
+	if err := http2.NewFramer(&handshake, nil).WriteSettings(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.Write(handshake.Bytes()); err != nil {
+		t.Fatal(err)
+	}
+	reader := bufio.NewReader(conn)
+	response, err := http.ReadResponse(reader, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != http.StatusSwitchingProtocols || response.Header.Get("Upgrade") != "h2c" {
+		t.Fatalf("expected h2c upgrade, got %s with headers %v", response.Status, response.Header)
+	}
+	select {
+	case got := <-requestServer:
+		if got != srv {
+			t.Error("upgraded request lost its owning http.Server")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("upgraded request did not reach the handler")
+	}
+
+	framer := http2.NewFramer(conn, reader)
+	framer.ReadMetaHeaders = hpack.NewDecoder(4096, nil)
+	sawSettings := false
+	readResponse := func(streamID uint32) string {
+		t.Helper()
+		var body bytes.Buffer
+		status := ""
+		for {
+			frame, err := framer.ReadFrame()
+			if err != nil {
+				t.Fatalf("reading stream %d: %v", streamID, err)
+			}
+			switch frame := frame.(type) {
+			case *http2.SettingsFrame:
+				if !frame.IsAck() {
+					if got, ok := frame.Value(http2.SettingMaxConcurrentStreams); !ok || got != 7 {
+						t.Fatalf("HTTP/2 stream limit: got %d, present=%t", got, ok)
+					}
+					sawSettings = true
+					if err := framer.WriteSettingsAck(); err != nil {
+						t.Fatal(err)
+					}
+				}
+			case *http2.MetaHeadersFrame:
+				for _, field := range frame.Fields {
+					if field.Name == ":status" {
+						status = field.Value
+					}
+				}
+			case *http2.DataFrame:
+				if frame.StreamID != streamID {
+					t.Fatalf("unexpected response on stream %d, want %d", frame.StreamID, streamID)
+				}
+				if body.Len() == 0 {
+					if len(frame.Data()) != 1 || frame.StreamEnded() {
+						t.Fatalf("Upgrade window setting not applied: first DATA has %d bytes, ended=%t", len(frame.Data()), frame.StreamEnded())
+					}
+					if err := framer.WriteWindowUpdate(streamID, 64); err != nil {
+						t.Fatal(err)
+					}
+				}
+				body.Write(frame.Data())
+				if frame.StreamEnded() {
+					if status != "200" {
+						t.Fatalf("stream %d returned status %q", streamID, status)
+					}
+					return body.String()
+				}
+			}
+		}
+	}
+
+	var headers bytes.Buffer
+	encoder := hpack.NewEncoder(&headers)
+	for _, field := range []hpack.HeaderField{
+		{Name: ":method", Value: "GET"},
+		{Name: ":scheme", Value: "http"},
+		{Name: ":authority", Value: "localhost"},
+		{Name: ":path", Value: "/quick"},
+	} {
+		if err := encoder.WriteField(field); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := framer.WriteHeaders(http2.HeadersFrameParam{StreamID: 3, BlockFragment: headers.Bytes(), EndHeaders: true, EndStream: true}); err != nil {
+		t.Fatal(err)
+	}
+	if got := readResponse(3); got != "quick" {
+		t.Fatalf("unexpected subsequent response: %q", got)
+	}
+	select {
+	case got := <-requestServer:
+		if got != srv {
+			t.Error("subsequent HTTP/2 request lost its owning http.Server")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("subsequent HTTP/2 request did not reach the handler")
+	}
+
+	shutdownErr := make(chan error, 1)
+	go func() { shutdownErr <- srv.Shutdown(context.Background()) }()
+	for {
+		frame, err := framer.ReadFrame()
+		if err != nil {
+			t.Fatalf("waiting for GOAWAY: %v", err)
+		}
+		if frame, ok := frame.(*http2.GoAwayFrame); ok {
+			if !sawSettings || frame.ErrCode != http2.ErrCodeNo || frame.LastStreamID != 3 {
+				t.Fatalf("unexpected GOAWAY: %v (settings received: %t)", frame, sawSettings)
+			}
+			break
+		}
+	}
+
+	close(finish)
+	if got := readResponse(1); got != "received: upgrade body" {
+		t.Fatalf("unexpected in-flight response after GOAWAY: %q", got)
+	}
+	select {
+	case err := <-shutdownErr:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Shutdown did not return")
+	}
+	select {
+	case err := <-serveErr:
+		if !errors.Is(err, http.ErrServerClosed) {
+			t.Fatalf("Serve returned: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Serve did not return")
+	}
+}
+
+func TestNewHttp2CapableServer_HTTP1UpgradeValidation(t *testing.T) {
+	server := httptest.NewUnstartedServer(nil)
+	server.Config = NewHttp2CapableServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, r.Proto)
+	}), HTTPOptions{})
+	server.Start()
+	defer server.Close()
+
+	for _, tc := range []struct {
+		name       string
+		upgrade    string
+		connection string
+		settings   []string
+		status     int
+	}{
+		{name: "ordinary HTTP1", status: http.StatusOK},
+		{name: "unrelated upgrade", upgrade: "websocket", connection: "Upgrade", status: http.StatusOK},
+		{name: "missing settings connection token", upgrade: "h2c", connection: "Upgrade", settings: []string{""}, status: http.StatusOK},
+		{name: "missing settings header", upgrade: "h2c", connection: "Upgrade, HTTP2-Settings", status: http.StatusInternalServerError},
+		{name: "duplicate settings", upgrade: "h2c", connection: "Upgrade, HTTP2-Settings", settings: []string{"", ""}, status: http.StatusInternalServerError},
+		{name: "invalid settings encoding", upgrade: "h2c", connection: "Upgrade, HTTP2-Settings", settings: []string{"!"}, status: http.StatusInternalServerError},
+		{name: "invalid settings length", upgrade: "h2c", connection: "Upgrade, HTTP2-Settings", settings: []string{"AA"}, status: http.StatusInternalServerError},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodGet, server.URL, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			req.Header.Set("Upgrade", tc.upgrade)
+			req.Header.Set("Connection", tc.connection)
+			for _, settings := range tc.settings {
+				req.Header.Add("HTTP2-Settings", settings)
+			}
+			response, err := server.Client().Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer response.Body.Close()
+			body, err := io.ReadAll(response.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if response.StatusCode != tc.status {
+				t.Fatalf("status: got %d, want %d (body %q)", response.StatusCode, tc.status, body)
+			}
+			if tc.status == http.StatusOK && string(body) != "HTTP/1.1" {
+				t.Fatalf("unexpected HTTP/1 response: %q", body)
+			}
+		})
 	}
 }
 

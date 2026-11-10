@@ -48,10 +48,10 @@ func (s *Store) Txn() (*Txn, func(), error) {
 		return nil, nil, err
 	}
 	return &Txn{
-			s: s,
-		}, func() {
-			l.Close()
-		}, nil
+		s: s,
+	}, func() {
+		l.Close()
+	}, nil
 }
 
 type Txn struct {
