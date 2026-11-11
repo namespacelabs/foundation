@@ -44,16 +44,8 @@ func NewDescribeCmd() *cobra.Command {
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, _, err := SelectRunningCluster(ctx, args)
-		if err != nil {
-			return err
-		}
-
-		if cluster == nil {
-			return nil
-		}
-
-		response, err := api.GetClusterSummary(ctx, api.Methods, cluster.ClusterId, resources)
+		clusterID := args[0]
+		response, err := api.GetClusterSummary(ctx, api.Methods, clusterID, resources)
 		if err != nil {
 			return err
 		}
@@ -95,7 +87,7 @@ func NewDescribeCmd() *cobra.Command {
 			}
 
 			out := console.Stdout(ctx)
-			fmt.Fprintf(out, "%s:\n", cluster.ClusterId)
+			fmt.Fprintf(out, "%s:\n", clusterID)
 
 			for k, ctr := range containers {
 				if k > 0 {
