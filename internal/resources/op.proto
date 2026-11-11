@@ -18,3 +18,11 @@ message OpWaitForProviderResults {
     foundation.schema.ResourceClass                             resource_class       = 3;
     foundation.workspace.source.protos.FileDescriptorSetAndDeps instance_type_source = 4;
 }
+
+// OpConsumeResourceOutputs is a no-op that consumes resource instance outputs
+// which would otherwise have no consumer. It is used in provision-only
+// deployments, where the requested servers (the usual consumers) are not
+// rolled out, to keep the plan's output accounting balanced.
+message OpConsumeResourceOutputs {
+    repeated string resource_instance_id = 1;
+}
