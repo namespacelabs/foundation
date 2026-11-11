@@ -1,0 +1,9 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "provider",
+    srcs = ["support.go"],
+    importpath = "namespacelabs.dev/foundation/framework/resources/provider",
+    visibility = ["//visibility:public"],
+    deps = ["//framework/resources"],
+)

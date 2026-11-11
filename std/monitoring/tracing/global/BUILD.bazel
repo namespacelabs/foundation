@@ -1,0 +1,23 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "global",
+    srcs = [
+        "deps.fn.go",
+        "types.pb.go",
+        "wire.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/std/monitoring/tracing/global",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//framework/rpcerrors",
+        "//std/go/core",
+        "//std/monitoring/tracing",
+        "@io_opentelemetry_go_otel_metric//:metric",
+        "@io_opentelemetry_go_otel_sdk_metric//:metric",
+        "@io_opentelemetry_go_otel_trace//:trace",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

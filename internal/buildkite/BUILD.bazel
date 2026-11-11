@@ -1,0 +1,11 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "buildkite",
+    srcs = [
+        "env.go",
+        "secrets.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/buildkite",
+    visibility = ["//:__subpackages__"],
+)

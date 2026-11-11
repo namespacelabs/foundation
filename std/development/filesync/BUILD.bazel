@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "filesync",
+    srcs = [
+        "config.pb.go",
+        "filesync.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/std/development/filesync",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/fnfs/workspace/wsremote",
+        "//internal/wscontents",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

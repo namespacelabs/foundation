@@ -1,0 +1,11 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "constants",
+    srcs = [
+        "runtimeconfig.go",
+        "volumes.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/std/runtime/constants",
+    visibility = ["//visibility:public"],
+)

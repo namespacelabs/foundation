@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "storage",
+    srcs = ["output.go"],
+    importpath = "namespacelabs.dev/foundation/internal/planning/deploy/storage",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//framework/planning/render",
+        "//internal/fnerrors",
+        "//internal/uniquestrings",
+        "//schema",
+        "//schema/storage",
+    ],
+)

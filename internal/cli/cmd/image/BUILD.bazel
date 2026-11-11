@@ -1,0 +1,28 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "image",
+    srcs = [
+        "image.go",
+        "makedisk.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/cli/cmd/image",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts/oci",
+        "//internal/artifacts/registry",
+        "//internal/build/binary",
+        "//internal/cli/fncobra",
+        "//internal/compute",
+        "//internal/console",
+        "//internal/fnerrors",
+        "//internal/parsing",
+        "//internal/parsing/platform",
+        "//schema",
+        "//std/cfg",
+        "//std/module",
+        "//std/pkggraph",
+        "@com_github_opencontainers_image_spec//specs-go/v1:specs-go",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)

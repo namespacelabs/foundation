@@ -1,0 +1,27 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "registry",
+    srcs = [
+        "artifactregistry.go",
+        "keychain.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/providers/gcp/registry",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts/oci",
+        "//internal/artifacts/registry",
+        "//internal/compute",
+        "//internal/fnerrors",
+        "//internal/providers/gcp/gke",
+        "//internal/sdk/gcloud",
+        "//std/cfg",
+        "//std/tasks",
+        "@com_github_google_go_containerregistry//pkg/authn",
+        "@com_google_cloud_go_artifactregistry//apiv1",
+        "@com_google_cloud_go_artifactregistry//apiv1/artifactregistrypb",
+        "@org_golang_google_api//option",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+    ],
+)

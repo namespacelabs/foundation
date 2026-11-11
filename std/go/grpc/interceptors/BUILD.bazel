@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "interceptors",
+    srcs = [
+        "deps.fn.go",
+        "interceptors.go",
+        "provider.pb.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/std/go/grpc/interceptors",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//std/go/core",
+        "@com_github_grpc_ecosystem_go_grpc_middleware//:go-grpc-middleware",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//stats",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)

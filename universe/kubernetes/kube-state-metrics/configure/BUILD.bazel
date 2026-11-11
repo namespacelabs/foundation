@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "configure_lib",
+    srcs = ["main.go"],
+    importpath = "namespacelabs.dev/foundation/universe/kubernetes/kube-state-metrics/configure",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//framework/kubernetes/kubeblueprint",
+        "//framework/kubernetes/kubedef",
+        "//framework/provisioning",
+        "//internal/uniquestrings",
+        "//schema",
+        "@io_k8s_client_go//applyconfigurations/rbac/v1:rbac",
+    ],
+)
+
+go_binary(
+    name = "configure",
+    embed = [":configure_lib"],
+    visibility = ["//visibility:public"],
+)

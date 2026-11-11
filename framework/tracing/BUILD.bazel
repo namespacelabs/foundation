@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "tracing",
+    srcs = ["collect.go"],
+    importpath = "namespacelabs.dev/foundation/framework/tracing",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_rs_zerolog//:zerolog",
+        "@io_opentelemetry_go_otel//attribute",
+        "@io_opentelemetry_go_otel//codes",
+        "@io_opentelemetry_go_otel_trace//:trace",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+    ],
+)

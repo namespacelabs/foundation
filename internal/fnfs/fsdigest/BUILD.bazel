@@ -1,0 +1,13 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "fsdigest",
+    srcs = ["fsdigest.go"],
+    importpath = "namespacelabs.dev/foundation/internal/fnfs/fsdigest",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts/oci",
+        "//internal/compute",
+        "//schema",
+    ],
+)

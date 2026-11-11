@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "download",
+    srcs = ["download.go"],
+    importpath = "namespacelabs.dev/foundation/internal/artifacts/download",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts",
+        "//internal/bytestream",
+        "//internal/compute",
+        "//internal/console",
+        "//internal/ctxio",
+        "//internal/fnapi",
+        "//internal/fnerrors",
+        "//schema",
+        "//std/tasks",
+        "@com_github_cenkalti_backoff_v4//:backoff",
+        "@org_golang_x_net//http2",
+    ],
+)

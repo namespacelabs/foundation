@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "multiplatform",
+    srcs = ["multiplatform.go"],
+    importpath = "namespacelabs.dev/foundation/internal/build/multiplatform",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts/oci",
+        "//internal/build",
+        "//internal/compute",
+        "//internal/fnerrors",
+        "//internal/parsing/platform",
+        "//internal/storedrun",
+        "//schema/storage",
+        "//std/pkggraph",
+        "//std/tasks",
+        "@com_github_opencontainers_image_spec//specs-go/v1:specs-go",
+        "@org_golang_google_protobuf//types/known/timestamppb",
+        "@org_golang_x_exp//slices",
+    ],
+)

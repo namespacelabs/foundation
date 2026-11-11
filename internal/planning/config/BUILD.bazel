@@ -1,0 +1,23 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "config",
+    srcs = [
+        "dehydrate.go",
+        "rehydrate.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/planning/config",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts/oci",
+        "//internal/artifacts/registry",
+        "//internal/fnerrors",
+        "//internal/fnfs",
+        "//internal/planning",
+        "//internal/protos",
+        "//schema",
+        "//std/tasks",
+        "@com_github_google_go_containerregistry//pkg/v1/remote",
+        "@org_golang_google_protobuf//proto",
+    ],
+)

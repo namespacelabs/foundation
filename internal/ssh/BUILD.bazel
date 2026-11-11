@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "ssh",
+    srcs = ["client.go"],
+    importpath = "namespacelabs.dev/foundation/internal/ssh",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/console",
+        "//internal/fnerrors",
+        "//internal/tcache",
+        "//internal/workspace/dirs",
+        "@org_golang_x_crypto//ssh",
+        "@org_golang_x_crypto//ssh/agent",
+    ],
+)

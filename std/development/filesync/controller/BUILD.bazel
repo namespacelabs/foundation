@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "controller_lib",
+    srcs = ["controller.go"],
+    importpath = "namespacelabs.dev/foundation/std/development/filesync/controller",
+    visibility = ["//visibility:private"],
+    deps = ["//std/development/filesync"],
+)
+
+go_binary(
+    name = "controller",
+    embed = [":controller_lib"],
+    visibility = ["//visibility:public"],
+)

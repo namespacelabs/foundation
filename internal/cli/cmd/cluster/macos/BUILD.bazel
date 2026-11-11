@@ -1,0 +1,25 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "macos",
+    srcs = [
+        "cmd.go",
+        "package.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/cli/cmd/cluster/macos",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts/oci",
+        "//internal/cli/fncobra",
+        "//internal/console",
+        "//internal/fnerrors",
+        "//internal/providers/nscloud/api",
+        "@com_github_dustin_go_humanize//:go-humanize",
+        "@com_github_google_go_containerregistry//pkg/name",
+        "@com_github_google_go_containerregistry//pkg/v1/empty",
+        "@com_github_google_go_containerregistry//pkg/v1/mutate",
+        "@com_github_google_go_containerregistry//pkg/v1/remote",
+        "@com_github_google_go_containerregistry//pkg/v1/stream",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)

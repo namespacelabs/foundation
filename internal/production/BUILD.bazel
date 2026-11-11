@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "production",
+    srcs = [
+        "images.go",
+        "runas.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/production",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts/oci",
+        "//internal/build",
+        "//internal/build/buildkit",
+        "//internal/dependencies/pins",
+        "//internal/fnerrors",
+        "//internal/llbutil",
+        "//internal/runtime",
+        "@com_github_moby_buildkit//client/llb",
+    ],
+)

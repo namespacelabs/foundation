@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "format",
+    srcs = ["format.go"],
+    importpath = "namespacelabs.dev/foundation/internal/fnerrors/format",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/cli/fncobra/name",
+        "//internal/console/colors",
+        "//internal/console/consolesink",
+        "//internal/fnerrors",
+        "//internal/github/env",
+        "//std/tasks",
+        "@com_github_kr_text//:text",
+        "@org_cuelang_go//cue/errors",
+    ],
+)

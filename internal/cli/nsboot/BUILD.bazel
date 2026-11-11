@@ -1,0 +1,34 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "nsboot",
+    srcs = [
+        "types.go",
+        "update.go",
+        "version.go",
+    ],
+    importpath = "namespacelabs.dev/foundation/internal/cli/nsboot",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/artifacts",
+        "//internal/artifacts/download",
+        "//internal/artifacts/unpack",
+        "//internal/bytestream",
+        "//internal/cli/version",
+        "//internal/compute",
+        "//internal/console",
+        "//internal/console/colors",
+        "//internal/fnapi",
+        "//internal/fnerrors",
+        "//internal/fnerrors/format",
+        "//internal/fnfs/tarfs",
+        "//internal/fnfs/zipfs",
+        "//internal/workspace/dirs",
+        "//schema",
+        "//schema/storage",
+        "//std/tasks",
+        "@com_github_spf13_viper//:viper",
+        "@org_golang_google_protobuf//encoding/protojson",
+        "@org_golang_x_mod//semver",
+    ],
+)
