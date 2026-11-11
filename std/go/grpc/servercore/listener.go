@@ -5,9 +5,13 @@
 package servercore
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"slices"
@@ -19,8 +23,8 @@ import (
 	"github.com/rs/zerolog/hlog"
 	"github.com/soheilhy/cmux"
 	"go.uber.org/automaxprocs/maxprocs"
+	"golang.org/x/net/http/httpguts"
 	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -394,7 +398,7 @@ func NewHttp2CapableServer(mux http.Handler, opts HTTPOptions) *http.Server {
 	}
 
 	srv := &http.Server{
-		Handler:           h2c.NewHandler(mux, h2srv),
+		Handler:           mux,
 		ReadTimeout:       opts.HTTP1ReadTimeout,
 		ReadHeaderTimeout: opts.HTTP1ReadHeaderTimeout,
 		WriteTimeout:      opts.HTTP1WriteTimeout,
@@ -402,12 +406,13 @@ func NewHttp2CapableServer(mux http.Handler, opts HTTPOptions) *http.Server {
 		MaxHeaderBytes:    opts.HTTP1MaxHeaderBytes,
 	}
 
-	// Wire up HTTP/2 graceful shutdown for h2c. ConfigureServer registers an
-	// OnShutdown handler on srv that, when invoked, sends GOAWAY frames to
-	// every active HTTP/2 connection served by h2srv (h2c hijacks the
-	// underlying net.Conn from the *http.Server and feeds it to
-	// h2srv.ServeConn, so without this call those hijacked connections are
-	// invisible to srv.Shutdown and would never receive GOAWAY).
+	// Native HTTP/2 keeps prior-knowledge connections owned by srv for
+	// graceful shutdown. The Upgrade handler uses the same HTTP/2 server.
+	srv.Protocols = new(http.Protocols)
+	srv.Protocols.SetHTTP1(true)
+	srv.Protocols.SetHTTP2(true)
+	srv.Protocols.SetUnencryptedHTTP2(true)
+
 	if err := http2.ConfigureServer(srv, h2srv); err != nil {
 		// ConfigureServer only returns errors when the http.Server has an
 		// invalid TLS configuration, which our h2c plaintext server never
@@ -415,7 +420,78 @@ func NewHttp2CapableServer(mux http.Handler, opts HTTPOptions) *http.Server {
 		panic(fmt.Errorf("http2.ConfigureServer: %w", err))
 	}
 
+	srv.Handler = h2cUpgradeHandler(mux, srv, h2srv)
+
 	return srv
+}
+
+func h2cUpgradeHandler(handler http.Handler, srv *http.Server, h2srv *http2.Server) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.ProtoMajor != 1 || r.ProtoMinor != 1 || r.TLS != nil ||
+			!httpguts.HeaderValuesContainsToken(r.Header.Values("Upgrade"), "h2c") ||
+			!httpguts.HeaderValuesContainsToken(r.Header.Values("Connection"), "HTTP2-Settings") {
+			handler.ServeHTTP(w, r)
+			return
+		}
+
+		settingsHeaders := r.Header.Values("HTTP2-Settings")
+		if len(settingsHeaders) != 1 {
+			http.Error(w, "expected one HTTP2-Settings header", http.StatusInternalServerError)
+			return
+		}
+		settings, err := base64.RawURLEncoding.DecodeString(settingsHeaders[0])
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if len(settings)%6 != 0 {
+			http.Error(w, "invalid HTTP2-Settings payload length", http.StatusInternalServerError)
+			return
+		}
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		r.Body = io.NopCloser(bytes.NewReader(body))
+
+		conn, rw, err := http.NewResponseController(w).Hijack()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer conn.Close()
+		if _, err := io.WriteString(rw, "HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: h2c\r\n\r\n"); err != nil {
+			return
+		}
+		if err := rw.Flush(); err != nil {
+			return
+		}
+
+		// BaseConfig must stay nil: on Go 1.27 x/net otherwise copies it into
+		// a separate http.Server that misses srv.Shutdown. ConfigureServer
+		// already associated h2srv with srv, including its limits and shutdown.
+		h2srv.ServeConn(&h2cBufferedConn{Conn: conn, reader: rw.Reader}, &http2.ServeConnOpts{
+			Context: r.Context(),
+			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				// ServeConn with nil BaseConfig replaces this context value;
+				// preserve the owning server for application handlers.
+				ctx := context.WithValue(r.Context(), http.ServerContextKey, srv)
+				handler.ServeHTTP(w, r.WithContext(ctx))
+			}),
+			UpgradeRequest: r,
+			Settings:       settings,
+		})
+	})
+}
+
+type h2cBufferedConn struct {
+	net.Conn
+	reader *bufio.Reader
+}
+
+func (c *h2cBufferedConn) Read(p []byte) (int, error) {
+	return c.reader.Read(p)
 }
 
 func ListenAndGracefullyShutdownGRPC(ctx context.Context, label string, srv *grpc.Server, lis net.Listener) error {
