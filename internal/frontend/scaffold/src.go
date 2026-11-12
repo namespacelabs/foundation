@@ -44,27 +44,6 @@ func generateCueSource(ctx context.Context, fsfs fnfs.ReadWriteFS, filePath stri
 	})
 }
 
-func createProtoScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, filePath string, t *template.Template, data interface{}) error {
-	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), fsfs, filePath, func(w io.Writer) error {
-		var body bytes.Buffer
-
-		if err := t.Execute(&body, data); err != nil {
-			return fnerrors.InternalError("failed to apply template: %w", err)
-		}
-
-		var src bytes.Buffer
-
-		if _, err := body.WriteTo(&src); err != nil {
-			return err
-		}
-
-		// TODO run proto formatter
-
-		_, err := w.Write(src.Bytes())
-		return err
-	})
-}
-
 func generateGoSource(ctx context.Context, fsfs fnfs.ReadWriteFS, filePath string, t *template.Template, data interface{}) error {
 	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), fsfs, filePath, func(w io.Writer) error {
 		var body bytes.Buffer
