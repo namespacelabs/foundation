@@ -15,6 +15,7 @@ import (
 
 	"github.com/araddon/dateparse"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -35,6 +36,7 @@ func NewGenerateReportCmd() *cobra.Command {
 	start := cmd.Flags().String("start", "", "Start time of the report.")
 	end := cmd.Flags().String("end", "", "End time of the report, defaults to now if not provided.")
 	outPath := cmd.Flags().String("out", "", "Output file path. Creates a temporary file in /tmp if not provided. Use '-' for stdout.")
+	format := cmd.Flags().String("format", "csv", "Report format: csv or jsonl. JSONL preserves each API entry, including individual volumes, using proto field names.")
 
 	// Args for filtering. We allow multiple strings per filter type. Each matcher can have
 	// either <matcher>Args or <matcher>ExcArgs nonempty, depending on if the filter should
@@ -116,6 +118,9 @@ func NewGenerateReportCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&buildkiteJobStateExcArgs, "exclude-buildkite-job-state", nil, "Buildkite job states to exclude (repeatable). Cannot be passed together with --buildkite-job-state.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if *format != "csv" && *format != "jsonl" {
+			return fnerrors.Newf("unknown report format %q; expected csv or jsonl", *format)
+		}
 		if *start == "" {
 			return fnerrors.New("--start is required. Example:\n    nsc instance report --start \"2026-01-01\" --end \"2026-01-02\"")
 		}
@@ -135,17 +140,19 @@ func NewGenerateReportCmd() *cobra.Command {
 			}
 		}
 
-		var outFile *os.File
+		var outFile io.Writer
 		var outName string
 		switch *outPath {
 		case "-":
+			// The console sink normalizes lines and discards write errors.
 			outFile = os.Stdout
 			outName = "stdout"
 		case "":
-			tmp, err := os.CreateTemp("", "nsc-report-*.csv")
+			tmp, err := os.CreateTemp("", "nsc-report-*."+*format)
 			if err != nil {
 				return fnerrors.Newf("Failed to create temp file: %w", err)
 			}
+			defer tmp.Close()
 			outFile = tmp
 			outName = tmp.Name()
 		default:
@@ -153,11 +160,12 @@ func NewGenerateReportCmd() *cobra.Command {
 			if err != nil {
 				return fnerrors.Newf("Failed to create output file %s: %w", *outPath, err)
 			}
+			defer file.Close()
 			outFile = file
 			outName = *outPath
 		}
 
-		fmt.Fprintf(console.Stdout(ctx), "Writing output to path: %s\n", outName)
+		fmt.Fprintf(console.Stderr(ctx), "Writing output to path: %s\n", outName)
 
 		filter := &computev1beta.GetUsageTimeSeriesRequest_UsageFilter{}
 
@@ -273,68 +281,92 @@ func NewGenerateReportCmd() *cobra.Command {
 			return fnerrors.Newf("Unable to generate report: %w", err)
 		}
 
-		rowsFile, err := os.CreateTemp("", "nsc-report-rows-*.csv")
-		if err != nil {
-			return fnerrors.Newf("Failed to create temporary report file: %w", err)
-		}
-		defer os.Remove(rowsFile.Name())
-		defer rowsFile.Close()
-
-		rowsWriter := csv.NewWriter(rowsFile)
-		includeGithub := false
-		includeBuildkite := false
-
-		for {
-			msg, err := resp.Recv()
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				return fnerrors.Newf("Error %w", err)
-			}
-			for _, entry := range msg.Entries {
-				includeGithub = includeGithub || entry.GetGithubJob() != nil
-				includeBuildkite = includeBuildkite || entry.GetBuildkiteJob() != nil
-				if err := rowsWriter.Write(entryToRecords(entry)); err != nil {
-					return fnerrors.Newf("Unable to write temporary report: %w", err)
-				}
-			}
-		}
-		rowsWriter.Flush()
-		if err := rowsWriter.Error(); err != nil {
-			return fnerrors.Newf("Unable to write temporary report: %w", err)
-		}
-		if _, err := rowsFile.Seek(0, io.SeekStart); err != nil {
-			return fnerrors.Newf("Unable to read temporary report: %w", err)
-		}
-
-		csvWriter := csv.NewWriter(outFile)
-		if err := csvWriter.Write(reportHeader(includeGithub, includeBuildkite)); err != nil {
-			return fnerrors.Newf("Unable to write report: %w", err)
-		}
-
-		rowsReader := csv.NewReader(rowsFile)
-		for {
-			record, err := rowsReader.Read()
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				return fnerrors.Newf("Unable to read temporary report: %w", err)
-			}
-			if err := csvWriter.Write(selectReportColumns(record, includeGithub, includeBuildkite)); err != nil {
-				return fnerrors.Newf("Unable to write report: %w", err)
-			}
-		}
-		csvWriter.Flush()
-		if err := csvWriter.Error(); err != nil {
-			return fnerrors.Newf("Unable to write report: %w", err)
-		}
-		return nil
+		return writeInstanceReport(outFile, *format, resp.Recv)
 	})
 
 	return cmd
 
+}
+
+func writeInstanceReport(out io.Writer, format string, recv func() (*computev1beta.GenerateReportResponse, error)) error {
+	if format == "jsonl" {
+		for {
+			msg, err := recv()
+			if err == io.EOF {
+				return nil
+			}
+			if err != nil {
+				return fnerrors.Newf("Unable to read report; output may be partial: %w", err)
+			}
+			for _, entry := range msg.GetEntries() {
+				body, err := (protojson.MarshalOptions{UseProtoNames: true}).Marshal(entry)
+				if err != nil {
+					return fnerrors.Newf("Unable to encode report entry: %w", err)
+				}
+				if _, err := fmt.Fprintln(out, string(body)); err != nil {
+					return fnerrors.Newf("Unable to write report: %w", err)
+				}
+			}
+		}
+	}
+
+	// CSV needs the full stream to determine which optional column groups to include.
+	rowsFile, err := os.CreateTemp("", "nsc-report-rows-*.csv")
+	if err != nil {
+		return fnerrors.Newf("Failed to create temporary report file: %w", err)
+	}
+	defer os.Remove(rowsFile.Name())
+	defer rowsFile.Close()
+
+	rowsWriter := csv.NewWriter(rowsFile)
+	includeGithub := false
+	includeBuildkite := false
+	for {
+		msg, err := recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fnerrors.Newf("Unable to read report: %w", err)
+		}
+		for _, entry := range msg.GetEntries() {
+			includeGithub = includeGithub || entry.GetGithubJob() != nil
+			includeBuildkite = includeBuildkite || entry.GetBuildkiteJob() != nil
+			if err := rowsWriter.Write(entryToRecords(entry)); err != nil {
+				return fnerrors.Newf("Unable to write temporary report: %w", err)
+			}
+		}
+	}
+	rowsWriter.Flush()
+	if err := rowsWriter.Error(); err != nil {
+		return fnerrors.Newf("Unable to write temporary report: %w", err)
+	}
+	if _, err := rowsFile.Seek(0, io.SeekStart); err != nil {
+		return fnerrors.Newf("Unable to read temporary report: %w", err)
+	}
+
+	csvWriter := csv.NewWriter(out)
+	if err := csvWriter.Write(reportHeader(includeGithub, includeBuildkite)); err != nil {
+		return fnerrors.Newf("Unable to write report: %w", err)
+	}
+	rowsReader := csv.NewReader(rowsFile)
+	for {
+		record, err := rowsReader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fnerrors.Newf("Unable to read temporary report: %w", err)
+		}
+		if err := csvWriter.Write(selectReportColumns(record, includeGithub, includeBuildkite)); err != nil {
+			return fnerrors.Newf("Unable to write report: %w", err)
+		}
+	}
+	csvWriter.Flush()
+	if err := csvWriter.Error(); err != nil {
+		return fnerrors.Newf("Unable to write report: %w", err)
+	}
+	return nil
 }
 
 var baseReportHeader = []string{
