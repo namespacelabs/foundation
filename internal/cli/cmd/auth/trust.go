@@ -8,9 +8,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/cmd/token"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -41,12 +44,14 @@ func newTrustAddCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 
+	acceptSubjectMatchAlias(cmd.Flags())
 	issuer := cmd.Flags().String("issuer", "", "Token issuer (required).")
-	subjectMatch := cmd.Flags().String("subject-match", "", "Subject match pattern (required).")
+	subjectMatch := cmd.Flags().String("subject_match", "", "Subject match pattern (required).")
 	audience := cmd.Flags().String("audience", "", "Expected audience value.")
 	defaultPermissions := cmd.Flags().StringArray("grant", nil, `Grant default permission as JSON object (can be specified multiple times). Format: {"resource_type":"...","resource_id":"...","actions":["..."]}`)
 	defaultTokenDuration := cmd.Flags().String("default_token_duration", "", `Default token duration (e.g. "3600s").`)
 	maximumTokenDuration := cmd.Flags().String("maximum_token_duration", "86400s", `Maximum token duration (up to "86400s").`)
+	claimMatches := cmd.Flags().String("claim_matches", "{}", `Custom claim patterns as a JSON object. Format: {"claim1":"...","claim2":"..."}`)
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if *issuer == "" {
@@ -54,7 +59,7 @@ func newTrustAddCmd() *cobra.Command {
 		}
 
 		if *subjectMatch == "" {
-			return fnerrors.Newf("--subject-match is required")
+			return fnerrors.Newf("--subject_match is required")
 		}
 
 		permissions, err := token.ParseGrants(*defaultPermissions)
@@ -62,7 +67,12 @@ func newTrustAddCmd() *cobra.Command {
 			return err
 		}
 
-		return addTrustRelationship(ctx, *issuer, *subjectMatch, *audience, permissions, *defaultTokenDuration, *maximumTokenDuration)
+		matches, err := parseClaimMatches(*claimMatches)
+		if err != nil {
+			return err
+		}
+
+		return addTrustRelationship(ctx, *issuer, *subjectMatch, *audience, permissions, *defaultTokenDuration, *maximumTokenDuration, matches)
 	})
 }
 
@@ -89,13 +99,15 @@ func newTrustUpdateCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 
+	acceptSubjectMatchAlias(cmd.Flags())
 	id := cmd.Flags().String("id", "", "ID of the trust relationship to update (required).")
 	issuer := cmd.Flags().String("issuer", "", "Token issuer.")
-	subjectMatch := cmd.Flags().String("subject-match", "", "Subject match pattern.")
+	subjectMatch := cmd.Flags().String("subject_match", "", "Subject match pattern.")
 	audience := cmd.Flags().String("audience", "", "Expected audience value.")
 	defaultPermissions := cmd.Flags().StringArray("grant", nil, `Grant default permission as JSON object (can be specified multiple times). Replaces all existing grants. Format: {"resource_type":"...","resource_id":"...","actions":["..."]}`)
 	defaultTokenDuration := cmd.Flags().String("default_token_duration", "", `Default token duration (e.g. "3600s").`)
 	maximumTokenDuration := cmd.Flags().String("maximum_token_duration", "", `Maximum token duration (e.g. "86400s"). Pass an empty value to clear it.`)
+	claimMatches := cmd.Flags().String("claim_matches", "{}", `Custom claim patterns as a JSON object. Replaces all existing matches. Format: {"claim1":"...","claim2":"..."}`)
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if *id == "" {
@@ -108,7 +120,7 @@ func newTrustUpdateCmd() *cobra.Command {
 		if flags.Changed("issuer") {
 			update.issuer = issuer
 		}
-		if flags.Changed("subject-match") {
+		if flags.Changed("subject_match") {
 			update.subjectMatch = subjectMatch
 		}
 		if flags.Changed("audience") {
@@ -120,6 +132,13 @@ func newTrustUpdateCmd() *cobra.Command {
 		if flags.Changed("maximum_token_duration") {
 			update.maximumTokenDuration = maximumTokenDuration
 		}
+		if flags.Changed("claim_matches") {
+			matches, err := parseClaimMatches(*claimMatches)
+			if err != nil {
+				return err
+			}
+			update.claimMatches = &matches
+		}
 		if flags.Changed("grant") {
 			permissions, err := token.ParseGrants(*defaultPermissions)
 			if err != nil {
@@ -128,8 +147,8 @@ func newTrustUpdateCmd() *cobra.Command {
 			update.defaultPermissions = &permissions
 		}
 
-		if update.issuer == nil && update.subjectMatch == nil && update.audience == nil && update.defaultTokenDuration == nil && update.maximumTokenDuration == nil && update.defaultPermissions == nil {
-			return fnerrors.Newf("nothing to update: specify at least one of --issuer, --subject-match, --audience, --grant, --default_token_duration, or --maximum_token_duration")
+		if update.issuer == nil && update.subjectMatch == nil && update.audience == nil && update.defaultTokenDuration == nil && update.maximumTokenDuration == nil && update.defaultPermissions == nil && update.claimMatches == nil {
+			return fnerrors.Newf("nothing to update: specify at least one of --issuer, --subject_match, --audience, --grant, --default_token_duration, --maximum_token_duration, or --claim_matches")
 		}
 
 		return updateTrustRelationship(ctx, *id, update)
@@ -155,7 +174,27 @@ func newTrustRemoveCmd() *cobra.Command {
 	})
 }
 
-func addTrustRelationship(ctx context.Context, issuer, subjectMatch, audience string, defaultPermissions []*v1beta.Permission, defaultTokenDuration, maximumTokenDuration string) error {
+func acceptSubjectMatchAlias(flags *pflag.FlagSet) {
+	flags.SetNormalizeFunc(func(_ *pflag.FlagSet, name string) pflag.NormalizedName {
+		if name == "subject-match" {
+			return "subject_match"
+		}
+		return pflag.NormalizedName(name)
+	})
+}
+
+func parseClaimMatches(value string) (map[string]string, error) {
+	var matches map[string]string
+	if err := json.Unmarshal([]byte(value), &matches); err != nil {
+		return nil, fnerrors.BadInputError("failed to parse claim matches JSON %q: %w", value, err)
+	}
+	if matches == nil {
+		return nil, fnerrors.BadInputError("claim matches must be a JSON object")
+	}
+	return matches, nil
+}
+
+func addTrustRelationship(ctx context.Context, issuer, subjectMatch, audience string, defaultPermissions []*v1beta.Permission, defaultTokenDuration, maximumTokenDuration string, claimMatches map[string]string) error {
 	current, err := fnapi.ListTrustRelationships(ctx)
 	if err != nil {
 		return err
@@ -172,6 +211,7 @@ func addTrustRelationship(ctx context.Context, issuer, subjectMatch, audience st
 		DefaultPermissions:   defaultPermissions,
 		DefaultTokenDuration: defaultTokenDuration,
 		MaximumTokenDuration: maximumTokenDuration,
+		ClaimMatches:         claimMatches,
 	}
 
 	updatedTrustRelationships := append(current.TrustRelationships, newTrustRelationship)
@@ -191,6 +231,7 @@ type trustRelationshipUpdate struct {
 	defaultPermissions   *[]*v1beta.Permission
 	defaultTokenDuration *string
 	maximumTokenDuration *string
+	claimMatches         *map[string]string
 }
 
 func updateTrustRelationship(ctx context.Context, id string, update trustRelationshipUpdate) error {
@@ -243,6 +284,9 @@ func updatedTrustRelationship(tr fnapi.StoredTrustRelationship, update trustRela
 	if update.defaultTokenDuration != nil {
 		tr.DefaultTokenDuration = *update.defaultTokenDuration
 	}
+	if update.claimMatches != nil {
+		tr.ClaimMatches = *update.claimMatches
+	}
 	if update.maximumTokenDuration != nil {
 		tr.MaximumTokenDuration = *update.maximumTokenDuration
 		if tr.MaximumTokenDuration == "" {
@@ -280,6 +324,12 @@ func listTrustRelationships(ctx context.Context, output string) error {
 		fmt.Fprintf(console.Stdout(ctx), "  Subject Match: %s\n", tr.SubjectMatch)
 		if tr.Audience != "" {
 			fmt.Fprintf(console.Stdout(ctx), "  Audience: %s\n", tr.Audience)
+		}
+		if len(tr.ClaimMatches) > 0 {
+			fmt.Fprintf(console.Stdout(ctx), "  Claim Matches:\n")
+			for _, claim := range slices.Sorted(maps.Keys(tr.ClaimMatches)) {
+				fmt.Fprintf(console.Stdout(ctx), "    %s: %s\n", claim, tr.ClaimMatches[claim])
+			}
 		}
 		if len(tr.DefaultPermissions) > 0 {
 			fmt.Fprintf(console.Stdout(ctx), "  Default Permissions:\n")
