@@ -303,6 +303,7 @@ type StoredTrustRelationship struct {
 	DefaultPermissions   []*v1beta.Permission `json:"default_permissions,omitempty"`
 	DefaultTokenDuration string               `json:"default_token_duration,omitempty"`
 	MaximumTokenDuration string               `json:"maximum_token_duration,omitempty"`
+	ClaimMatches         map[string]string    `json:"claim_matches,omitempty"`
 }
 
 type UpdateTrustRelationshipsRequest struct {
