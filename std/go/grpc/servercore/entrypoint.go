@@ -36,6 +36,13 @@ var (
 		Subsystem: "gogrpc",
 		Name:      "secret_checksum_info",
 	}, []string{"secret_ref", "checksum"})
+
+	h2cUpgradeRequests = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "ns",
+		Subsystem: "gogrpc",
+		Name:      "h2c_upgrade_requests_total",
+		Help:      "HTTP/1.1 h2c offers classified by handling: ignored means HTTP/1 fallback; attempted includes rejected handshakes, not just successful upgrades.",
+	}, []string{"transport", "settings_header", "handling"})
 )
 
 func init() {
@@ -44,6 +51,7 @@ func init() {
 		serverInitializedTimestamp,
 		serverCertValidity,
 		secretChecksumInfo,
+		h2cUpgradeRequests,
 	)
 }
 
