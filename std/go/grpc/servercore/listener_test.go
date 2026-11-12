@@ -5,10 +5,14 @@
 package servercore
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"io"
+	"maps"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -18,7 +22,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rs/zerolog"
 	"github.com/soheilhy/cmux"
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -132,6 +139,174 @@ func TestRegisterHTTPServicesDoesNotExposeAdministrativeRoutes(t *testing.T) {
 			t.Errorf("%s was not handled by the application catch-all", path)
 		}
 	}
+}
+
+func TestNewHttp2CapableServer_UpgradeObservability(t *testing.T) {
+	var logs bytes.Buffer
+	originalLogger := core.ZLog
+	core.ZLog = zerolog.New(&logs)
+	defer func() { core.ZLog = originalLogger }()
+
+	upgradeRequests := func() map[[3]string]float64 {
+		samples := map[[3]string]float64{}
+		families, err := prometheus.DefaultGatherer.Gather()
+		assert.NoError(t, err)
+		for _, family := range families {
+			if family.GetName() != "ns_gogrpc_h2c_upgrade_requests_total" {
+				continue
+			}
+			for _, metric := range family.GetMetric() {
+				labels := map[string]string{}
+				for _, label := range metric.GetLabel() {
+					labels[label.GetName()] = label.GetValue()
+				}
+				samples[[3]string{labels["transport"], labels["settings_header"], labels["handling"]}] = metric.GetCounter().GetValue()
+			}
+		}
+		return samples
+	}
+
+	for _, tc := range []struct {
+		name           string
+		upgrade        []string
+		connection     []string
+		settings       []string
+		tls            bool
+		status         int
+		attempts       float64
+		settingsHeader string
+		handling       string
+	}{
+		{name: "ordinary HTTP1", status: 200},
+		{name: "unrelated upgrade", upgrade: []string{"websocket"}, connection: []string{"Upgrade"}, status: 200},
+		{name: "not an h2c token", upgrade: []string{"h2c-extra"}, status: 200},
+		{name: "missing connection token", upgrade: []string{"h2c"}, settings: []string{""}, status: 200, attempts: 1, settingsHeader: "present", handling: "ignored"},
+		{name: "missing settings header", upgrade: []string{"h2c"}, connection: []string{"Upgrade, HTTP2-Settings"}, status: 500, attempts: 1, settingsHeader: "missing", handling: "attempted"},
+		{name: "invalid settings", upgrade: []string{"h2c"}, connection: []string{"Upgrade, HTTP2-Settings"}, settings: []string{"!"}, status: 500, attempts: 1, settingsHeader: "present", handling: "attempted"},
+		{name: "plaintext upgrade", upgrade: []string{"websocket", "H2C"}, connection: []string{"keep-alive", "Upgrade, http2-settings"}, settings: []string{""}, status: 101, attempts: 1, settingsHeader: "present", handling: "attempted"},
+		{name: "TLS upgrade", upgrade: []string{"h2c"}, connection: []string{"Upgrade, HTTP2-Settings"}, settings: []string{""}, tls: true, status: 101, attempts: 1, settingsHeader: "present", handling: "attempted"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			logs.Reset()
+			server := httptest.NewUnstartedServer(nil)
+			server.Config = NewHttp2CapableServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_, _ = io.WriteString(w, "application response")
+			}), HTTPOptions{})
+			if tc.tls {
+				server.StartTLS()
+			} else {
+				server.Start()
+			}
+			defer server.Close()
+
+			transport := "plaintext"
+			var conn net.Conn
+			var err error
+			if tc.tls {
+				transport = "tls"
+				conn, err = tls.Dial("tcp", server.Listener.Addr().String(), server.Client().Transport.(*http.Transport).TLSClientConfig)
+			} else {
+				conn, err = net.DialTimeout("tcp", server.Listener.Addr().String(), time.Second)
+			}
+			if !assert.NoError(t, err) {
+				return
+			}
+			defer conn.Close()
+			assert.NoError(t, conn.SetDeadline(time.Now().Add(5*time.Second)))
+
+			before := upgradeRequests()
+			req := httptest.NewRequest(http.MethodGet, "http://upgrade.test/secret-path?token=secret-query", nil)
+			req.Header["Upgrade"] = tc.upgrade
+			req.Header["Connection"] = tc.connection
+			req.Header["Http2-Settings"] = tc.settings
+			req.Header.Set("User-Agent", "upgrade-observer-test")
+			req.Header.Set("Authorization", "Bearer secret-authorization")
+			req.Header.Set("Cookie", "secret-cookie")
+			assert.NoError(t, req.Write(conn))
+			reader := bufio.NewReader(conn)
+			response, err := http.ReadResponse(reader, req)
+			if !assert.NoError(t, err) {
+				return
+			}
+			defer response.Body.Close()
+			assert.Equal(t, tc.status, response.StatusCode)
+			if response.StatusCode == http.StatusSwitchingProtocols {
+				_, err := io.WriteString(conn, http2.ClientPreface)
+				assert.NoError(t, err)
+				framer := http2.NewFramer(conn, reader)
+				assert.NoError(t, framer.WriteSettings())
+				var body bytes.Buffer
+				for {
+					frame, err := framer.ReadFrame()
+					if !assert.NoError(t, err) {
+						return
+					}
+					if frame, ok := frame.(*http2.DataFrame); ok {
+						assert.Equal(t, uint32(1), frame.StreamID)
+						body.Write(frame.Data())
+						if frame.StreamEnded() {
+							break
+						}
+					}
+				}
+				assert.Equal(t, "application response", body.String())
+			} else if response.StatusCode == http.StatusOK {
+				body, err := io.ReadAll(response.Body)
+				assert.NoError(t, err)
+				assert.Equal(t, "application response", string(body))
+			}
+
+			want := maps.Clone(before)
+			if tc.attempts > 0 {
+				want[[3]string{transport, tc.settingsHeader, tc.handling}] += tc.attempts
+			}
+			assert.Equal(t, want, upgradeRequests())
+			if tc.attempts == 0 {
+				assert.Empty(t, logs.String())
+				return
+			}
+			var event map[string]any
+			assert.NoError(t, json.Unmarshal(logs.Bytes(), &event))
+			assert.Equal(t, "h2c_upgrade_requested", event["event"])
+			assert.Equal(t, transport, event["transport"])
+			assert.Equal(t, tc.settingsHeader, event["settings_header"])
+			assert.Equal(t, tc.handling, event["handling"])
+			assert.Equal(t, server.Listener.Addr().String(), event["listener"])
+			assert.Equal(t, "upgrade.test", event["host"])
+			assert.Equal(t, "upgrade-observer-test", event["user_agent"])
+			assert.Equal(t, conn.LocalAddr().String(), event["remote_addr"])
+			assert.NotContains(t, logs.String(), "secret-")
+		})
+	}
+
+	t.Run("prior knowledge", func(t *testing.T) {
+		logs.Reset()
+		before := upgradeRequests()
+		server := httptest.NewUnstartedServer(nil)
+		server.Config = NewHttp2CapableServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = io.WriteString(w, r.Proto)
+		}), HTTPOptions{})
+		server.Start()
+		defer server.Close()
+		transport := &http2.Transport{
+			AllowHTTP: true,
+			DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
+				return (&net.Dialer{}).DialContext(ctx, network, addr)
+			},
+		}
+		defer transport.CloseIdleConnections()
+		client := &http.Client{Transport: transport, Timeout: 5 * time.Second}
+		response, err := client.Get(server.URL)
+		if !assert.NoError(t, err) {
+			return
+		}
+		defer response.Body.Close()
+		body, err := io.ReadAll(response.Body)
+		assert.NoError(t, err)
+		assert.Equal(t, "HTTP/2.0", string(body))
+		assert.Empty(t, logs.String())
+		assert.Equal(t, before, upgradeRequests())
+	})
 }
 
 // TestNewHttp2CapableServer_GoawayOnShutdown verifies that

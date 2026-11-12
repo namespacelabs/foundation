@@ -19,6 +19,7 @@ import (
 	"github.com/rs/zerolog/hlog"
 	"github.com/soheilhy/cmux"
 	"go.uber.org/automaxprocs/maxprocs"
+	"golang.org/x/net/http/httpguts"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"golang.org/x/sync/errgroup"
@@ -393,8 +394,38 @@ func NewHttp2CapableServer(mux http.Handler, opts HTTPOptions) *http.Server {
 		MaxUploadBufferPerStream:     opts.HTTP2MaxUploadBufferPerStream,
 	}
 
+	h2cHandler := h2c.NewHandler(mux, h2srv)
 	srv := &http.Server{
-		Handler:           h2c.NewHandler(mux, h2srv),
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Observe before h2c consumes the handshake, outside sampled application tracing.
+			if r.ProtoMajor == 1 && r.ProtoMinor == 1 && httpguts.HeaderValuesContainsToken(r.Header.Values("Upgrade"), "h2c") {
+				transport := "plaintext"
+				if r.TLS != nil {
+					transport = "tls"
+				}
+				settingsHeader := "missing"
+				if len(r.Header.Values("HTTP2-Settings")) > 0 {
+					settingsHeader = "present"
+				}
+				// Match h2c.NewHandler's upgrade gate, not handshake success.
+				handling := "ignored"
+				if httpguts.HeaderValuesContainsToken(r.Header.Values("Connection"), "HTTP2-Settings") {
+					handling = "attempted"
+				}
+				h2cUpgradeRequests.WithLabelValues(transport, settingsHeader, handling).Inc()
+				core.ZLog.Info().
+					Str("event", "h2c_upgrade_requested").
+					Str("transport", transport).
+					Str("settings_header", settingsHeader).
+					Str("handling", handling).
+					Str("listener", fmt.Sprint(r.Context().Value(http.LocalAddrContextKey))).
+					Str("host", r.Host).
+					Str("user_agent", r.UserAgent()).
+					Str("remote_addr", r.RemoteAddr).
+					Msg("HTTP/1.1 h2c upgrade requested")
+			}
+			h2cHandler.ServeHTTP(w, r)
+		}),
 		ReadTimeout:       opts.HTTP1ReadTimeout,
 		ReadHeaderTimeout: opts.HTTP1ReadHeaderTimeout,
 		WriteTimeout:      opts.HTTP1WriteTimeout,
