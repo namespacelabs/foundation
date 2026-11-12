@@ -63,6 +63,8 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 		flags.StringVarP(&output, "output", "o", "plain", "One of plain or json.")
 		flags.StringVar(&bazelCommand, "command", defaultBazelRbeCommand, "The bazel command to use in the generated bazelrc (e.g., 'build' or 'common').")
 		flags.StringVar(&clusterName, "cluster_name", "", "Bazel execution or storage cluster name. Defaults to 'default'.")
+		flags.StringVar(&clusterName, "key", "", "Alias for --cluster_name.")
+		flags.MarkHidden("key")
 		flags.StringVar(&tokenFile, "token", "", "Use the bearer token stored at this location for authentication instead of the default. Implies --static.")
 		flags.BoolVar(&static, "static", false, "If specified, authenticate using a static bearer token in --remote_header against the public endpoints instead of issuing an mTLS client certificate.")
 		flags.BoolVar(&enableRemoteAssetAPI, "enable_remote_asset_api", false, "If specified, opt-in to the remote asset API and configure bazel's --experimental_remote_downloader.")

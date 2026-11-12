@@ -14,6 +14,7 @@ import (
 	bazelv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/integrations/bazel/v1beta"
 	"connectrpc.com/connect"
 	"github.com/cenkalti/backoff/v4"
+	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"gotest.tools/assert"
@@ -230,12 +231,6 @@ func TestNewBazelCmdSetupAlias(t *testing.T) {
 		t.Fatal("bazel setup is missing --disable_build_events")
 	}
 
-	assert.NilError(t, setup.ParseFlags([]string{"--cluster_name=ci-builds"}))
-	clusterName, err := setup.Flags().GetString("cluster_name")
-	assert.NilError(t, err)
-	assert.Equal(t, clusterName, "ci-builds")
-	assert.Assert(t, setup.Flags().Lookup("key") == nil)
-
 	executionSetup, _, err := cmd.Find([]string{"execution", "setup"})
 	if err != nil {
 		t.Fatalf("finding bazel execution setup: %v", err)
@@ -251,6 +246,21 @@ func TestNewBazelCmdSetupAlias(t *testing.T) {
 	}
 	if executionSetup.Flags().Lookup("disable_build_events") == nil {
 		t.Fatal("bazel execution setup is missing --disable_build_events")
+	}
+
+	for _, command := range []*cobra.Command{setup, executionSetup} {
+		t.Run(command.CommandPath(), func(t *testing.T) {
+			assert.NilError(t, command.ParseFlags([]string{"--cluster_name=ci-builds"}))
+			clusterName, err := command.Flags().GetString("cluster_name")
+			assert.NilError(t, err)
+			assert.Equal(t, clusterName, "ci-builds")
+
+			assert.NilError(t, command.ParseFlags([]string{"--key=legacy-builds"}))
+			clusterName, err = command.Flags().GetString("cluster_name")
+			assert.NilError(t, err)
+			assert.Equal(t, clusterName, "legacy-builds")
+			assert.Assert(t, !strings.Contains(command.Flags().FlagUsages(), "--key"))
+		})
 	}
 }
 
