@@ -13,6 +13,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/muesli/reflow/wordwrap"
 	"github.com/spf13/cobra"
+	_ "golang.org/x/crypto/x509roots/fallback"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
