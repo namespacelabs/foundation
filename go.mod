@@ -127,6 +127,7 @@ require (
 	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.55.0
+	golang.org/x/crypto/x509roots/fallback v0.0.0-20261111203624-6bec4215b57b
 	golang.org/x/exp v0.0.0-20260603202125-055de637280b
 	golang.org/x/mod v0.38.0
 	golang.org/x/net v0.58.0
