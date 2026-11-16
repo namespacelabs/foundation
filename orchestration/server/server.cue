@@ -7,6 +7,11 @@ server: fn.#Server & {
 	name:      "orchestration-api-server"
 	framework: "GO"
 
+	resourceRequests: {
+		cpu:    "100m"
+		memory: "128Mi"
+	}
+
 	import: [
 		"namespacelabs.dev/foundation/orchestration/service",
 		"namespacelabs.dev/foundation/std/grpc/logging",
