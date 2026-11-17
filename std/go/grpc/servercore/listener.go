@@ -19,9 +19,7 @@ import (
 	"github.com/rs/zerolog/hlog"
 	"github.com/soheilhy/cmux"
 	"go.uber.org/automaxprocs/maxprocs"
-	"golang.org/x/net/http/httpguts"
 	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -394,38 +392,8 @@ func NewHttp2CapableServer(mux http.Handler, opts HTTPOptions) *http.Server {
 		MaxUploadBufferPerStream:     opts.HTTP2MaxUploadBufferPerStream,
 	}
 
-	h2cHandler := h2c.NewHandler(mux, h2srv)
 	srv := &http.Server{
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Observe before h2c consumes the handshake, outside sampled application tracing.
-			if r.ProtoMajor == 1 && r.ProtoMinor == 1 && httpguts.HeaderValuesContainsToken(r.Header.Values("Upgrade"), "h2c") {
-				transport := "plaintext"
-				if r.TLS != nil {
-					transport = "tls"
-				}
-				settingsHeader := "missing"
-				if len(r.Header.Values("HTTP2-Settings")) > 0 {
-					settingsHeader = "present"
-				}
-				// Match h2c.NewHandler's upgrade gate, not handshake success.
-				handling := "ignored"
-				if httpguts.HeaderValuesContainsToken(r.Header.Values("Connection"), "HTTP2-Settings") {
-					handling = "attempted"
-				}
-				h2cUpgradeRequests.WithLabelValues(transport, settingsHeader, handling).Inc()
-				core.ZLog.Info().
-					Str("event", "h2c_upgrade_requested").
-					Str("transport", transport).
-					Str("settings_header", settingsHeader).
-					Str("handling", handling).
-					Str("listener", fmt.Sprint(r.Context().Value(http.LocalAddrContextKey))).
-					Str("host", r.Host).
-					Str("user_agent", r.UserAgent()).
-					Str("remote_addr", r.RemoteAddr).
-					Msg("HTTP/1.1 h2c upgrade requested")
-			}
-			h2cHandler.ServeHTTP(w, r)
-		}),
+		Handler:           mux,
 		ReadTimeout:       opts.HTTP1ReadTimeout,
 		ReadHeaderTimeout: opts.HTTP1ReadHeaderTimeout,
 		WriteTimeout:      opts.HTTP1WriteTimeout,
@@ -433,12 +401,13 @@ func NewHttp2CapableServer(mux http.Handler, opts HTTPOptions) *http.Server {
 		MaxHeaderBytes:    opts.HTTP1MaxHeaderBytes,
 	}
 
-	// Wire up HTTP/2 graceful shutdown for h2c. ConfigureServer registers an
-	// OnShutdown handler on srv that, when invoked, sends GOAWAY frames to
-	// every active HTTP/2 connection served by h2srv (h2c hijacks the
-	// underlying net.Conn from the *http.Server and feeds it to
-	// h2srv.ServeConn, so without this call those hijacked connections are
-	// invisible to srv.Shutdown and would never receive GOAWAY).
+	// Native HTTP/2 keeps cleartext connections owned by srv for graceful
+	// shutdown, without supporting the obsolete HTTP/1.1 h2c upgrade.
+	srv.Protocols = new(http.Protocols)
+	srv.Protocols.SetHTTP1(true)
+	srv.Protocols.SetHTTP2(true)
+	srv.Protocols.SetUnencryptedHTTP2(true)
+
 	if err := http2.ConfigureServer(srv, h2srv); err != nil {
 		// ConfigureServer only returns errors when the http.Server has an
 		// invalid TLS configuration, which our h2c plaintext server never

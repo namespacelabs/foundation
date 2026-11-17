@@ -14,7 +14,13 @@
     in {
       devShell = pkgs.mkShell {
         buildInputs = with pkgs; [
-          go_1_26
+          (go_1_27.overrideAttrs (_: {
+            version = "1.27.4";
+            src = fetchurl {
+              url = "https://go.dev/dl/go1.27.4.src.tar.gz";
+              hash = "sha256-c8+4VxrsDAEXdofbhxY9Rqog6XeWcncokaoXZU2aYJk=";
+            };
+          }))
           gopls
           go-outline
           go-tools
