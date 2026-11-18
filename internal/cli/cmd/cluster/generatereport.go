@@ -36,7 +36,7 @@ func NewGenerateReportCmd() *cobra.Command {
 	start := cmd.Flags().String("start", "", "Start time of the report.")
 	end := cmd.Flags().String("end", "", "End time of the report, defaults to now if not provided.")
 	outPath := cmd.Flags().String("out", "", "Output file path. Creates a temporary file in /tmp if not provided. Use '-' for stdout.")
-	output := cmd.Flags().StringP("output", "o", "csv", "One of csv or jsonl. jsonl outputs one JSON object per line, preserving each API entry, including individual volumes, with proto field names.")
+	output := cmd.Flags().StringP("output", "o", "csv", "One of csv or json. json outputs one JSON object per line, preserving each API entry, including individual volumes, with proto field names.")
 
 	// Args for filtering. We allow multiple strings per filter type. Each matcher can have
 	// either <matcher>Args or <matcher>ExcArgs nonempty, depending on if the filter should
@@ -118,8 +118,8 @@ func NewGenerateReportCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&buildkiteJobStateExcArgs, "exclude-buildkite-job-state", nil, "Buildkite job states to exclude (repeatable). Cannot be passed together with --buildkite-job-state.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		if *output != "csv" && *output != "jsonl" {
-			return fnerrors.Newf("unknown report output %q; expected csv or jsonl", *output)
+		if *output != "csv" && *output != "json" {
+			return fnerrors.Newf("unknown report output %q; expected csv or json", *output)
 		}
 		if *start == "" {
 			return fnerrors.New("--start is required. Example:\n    nsc instance report --start \"2026-01-01\" --end \"2026-01-02\"")
@@ -296,7 +296,7 @@ func writeReport(stdout, stderr io.Writer, outPath, format string, recv func() (
 }
 
 func writeInstanceReport(out io.Writer, format string, recv func() (*computev1beta.GenerateReportResponse, error)) error {
-	if format == "jsonl" {
+	if format == "json" {
 		for {
 			msg, err := recv()
 			if err == io.EOF {

@@ -75,12 +75,12 @@ func TestWriteInstanceReport(t *testing.T) {
 			},
 		},
 	}
-	for _, format := range []string{"csv", "jsonl"} {
+	for _, format := range []string{"csv", "json"} {
 		t.Run(format, func(t *testing.T) {
 			var out bytes.Buffer
 			err := writeInstanceReport(&out, format, responses(entries))
 			assert.NoError(t, err)
-			if format == "jsonl" {
+			if format == "json" {
 				lines := strings.Split(strings.TrimSuffix(out.String(), "\n"), "\n")
 				if !assert.Len(t, lines, 2) {
 					return
@@ -131,14 +131,14 @@ func responses(entries []*computev1beta.InstanceReportEntry) func() (*computev1b
 	}
 }
 
-func TestWriteInstanceReportJSONLEmptyAndErrors(t *testing.T) {
+func TestWriteInstanceReportJSONEmptyAndErrors(t *testing.T) {
 	var out bytes.Buffer
-	err := writeInstanceReport(&out, "jsonl", func() (*computev1beta.GenerateReportResponse, error) { return nil, io.EOF })
+	err := writeInstanceReport(&out, "json", func() (*computev1beta.GenerateReportResponse, error) { return nil, io.EOF })
 	assert.NoError(t, err)
 	assert.Empty(t, out.String())
 
 	next := 0
-	err = writeInstanceReport(&out, "jsonl", func() (*computev1beta.GenerateReportResponse, error) {
+	err = writeInstanceReport(&out, "json", func() (*computev1beta.GenerateReportResponse, error) {
 		next++
 		if next == 1 {
 			return &computev1beta.GenerateReportResponse{Entries: []*computev1beta.InstanceReportEntry{{InstanceId: "runner-1"}}}, nil
@@ -154,12 +154,12 @@ func TestWriteInstanceReportJSONLEmptyAndErrors(t *testing.T) {
 		return
 	}
 	defer file.Close()
-	err = writeInstanceReport(file, "jsonl", responses([]*computev1beta.InstanceReportEntry{{InstanceId: "runner-1"}}))
+	err = writeInstanceReport(file, "json", responses([]*computev1beta.InstanceReportEntry{{InstanceId: "runner-1"}}))
 	assert.ErrorContains(t, err, "Unable to write report")
 }
 
 func TestWriteInstanceReportStreamErrors(t *testing.T) {
-	for _, format := range []string{"csv", "jsonl"} {
+	for _, format := range []string{"csv", "json"} {
 		t.Run(format, func(t *testing.T) {
 			var out bytes.Buffer
 			err := writeInstanceReport(&out, format, func() (*computev1beta.GenerateReportResponse, error) {
@@ -182,14 +182,14 @@ func TestWriteReportDestinations(t *testing.T) {
 	entries := []*computev1beta.InstanceReportEntry{{InstanceId: "runner-1"}, {InstanceId: "runner-2"}}
 
 	var stdout, stderr bytes.Buffer
-	assert.NoError(t, writeReport(&stdout, &stderr, "-", "jsonl", responses(entries)))
+	assert.NoError(t, writeReport(&stdout, &stderr, "-", "json", responses(entries)))
 	assert.Equal(t, "{\"instance_id\":\"runner-1\"}\n{\"instance_id\":\"runner-2\"}\n", strings.ReplaceAll(stdout.String(), " ", ""))
 	assert.Equal(t, "Writing output to path: stdout\n", stderr.String())
 
 	path := filepath.Join(t.TempDir(), "report.jsonl")
 	stdout.Reset()
 	stderr.Reset()
-	assert.NoError(t, writeReport(&stdout, &stderr, path, "jsonl", responses(entries)))
+	assert.NoError(t, writeReport(&stdout, &stderr, path, "json", responses(entries)))
 	assert.Empty(t, stdout.String())
 	assert.Equal(t, "Writing output to path: "+path+"\n", stderr.String())
 	contents, err := os.ReadFile(path)
@@ -200,5 +200,5 @@ func TestWriteReportDestinations(t *testing.T) {
 func TestGenerateReportRejectsUnknownFormat(t *testing.T) {
 	cmd := NewGenerateReportCmd()
 	cmd.SetArgs([]string{"-o", "yaml"})
-	assert.ErrorContains(t, cmd.Execute(), "expected csv or jsonl")
+	assert.ErrorContains(t, cmd.Execute(), "expected csv or json")
 }
