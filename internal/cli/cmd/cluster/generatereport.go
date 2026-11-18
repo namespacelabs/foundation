@@ -36,7 +36,7 @@ func NewGenerateReportCmd() *cobra.Command {
 	start := cmd.Flags().String("start", "", "Start time of the report.")
 	end := cmd.Flags().String("end", "", "End time of the report, defaults to now if not provided.")
 	outPath := cmd.Flags().String("out", "", "Output file path. Creates a temporary file in /tmp if not provided. Use '-' for stdout.")
-	format := cmd.Flags().String("format", "csv", "Report format: csv or jsonl. JSONL preserves each API entry, including individual volumes, using proto field names.")
+	output := cmd.Flags().StringP("output", "o", "csv", "One of csv or jsonl. jsonl outputs one JSON object per line, preserving each API entry, including individual volumes, with proto field names.")
 
 	// Args for filtering. We allow multiple strings per filter type. Each matcher can have
 	// either <matcher>Args or <matcher>ExcArgs nonempty, depending on if the filter should
@@ -118,8 +118,8 @@ func NewGenerateReportCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&buildkiteJobStateExcArgs, "exclude-buildkite-job-state", nil, "Buildkite job states to exclude (repeatable). Cannot be passed together with --buildkite-job-state.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		if *format != "csv" && *format != "jsonl" {
-			return fnerrors.Newf("unknown report format %q; expected csv or jsonl", *format)
+		if *output != "csv" && *output != "jsonl" {
+			return fnerrors.Newf("unknown report output %q; expected csv or jsonl", *output)
 		}
 		if *start == "" {
 			return fnerrors.New("--start is required. Example:\n    nsc instance report --start \"2026-01-01\" --end \"2026-01-02\"")
@@ -139,33 +139,6 @@ func NewGenerateReportCmd() *cobra.Command {
 				return fnerrors.Newf("invalid --end timestamp: %w", err)
 			}
 		}
-
-		var outFile io.Writer
-		var outName string
-		switch *outPath {
-		case "-":
-			// The console sink normalizes lines and discards write errors.
-			outFile = os.Stdout
-			outName = "stdout"
-		case "":
-			tmp, err := os.CreateTemp("", "nsc-report-*."+*format)
-			if err != nil {
-				return fnerrors.Newf("Failed to create temp file: %w", err)
-			}
-			defer tmp.Close()
-			outFile = tmp
-			outName = tmp.Name()
-		default:
-			file, err := os.Create(*outPath)
-			if err != nil {
-				return fnerrors.Newf("Failed to create output file %s: %w", *outPath, err)
-			}
-			defer file.Close()
-			outFile = file
-			outName = *outPath
-		}
-
-		fmt.Fprintf(console.Stderr(ctx), "Writing output to path: %s\n", outName)
 
 		filter := &computev1beta.GetUsageTimeSeriesRequest_UsageFilter{}
 
@@ -281,11 +254,45 @@ func NewGenerateReportCmd() *cobra.Command {
 			return fnerrors.Newf("Unable to generate report: %w", err)
 		}
 
-		return writeInstanceReport(outFile, *format, resp.Recv)
+		// The console sink normalizes lines and discards write errors, so report data goes to os.Stdout.
+		return writeReport(os.Stdout, console.Stderr(ctx), *outPath, *output, resp.Recv)
 	})
 
 	return cmd
 
+}
+
+func writeReport(stdout, stderr io.Writer, outPath, format string, recv func() (*computev1beta.GenerateReportResponse, error)) error {
+	if outPath == "-" {
+		fmt.Fprintln(stderr, "Writing output to path: stdout")
+		return writeInstanceReport(stdout, format, recv)
+	}
+
+	var file *os.File
+	var err error
+	if outPath == "" {
+		file, err = os.CreateTemp("", "nsc-report-*."+format)
+		if err != nil {
+			return fnerrors.Newf("Failed to create temp file: %w", err)
+		}
+	} else {
+		file, err = os.Create(outPath)
+		if err != nil {
+			return fnerrors.Newf("Failed to create output file %s: %w", outPath, err)
+		}
+	}
+	fmt.Fprintf(stderr, "Writing output to path: %s\n", file.Name())
+
+	writeErr := writeInstanceReport(file, format, recv)
+	// Close errors can be the first sign of a failed write, so they fail the command.
+	closeErr := file.Close()
+	if writeErr != nil {
+		return writeErr
+	}
+	if closeErr != nil {
+		return fnerrors.Newf("Unable to write report: %w", closeErr)
+	}
+	return nil
 }
 
 func writeInstanceReport(out io.Writer, format string, recv func() (*computev1beta.GenerateReportResponse, error)) error {
@@ -296,7 +303,8 @@ func writeInstanceReport(out io.Writer, format string, recv func() (*computev1be
 				return nil
 			}
 			if err != nil {
-				return fnerrors.Newf("Unable to read report; output may be partial: %w", err)
+				// %v, not %w: fncobra exits 0 on context.Canceled, which would hide partial output.
+				return fnerrors.Newf("Unable to read report; output may be partial: %v", err)
 			}
 			for _, entry := range msg.GetEntries() {
 				body, err := (protojson.MarshalOptions{UseProtoNames: true}).Marshal(entry)
@@ -327,7 +335,7 @@ func writeInstanceReport(out io.Writer, format string, recv func() (*computev1be
 			break
 		}
 		if err != nil {
-			return fnerrors.Newf("Unable to read report: %w", err)
+			return fnerrors.Newf("Unable to read report: %v", err)
 		}
 		for _, entry := range msg.GetEntries() {
 			includeGithub = includeGithub || entry.GetGithubJob() != nil

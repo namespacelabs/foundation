@@ -6,11 +6,13 @@ package cluster
 
 import (
 	"bytes"
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -75,16 +77,8 @@ func TestWriteInstanceReport(t *testing.T) {
 	}
 	for _, format := range []string{"csv", "jsonl"} {
 		t.Run(format, func(t *testing.T) {
-			next := 0
 			var out bytes.Buffer
-			err := writeInstanceReport(&out, format, func() (*computev1beta.GenerateReportResponse, error) {
-				if next == len(entries) {
-					return nil, io.EOF
-				}
-				entry := entries[next]
-				next++
-				return &computev1beta.GenerateReportResponse{Entries: []*computev1beta.InstanceReportEntry{entry}}, nil
-			})
+			err := writeInstanceReport(&out, format, responses(entries))
 			assert.NoError(t, err)
 			if format == "jsonl" {
 				lines := strings.Split(strings.TrimSuffix(out.String(), "\n"), "\n")
@@ -125,6 +119,18 @@ func TestWriteInstanceReport(t *testing.T) {
 	}
 }
 
+// responses streams all entries in one response, then EOF.
+func responses(entries []*computev1beta.InstanceReportEntry) func() (*computev1beta.GenerateReportResponse, error) {
+	sent := false
+	return func() (*computev1beta.GenerateReportResponse, error) {
+		if sent {
+			return nil, io.EOF
+		}
+		sent = true
+		return &computev1beta.GenerateReportResponse{Entries: entries}, nil
+	}
+}
+
 func TestWriteInstanceReportJSONLEmptyAndErrors(t *testing.T) {
 	var out bytes.Buffer
 	err := writeInstanceReport(&out, "jsonl", func() (*computev1beta.GenerateReportResponse, error) { return nil, io.EOF })
@@ -148,14 +154,51 @@ func TestWriteInstanceReportJSONLEmptyAndErrors(t *testing.T) {
 		return
 	}
 	defer file.Close()
-	err = writeInstanceReport(file, "jsonl", func() (*computev1beta.GenerateReportResponse, error) {
-		return &computev1beta.GenerateReportResponse{Entries: []*computev1beta.InstanceReportEntry{{InstanceId: "runner-1"}}}, nil
-	})
+	err = writeInstanceReport(file, "jsonl", responses([]*computev1beta.InstanceReportEntry{{InstanceId: "runner-1"}}))
 	assert.ErrorContains(t, err, "Unable to write report")
+}
+
+func TestWriteInstanceReportStreamErrors(t *testing.T) {
+	for _, format := range []string{"csv", "jsonl"} {
+		t.Run(format, func(t *testing.T) {
+			var out bytes.Buffer
+			err := writeInstanceReport(&out, format, func() (*computev1beta.GenerateReportResponse, error) {
+				return nil, errors.New("stream interrupted")
+			})
+			assert.ErrorContains(t, err, "stream interrupted")
+			assert.Empty(t, out.String())
+
+			// fncobra exits 0 on context.Canceled, so a canceled stream must not surface as one.
+			err = writeInstanceReport(&out, format, func() (*computev1beta.GenerateReportResponse, error) {
+				return nil, context.Canceled
+			})
+			assert.Error(t, err)
+			assert.False(t, errors.Is(err, context.Canceled))
+		})
+	}
+}
+
+func TestWriteReportDestinations(t *testing.T) {
+	entries := []*computev1beta.InstanceReportEntry{{InstanceId: "runner-1"}, {InstanceId: "runner-2"}}
+
+	var stdout, stderr bytes.Buffer
+	assert.NoError(t, writeReport(&stdout, &stderr, "-", "jsonl", responses(entries)))
+	assert.Equal(t, "{\"instance_id\":\"runner-1\"}\n{\"instance_id\":\"runner-2\"}\n", strings.ReplaceAll(stdout.String(), " ", ""))
+	assert.Equal(t, "Writing output to path: stdout\n", stderr.String())
+
+	path := filepath.Join(t.TempDir(), "report.jsonl")
+	stdout.Reset()
+	stderr.Reset()
+	assert.NoError(t, writeReport(&stdout, &stderr, path, "jsonl", responses(entries)))
+	assert.Empty(t, stdout.String())
+	assert.Equal(t, "Writing output to path: "+path+"\n", stderr.String())
+	contents, err := os.ReadFile(path)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, strings.Count(string(contents), "\n"))
 }
 
 func TestGenerateReportRejectsUnknownFormat(t *testing.T) {
 	cmd := NewGenerateReportCmd()
-	cmd.SetArgs([]string{"--format", "yaml"})
+	cmd.SetArgs([]string{"-o", "yaml"})
 	assert.ErrorContains(t, cmd.Execute(), "expected csv or jsonl")
 }
