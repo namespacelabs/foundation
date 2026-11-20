@@ -214,7 +214,7 @@ func TestDeploymentStartupProbe(t *testing.T) {
 	}
 }
 
-func TestDeployEndpointAppliesLoadBalancerClass(t *testing.T) {
+func TestDeployEndpointAppliesLoadBalancerSettings(t *testing.T) {
 	state := &serverRunState{}
 
 	err := deployEndpoint(context.Background(), BoundNamespace{namespace: "test-ns"}, runtime.DeployableSpec{
@@ -226,6 +226,7 @@ func TestDeployEndpointAppliesLoadBalancerClass(t *testing.T) {
 		ServiceName:       "rawlistener",
 		AllocatedName:     "rawlistener",
 		LoadBalancerClass: "tailscale",
+		LoadBalancerIp:    "203.0.113.10",
 		Ports: []*schema.Endpoint_PortMap{{
 			ExportedPort: 8080,
 			Port: &schema.Endpoint_Port{
@@ -258,6 +259,10 @@ func TestDeployEndpointAppliesLoadBalancerClass(t *testing.T) {
 
 	if got := *svc.Spec.LoadBalancerClass; got != "tailscale" {
 		t.Fatalf("expected loadBalancerClass %q, got %q", "tailscale", got)
+	}
+
+	if svc.Spec.LoadBalancerIP == nil || *svc.Spec.LoadBalancerIP != "203.0.113.10" {
+		t.Fatalf("expected loadBalancerIP %q, got %v", "203.0.113.10", svc.Spec.LoadBalancerIP)
 	}
 }
 

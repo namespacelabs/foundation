@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"strings"
 
 	"golang.org/x/exp/slices"
@@ -23,7 +24,7 @@ import (
 // Needs to be consistent with JSON names of cueService fields.
 var serviceFields = []string{
 	"kind", "port", "ports", "exportedPort", "hostPort", "ingress", "annotations", "probe", "probes", "protocol",
-	"headless", "externalTrafficPolicy", "loadBalancerClass",
+	"headless", "externalTrafficPolicy", "loadBalancerClass", "loadBalancerIP",
 }
 
 type cueService struct {
@@ -37,6 +38,7 @@ type cueService struct {
 	Headless              bool             `json:"headless"` // Kubernertes headless service, e.g. clusterIP=None.
 	ExternalTrafficPolicy string           `json:"externalTrafficPolicy"`
 	LoadBalancerClass     string           `json:"loadBalancerClass"`
+	LoadBalancerIP        string           `json:"loadBalancerIP"`
 
 	Annotations map[string]string `json:"annotations,omitempty"`
 
@@ -199,6 +201,13 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 
 	if svc.LoadBalancerClass != "" {
 		parsed.LoadBalancerClass = svc.LoadBalancerClass
+	}
+
+	if svc.LoadBalancerIP != "" {
+		if net.ParseIP(svc.LoadBalancerIP) == nil {
+			return nil, nil, fnerrors.NewWithLocation(loc, "service %q: invalid loadBalancerIP %q", name, svc.LoadBalancerIP)
+		}
+		parsed.LoadBalancerIp = svc.LoadBalancerIP
 	}
 
 	for k, p := range svc.Ports {

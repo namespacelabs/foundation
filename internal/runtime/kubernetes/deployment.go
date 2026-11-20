@@ -1270,6 +1270,10 @@ func deployEndpoint(ctx context.Context, r BoundNamespace, deployable runtime.De
 		serviceSpec = serviceSpec.WithLoadBalancerClass(endpoint.LoadBalancerClass)
 	}
 
+	if endpoint.LoadBalancerIp != "" {
+		serviceSpec = serviceSpec.WithLoadBalancerIP(endpoint.LoadBalancerIp)
+	}
+
 	serviceAnnotations, err := kubedef.MakeServiceAnnotations(endpoint)
 	if err != nil {
 		return err
