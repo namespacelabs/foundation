@@ -140,10 +140,14 @@ func TestDeploymentStartupProbe(t *testing.T) {
 			name    string
 			live    *schema.Probe
 			handler string
+			grace   int32
 		}{
-			{"http", &schema.Probe{Kind: runtime.FnServiceLivez, Http: &schema.Probe_Http{Path: "/livez", ContainerPort: 8080}}, `"httpGet":{"path":"/livez","port":8080}`},
-			{"exec", &schema.Probe{Kind: runtime.FnServiceLivez, Exec: &schema.Probe_Exec{Command: []string{"/bin/check", "live"}}}, `"exec":{"command":["/bin/check","live"]}`},
-			{"readiness only", nil, ""},
+			{"http", &schema.Probe{Kind: runtime.FnServiceLivez, Http: &schema.Probe_Http{Path: "/livez", ContainerPort: 8080}}, `"httpGet":{"path":"/livez","port":8080}`, 0},
+			{"exec", &schema.Probe{Kind: runtime.FnServiceLivez, Exec: &schema.Probe_Exec{Command: []string{"/bin/check", "live"}}}, `"exec":{"command":["/bin/check","live"]}`, 0},
+			{"readiness only", nil, "", 0},
+			{"configured http", &schema.Probe{Kind: runtime.FnServiceLivez, Http: &schema.Probe_Http{Path: "/livez", ContainerPort: 8080}}, `"httpGet":{"path":"/livez","port":8080}`, 60},
+			{"configured exec", &schema.Probe{Kind: runtime.FnServiceLivez, Exec: &schema.Probe_Exec{Command: []string{"/bin/check", "live"}}}, `"exec":{"command":["/bin/check","live"]}`, 67},
+			{"configured without liveness", nil, "", 60},
 		} {
 			t.Run(env.purpose.String()+"/"+tt.name, func(t *testing.T) {
 				probes := []*schema.Probe{{Kind: runtime.FnServiceReadyz, Http: &schema.Probe_Http{Path: "/readyz", ContainerPort: 9090}}}
@@ -155,10 +159,16 @@ func TestDeploymentStartupProbe(t *testing.T) {
 					namespace: "test-ns", env: &schema.Environment{Purpose: env.purpose},
 				}, runtime.DeployableSpec{
 					Id: "serverid", Name: "server", Class: schema.DeployableClass_STATELESS,
-					PackageRef:    schema.MakePackageSingleRef("example.com/server"),
-					MainContainer: runtime.ContainerRunOpts{Image: oci.ImageID{Repository: "example.com/server"}},
-					Probes:        probes,
+					PackageRef: schema.MakePackageSingleRef("example.com/server"),
+					MainContainer: runtime.ContainerRunOpts{
+						Image: oci.ImageID{Repository: "example.com/server"}, StartupGracePeriodSeconds: tt.grace,
+					},
+					Probes: probes,
 				}, deployOpts{platforms: []specs.Platform{{OS: "linux", Architecture: "amd64"}}}, state)
+				if tt.grace > 0 && tt.live == nil {
+					assert.ErrorContains(t, err, "startup grace period requires a liveness probe")
+					return
+				}
 				if !assert.NoError(t, err) {
 					return
 				}
@@ -189,7 +199,9 @@ func TestDeploymentStartupProbe(t *testing.T) {
 				}
 				startup, err := json.Marshal(ctr.StartupProbe)
 				assert.NoError(t, err)
-				if env.purpose == schema.Environment_TESTING {
+				if tt.grace > 0 {
+					assert.JSONEq(t, fmt.Sprintf(`{%s,"periodSeconds":1,"timeoutSeconds":1,"failureThreshold":%d}`, tt.handler, tt.grace), string(startup))
+				} else if env.purpose == schema.Environment_TESTING {
 					assert.JSONEq(t, `{`+tt.handler+`,"periodSeconds":1,"timeoutSeconds":1,"failureThreshold":30}`, string(startup))
 				} else {
 					assert.Nil(t, ctr.StartupProbe)

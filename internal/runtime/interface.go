@@ -325,6 +325,7 @@ type ContainerRunOpts struct {
 	ResourceLimits                *schema.Container_ResourceLimits
 	ResourceRequests              *schema.Container_ResourceLimits
 	TerminationGracePeriodSeconds int64
+	StartupGracePeriodSeconds     int32
 }
 
 type ContainerStatus struct {
