@@ -961,6 +961,7 @@ func PrepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Pla
 	out.MainContainer.ResourceRequests = main.Requests
 	out.MainContainer.ContainerPorts = append(out.MainContainer.ContainerPorts, main.ContainerPort...)
 	out.MainContainer.TerminationGracePeriodSeconds = main.TerminationGracePeriodSeconds
+	out.MainContainer.StartupGracePeriodSeconds = main.StartupGracePeriodSeconds
 
 	var err error
 	out.MainContainer.Env, err = support.MergeEnvs(out.MainContainer.Env, main.Env)

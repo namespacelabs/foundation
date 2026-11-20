@@ -35,6 +35,10 @@ message Container {
 
     int64 termination_grace_period_seconds = 13;
 
+    // Reuse liveness as a startup probe for this many seconds. Zero preserves
+    // environment defaults; successful startup immediately enables normal probes.
+    int32 startup_grace_period_seconds = 14;
+
     message Security {
         bool privileged   = 1;
         bool host_network = 2;

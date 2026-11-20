@@ -483,15 +483,21 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 		}
 		mainContainer = mainContainer.WithLivenessProbe(probe)
 
-		if target.env.GetPurpose() == schema.Environment_TESTING {
-			// Health listeners may start only after initialization. Protect test
-			// startup without changing development or production probe behavior.
+		startupSeconds := deployable.MainContainer.StartupGracePeriodSeconds
+		if startupSeconds == 0 && target.env.GetPurpose() == schema.Environment_TESTING {
+			startupSeconds = 30
+		}
+		if startupSeconds > 0 {
+			// Reuse liveness so startup follows the allocated health port and
+			// stops delaying probes as soon as initialization completes.
 			startup, err := toK8sProbe(applycorev1.Probe(), probevalues, livenessProbe)
 			if err != nil {
 				return err
 			}
-			mainContainer = mainContainer.WithStartupProbe(startup.WithPeriodSeconds(1).WithFailureThreshold(30))
+			mainContainer = mainContainer.WithStartupProbe(startup.WithPeriodSeconds(1).WithFailureThreshold(startupSeconds))
 		}
+	} else if deployable.MainContainer.StartupGracePeriodSeconds > 0 {
+		return fnerrors.BadInputError("startup grace period requires a liveness probe")
 	}
 
 	// XXX Think through this, should it also be hashed + immutable?

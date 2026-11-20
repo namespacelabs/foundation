@@ -344,6 +344,13 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 				ps.MergedFragment.MainContainer.TerminationGracePeriodSeconds = frag.MainContainer.TerminationGracePeriodSeconds
 			}
 
+			if frag.MainContainer.StartupGracePeriodSeconds != 0 {
+				if ps.MergedFragment.MainContainer.StartupGracePeriodSeconds != 0 {
+					return fnerrors.Newf("startup grace period defined more than once")
+				}
+				ps.MergedFragment.MainContainer.StartupGracePeriodSeconds = frag.MainContainer.StartupGracePeriodSeconds
+			}
+
 			if frag.MainContainer.Security != nil {
 				if ps.MergedFragment.MainContainer.Security != nil {
 					return fnerrors.Newf("main_container.security set more than once")

@@ -15,6 +15,35 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
+func TestExtensionStartupGracePeriod(t *testing.T) {
+	for _, tt := range []struct {
+		name, fields string
+		want         int32
+		wantErr      string
+	}{
+		{name: "default"},
+		{name: "configured", fields: `startupGracePeriodSeconds: 60`, want: 60},
+		{name: "explicit zero", fields: `startupGracePeriodSeconds: 0`},
+		{name: "negative", fields: `startupGracePeriodSeconds: -1`, wantErr: "startupGracePeriodSeconds must not be negative"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			mod := pkggraph.NewModule(&schema.Workspace{ModuleName: "example.com"}, &schema.Workspace_LoadedFrom{AbsPath: t.TempDir()}, "")
+			partial := &fncue.Partial{
+				CueV:    fncue.CueV{Val: cuecontext.New().CompileString("extension: {" + tt.fields + "}")},
+				Package: fncue.CuePackage{PackageContents: &fncue.PackageContents{}},
+			}
+			pkg, err := NewFrontend(nil, nil).ParsePackage(context.Background(), partial, mod.MakeLocation("storage"))
+			if tt.wantErr != "" {
+				assert.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			if assert.NoError(t, err) {
+				assert.Equal(t, tt.want, pkg.ServerFragment.MainContainer.StartupGracePeriodSeconds)
+			}
+		})
+	}
+}
+
 func TestExtensionFSGroupChangePolicy(t *testing.T) {
 	for _, tt := range []struct {
 		name, fields string

@@ -26,6 +26,7 @@ var (
 		"args", "env", "services", "ports", "unstable_permissions", "permissions", "probe", "probes", "security",
 		"sidecars", "mounts", "resources", "requires", "tolerations", "annotations",
 		"resourceLimits", "resourceRequests", "terminationGracePeriodSeconds", "fsGroupChangePolicy",
+		"startupGracePeriodSeconds",
 		"extensions", "nodeSelector", "replicas", "priorityClass", "pod_anti_affinity", "update_strategy",
 		"spread_constraints", "listeners",
 		// This is needed for the "spec" in server templates. This can't be a private field, otherwise it can't be overridden.
@@ -67,6 +68,7 @@ type cueServerExtension struct {
 	NodeSelector        map[string]string               `json:"nodeSelector,omitempty"`
 
 	TerminationGracePeriodSeconds int64 `json:"terminationGracePeriodSeconds,omitempty"`
+	StartupGracePeriodSeconds     int32 `json:"startupGracePeriodSeconds,omitempty"`
 
 	Replicas      int32  `json:"replicas"`
 	PriorityClass string `json:"priorityClass,omitempty"`
@@ -224,6 +226,10 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 	out.MainContainer.Requests = bits.Requests
 
 	out.MainContainer.TerminationGracePeriodSeconds = bits.TerminationGracePeriodSeconds
+	if bits.StartupGracePeriodSeconds < 0 {
+		return nil, fnerrors.NewWithLocation(loc, "startupGracePeriodSeconds must not be negative")
+	}
+	out.MainContainer.StartupGracePeriodSeconds = bits.StartupGracePeriodSeconds
 
 	if sidecars := v.LookupPath("sidecars"); sidecars.Exists() {
 		it, err := sidecars.Val.Fields()
