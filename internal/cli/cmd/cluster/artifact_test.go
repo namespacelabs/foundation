@@ -5,6 +5,7 @@
 package cluster
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -13,8 +14,150 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
+
+func TestUnzipArtifactContainment(t *testing.T) {
+	type entry struct {
+		name string
+		mode os.FileMode
+		body string
+	}
+	for _, tc := range []struct {
+		name     string
+		entries  []entry
+		linkPath string
+		wantFile string
+	}{
+		{
+			name: "relative symlink escape",
+			entries: []entry{
+				{"link", os.ModeSymlink | 0777, "../outside"},
+				{"link/new", 0644, "created"},
+				{"link/victim", 0644, "overwritten"},
+			},
+		},
+		{
+			name: "absolute symlink escape",
+			entries: []entry{
+				{"link", os.ModeSymlink | 0777, "OUTSIDE"},
+				{"link/victim", 0644, "overwritten"},
+			},
+		},
+		{
+			name:     "preexisting parent symlink",
+			linkPath: "link",
+			entries:  []entry{{"link/victim", 0644, "overwritten"}},
+		},
+		{
+			name:     "preexisting file symlink",
+			linkPath: "victim",
+			entries:  []entry{{"victim", 0644, "overwritten"}},
+		},
+		{
+			name:     "directory through preexisting symlink",
+			linkPath: "link",
+			entries:  []entry{{"link/new/", os.ModeDir | 0755, ""}},
+		},
+		{
+			name:     "symlink through preexisting symlink",
+			linkPath: "link",
+			entries:  []entry{{"link/new", os.ModeSymlink | 0777, "victim"}},
+		},
+		{
+			name:    "parent traversal",
+			entries: []entry{{"../outside/victim", 0644, "overwritten"}},
+		},
+		{
+			name: "symlink chain with parent traversal",
+			entries: []entry{
+				{"alias", os.ModeSymlink | 0777, "."},
+				{"link", os.ModeSymlink | 0777, "alias/../outside"},
+				{"link/victim", 0644, "overwritten"},
+			},
+		},
+		{
+			name: "safe relative symlink",
+			entries: []entry{
+				{"data/", os.ModeDir | 0755, ""},
+				{"dir/link", os.ModeSymlink | 0777, "../data"},
+				{"dir/link/file", 0755, "inside"},
+			},
+			wantFile: "data/file",
+		},
+		{
+			name: "safe symlink to destination",
+			entries: []entry{
+				{"dir/root", os.ModeSymlink | 0777, ".."},
+				{"dir/root/file", 0644, "inside"},
+			},
+			wantFile: "file",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			dest := filepath.Join(dir, "dest")
+			outside := filepath.Join(dir, "outside")
+			if !assert.NoError(t, os.MkdirAll(dest, 0755)) || !assert.NoError(t, os.MkdirAll(outside, 0755)) {
+				return
+			}
+			victim := filepath.Join(outside, "victim")
+			if !assert.NoError(t, os.WriteFile(victim, []byte("original"), 0644)) {
+				return
+			}
+			if tc.linkPath != "" {
+				target := "../outside"
+				if tc.linkPath == "victim" {
+					target += "/victim"
+				}
+				if !assert.NoError(t, os.Symlink(target, filepath.Join(dest, tc.linkPath))) {
+					return
+				}
+			}
+
+			var buf bytes.Buffer
+			zw := zip.NewWriter(&buf)
+			for _, e := range tc.entries {
+				header := &zip.FileHeader{Name: e.name}
+				header.SetMode(e.mode)
+				w, err := zw.CreateHeader(header)
+				if !assert.NoError(t, err) {
+					return
+				}
+				body := e.body
+				if body == "OUTSIDE" {
+					body = outside
+				}
+				if _, err := io.WriteString(w, body); !assert.NoError(t, err) {
+					return
+				}
+			}
+			if !assert.NoError(t, zw.Close()) {
+				return
+			}
+			src := filepath.Join(dir, "artifact.zip")
+			if !assert.NoError(t, os.WriteFile(src, buf.Bytes(), 0644)) {
+				return
+			}
+
+			err := unzipArtifact(context.Background(), src, dest)
+			if tc.wantFile == "" {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				data, err := os.ReadFile(filepath.Join(dest, tc.wantFile))
+				assert.NoError(t, err)
+				assert.Equal(t, "inside", string(data))
+			}
+			data, err := os.ReadFile(victim)
+			assert.NoError(t, err)
+			assert.Equal(t, "original", string(data))
+			_, err = os.Lstat(filepath.Join(outside, "new"))
+			assert.ErrorIs(t, err, os.ErrNotExist)
+		})
+	}
+}
 
 func TestZipFiles(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "repro")

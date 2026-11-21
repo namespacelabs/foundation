@@ -16,7 +16,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"time"
 
@@ -512,32 +511,28 @@ func unzipArtifact(ctx context.Context, src, dest string) error {
 		return fnerrors.Newf("failed to create destination directory %q: %w", dest, err)
 	}
 
-	absDest, err := filepath.Abs(filepath.Clean(dest))
+	// Root confines every filesystem operation, including traversal through existing symlinks.
+	root, err := os.OpenRoot(dest)
 	if err != nil {
-		return fnerrors.Newf("failed to resolve destination path: %w", err)
+		return fnerrors.Newf("failed to open destination directory %q: %w", dest, err)
 	}
+	defer root.Close()
 
 	for _, f := range r.File {
 		fpath := filepath.Join(dest, f.Name)
 
-		// Check for Zip Slip
-		absPath, err := filepath.Abs(filepath.Clean(fpath))
-		if err != nil {
-			return fnerrors.Newf("failed to resolve file path: %w", err)
-		}
-
-		if !strings.HasPrefix(absPath, absDest+string(os.PathSeparator)) {
+		if !filepath.IsLocal(f.Name) {
 			return fnerrors.Newf("illegal file path: %s", fpath)
 		}
 
 		if f.FileInfo().IsDir() {
-			if err := os.MkdirAll(fpath, os.ModePerm); err != nil {
+			if err := root.MkdirAll(f.Name, os.ModePerm); err != nil {
 				return fnerrors.Newf("failed to create directory %q: %w", fpath, err)
 			}
 			continue
 		}
 
-		if err := os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
+		if err := root.MkdirAll(filepath.Dir(f.Name), os.ModePerm); err != nil {
 			return fnerrors.Newf("failed to create directory %q: %w", filepath.Dir(fpath), err)
 		}
 
@@ -554,24 +549,19 @@ func unzipArtifact(ctx context.Context, src, dest string) error {
 			}
 			target := string(targetBytes)
 
-			// Validate symlink target doesn't escape destination
-			absTarget := filepath.Join(filepath.Dir(fpath), target)
-			absTargetClean, err := filepath.Abs(filepath.Clean(absTarget))
-			if err == nil && !strings.HasPrefix(absTargetClean, absDest+string(os.PathSeparator)) && absTargetClean != absDest {
-				// Only block absolute symlinks that escape; relative symlinks within archive are ok
-				if filepath.IsAbs(target) {
-					return fnerrors.Newf("illegal symlink target escapes destination: %s -> %s", f.Name, target)
-				}
+			// Root confines the link's location, but does not validate its target.
+			if filepath.IsAbs(target) || !filepath.IsLocal(filepath.Join(filepath.Dir(f.Name), target)) {
+				return fnerrors.Newf("illegal symlink target escapes destination: %s -> %s", f.Name, target)
 			}
 
-			if err := os.Symlink(target, fpath); err != nil {
+			if err := root.Symlink(target, f.Name); err != nil {
 				return fnerrors.Newf("failed to create symlink %q -> %q: %w", fpath, target, err)
 			}
 			fmt.Fprintf(console.Stdout(ctx), "Created symlink %s -> %s\n", fpath, target)
 			continue
 		}
 
-		outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		outFile, err := root.OpenFile(f.Name, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode().Perm())
 		if err != nil {
 			return fnerrors.Newf("failed to open output file %q: %w", fpath, err)
 		}
