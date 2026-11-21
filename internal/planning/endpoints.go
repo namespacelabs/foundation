@@ -175,15 +175,16 @@ func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, list
 			short, fqdn := planner.MakeServiceName(name)
 
 			endpoint := &schema.Endpoint{
-				ServiceName:        name,
-				AllocatedName:      short,
-				FullyQualifiedName: fqdn,
-				EndpointOwner:      n.GetPackageName(),
-				ServerOwner:        server.GetPackageName(),
-				Type:               n.GetIngress(),
-				ServiceMetadata:    n.GetServiceMetadata(),
-				LoadBalancerClass:  n.GetLoadBalancerClass(),
-				Ports:              []*schema.Endpoint_PortMap{{ExportedPort: exportedPort, Port: listener.Port}},
+				ServiceName:           name,
+				AllocatedName:         short,
+				FullyQualifiedName:    fqdn,
+				EndpointOwner:         n.GetPackageName(),
+				ServerOwner:           server.GetPackageName(),
+				Type:                  n.GetIngress(),
+				ServiceMetadata:       n.GetServiceMetadata(),
+				LoadBalancerClass:     n.GetLoadBalancerClass(),
+				ExternalTrafficPolicy: n.GetExternalTrafficPolicy(),
+				Ports:                 []*schema.Endpoint_PortMap{{ExportedPort: exportedPort, Port: listener.Port}},
 			}
 
 			endpoints = append(endpoints, endpoint)
@@ -199,15 +200,16 @@ func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, list
 			short, fqdn := planner.MakeServiceName(name + "-grpc")
 
 			endpoint := &schema.Endpoint{
-				ServiceName:        name,
-				AllocatedName:      short,
-				FullyQualifiedName: fqdn,
-				EndpointOwner:      n.GetPackageName(),
-				ServerOwner:        server.GetPackageName(),
-				Type:               n.GetIngress(),
-				ServiceMetadata:    n.GetServiceMetadata(),
-				LoadBalancerClass:  n.GetLoadBalancerClass(),
-				Ports:              []*schema.Endpoint_PortMap{{ExportedPort: exportedPort, Port: listener.Port}},
+				ServiceName:           name,
+				AllocatedName:         short,
+				FullyQualifiedName:    fqdn,
+				EndpointOwner:         n.GetPackageName(),
+				ServerOwner:           server.GetPackageName(),
+				Type:                  n.GetIngress(),
+				ServiceMetadata:       n.GetServiceMetadata(),
+				LoadBalancerClass:     n.GetLoadBalancerClass(),
+				ExternalTrafficPolicy: n.GetExternalTrafficPolicy(),
+				Ports:                 []*schema.Endpoint_PortMap{{ExportedPort: exportedPort, Port: listener.Port}},
 			}
 			for _, additionalPort := range additionalPorts {
 				additionalExportedPort := additionalPort.ContainerPort

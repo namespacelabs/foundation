@@ -69,6 +69,9 @@ message Node {
     // Applies when ingress is LOAD_BALANCER.
     string load_balancer_class = 31;
 
+    // Applies when ingress is LOAD_BALANCER. Unset keeps the runtime default.
+    Endpoint.ServiceTrafficPolicy external_traffic_policy = 32;
+
     // Can't contain multiple initializers with the same "framework".
     // Not a map since "framework" will likely be broken down and converted to a message.
     repeated NodeInitializer initializers = 11;

@@ -291,6 +291,26 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 		}
 	}
 
+	if externalTrafficPolicy := v.LookupPath("externalTrafficPolicy"); externalTrafficPolicy.Exists() {
+		var policy string
+		if err := externalTrafficPolicy.Val.Decode(&policy); err != nil {
+			return err
+		}
+
+		switch policy {
+		case "local":
+			node.ExternalTrafficPolicy = schema.Endpoint_LOCAL
+		case "cluster":
+			node.ExternalTrafficPolicy = schema.Endpoint_CLUSTER
+		default:
+			return fnerrors.NewWithLocation(loc, "unsupported external traffic policy %q", policy)
+		}
+
+		if node.Ingress != schema.Endpoint_LOAD_BALANCER {
+			return fnerrors.NewWithLocation(loc, "externalTrafficPolicy requires ingress: %q", "LOAD_BALANCER")
+		}
+	}
+
 	if serviceMetadata := v.LookupPath("annotations"); serviceMetadata.Exists() {
 		var m map[string]string
 		if err := serviceMetadata.Val.Decode(&m); err != nil {

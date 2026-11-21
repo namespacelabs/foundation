@@ -93,6 +93,33 @@ func TestComputeEndpointsExposesPlaintextGrpcPortForAllEndpointTypes(t *testing.
 	}
 }
 
+func TestComputeEndpointsCarriesExternalTrafficPolicy(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		listener bool
+	}{{"listener", true}, {"grpc service", false}} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := endpointTestServer()
+			node := srv.entry.Node[0]
+			node.Ingress = schema.Endpoint_LOAD_BALANCER
+			node.ExternalTrafficPolicy = schema.Endpoint_CLUSTER
+			merged := &schema.ServerFragment{}
+			if tc.listener {
+				node.ExportService = nil
+				node.ListenerName = "storage"
+				merged.Listener = []*schema.Listener{{Name: "storage", Port: &schema.Endpoint_Port{Name: "storage", ContainerPort: 8080}}}
+			}
+
+			endpoints, _, err := ComputeEndpoints(endpointTestPlanner{}, srv, merged, []*schema.Endpoint_Port{
+				{Name: "server-port", ContainerPort: 4000},
+			})
+			assert.NilError(t, err)
+			assert.Equal(t, len(endpoints), 1)
+			assert.Equal(t, endpoints[0].ExternalTrafficPolicy, schema.Endpoint_CLUSTER)
+		})
+	}
+}
+
 func endpointTestServer() Server {
 	return Server{
 		entry: &schema.Stack_Entry{
