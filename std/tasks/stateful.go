@@ -5,7 +5,6 @@
 package tasks
 
 import (
-	"context"
 	"io"
 	"sync"
 
@@ -46,43 +45,7 @@ func NewStatefulSink(parent ActionSink, keepHistory bool) *StatefulSink {
 	}}
 }
 
-func WithStatefulSink(ctx context.Context) (context.Context, *StatefulSink) {
-	state := NewStatefulSink(SinkFrom(ctx), true)
-	return WithSink(ctx, state.Sink()), state
-}
-
 func (s *StatefulSink) Sink() ActionSink { return s.state }
-
-func (s *StatefulSink) HistoricReaderByName(id ActionID, name string) io.ReadCloser {
-	s.state.mu.Lock()
-	defer s.state.mu.Unlock()
-
-	if attachments, ok := s.state.allAttachments[id]; ok {
-		return attachments.ReaderByName(name)
-	}
-
-	return nil
-}
-
-func (s *StatefulSink) History(max int, filter func(*protocol.Task) bool) []*protocol.Task {
-	s.state.mu.Lock()
-	defer s.state.mu.Unlock()
-
-	var filtered []*protocol.Task
-	for _, t := range s.state.allTasks {
-		if filter == nil || filter(t) {
-			filtered = append(filtered, t)
-		}
-	}
-
-	start := 0
-	if len(filtered) > max {
-		start = len(filtered) - max
-	}
-
-	history := filtered[start:]
-	return history
-}
 
 // Recursively returns the action and all of its callers (leaf action first).
 func (s *StatefulSink) Trace(id ActionID) (trace []*protocol.Task) {
@@ -98,23 +61,6 @@ func (s *StatefulSink) Trace(id ActionID) (trace []*protocol.Task) {
 		}
 	}
 	return
-}
-
-func (s *StatefulSink) Observe(obs Observer) func() {
-	s.state.mu.Lock()
-	s.state.observers = append(s.state.observers, obs)
-	s.state.mu.Unlock()
-
-	return func() {
-		s.state.mu.Lock()
-		defer s.state.mu.Unlock()
-		for k, was := range s.state.observers {
-			if was == obs {
-				s.state.observers = append(s.state.observers[0:k], s.state.observers[k+1:]...)
-				return
-			}
-		}
-	}
 }
 
 func (s *statefulState) runningAction(id ActionID) *RunningAction {
