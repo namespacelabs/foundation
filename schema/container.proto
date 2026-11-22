@@ -44,6 +44,7 @@ message Container {
         bool host_network = 2;
         bool host_pid     = 4;
         repeated string capabilities = 3;
+        repeated string drop_capabilities = 5;
     }
 
     message ResourceLimits {

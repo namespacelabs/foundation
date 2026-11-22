@@ -24,6 +24,57 @@ import (
 	"namespacelabs.dev/foundation/std/runtime/constants"
 )
 
+func TestDeploymentCapabilities(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		add, drop []string
+		want      string
+	}{
+		{"default", nil, nil, `{"privileged":false,"allowPrivilegeEscalation":false,"readOnlyRootFilesystem":false}`},
+		{"add only", []string{"NET_BIND_SERVICE"}, nil, `{"privileged":false,"allowPrivilegeEscalation":false,"readOnlyRootFilesystem":false,"capabilities":{"add":["NET_BIND_SERVICE"]}}`},
+		{"drop only", nil, []string{"ALL"}, `{"privileged":false,"allowPrivilegeEscalation":false,"readOnlyRootFilesystem":false,"capabilities":{"drop":["ALL"]}}`},
+		{"drop and add", []string{"NET_ADMIN"}, []string{"ALL"}, `{"privileged":false,"allowPrivilegeEscalation":false,"readOnlyRootFilesystem":false,"capabilities":{"add":["NET_ADMIN"],"drop":["ALL"]}}`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			container := runtime.ContainerRunOpts{
+				Image:        oci.ImageID{Repository: "example.com/server"},
+				Capabilities: tt.add, DropCapabilities: tt.drop,
+			}
+			state := &serverRunState{}
+			err := prepareDeployment(context.Background(), BoundNamespace{namespace: "test-ns"}, runtime.DeployableSpec{
+				Id: "serverid", Name: "server", Class: schema.DeployableClass_STATELESS,
+				PackageRef:    schema.MakePackageSingleRef("example.com/server"),
+				MainContainer: container,
+				Sidecars:      []runtime.SidecarRunOpts{{Name: "sidecar", ContainerRunOpts: container}},
+				Inits:         []runtime.SidecarRunOpts{{Name: "init", ContainerRunOpts: container}},
+			}, deployOpts{}, state)
+			if !assert.NoError(t, err) {
+				return
+			}
+			op, ok := state.operations[len(state.operations)-1].(kubedef.EnsureDeployment)
+			if !assert.True(t, ok) {
+				return
+			}
+			deployment, ok := op.Resource.(*appsv1.DeploymentApplyConfiguration)
+			if !assert.True(t, ok) {
+				return
+			}
+			pod := deployment.Spec.Template.Spec
+			assert.Len(t, pod.Containers, 2)
+			assert.Len(t, pod.InitContainers, 1)
+			for _, ctr := range append(pod.Containers, pod.InitContainers...) {
+				encoded, err := json.Marshal(ctr.SecurityContext)
+				assert.NoError(t, err)
+				want := tt.want
+				if *ctr.Name == "init-init" && len(tt.drop) == 0 {
+					want = `null`
+				}
+				assert.JSONEq(t, want, string(encoded), *ctr.Name)
+			}
+		})
+	}
+}
+
 func TestStatefulSetFSGroupChangePolicy(t *testing.T) {
 	for _, tt := range []struct {
 		name    string

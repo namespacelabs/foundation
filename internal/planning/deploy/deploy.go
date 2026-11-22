@@ -957,6 +957,7 @@ func PrepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Pla
 	out.MainContainer.HostNetwork = main.GetSecurity().GetHostNetwork()
 	out.MainContainer.HostPID = main.GetSecurity().GetHostPid()
 	out.MainContainer.Capabilities = main.GetSecurity().GetCapabilities()
+	out.MainContainer.DropCapabilities = main.GetSecurity().GetDropCapabilities()
 	out.MainContainer.ResourceLimits = main.Limits
 	out.MainContainer.ResourceRequests = main.Requests
 	out.MainContainer.ContainerPorts = append(out.MainContainer.ContainerPorts, main.ContainerPort...)
@@ -1008,6 +1009,7 @@ func prepareContainerRunOpts(containers []*schema.Container, resolved ResolvedSe
 				ResourceRequests: container.Requests,
 				ContainerPorts:   container.ContainerPort,
 				Capabilities:     container.GetSecurity().GetCapabilities(),
+				DropCapabilities: container.GetSecurity().GetDropCapabilities(),
 			},
 		}
 
