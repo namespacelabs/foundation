@@ -54,14 +54,15 @@ func makeSecurityContext(opts runtime.ContainerRunOpts, containerName string, de
 			WithRunAsNonRoot(false)
 	}
 
-	if len(opts.Capabilities) > 0 {
-		var caps []k8sv1.Capability
+	if len(opts.Capabilities) > 0 || len(opts.DropCapabilities) > 0 {
+		caps := applycorev1.Capabilities()
 		for _, cap := range opts.Capabilities {
-			caps = append(caps, k8sv1.Capability(cap))
+			caps.WithAdd(k8sv1.Capability(cap))
 		}
-		secCtx = secCtx.WithCapabilities(&applycorev1.CapabilitiesApplyConfiguration{
-			Add: caps,
-		})
+		for _, cap := range opts.DropCapabilities {
+			caps.WithDrop(k8sv1.Capability(cap))
+		}
+		secCtx = secCtx.WithCapabilities(caps)
 	}
 
 	if opts.ReadOnlyFilesystem {

@@ -881,6 +881,15 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 			WithVolumeMounts(initVolumeMounts...).
 			WithResources(reses)
 
+		// Legacy inits omitted securityContext; apply it only when opting into drops.
+		if len(init.DropCapabilities) > 0 {
+			initSecCtx, err := makeSecurityContext(init.ContainerRunOpts, init.Name, console.Debug(ctx))
+			if err != nil {
+				return fnerrors.AttachLocation(deployable.ErrorLocation, err)
+			}
+			scntr.WithSecurityContext(initSecCtx)
+		}
+
 		if _, err := fillEnv(ctx, deployable.RuntimeConfig, scntr, init.Env, seccol, &ensure); err != nil {
 			return err
 		}

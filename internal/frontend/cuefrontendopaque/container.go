@@ -60,10 +60,11 @@ func parseCueContainer(ctx context.Context, env *schema.Environment, pl parsing.
 		}
 
 		out.container.Security = &schema.Container_Security{
-			Privileged:   bits.Security.Privileged,
-			HostNetwork:  bits.Security.HostNetwork,
-			HostPid:      bits.Security.HostPID,
-			Capabilities: bits.Security.Capabilities,
+			Privileged:       bits.Security.Privileged,
+			HostNetwork:      bits.Security.HostNetwork,
+			HostPid:          bits.Security.HostPID,
+			Capabilities:     bits.Security.Capabilities,
+			DropCapabilities: bits.Security.DropCapabilities,
 		}
 	}
 

@@ -320,6 +320,7 @@ type ContainerRunOpts struct {
 	HostNetwork                   bool
 	HostPID                       bool
 	Capabilities                  []string
+	DropCapabilities              []string
 	Mounts                        []*schema.Mount
 	ContainerPorts                []*schema.Endpoint_Port
 	ResourceLimits                *schema.Container_ResourceLimits
