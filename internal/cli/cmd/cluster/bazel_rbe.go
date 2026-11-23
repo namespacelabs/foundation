@@ -10,7 +10,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os/exec"
+	"slices"
 	"time"
 
 	bazelv1betagrpc "buf.build/gen/go/namespace/cloud/grpc/go/proto/namespace/cloud/integrations/bazel/v1beta/bazelv1betagrpc"
@@ -102,7 +104,8 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 		}
 
 		authMode := bazelv1beta.BazelExecutionAuthMode_BAZEL_EXECUTION_AUTH_MODE_MTLS
-		if static {
+		// Cache-only setup uses public endpoints with either the credential helper or --static.
+		if static || !remote {
 			authMode = bazelv1beta.BazelExecutionAuthMode_BAZEL_EXECUTION_AUTH_MODE_STATIC
 		}
 
@@ -144,7 +147,10 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 				return fnerrors.Newf("received incomplete response (storage=%q)", res.GetStorageEndpoint())
 			}
 
-			out = bazelStorageSetup(res)
+			out, err = bazelStorageSetup(res, authMode)
+			if err != nil {
+				return err
+			}
 		}
 
 		if static {
@@ -160,7 +166,9 @@ func newSetupExecutionCmdWithRemoteFlag(includeRemoteFlag bool) *cobra.Command {
 			}
 
 			out.IngressAuthToken = bearerToken
-		} else {
+		} else if remote {
+			// Cache-only setup uses the credential helper; execution still needs
+			// a client certificate alongside any bearer-authenticated endpoints.
 			privateKeyPem, publicKeyPem, err := genPrivAndPublicKeysPEM()
 			if err != nil {
 				return fnerrors.Newf("failed to generate client key pair: %w", err)
@@ -282,15 +290,31 @@ type bazelRbeSetup struct {
 	CredentialHelperDomains  []string      `json:"credential_helper_domains,omitempty"`
 }
 
-func bazelStorageSetup(response *bazelv1beta.EnsureStorageClusterResponse) bazelRbeSetup {
+func bazelStorageSetup(response *bazelv1beta.EnsureStorageClusterResponse, authMode bazelv1beta.BazelExecutionAuthMode) (bazelRbeSetup, error) {
 	remoteUploadLocalResults := response.GetRecommendedBazelRemoteUploadLocalResults()
-	return bazelRbeSetup{
+	out := bazelRbeSetup{
 		StorageEndpoint:          response.GetStorageEndpoint(),
 		RemoteAssetEndpoint:      response.GetRemoteAssetEndpoint(),
 		RemoteUploadLocalResults: &remoteUploadLocalResults,
 		BuildEventEndpoint:       response.GetBuildEventEndpoint(),
 		BuildEventResultsURL:     response.GetBuildEventResultsUrl(),
 	}
+	if authMode != bazelv1beta.BazelExecutionAuthMode_BAZEL_EXECUTION_AUTH_MODE_STATIC {
+		return out, nil
+	}
+	for _, endpoint := range []string{out.StorageEndpoint, out.RemoteAssetEndpoint, out.BuildEventEndpoint} {
+		if endpoint == "" {
+			continue
+		}
+		parsed, err := url.Parse(endpoint)
+		if err != nil || parsed.Hostname() == "" {
+			return bazelRbeSetup{}, fnerrors.Newf("invalid Bazel endpoint %q", endpoint)
+		}
+		if host := parsed.Hostname(); !slices.Contains(out.CredentialHelperDomains, host) {
+			out.CredentialHelperDomains = append(out.CredentialHelperDomains, host)
+		}
+	}
+	return out, nil
 }
 
 func toBazelExecutionConfig(ctx context.Context, out bazelRbeSetup, command string, remote, disableBuildEvents bool) ([]byte, error) {

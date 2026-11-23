@@ -201,7 +201,10 @@ func setupReapi(ctx context.Context, tok api.TokenSource, opts reapiSetupOptions
 		if res.GetStorageEndpoint() == "" {
 			return reapiSetupResult{}, fnerrors.Newf("received incomplete response (storage=%q)", res.GetStorageEndpoint())
 		}
-		result.bazelRbeSetup = bazelStorageSetup(res)
+		result.bazelRbeSetup, err = bazelStorageSetup(res, authMode)
+		if err != nil {
+			return reapiSetupResult{}, err
+		}
 	}
 
 	if opts.static {

@@ -296,7 +296,12 @@ func TestBazelStorageSetup(t *testing.T) {
 		BuildEventResultsUrl:                     "https://cloud.namespace.so/test/bazel/invocation/",
 	}
 
-	readWrite := bazelStorageSetup(response)
+	readWrite, err := bazelStorageSetup(response, bazelv1beta.BazelExecutionAuthMode_BAZEL_EXECUTION_AUTH_MODE_STATIC)
+	assert.NilError(t, err)
+	assert.DeepEqual(t, readWrite.CredentialHelperDomains, []string{"storage.example", "asset.example", "scheduler.example"})
+	mtls, err := bazelStorageSetup(response, bazelv1beta.BazelExecutionAuthMode_BAZEL_EXECUTION_AUTH_MODE_MTLS)
+	assert.NilError(t, err)
+	assert.Equal(t, len(mtls.CredentialHelperDomains), 0)
 	if readWrite.RemoteUploadLocalResults == nil || !*readWrite.RemoteUploadLocalResults {
 		t.Fatalf("read-write setup upload recommendation = %v, want true", readWrite.RemoteUploadLocalResults)
 	}
@@ -308,10 +313,37 @@ func TestBazelStorageSetup(t *testing.T) {
 	}
 
 	response.SetRecommendedBazelRemoteUploadLocalResults(false)
-	readOnly := bazelStorageSetup(response)
+	readOnly, err := bazelStorageSetup(response, bazelv1beta.BazelExecutionAuthMode_BAZEL_EXECUTION_AUTH_MODE_STATIC)
+	assert.NilError(t, err)
 	if readOnly.RemoteUploadLocalResults == nil || *readOnly.RemoteUploadLocalResults {
 		t.Fatalf("read-only setup upload recommendation = %v, want false", readOnly.RemoteUploadLocalResults)
 	}
+
+	t.Run("standalone credential helper", func(t *testing.T) {
+		response := &bazelv1beta.EnsureStorageClusterResponse{
+			StorageEndpoint:                          "grpcs://customer-eu-central.aws--eu-central-1.bazel.namespaceapis.com:443",
+			RemoteAssetEndpoint:                      "grpcs://customer-eu-central.aws--eu-central-1.bazel.namespaceapis.com:443",
+			RecommendedBazelRemoteUploadLocalResults: true,
+		}
+		setup, err := bazelStorageSetup(response, bazelv1beta.BazelExecutionAuthMode_BAZEL_EXECUTION_AUTH_MODE_STATIC)
+		assert.NilError(t, err)
+		config, err := toBazelExecutionConfig(context.Background(), setup, "build", false, false)
+		assert.NilError(t, err)
+		got := string(config)
+		assert.Equal(t, strings.Count(got, "--credential_helper="), 1)
+		assert.Assert(t, strings.Contains(got, "build --remote_cache=grpcs://customer-eu-central.aws--eu-central-1.bazel.namespaceapis.com:443\n"))
+		assert.Assert(t, strings.Contains(got, "build --credential_helper=*.customer-eu-central.aws--eu-central-1.bazel.namespaceapis.com="+BazelCredHelperBinary+"\n"))
+		assert.Assert(t, strings.Contains(got, "build --remote_upload_local_results=true\n"))
+		for _, unwanted := range []string{"--remote_header=", "--tls_client_", "--remote_executor=", "--bes_backend="} {
+			assert.Assert(t, !strings.Contains(got, unwanted), "unexpected %s in %s", unwanted, got)
+		}
+
+		setup.IngressAuthToken = "static-token"
+		config, err = toBazelExecutionConfig(context.Background(), setup, "build", false, false)
+		assert.NilError(t, err)
+		assert.Assert(t, strings.Contains(string(config), "build --remote_header=x-nsc-ingress-auth=Bearer\\ static-token\n"))
+		assert.Assert(t, !strings.Contains(string(config), "--credential_helper="))
+	})
 }
 
 func TestMakeEnsureBazelStorageClusterRequest(t *testing.T) {
