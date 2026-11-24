@@ -27,6 +27,9 @@ const (
 	outputDigestInformation = true
 
 	cleanerFuncLogLevel = 2
+
+	// How long cleaners may run once the parent context is cancelled.
+	cleanupAfterCancelTimeout = 10 * time.Second
 )
 
 type contextKey string
@@ -453,8 +456,16 @@ func doWithArtifactStore(parent context.Context, artifactStore contentstore.Stor
 	// XXX parallelize cleanups.
 	// Importantly, graph is not present in the context when calling a cleaner function. And we always
 	// run cleaners, regardless of errors above.
+	cleanupCtx := parent
+	if parent.Err() != nil {
+		// The parent was cancelled (e.g. on Ctrl-C). Cleaners would otherwise run with a done
+		// context, and the action throttler fails them before they start. Give them a bounded one.
+		var cancel context.CancelFunc
+		cleanupCtx, cancel = context.WithTimeout(context.WithoutCancel(parent), cleanupAfterCancelTimeout)
+		defer cancel()
+	}
 	for _, c := range cleaners {
-		if err := c.ev.LogLevel(cleanerFuncLogLevel).Run(parent, c.f); err != nil {
+		if err := c.ev.LogLevel(cleanerFuncLogLevel).Run(cleanupCtx, c.f); err != nil {
 			if errResult == nil {
 				errResult = err
 			}
