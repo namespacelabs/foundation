@@ -218,10 +218,6 @@ func writeReapiSetupCommands(w io.Writer, style colors.Style, setupLabel string,
 	}
 }
 
-func newBazelTokenRequest(name string, expiresAt time.Time, scope string, noExpiry bool) (*iamv1beta.CreateRevokableTokenRequest, error) {
-	return newReapiTokenRequest(name, "Bazel remote execution access token", expiresAt, scope, noExpiry)
-}
-
 func newReapiTokenRequest(name, description string, expiresAt time.Time, scope string, noExpiry bool) (*iamv1beta.CreateRevokableTokenRequest, error) {
 	req := &iamv1beta.CreateRevokableTokenRequest{
 		Name:        name,

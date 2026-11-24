@@ -14,7 +14,6 @@ import (
 
 	bazelv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/integrations/bazel/v1beta"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	iamv1beta "namespacelabs.dev/integrations/proto/namespace/cloud/iam/v1beta"
 )
 
 func TestNewBazelCreateTokenCmd(t *testing.T) {
@@ -260,63 +259,6 @@ func TestFormatBazelInvocationCommand(t *testing.T) {
 				t.Fatalf("formatBazelInvocationCommand = %q, want %q", got, tc.want)
 			}
 		})
-	}
-}
-
-func TestNewBazelTokenRequest(t *testing.T) {
-	t.Parallel()
-
-	expiresAt := time.Now().Add(30 * 24 * time.Hour)
-	req, err := newBazelTokenRequest("rbe-ci-token", expiresAt, "user", false)
-	if err != nil {
-		t.Fatalf("newBazelTokenRequest: %v", err)
-	}
-	if req.GetName() != "rbe-ci-token" {
-		t.Fatalf("token name = %q, want rbe-ci-token", req.GetName())
-	}
-	if req.GetScope() != iamv1beta.RevokableToken_TENANT_MEMBERSHIP_SCOPE {
-		t.Fatalf("token scope = %v, want user scope", req.GetScope())
-	}
-	if !req.GetExpiresAt().AsTime().Equal(expiresAt) {
-		t.Fatalf("token expiration = %v, want %v", req.GetExpiresAt(), expiresAt)
-	}
-
-	grants := req.GetAccess().GetGrants()
-	if len(grants) != 3 {
-		t.Fatalf("grant count = %d, want 3", len(grants))
-	}
-	assertGrant := func(got *iamv1beta.Permission, resourceType, action string) {
-		t.Helper()
-		if got.GetResourceType() != resourceType || got.GetResourceId() != "*" || len(got.GetActions()) != 1 || got.GetActions()[0] != action {
-			t.Fatalf("unexpected grant: %v", got)
-		}
-	}
-	assertGrant(grants[0], "bazel/execution", "ensure")
-	assertGrant(grants[1], "bazel/storage", "write")
-	assertGrant(grants[2], "ingress", "access")
-
-	noExpiryReq, err := newBazelTokenRequest("rbe-ci-token", expiresAt, "user", true)
-	if err != nil {
-		t.Fatalf("newBazelTokenRequest without expiry: %v", err)
-	}
-	if noExpiryReq.GetExpiresAt() != nil {
-		t.Fatalf("unlimited token expiration = %v, want nil", noExpiryReq.GetExpiresAt())
-	}
-
-	tenantReq, err := newBazelTokenRequest("rbe-ci-token", expiresAt, "tenant", false)
-	if err != nil {
-		t.Fatalf("newBazelTokenRequest tenant scope: %v", err)
-	}
-	if tenantReq.GetScope() != iamv1beta.RevokableToken_TENANT_SCOPE {
-		t.Fatalf("token scope = %v, want tenant scope", tenantReq.GetScope())
-	}
-
-	if _, err := newBazelTokenRequest("rbe-ci-token", expiresAt, "tenant", true); err == nil {
-		t.Fatal("expected unlimited tenant token error")
-	}
-
-	if _, err := newBazelTokenRequest("rbe-ci-token", expiresAt, "invalid", false); err == nil {
-		t.Fatal("expected invalid token scope error")
 	}
 }
 
