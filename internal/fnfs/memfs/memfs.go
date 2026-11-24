@@ -30,13 +30,8 @@ type fsNode struct {
 	children map[string]*fsNode
 }
 
-type FSStats struct {
-	FileCount int
-}
-
 var _ fs.ReadDirFS = &FS{}
 var _ fnfs.VisitFS = &FS{}
-var _ fnfs.TotalSizeFS = &FS{}
 
 func (m *FS) Open(name string) (fs.File, error) {
 	if !fs.ValidPath(name) {
@@ -159,14 +154,6 @@ func (m *FS) ComputeDigest(ctx context.Context) (schema.Digest, error) {
 	return digestfs.Digest(ctx, m)
 }
 
-func (m *FS) TotalSize(ctx context.Context) (uint64, error) {
-	var count uint64
-	for _, f := range m.files {
-		count += uint64(len(f.Contents))
-	}
-	return count, nil
-}
-
 func (n *fsNode) clone() *fsNode {
 	c := &fsNode{file: n.file, children: map[string]*fsNode{}}
 	for k, v := range n.children {
@@ -222,10 +209,6 @@ func (m *FS) Add(path string, contents []byte) {
 	_, node := walk(&m.root, path, true)
 	node.file = file
 	m.files = append(m.files, file)
-}
-
-func (m *FS) Stats() FSStats {
-	return FSStats{FileCount: len(m.files)}
 }
 
 func FileHandle(f fnfs.File) fs.File {
