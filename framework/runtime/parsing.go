@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime/debug"
 
 	"namespacelabs.dev/foundation/schema/runtime"
 )
@@ -52,6 +53,23 @@ func LoadBuildVCS() (*runtime.BuildVCS, error) {
 	serializedVCS, err := os.ReadFile("/namespace/config/buildvcs.json")
 	if err != nil {
 		if os.IsNotExist(err) {
+			// Native services do not have the deployment-injected BuildVCS file.
+			if info, ok := debug.ReadBuildInfo(); ok {
+				vcs := &runtime.BuildVCS{}
+				for _, setting := range info.Settings {
+					switch setting.Key {
+					case "vcs.revision":
+						vcs.Revision = setting.Value
+					case "vcs.time":
+						vcs.CommitTime = setting.Value
+					case "vcs.modified":
+						vcs.Uncommitted = setting.Value == "true"
+					}
+				}
+				if vcs.Revision != "" {
+					return vcs, nil
+				}
+			}
 			return nil, nil
 		}
 
