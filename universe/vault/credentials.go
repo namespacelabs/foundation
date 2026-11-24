@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/hashicorp/vault-client-go"
@@ -36,9 +35,6 @@ const (
 const (
 	VaultJwtAudience = "vault.namespace.systems"
 
-	// Force re-authentication if the token expires in less than this much time.
-	ttlBuffer = time.Minute
-
 	// Minimum validity duration for cached OIDC credentials before triggering re-auth.
 	oidcMinValidityBuffer = 5 * time.Minute
 
@@ -49,164 +45,6 @@ const (
 var IssueIdToken func(ctx context.Context, aud string, version int, duration time.Duration) (string, error)
 
 type AuthMethod string
-
-type Provider struct {
-	creds *Credentials
-	opts  []vault.ClientOption
-
-	m    sync.Mutex
-	conn *ClientHandle
-}
-
-func ProviderFromEnv(key string, options ...vault.ClientOption) (*Provider, error) {
-	if os.Getenv(key) == "" {
-		return nil, fmt.Errorf("vault: environment variable %q not set", key)
-	}
-
-	creds, err := ParseCredentialsFromEnv(key)
-	if err != nil {
-		return nil, fmt.Errorf("vault: environment variable %q could not be parsed: %w", key, err)
-	}
-
-	return NewProvider(creds, options...)
-}
-
-func NewProvider(creds *Credentials, opts ...vault.ClientOption) (*Provider, error) {
-	return &Provider{creds: creds, opts: opts}, nil
-}
-
-func (p *Provider) Get(ctx context.Context) (*vault.Client, error) {
-	conn, err := p.connect(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return conn.Get(ctx)
-}
-
-func (p *Provider) connect(ctx context.Context) (*ClientHandle, error) {
-	p.m.Lock()
-	defer p.m.Unlock()
-
-	if p.conn == nil {
-		conn, err := p.creds.ClientHandle(ctx, p.opts...)
-		if err != nil {
-			return nil, err
-		}
-		p.conn = conn
-	}
-
-	return p.conn, nil
-}
-
-type ClientHandle struct {
-	creds  *Credentials
-	client *vault.Client
-	auth   *vault.ResponseAuth
-	leased time.Time
-
-	m sync.Mutex
-}
-
-func (h *ClientHandle) Get(ctx context.Context) (*vault.Client, error) {
-	h.m.Lock()
-	defer h.m.Unlock()
-
-	if time.Until(h.expires()) > ttlBuffer {
-		return h.client, nil
-	}
-
-	if err := h.renew(ctx); err != nil {
-		return nil, err
-	}
-
-	return h.client, nil
-}
-
-func (h *ClientHandle) authenticate(ctx context.Context) error {
-	// Always prefer env var.
-	if t := os.Getenv("VAULT_TOKEN"); t != "" {
-		zerolog.Ctx(ctx).Debug().Msg("use VAULT_TOKEN environment variable")
-		return h.client.SetToken(t)
-	}
-
-	var vaultAuth *vault.ResponseAuth
-	switch h.creds.AuthMethod {
-	case JwtAuthMethod:
-		resp, err := JwtLogin(ctx, h.client, h.creds.AuthMount, h.creds.JwtAudience)
-		if err != nil {
-			return err
-		}
-
-		vaultAuth = resp
-	case OidcAuthMethod:
-		resp, err := OidcLogin(ctx, h.client, h.creds.VaultAddress, h.creds.AuthMount)
-		if err != nil {
-			return err
-		}
-
-		vaultAuth = resp
-	// For backward compatibility, by default assume that approle method is used.
-	case ApproleAuthMethod:
-		fallthrough
-	default:
-		var opts []vault.RequestOption
-		if h.creds.AuthMount != "" {
-			opts = append(opts, vault.WithMountPath(h.creds.AuthMount))
-		}
-		resp, err := h.client.Auth.AppRoleLogin(ctx, schema.AppRoleLoginRequest{
-			RoleId:   h.creds.RoleId,
-			SecretId: h.creds.SecretId,
-		}, opts...)
-		if err != nil {
-			return err
-		}
-
-		vaultAuth = resp.Auth
-	}
-
-	h.auth = vaultAuth
-	h.leased = time.Now()
-
-	zerolog.Ctx(ctx).Debug().Dur("lease_duration", h.ttl()).Msg("vault: authenticated")
-	return h.client.SetToken(vaultAuth.ClientToken)
-}
-
-func (h *ClientHandle) renew(ctx context.Context) error {
-	if h.auth == nil || !h.auth.Renewable {
-		return h.authenticate(ctx)
-	}
-
-	res, err := h.client.Auth.TokenRenewSelf(ctx, schema.TokenRenewSelfRequest{})
-	if err != nil {
-		// The Vault client library already handles retries, so if renewing the
-		// token fails, we assume it can no longer be renewed. This can happen if
-		// the token was revoked, or if it reached its maximum TTL.
-		zerolog.Ctx(ctx).Warn().Msg("vault: token renewal failed, forcing re-auth")
-		return h.authenticate(ctx)
-	}
-
-	h.auth = res.Auth
-	zerolog.Ctx(ctx).Debug().Dur("lease_duration", h.ttl()).Msg("vault: token renewed")
-	h.leased = time.Now()
-	return nil
-}
-
-func (h *ClientHandle) ttl() time.Duration {
-	if h.auth == nil {
-		return 0
-	}
-
-	return time.Duration(h.auth.LeaseDuration) * time.Second
-}
-
-func (h *ClientHandle) expires() time.Time {
-	if h.auth == nil {
-		return time.Time{}
-	}
-
-	return h.leased.Add(h.ttl())
-}
 
 type Credentials struct {
 	AuthMethod AuthMethod `json:"auth_method,omitempty"`
@@ -223,26 +61,6 @@ type Credentials struct {
 
 func (c *Credentials) Encode() ([]byte, error) {
 	return json.Marshal(c)
-}
-
-func (c *Credentials) ClientHandle(ctx context.Context, options ...vault.ClientOption) (*ClientHandle, error) {
-	client, err := vault.New(append([]vault.ClientOption{
-		vault.WithAddress(c.VaultAddress),
-	}, options...)...)
-	if err != nil {
-		return nil, err
-	}
-
-	if c.VaultNamespace != "" {
-		if err := client.SetNamespace(c.VaultNamespace); err != nil {
-			return nil, err
-		}
-	}
-
-	return &ClientHandle{
-		creds:  c,
-		client: client,
-	}, nil
 }
 
 func ParseCredentials(data []byte) (*Credentials, error) {
