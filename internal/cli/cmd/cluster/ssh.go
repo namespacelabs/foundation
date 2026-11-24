@@ -283,7 +283,7 @@ func InlineSsh(ctx context.Context, cluster *api.KubernetesCluster, opts InlineS
 		}
 	}
 
-	return withSsh(ctx, connect, opts.User, func(ctx context.Context, client *ssh.Client) error {
+	err := withSsh(ctx, connect, opts.User, func(ctx context.Context, client *ssh.Client) error {
 		session, err := client.NewSession()
 		if err != nil {
 			return err
@@ -356,6 +356,12 @@ func InlineSsh(ctx context.Context, cluster *api.KubernetesCluster, opts InlineS
 			return g.Wait()
 		}
 	})
+	var exitErr *ssh.ExitError
+	if errors.As(err, &exitErr) {
+		// The SSH library also maps exit-signal to 128 + signal number.
+		return fnerrors.ExitWithCode(err, exitErr.ExitStatus())
+	}
+	return err
 }
 
 func listenForResize(ctx context.Context, stdin c.Console, session *ssh.Session) {
