@@ -34,35 +34,7 @@ type ListBaseImagesResponse struct {
 }
 
 type ListBaseImagesResponse_RunnerBaseImage struct {
-	BaseImage   *BaseImage              `json:"base_image,omitempty"`
-	Description *RunnerImageDescription `json:"description,omitempty"`
-	ImageRef    string                  `json:"image_ref,omitempty"`
-}
-
-type BaseImage struct {
-	// Base Image unique identifier.
-	Id string `json:"id,omitempty"`
-	// Deprecated. Use id instead.
-	Ref string `json:"ref,omitempty"`
-	// Corresponds to InstanceShape.os ("linux" or "macos").
-	Os string `json:"os,omitempty"`
-	// E.g. Sonoma, Ubuntu LTS
-	OsName string `json:"os_name,omitempty"`
-	// E.g. 14.4.1
-	OsVersion string `json:"os_version,omitempty"`
-	// A description used for administration purposes.
-	Description string `json:"description,omitempty"`
-	// Set of features that the image supports.
-	Features []string `json:"features,omitempty"`
-}
-
-type RunnerImageDescription struct {
-	// OS label as used by GitHub jobs. (e.g. "ubuntu-22.04" or "ubuntu-22.04-staging")
-	Label string `json:"label,omitempty"`
-	// Image purpose, e.g. production, staging
-	Purpose string `json:"purpose,omitempty"`
-	// Base image ID
-	BaseImageId string `json:"base_image_id,omitempty"`
+	ImageRef string `json:"image_ref,omitempty"`
 }
 
 func ListBaseImages(ctx context.Context, osLabel string) (ListBaseImagesResponse, error) {
