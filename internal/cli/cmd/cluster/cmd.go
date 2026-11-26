@@ -128,6 +128,7 @@ const (
 	purposeColKey  = "purpose"
 	platformColKey = "platform"
 	osColKey       = "os"
+	reasonColKey   = "reason"
 )
 
 func tableClusters(ctx context.Context,
@@ -143,6 +144,7 @@ func tableClusters(ctx context.Context,
 	}
 	if previousRuns {
 		cols = append(cols, tui.Column{Key: durationColKey, Title: "Duration", MinWidth: 10, MaxWidth: 20})
+		cols = append(cols, tui.Column{Key: reasonColKey, Title: "Destroy reason", MinWidth: 10, MaxWidth: 30})
 	} else {
 		cols = append(cols, tui.Column{Key: ttlColKey, Title: "Time to live", MinWidth: 5, MaxWidth: 20})
 	}
@@ -173,6 +175,7 @@ func tableClusters(ctx context.Context,
 		if previousRuns {
 			destroyedAt, _ := time.Parse(time.RFC3339, cluster.DestroyedAt)
 			row[durationColKey] = destroyedAt.Sub(created).Truncate(time.Second).String()
+			row[reasonColKey] = formatDestroyReason(cluster)
 		} else {
 			row[ttlColKey] = humanize.Time(deadline.Local())
 		}
@@ -199,6 +202,30 @@ func formatOS(shape *api.ClusterShape) string {
 		return "MacOS"
 	default:
 		return cases.Title(language.English).String(shape.OS)
+	}
+}
+
+func formatDestroyReason(cluster api.KubernetesClusterMetadata) string {
+	switch cluster.DestroyReason {
+	case "":
+		return "-"
+	case "GARBAGE_COLLECTED":
+		if cluster.Expired {
+			return "deadline reached"
+		}
+		return "garbage collected"
+	case "USER_REQUESTED":
+		return "destroyed via API"
+	case "VM_COMPLETED":
+		return "instance shut down"
+	case "VM_FAILED":
+		return "instance failed"
+	case "LIMIT_EXCEEDED":
+		return "limit exceeded"
+	case "INTERNAL_SERVICE_GARBAGE_COLLECTED":
+		return "reclaimed by Namespace"
+	default:
+		return strings.ReplaceAll(strings.ToLower(cluster.DestroyReason), "_", " ")
 	}
 }
 
