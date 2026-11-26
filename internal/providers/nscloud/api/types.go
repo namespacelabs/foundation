@@ -228,6 +228,8 @@ type KubernetesClusterMetadata struct {
 	ClusterId         string        `json:"cluster_id,omitempty"`
 	Created           string        `json:"created,omitempty"`
 	DestroyedAt       string        `json:"destroyed_at,omitempty"`
+	DestroyReason     string        `json:"destroy_reason,omitempty"`
+	Expired           bool          `json:"expired,omitempty"`
 	Deadline          string        `json:"deadline,omitempty"`
 	DocumentedPurpose string        `json:"documented_purpose,omitempty"`
 	Shape             *ClusterShape `json:"shape,omitempty"`
