@@ -332,29 +332,31 @@ func InlineSsh(ctx context.Context, cluster *api.KubernetesCluster, opts InlineS
 		}
 
 		if len(args) > 0 {
-			command := strings.Join(args, " ")
-			if err := session.Run(command); err != nil {
+			if err := session.Start(strings.Join(args, " ")); err != nil {
 				return err
 			}
-			return nil
 		} else {
 			if err := session.Shell(); err != nil {
 				return err
 			}
-
-			g := executor.New(ctx, "ssh")
-			cancel := g.GoCancelable(func(ctx context.Context) error {
-				return api.StartRefreshing(ctx, api.Methods, cluster, func(err error) error {
-					fmt.Fprintf(os.Stderr, "failed to refresh instance: %v\n", err)
-					return nil
-				})
-			})
-			g.Go(func(ctx context.Context) error {
-				defer cancel()
-				return session.Wait()
-			})
-			return g.Wait()
 		}
+
+		// Keep the instance alive while the shell or command runs.
+		g := executor.New(ctx, "ssh")
+		cancel := g.GoCancelable(func(ctx context.Context) error {
+			return api.StartRefreshing(ctx, api.Methods, cluster, func(err error) error {
+				if ctx.Err() != nil {
+					return nil // The session ended while a refresh was in flight.
+				}
+				fmt.Fprintf(os.Stderr, "failed to refresh instance: %v\n", err)
+				return nil
+			})
+		})
+		g.Go(func(ctx context.Context) error {
+			defer cancel()
+			return session.Wait()
+		})
+		return g.Wait()
 	})
 	var exitErr *ssh.ExitError
 	if errors.As(err, &exitErr) {
