@@ -6,10 +6,13 @@ package tui
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"golang.org/x/term"
 	"namespacelabs.dev/foundation/internal/console"
 )
 
@@ -33,9 +36,6 @@ func SelectTable(ctx context.Context, cols []Column, rows []Row) (table.Row, err
 }
 
 func Table(ctx context.Context, cols []Column, rows []Row, selectRow bool) (table.Row, error) {
-	done := console.EnterInputMode(ctx)
-	defer done()
-
 	realCols := []table.Column{}
 	for _, col := range cols {
 		realCols = append(realCols, table.Column{Title: col.Title, Width: width(col.MinWidth, col.MaxWidth, col.Key, rows)})
@@ -76,6 +76,17 @@ func Table(ctx context.Context, cols []Column, rows []Row, selectRow bool) (tabl
 		maxHeight: height,
 		selectRow: selectRow,
 	}
+
+	// A static table needs no input, so without a terminal on both ends print it
+	// directly; bubbletea would otherwise try to open /dev/tty and fail.
+	if !selectRow && !(term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd()))) {
+		_, err := fmt.Fprint(console.Stdout(ctx), m.View())
+		return nil, err
+	}
+
+	done := console.EnterInputMode(ctx)
+	defer done()
+
 	p := tea.NewProgram(m)
 	final, err := p.Run()
 	if err != nil {
