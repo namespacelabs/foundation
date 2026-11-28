@@ -26,13 +26,30 @@ type ImageWithPlatform struct {
 }
 
 func MakeImageIndex(images ...ImageWithPlatform) compute.Computable[ResolvableImage] {
-	return &makeImageIndex{images: images}
+	return MakeImageIndexOpts(MakeImageIndexOptions{}, images...)
+}
+
+type MakeImageIndexOptions struct {
+	// NoCache, when set, marks the resulting index as non-cacheable. Use
+	// when the index is destined for a registry and persisting it in the
+	// local content cache would force every constituent image's layers to
+	// be fetched from the source registry.
+	NoCache bool
+}
+
+func MakeImageIndexOpts(opts MakeImageIndexOptions, images ...ImageWithPlatform) compute.Computable[ResolvableImage] {
+	return &makeImageIndex{images: images, noCache: opts.NoCache}
 }
 
 type makeImageIndex struct {
-	images []ImageWithPlatform
+	images  []ImageWithPlatform
+	noCache bool
 
 	compute.LocalScoped[ResolvableImage]
+}
+
+func (al *makeImageIndex) Output() compute.Output {
+	return compute.Output{NotCacheable: al.noCache}
 }
 
 func (al *makeImageIndex) Inputs() *compute.In {
