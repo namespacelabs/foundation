@@ -39,11 +39,12 @@ func NewBuilder() *Builder {
 	}
 }
 
-// Target describes a Bazel target that produces exactly one output file.
+// Target describes a Bazel target that produces exactly one file or directory.
 type Target struct {
 	WorkspaceAbs string
 	Label        string
 	Platform     string
+	OutputGroup  string
 }
 
 // AddTarget adds a Bazel target to the current build graph. When there is no
@@ -105,6 +106,7 @@ func (g *bazelGraph) add(target Target) (*targetNode, error) {
 type invocationKey struct {
 	workspaceAbs string
 	platform     string
+	outputGroup  string
 }
 
 func (g *bazelGraph) Finalize() error {
@@ -120,12 +122,14 @@ func (g *bazelGraph) Finalize() error {
 		key := invocationKey{
 			workspaceAbs: node.target.WorkspaceAbs,
 			platform:     node.target.Platform,
+			outputGroup:  node.target.OutputGroup,
 		}
 		inv := invocations[key]
 		if inv == nil {
 			inv = &invocation{
 				workspaceAbs: node.target.WorkspaceAbs,
 				platform:     node.target.Platform,
+				outputGroup:  node.target.OutputGroup,
 				targets:      map[string]struct{}{},
 			}
 			invocations[key] = inv
@@ -172,6 +176,7 @@ type outputs map[string]string
 type invocation struct {
 	workspaceAbs string
 	platform     string
+	outputGroup  string
 	targets      map[string]struct{}
 
 	compute.LocalScoped[outputs]
@@ -194,6 +199,7 @@ func (inv *invocation) Inputs() *compute.In {
 	return compute.Inputs().
 		Indigestible("workspace", inv.workspaceAbs).
 		Str("platform", inv.platform).
+		Str("outputGroup", inv.outputGroup).
 		JSON("targets", inv.targetList())
 }
 
@@ -202,10 +208,16 @@ func (inv *invocation) Output() compute.Output {
 }
 
 func (inv *invocation) buildArgs() []string {
-	if inv.platform == "" {
-		return nil
+	var args []string
+	if inv.platform != "" {
+		// Bazel otherwise reuses output paths across --platforms invocations.
+		// Concurrent platform builds must not overwrite each other's artifacts.
+		args = append(args, "--platforms="+inv.platform, "--experimental_platform_in_output_dir")
 	}
-	return []string{"--platforms=" + inv.platform}
+	if inv.outputGroup != "" {
+		args = append(args, "--output_groups="+inv.outputGroup)
+	}
+	return args
 }
 
 func (inv *invocation) Compute(ctx context.Context, _ compute.Resolved) (outputs, error) {
